@@ -91,35 +91,65 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!formData.client_name || !formData.client_po || !formData.submission_no) {
-      alert('Veuillez remplir tous les champs obligatoires');
+const handleSubmit = async () => {
+  if (!formData.client_name || !formData.client_po || !formData.submission_no) {
+    alert('Veuillez remplir tous les champs obligatoires');
+    return;
+  }
+
+  setLoading(true);
+  let pdfUrl = null;
+  let pdfFileName = null;
+
+  if (formData.pdf_file) {
+    const fileExt = formData.pdf_file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('purchase-orders-pdfs')
+      .upload(fileName, formData.pdf_file);
+
+    if (uploadError) {
+      alert('Erreur upload PDF: ' + uploadError.message);
+      setLoading(false);
       return;
-    }
-
-    setLoading(true);
-    let pdfUrl = null;
-    let pdfFileName = null;
-
-    if (formData.pdf_file) {
-      const fileExt = formData.pdf_file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
+    } else {
+      const { data: { publicUrl } } = supabase.storage
         .from('purchase-orders-pdfs')
-        .upload(fileName, formData.pdf_file);
-
-      if (uploadError) {
-        alert('Erreur upload PDF: ' + uploadError.message);
-      } else {
-        const { data: { publicUrl } } = supabase.storage
-          .from('purchase-orders-pdfs')
-          .getPublicUrl(fileName);
-        
-        pdfUrl = publicUrl;
-        pdfFileName = formData.pdf_file.name;
-      }
+        .getPublicUrl(fileName);
+      
+      pdfUrl = publicUrl;
+      pdfFileName = formData.pdf_file.name;
     }
+  }
+
+  // Ne PAS inclure pdf_file dans l'insert!
+  const { data: insertData, error } = await supabase
+    .from('purchase_orders')
+    .insert([{
+      client_name: formData.client_name,
+      client_po: formData.client_po,
+      submission_no: formData.submission_no,
+      date: formData.date,
+      amount: formData.amount || 0,
+      status: formData.status,
+      notes: formData.notes || '',
+      pdf_url: pdfUrl,
+      pdf_file_name: pdfFileName,
+      created_by: user.id
+    }]);
+
+  if (error) {
+    alert('Erreur: ' + error.message);
+    console.error('Erreur détaillée:', error);
+  } else {
+    await fetchOrders();
+    resetForm();
+    setShowForm(false);
+  }
+  
+  setLoading(false);
+};
 
  const { error } = await supabase
   .from('purchase_orders')
