@@ -121,15 +121,20 @@ export default function PurchaseOrderManager() {
       }
     }
 
-    const { error } = await supabase
-      .from('purchase_orders')
-      .insert([{
-        ...formData,
-        pdf_url: pdfUrl,
-        pdf_file_name: pdfFileName,
-        amount: formData.amount || 0,
-        created_by: user.id
-      }]);
+ const { error } = await supabase
+  .from('purchase_orders')
+  .insert([{
+    client_name: formData.client_name,
+    client_po: formData.client_po,
+    submission_no: formData.submission_no,
+    date: formData.date,
+    amount: formData.amount || 0,
+    status: formData.status,
+    notes: formData.notes,
+    pdf_url: pdfUrl,
+    pdf_file_name: pdfFileName,
+    created_by: user.id
+  }]);
 
     if (error) {
       alert('Erreur: ' + error.message);
