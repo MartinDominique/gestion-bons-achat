@@ -168,7 +168,7 @@ const handleSubmit = async () => {
       });
     }
 
-   const handleSendReport = async () => {
+const handleSendReport = async () => {
   const thisWeek = new Date();
   thisWeek.setDate(thisWeek.getDate() - 7);
 
@@ -195,6 +195,23 @@ const handleSubmit = async () => {
       order.status
     ])
   });
+
+  const pdfBlob = doc.output('arraybuffer');
+  const pdfBuffer = Buffer.from(pdfBlob);
+  const fileBase64 = pdfBuffer.toString('base64');
+
+  await fetch('/api/send-report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: user.email,
+      fileBase64
+    })
+  });
+
+  alert("Rapport envoyé avec succès !");
+};
+
 
   const pdfBlob = doc.output('arraybuffer');
   const pdfBuffer = Buffer.from(pdfBlob);
