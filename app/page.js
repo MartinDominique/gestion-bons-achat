@@ -212,18 +212,6 @@ const handleSendReport = async () => {
   alert("Rapport envoyé avec succès !");
 };
 
-
-  const pdfBlob = doc.output('arraybuffer');
-  const pdfBuffer = Buffer.from(pdfBlob);
-
-  await sendReportEmail({
-    to: user.email,
-    pdfBuffer
-  });
-
-  alert("Rapport envoyé avec succès !");
-};
-
     // Préparer les données
     const orderData = {
       client_name: formData.client_name,
