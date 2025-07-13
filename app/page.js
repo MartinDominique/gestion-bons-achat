@@ -120,94 +120,93 @@ export default function PurchaseOrderManager() {
     setShowForm(true);
   };
 
-  const handleSubmit = async () => {
-    if (!formData.client_name || !formData.client_po || !formData.submission_no) {
-      alert('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
+const handleSubmit = async () => {
+  if (!formData.client_name || !formData.client_po || !formData.submission_no) {
+    alert('Veuillez remplir tous les champs obligatoires');
+    return;
+  }
 
-    setLoading(true);
-    
-    try {
-      let fileUrls = [];
-      let fileNames = [];
+  setLoading(true);
 
-      // Upload des nouveaux fichiers
-      if (formData.files && formData.files.length > 0) {
-        for (const file of formData.files) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('purchase-orders-pdfs')
-            .upload(fileName, file);
+  try {
+    let fileUrls = [];
+    let fileNames = [];
 
-          if (uploadError) {
-            console.error('Erreur upload:', uploadError);
-            continue;
-          }
+    // Upload des nouveaux fichiers
+    if (formData.files && formData.files.length > 0) {
+      for (const file of formData.files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('purchase-orders-pdfs')
+          .upload(fileName, file);
 
-          const { data: { publicUrl } } = supabase.storage
-            .from('purchase-orders-pdfs')
-            .getPublicUrl(fileName);
-          
-          fileUrls.push(publicUrl);
-          fileNames.push(file.name);
+        if (uploadError) {
+          console.error('Erreur upload:', uploadError);
+          continue;
         }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('purchase-orders-pdfs')
+          .getPublicUrl(fileName);
+
+        fileUrls.push(publicUrl);
+        fileNames.push(file.name);
       }
-
-      // Si on modifie, garder les fichiers existants
-      if (editMode && existingFiles.length > 0) {
-        existingFiles.forEach(file => {
-          fileUrls.push(file.url);
-          fileNames.push(file.name);
-        });
-      }
-
-      // Préparer les données
-      const orderData = {
-        client_name: formData.client_name,
-        client_po: formData.client_po,
-        submission_no: formData.submission_no,
-        date: formData.date,
-        amount: formData.amount || 0,
-        status: formData.status,
-        notes: formData.notes,
-        pdf_url: fileUrls[0] || null, // Premier fichier pour compatibilité
-        pdf_file_name: fileNames[0] || null,
-        // Stocker tous les fichiers dans les notes (temporaire)
-        files_data: JSON.stringify({ urls: fileUrls, names: fileNames })
-      };
-
-      if (editMode) {
-        // Mise à jour
-        const { error } = await supabase
-          .from('purchase_orders')
-          .update(orderData)
-          .eq('id', editingId);
-
-        if (error) throw error;
-      } else {
-        // Création
-        const { error } = await supabase
-          .from('purchase_orders')
-          .insert([{
-            ...orderData,
-            created_by: user.id
-          }]);
-
-        if (error) throw error;
-      }
-
-      await fetchOrders();
-      resetForm();
-      setShowForm(false);
-    } catch (error) {
-      alert('Erreur: ' + error.message);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // Si on modifie, garder les fichiers existants
+    if (editMode && existingFiles.length > 0) {
+      existingFiles.forEach(file => {
+        fileUrls.push(file.url);
+        fileNames.push(file.name);
+      });
+    }
+
+    // Préparer les données
+    const orderData = {
+      client_name: formData.client_name,
+      client_po: formData.client_po,
+      submission_no: formData.submission_no,
+      date: formData.date,
+      amount: formData.amount || 0,
+      status: formData.status,
+      notes: formData.notes,
+      pdf_url: fileUrls[0] || null,
+      pdf_file_name: fileNames[0] || null,
+      files_data: JSON.stringify({ urls: fileUrls, names: fileNames })
+    };
+
+    if (editMode) {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update(orderData)
+        .eq('id', editingId);
+
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .insert([{
+          ...orderData,
+          created_by: user.id
+        }]);
+
+      if (error) throw error;
+    }
+
+    await fetchOrders();
+    resetForm();
+    setShowForm(false);
+
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+    console.error('Erreur détaillée:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDelete = async (id) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce bon d\'achat?')) return;
