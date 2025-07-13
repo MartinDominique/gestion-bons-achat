@@ -1,3 +1,5 @@
+Code Claude
+
 'use client'
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -99,39 +101,6 @@ const handleSubmit = async () => {
 
   setLoading(true);
 
-  try {
-    // Étape 1: création du bon
-    const { data: newOrder, error } = await supabase
-      .from('purchase_orders')
-      .insert([{
-        client_name: formData.client_name,
-        client_po: formData.client_po,
-        submission_no: formData.submission_no,
-        date: formData.date,
-        amount: formData.amount || 0,
-        status: formData.status,
-        notes: formData.notes,
-        created_by: user.id
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Étape 2: Upload des fichiers (PDF/Excel)
-    await uploadFiles(newOrder.id);
-
-    await fetchOrders();
-    resetForm();
-    setShowForm(false);
-  } catch (err) {
-    alert('Erreur: ' + err.message);
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-};
-
   // Créer le bon d'achat d'abord
   const { data: newOrder, error } = await supabase
     .from('purchase_orders')
@@ -175,6 +144,22 @@ const fetchOrderFiles = async (orderId) => {
     setOrderFiles(prev => ({...prev, [orderId]: data}));
   }
 };
+
+  // Ne PAS inclure pdf_file dans l'insert!
+  const { data: insertData, error } = await supabase
+    .from('purchase_orders')
+    .insert([{
+      client_name: formData.client_name,
+      client_po: formData.client_po,
+      submission_no: formData.submission_no,
+      date: formData.date,
+      amount: formData.amount || 0,
+      status: formData.status,
+      notes: formData.notes || '',
+      pdf_url: pdfUrl,
+      pdf_file_name: pdfFileName,
+      created_by: user.id
+    }]);
 
   if (error) {
     alert('Erreur: ' + error.message);
@@ -245,18 +230,27 @@ const fetchOrderFiles = async (orderId) => {
     }
   };
 
-const resetForm = () => {
-  setFormData({
-    client_name: '',
-    client_po: '',
-    submission_no: '',
-    date: new Date().toISOString().split('T')[0],
-    amount: '',
-    status: 'en_attente',
-    notes: '',
-    pdf_files: [] // Important : tableau vide
-  });
-};
+  const resetForm = () => {
+    setFormData({
+      client_name: '',
+      client_po: '',
+      submission_no: '',
+      date: new Date().toISOString().split('T')[0],
+      amount: '',
+      status: 'en_attente',
+      notes: '',
+      pdf_file: null
+    });
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      setFormData({ ...formData, pdf_file: file });
+    } else {
+      alert('Veuillez sélectionner un fichier PDF');
+    }
+  };
 
 const handleFileChange = (e) => {
   const files = Array.from(e.target.files);
@@ -265,11 +259,11 @@ const handleFileChange = (e) => {
     file.type === 'application/vnd.ms-excel' ||
     file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   );
-
+  
   if (validFiles.length !== files.length) {
     alert('Seuls les fichiers PDF et Excel (XLS/XLSX) sont acceptés');
   }
-
+  
   setFormData({ ...formData, pdf_files: validFiles });
 };
 
