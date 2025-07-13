@@ -27,7 +27,7 @@ export default function PurchaseOrderManager() {
     amount: '',
     status: 'en_attente',
     notes: '',
-    pdf_file: null
+    pdf_files: null
   });
 
   useEffect(() => {
@@ -98,30 +98,50 @@ const handleSubmit = async () => {
   }
 
   setLoading(true);
-  let pdfUrl = null;
-  let pdfFileName = null;
 
-  if (formData.pdf_file) {
-    const fileExt = formData.pdf_file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('purchase-orders-pdfs')
-      .upload(fileName, formData.pdf_file);
+  // Créer le bon d'achat d'abord
+  const { data: newOrder, error } = await supabase
+    .from('purchase_orders')
+    .insert([{
+      client_name: formData.client_name,
+      client_po: formData.client_po,
+      submission_no: formData.submission_no,
+      date: formData.date,
+      amount: formData.amount || 0,
+      status: formData.status,
+      notes: formData.notes,
+      created_by: user.id
+    }])
+    .select()
+    .single();
 
-    if (uploadError) {
-      alert('Erreur upload PDF: ' + uploadError.message);
-      setLoading(false);
-      return;
-    } else {
-      const { data: { publicUrl } } = supabase.storage
-        .from('purchase-orders-pdfs')
-        .getPublicUrl(fileName);
-      
-      pdfUrl = publicUrl;
-      pdfFileName = formData.pdf_file.name;
-    }
+  if (error) {
+    alert('Erreur: ' + error.message);
+  } else {
+    // Uploader les fichiers après création du bon
+    await uploadFiles(newOrder.id);
+    await fetchOrders();
+    resetForm();
+    setShowForm(false);
   }
+  
+  setLoading(false);
+};
+
+  // 5. Ajoutez une fonction pour charger les fichiers d'un bon:
+const [orderFiles, setOrderFiles] = useState({});
+
+const fetchOrderFiles = async (orderId) => {
+  const { data, error } = await supabase
+    .from('purchase_order_files')
+    .select('*')
+    .eq('purchase_order_id', orderId)
+    .order('uploaded_at', { ascending: false });
+
+  if (!error && data) {
+    setOrderFiles(prev => ({...prev, [orderId]: data}));
+  }
+};
 
   // Ne PAS inclure pdf_file dans l'insert!
   const { data: insertData, error } = await supabase
@@ -230,21 +250,20 @@ const handleSubmit = async () => {
     }
   };
 
-  const filteredOrders = orders
-    .filter(order => {
-      const matchSearch = 
-        order.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.client_po.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.submission_no.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchClient = filterClient === '' || order.client_name === filterClient;
-      return matchSearch && matchClient;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'date') return new Date(b.date) - new Date(a.date);
-      if (sortBy === 'client') return a.client_name.localeCompare(b.client_name);
-      if (sortBy === 'amount') return parseFloat(b.amount) - parseFloat(a.amount);
-      return 0;
-    });
+const handleFileChange = (e) => {
+  const files = Array.from(e.target.files);
+  const validFiles = files.filter(file => 
+    file.type === 'application/pdf' || 
+    file.type === 'application/vnd.ms-excel' ||
+    file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  
+  if (validFiles.length !== files.length) {
+    alert('Seuls les fichiers PDF et Excel (XLS/XLSX) sont acceptés');
+  }
+  
+  setFormData({ ...formData, pdf_files: validFiles });
+};
 
   const uniqueClients = [...new Set(orders.map(order => order.client_name))];
 
@@ -266,7 +285,51 @@ const handleSubmit = async () => {
     }
   };
 
-  if (!user) {
+ const uploadFiles = async (purchaseOrderId) => {
+  if (!formData.pdf_files || formData.pdf_files.length === 0) return;
+  
+  const uploadPromises = formData.pdf_files.map(async (file) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${purchaseOrderId}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
+    // Upload le fichier
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('purchase-orders-pdfs')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      console.error('Erreur upload:', uploadError);
+      return null;
+    }
+
+    // Obtenir l'URL publique
+    const { data: { publicUrl } } = supabase.storage
+      .from('purchase-orders-pdfs')
+      .getPublicUrl(fileName);
+    
+    // Insérer dans la table des fichiers
+    const { error: dbError } = await supabase
+      .from('purchase_order_files')
+      .insert({
+        purchase_order_id: purchaseOrderId,
+        file_name: file.name,
+        file_url: publicUrl,
+        file_type: file.type,
+        file_size: file.size,
+        uploaded_by: user.id
+      });
+
+    if (dbError) {
+      console.error('Erreur DB:', dbError);
+    }
+    
+    return publicUrl;
+  });
+
+  await Promise.all(uploadPromises);
+};
+
+if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
@@ -484,14 +547,18 @@ const handleSubmit = async () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.pdf_url ? (
-                        <a href={order.pdf_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 transition-colors">
-                          <FileText className="w-5 h-5" />
-                        </a>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
+  <button
+    onClick={() => fetchOrderFiles(order.id)}
+    className="text-blue-600 hover:text-blue-800 transition-colors flex items-center"
+  >
+    <FileText className="w-5 h-5" />
+    {orderFiles[order.id] && (
+      <span className="ml-1 text-xs">
+        ({orderFiles[order.id].length})
+      </span>
+    )}
+  </button>
+</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
@@ -574,6 +641,39 @@ const handleSubmit = async () => {
                   </select>
                 </div>
               </div>
+{selectedOrder && (
+  <div>
+    <p className="text-sm text-gray-600 mb-2">Documents attachés</p>
+    {orderFiles[selectedOrder.id]?.length > 0 ? (
+      <div className="space-y-2">
+        {orderFiles[selectedOrder.id].map((file) => (
+          <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center">
+              <FileText className={`w-5 h-5 mr-2 ${
+                file.file_type?.includes('pdf') ? 'text-red-600' : 'text-green-600'
+              }`} />
+              <span className="font-medium">{file.file_name}</span>
+              <span className="text-sm text-gray-500 ml-2">
+                ({(file.file_size / 1024).toFixed(1)} KB)
+              </span>
+            </div>
+            <a 
+              href={file.file_url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-blue-600 hover:underline flex items-center"
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Télécharger
+            </a>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="text-gray-500">Aucun document attaché</p>
+    )}
+  </div>
+)}
               {selectedOrder.notes && (
                 <div>
                   <p className="text-sm text-gray-600">Notes</p>
@@ -607,6 +707,8 @@ const handleSubmit = async () => {
                   onClick={() => {
                     setShowForm(false);
                     resetForm();
+                    setSelectedOrder(order);
+  fetchOrderFiles(order.id);
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -693,12 +795,28 @@ const handleSubmit = async () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Document PDF
                     </label>
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      onChange={handleFileChange}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                   <div>
+  <input
+    type="file"
+    accept=".pdf,.xls,.xlsx"
+    multiple
+    onChange={handleFileChange}
+    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+  />
+  {formData.pdf_files.length > 0 && (
+    <div className="mt-2 text-sm text-gray-600">
+      {formData.pdf_files.length} fichier(s) sélectionné(s):
+      <ul className="mt-1">
+        {formData.pdf_files.map((file, index) => (
+          <li key={index} className="flex items-center">
+            <FileText className="w-4 h-4 mr-1" />
+            {file.name} ({(file.size / 1024).toFixed(1)} KB)
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+</div>
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -718,6 +836,8 @@ const handleSubmit = async () => {
                     onClick={() => {
                       setShowForm(false);
                       resetForm();
+                      setSelectedOrder(order);
+  fetchOrderFiles(order.id);
                     }}
                     className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
                   >
