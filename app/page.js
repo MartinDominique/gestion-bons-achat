@@ -465,10 +465,17 @@ export default function PurchaseOrderManager() {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestionnaire de Bons d'Achat</h1>
-              <p className="text-sm text-gray-600 mt-1">Connecté: {user.email}</p>
-            </div>
+            <div className="flex items-center space-x-4">
+  <img 
+    src="/logo.png" 
+    alt="Logo" 
+    className="h-10 w-auto"
+  />
+  <div>
+    <h1 className="text-3xl font-bold text-gray-900">Gestionnaire de Bons d'Achat</h1>
+    <p className="text-sm text-gray-600 mt-1">Connecté: {user.email}</p>
+  </div>
+</div>
             <div className="flex space-x-4">
               <button
                 onClick={() => {
