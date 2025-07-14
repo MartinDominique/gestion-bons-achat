@@ -469,7 +469,7 @@ export default function PurchaseOrderManager() {
   <img 
     src="/logo.png" 
     alt="Logo" 
-    className="h-10 w-auto"
+    className="h-24 w-auto"
   />
   <div>
     <h1 className="text-3xl font-bold text-gray-900">Gestionnaire de Bons d'Achat</h1>
