@@ -1,4 +1,4 @@
-// components/PurchaseOrderManager.js - VOTRE CODE ORIGINAL CORRIGÉ
+// components/PurchaseOrderManager.js - VERSION STYLE CLASSIQUE
 'use client'
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -110,7 +110,6 @@ export default function PurchaseOrderManager() {
       notes: order.notes || '',
       files: []
     });
-    // Charger les fichiers existants
     const files = [];
     if (order.pdf_url) {
       files.push({
@@ -123,7 +122,6 @@ export default function PurchaseOrderManager() {
     setShowForm(true);
   };
 
-  // CORRECTION: Fonction handleSendReport sortie de handleSubmit
   const handleSendReport = async () => {
     try {
       setLoading(true);
@@ -194,7 +192,6 @@ export default function PurchaseOrderManager() {
       let fileUrls = [];
       let fileNames = [];
 
-      // Upload des nouveaux fichiers
       if (formData.files && formData.files.length > 0) {
         for (const file of formData.files) {
           const fileExt = file.name.split('.').pop();
@@ -218,7 +215,6 @@ export default function PurchaseOrderManager() {
         }
       }
 
-      // Si on modifie, garder les fichiers existants
       if (editMode && existingFiles.length > 0) {
         existingFiles.forEach(file => {
           fileUrls.push(file.url);
@@ -226,7 +222,6 @@ export default function PurchaseOrderManager() {
         });
       }
 
-      // Préparer les données
       const orderData = {
         client_name: formData.client_name,
         client_po: formData.client_po,
@@ -360,29 +355,9 @@ export default function PurchaseOrderManager() {
     montantTotal: orders.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0)
   };
 
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'approuve':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'refuse':
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
-    }
-  };
-
-  const getFileIcon = (fileName) => {
-    const ext = fileName?.split('.').pop().toLowerCase();
-    if (['xls', 'xlsx'].includes(ext)) {
-      return <FileSpreadsheet className="w-5 h-5 text-green-600" />;
-    }
-    return <FileText className="w-5 h-5 text-blue-600" />;
-  };
-
   const getAllFiles = (order) => {
     const files = [];
     
-    // Essayer de parser les données de fichiers
     try {
       if (order.files_data) {
         const data = JSON.parse(order.files_data);
@@ -397,7 +372,6 @@ export default function PurchaseOrderManager() {
       // Si parsing échoue, utiliser l'ancien format
     }
     
-    // Format legacy
     if (order.pdf_url) {
       files.push({ url: order.pdf_url, name: order.pdf_file_name || 'Document' });
     }
@@ -408,48 +382,48 @@ export default function PurchaseOrderManager() {
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <div className="bg-white p-8 rounded shadow-sm border border-gray-200 w-full max-w-md">
           <div className="text-center mb-6">
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="h-16 w-auto mx-auto mb-4"
+              className="h-12 w-auto mx-auto mb-4"
             />
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900">
               {isLogin ? 'Connexion' : 'Inscription'}
             </h2>
-            <p className="text-gray-600 mt-2">Gestionnaire de Bons d'Achat</p>
+            <p className="text-gray-600 mt-1 text-sm">Gestionnaire de Bons d'Achat</p>
           </div>
           
           <form onSubmit={handleAuth}>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 required
               />
             </div>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Mot de passe
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 required
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+              className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
             >
               {loading ? 'Chargement...' : (isLogin ? 'Se connecter' : 'S\'inscrire')}
             </button>
@@ -459,7 +433,7 @@ export default function PurchaseOrderManager() {
             {isLogin ? 'Pas encore de compte?' : 'Déjà un compte?'}
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-blue-600 hover:underline ml-1 font-medium"
+              className="text-blue-600 hover:underline ml-1"
             >
               {isLogin ? 'S\'inscrire' : 'Se connecter'}
             </button>
@@ -471,45 +445,42 @@ export default function PurchaseOrderManager() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* EN-TÊTE CORRIGÉ AVEC LOGO */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
+      {/* EN-TÊTE SIMPLE */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
               <img 
                 src="/logo.png" 
                 alt="ServiceStmt" 
-                className="h-12 w-auto"
+                className="h-10 w-auto mr-3"
               />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gestionnaire de Bons d'Achat</h1>
-                <p className="text-sm text-gray-600 mt-1">Connecté: {user.email}</p>
+                <h1 className="text-xl font-bold text-gray-900">Gestionnaire de Bons d'Achat</h1>
+                <p className="text-xs text-gray-600">Connecté: {user.email}</p>
               </div>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex space-x-2">
               <button
                 onClick={() => {
                   resetForm();
                   setShowForm(true);
                 }}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
               >
-                <Plus className="w-5 h-5 mr-2" />
                 Nouveau Bon
               </button>
               <button
                 onClick={handleSendReport}
                 disabled={loading}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors font-medium"
+                className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:opacity-50"
               >
-                <Upload className="w-5 h-5 mr-2" />
                 {loading ? 'Envoi...' : 'Envoyer Rapport PDF'}
               </button>
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
               >
-                <LogOut className="w-5 h-5 mr-2" />
                 Déconnexion
               </button>
             </div>
@@ -517,77 +488,48 @@ export default function PurchaseOrderManager() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* CARTES DE STATISTIQUES AMÉLIORÉES */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total des Bons</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <FileText className="w-8 h-8 text-blue-600" />
-              </div>
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* STATISTIQUES SIMPLES */}
+        <div className="bg-white border border-gray-200 rounded p-4 mb-6">
+          <div className="grid grid-cols-4 gap-4 text-center">
+            <div>
+              <p className="text-sm text-gray-600">Total des Bons</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">En Attente</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-1">{stats.enAttente}</p>
-              </div>
-              <div className="bg-yellow-100 p-3 rounded-lg">
-                <Clock className="w-8 h-8 text-yellow-600" />
-              </div>
+            <div>
+              <p className="text-sm text-gray-600">En Attente</p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.enAttente}</p>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Approuvés</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{stats.approuve}</p>
-              </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
+            <div>
+              <p className="text-sm text-gray-600">Approuvés</p>
+              <p className="text-2xl font-bold text-green-600">{stats.approuve}</p>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Montant Total</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
-                </p>
-              </div>
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <Hash className="w-8 h-8 text-purple-600" />
-              </div>
+            <div>
+              <p className="text-sm text-gray-600">Montant Total</p>
+              <p className="text-xl font-bold text-gray-900">
+                {stats.montantTotal.toLocaleString('fr-CA', { 
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2 
+                })} $
+              </p>
             </div>
           </div>
         </div>
 
-        {/* SECTION RECHERCHE */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Rechercher par client, No PO ou No soumission..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+        {/* BARRE DE RECHERCHE */}
+        <div className="bg-white border border-gray-200 rounded p-4 mb-4">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Rechercher par client, No PO ou No soumission..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+            />
             <select
               value={filterClient}
               onChange={(e) => setFilterClient(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
             >
               <option value="">Tous les clients</option>
               {uniqueClients.map(client => (
@@ -597,7 +539,7 @@ export default function PurchaseOrderManager() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
             >
               <option value="date">Trier par date</option>
               <option value="client">Trier par client</option>
@@ -606,138 +548,122 @@ export default function PurchaseOrderManager() {
           </div>
         </div>
 
-        {/* TABLEAU */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No PO Client</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No Soumission</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fichiers</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrders.map((order) => {
-                  const files = getAllFiles(order);
-                  return (
-                    <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(order.date).toLocaleDateString('fr-CA')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {order.client_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">
-                          {order.client_po}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">
-                          {order.submission_no}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                        {parseFloat(order.amount).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span className={`px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full ${
-                            order.status === 'approuve' ? 'bg-green-100 text-green-800' :
-                            order.status === 'refuse' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {getStatusIcon(order.status)}
-                            <span className="ml-1">
-                              {order.status === 'approuve' ? 'Approuvé' :
-                               order.status === 'refuse' ? 'Refusé' : 'En attente'}
-                            </span>
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {files.length > 0 ? (
-                          <div className="flex items-center space-x-1">
-                            {files.map((file, idx) => (
-                              <a 
-                                key={idx}
-                                href={file.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="text-blue-600 hover:text-blue-800"
-                                title={file.name}
-                              >
-                                {getFileIcon(file.name)}
-                              </a>
-                            ))}
-                            {files.length > 1 && (
-                              <span className="text-xs text-gray-500">({files.length})</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => setSelectedOrder(order)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Voir détails"
+        {/* TABLEAU SIMPLE */}
+        <div className="bg-white border border-gray-200 rounded overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-100 border-b border-gray-200">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Client</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">No PO Client</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">No Soumission</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Montant</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Statut</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Fichiers</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.map((order) => {
+                const files = getAllFiles(order);
+                return (
+                  <tr key={order.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {new Date(order.date).toLocaleDateString('fr-CA')}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      {order.client_name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {order.client_po}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {order.submission_no}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {parseFloat(order.amount).toLocaleString('fr-CA', { 
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2 
+                      })} $
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        order.status === 'approuve' ? 'bg-green-100 text-green-800' :
+                        order.status === 'refuse' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {order.status === 'approuve' ? 'Approuvé' :
+                         order.status === 'refuse' ? 'Refusé' : 'En attente'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {files.length > 0 ? (
+                        files.length > 1 ? `(${files.length})` : (
+                          <a 
+                            href={files[0].url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-blue-600 hover:underline"
                           >
-                            <Eye className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(order)}
-                            className="text-green-600 hover:text-green-900"
-                            title="Modifier"
-                          >
-                            <Edit2 className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(order.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {filteredOrders.length === 0 && (
-              <div className="text-center py-12">
-                <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-sm text-gray-600">Aucun bon d'achat trouvé</p>
-              </div>
-            )}
-          </div>
+                            <FileText className="w-4 h-4 inline" />
+                          </a>
+                        )
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Voir"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(order)}
+                          className="text-green-600 hover:text-green-800"
+                          title="Modifier"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(order.id)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filteredOrders.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Aucun bon d'achat trouvé</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* MODALES INCHANGÉES */}
+      {/* MODAL DÉTAILS - SIMPLIFIÉE */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+          <div className="bg-white rounded border border-gray-300 max-w-2xl w-full p-6">
             <div className="flex justify-between items-start mb-4">
-              <h2 className="text-2xl font-bold">Détails du Bon d'Achat</h2>
+              <h2 className="text-xl font-bold">Détails du Bon d'Achat</h2>
               <button
                 onClick={() => setSelectedOrder(null)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Client</p>
@@ -749,25 +675,28 @@ export default function PurchaseOrderManager() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">No PO Client</p>
-                  <p className="font-medium font-mono">{selectedOrder.client_po}</p>
+                  <p className="font-medium">{selectedOrder.client_po}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">No Soumission</p>
-                  <p className="font-medium font-mono">{selectedOrder.submission_no}</p>
+                  <p className="font-medium">{selectedOrder.submission_no}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Montant</p>
-                  <p className="font-medium text-xl">{parseFloat(selectedOrder.amount).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</p>
+                  <p className="font-medium text-lg">{parseFloat(selectedOrder.amount).toLocaleString('fr-CA', { 
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2 
+                  })} $</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-2">Statut</p>
+                  <p className="text-sm text-gray-600 mb-1">Statut</p>
                   <select
                     value={selectedOrder.status}
                     onChange={(e) => {
                       handleStatusChange(selectedOrder.id, e.target.value);
                       setSelectedOrder({...selectedOrder, status: e.target.value});
                     }}
-                    className="px-3 py-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-2 py-1 border border-gray-300 rounded text-sm"
                   >
                     <option value="en_attente">En attente</option>
                     <option value="approuve">Approuvé</option>
@@ -778,28 +707,28 @@ export default function PurchaseOrderManager() {
               {selectedOrder.notes && (
                 <div>
                   <p className="text-sm text-gray-600">Notes</p>
-                  <p className="mt-1 p-3 bg-gray-50 rounded-lg">{selectedOrder.notes}</p>
+                  <p className="mt-1 p-2 bg-gray-50 rounded border border-gray-200">{selectedOrder.notes}</p>
                 </div>
               )}
               <div>
                 <p className="text-sm text-gray-600 mb-2">Documents</p>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {getAllFiles(selectedOrder).map((file, idx) => (
-                    <div key={idx} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
-                      {getFileIcon(file.name)}
-                      <span className="font-medium flex-1">{file.name}</span>
+                    <div key={idx} className="flex items-center space-x-2">
+                      <FileText className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm">{file.name}</span>
                       <a 
                         href={file.url} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-600 hover:underline text-sm"
                       >
                         Ouvrir
                       </a>
                     </div>
                   ))}
                   {getAllFiles(selectedOrder).length === 0 && (
-                    <p className="text-gray-500">Aucun document</p>
+                    <p className="text-gray-500 text-sm">Aucun document</p>
                   )}
                 </div>
               </div>
@@ -808,12 +737,13 @@ export default function PurchaseOrderManager() {
         </div>
       )}
 
+      {/* MODAL FORMULAIRE - SIMPLIFIÉE */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded border border-gray-300 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">
                   {editMode ? 'Modifier le Bon d\'Achat' : 'Nouveau Bon d\'Achat'}
                 </h2>
                 <button
@@ -823,60 +753,57 @@ export default function PurchaseOrderManager() {
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Nom du Client *
                     </label>
                     <input
                       type="text"
                       value={formData.client_name}
                       onChange={(e) => setFormData({...formData, client_name: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ex: Construction ABC Inc."
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       No PO Client *
                     </label>
                     <input
                       type="text"
                       value={formData.client_po}
                       onChange={(e) => setFormData({...formData, client_po: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ex: PO-2025-001"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       No Soumission *
                     </label>
                     <input
                       type="text"
                       value={formData.submission_no}
                       onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ex: SOU-2025-001"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Date
                     </label>
                     <input
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({...formData, date: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Montant ($)
                     </label>
                     <input
@@ -884,53 +811,48 @@ export default function PurchaseOrderManager() {
                       step="0.01"
                       value={formData.amount}
                       onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="0.00"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Statut
                     </label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                     >
                       <option value="en_attente">En attente</option>
                       <option value="approuve">Approuvé</option>
                       <option value="refuse">Refusé</option>
                     </select>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Documents (PDF, XLS, XLSX) - Multiple
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Documents (PDF, XLS, XLSX)
                     </label>
                     <input
                       type="file"
                       accept=".pdf,.xls,.xlsx"
                       multiple
                       onChange={handleFileChange}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Vous pouvez sélectionner plusieurs fichiers en maintenant Ctrl (ou Cmd sur Mac)
-                    </p>
                     
-                    {/* Afficher les fichiers existants en mode édition */}
                     {editMode && existingFiles.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Fichiers existants:</p>
-                        <div className="space-y-2">
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-700 mb-1">Fichiers existants:</p>
+                        <div className="space-y-1">
                           {existingFiles.map((file, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 bg-gray-100 rounded">
-                              <span className="text-sm">{file.name}</span>
+                            <div key={idx} className="flex items-center justify-between p-1 bg-gray-50 rounded text-sm">
+                              <span>{file.name}</span>
                               <button
                                 type="button"
                                 onClick={() => removeExistingFile(idx)}
                                 className="text-red-600 hover:text-red-800"
                               >
-                                <X className="w-4 h-4" />
+                                <X className="w-3 h-3" />
                               </button>
                             </div>
                           ))}
@@ -938,10 +860,9 @@ export default function PurchaseOrderManager() {
                       </div>
                     )}
                     
-                    {/* Afficher les nouveaux fichiers sélectionnés */}
                     {formData.files.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Nouveaux fichiers:</p>
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-700 mb-1">Nouveaux fichiers:</p>
                         <ul className="text-sm text-gray-600">
                           {Array.from(formData.files).map((file, idx) => (
                             <li key={idx}>• {file.name}</li>
@@ -950,42 +871,34 @@ export default function PurchaseOrderManager() {
                       </div>
                     )}
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Notes
                     </label>
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData({...formData, notes: e.target.value})}
                       rows="3"
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Notes additionnelles..."
+                      className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
-                <div className="flex justify-end space-x-4 mt-6">
+                <div className="flex justify-end space-x-3 mt-4">
                   <button
                     onClick={() => {
                       setShowForm(false);
                       resetForm();
                     }}
-                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                    className="px-4 py-1.5 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 text-sm"
                   >
                     Annuler
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                    className="px-4 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
                   >
-                    {loading ? (
-                      <>Enregistrement...</>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        {editMode ? 'Mettre à jour' : 'Enregistrer'}
-                      </>
-                    )}
+                    {loading ? 'Enregistrement...' : (editMode ? 'Mettre à jour' : 'Enregistrer')}
                   </button>
                 </div>
               </div>
