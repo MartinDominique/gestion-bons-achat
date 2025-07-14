@@ -1,23 +1,16 @@
-// app/page.js - NOUVEAU FICHIER PRINCIPAL
+// app/page.js - VERSION TEMPORAIRE SANS SOUMISSIONS
 'use client'
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import Navigation from '../components/Navigation';
 import PurchaseOrderManager from '../components/PurchaseOrderManager';
-import SoumissionsManager from '../components/SoumissionsManager';
 
 export default function MainApp() {
-  // GESTION DE L'AUTHENTIFICATION (DÉPLACÉE DE VOTRE ANCIEN CODE)
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
-  
-  // NAVIGATION ENTRE LES PAGES
-  const [currentPage, setCurrentPage] = useState('bons-achat');
 
-  // GESTION DE L'AUTHENTIFICATION (VOTRE CODE EXISTANT)
   useEffect(() => {
     checkUser();
     
@@ -57,10 +50,9 @@ export default function MainApp() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setCurrentPage('bons-achat'); // Retour à la page par défaut
   };
 
-  // PAGE DE CONNEXION (VOTRE CODE EXISTANT ADAPTÉ)
+  // Page de connexion
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -74,7 +66,7 @@ export default function MainApp() {
             <h2 className="text-2xl font-bold text-gray-900">
               {isLogin ? 'Connexion' : 'Inscription'}
             </h2>
-            <p className="text-gray-600 mt-2">Gestionnaire d'Entreprise</p>
+            <p className="text-gray-600 mt-2">Gestionnaire de Bons d'Achat</p>
           </div>
           
           <form onSubmit={handleAuth}>
@@ -125,28 +117,34 @@ export default function MainApp() {
     );
   }
 
-  // APPLICATION PRINCIPALE AVEC NAVIGATION
+  // SEULEMENT LES BONS D'ACHAT POUR L'INSTANT
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* NAVIGATION ENTRE BONS D'ACHAT ET SOUMISSIONS */}
-      <Navigation 
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        user={user}
-        onLogout={handleLogout}
-      />
+      {/* En-tête simple avec déconnexion */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="h-10 w-auto"
+              />
+              <h1 className="text-2xl font-bold text-gray-900">Gestionnaire de Bons d'Achat</h1>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
+            >
+              Déconnexion
+            </button>
+          </div>
+        </div>
+      </div>
       
-      {/* CONTENU PRINCIPAL */}
+      {/* Composant bons d'achat */}
       <main>
-        {/* PAGE BONS D'ACHAT (VOTRE CODE EXISTANT) */}
-        {currentPage === 'bons-achat' && (
-          <PurchaseOrderManager user={user} />
-        )}
-        
-        {/* PAGE SOUMISSIONS (NOUVEAU) */}
-        {currentPage === 'soumissions' && (
-          <SoumissionsManager user={user} />
-        )}
+        <PurchaseOrderManager user={user} />
       </main>
     </div>
   );
