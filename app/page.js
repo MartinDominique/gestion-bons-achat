@@ -1,3 +1,5 @@
+// REMPLACEZ TOUT LE CONTENU DE app/page.js PAR CE CODE :
+
 'use client'
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
