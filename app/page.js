@@ -1,10 +1,7 @@
-// REMPLACEZ TOUT LE CONTENU DE app/page.js PAR CE CODE :
-
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
 'use client'
 import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
 import { 
   Search, Plus, FileText, Calendar, Building, Hash, 
