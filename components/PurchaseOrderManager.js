@@ -1,413 +1,138 @@
-// components/PurchaseOrderManager.js - VERSION CORRIGÉE
+// components/PurchaseOrderManager.js - VERSION TEST SIMPLE
 'use client'
 import React, { useState, useEffect } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
 import { 
   Search, Plus, FileText, Calendar, Building, Hash, 
   Trash2, Eye, X, CheckCircle, Clock, XCircle, 
-  LogOut, Upload, Download, Edit2, Save, FileSpreadsheet
+  Upload, Download, Edit2, Save, FileSpreadsheet
 } from 'lucide-react';
 
 export default function PurchaseOrderManager({ user }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterClient, setFilterClient] = useState('');
-  const [sortBy, setSortBy] = useState('date');
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({
-    client_name: '',
-    client_po: '',
-    submission_no: '',
-    date: new Date().toISOString().split('T')[0],
-    amount: '',
-    status: 'en_attente',
-    notes: '',
-    files: []
-  });
-  const [existingFiles, setExistingFiles] = useState([]);
 
-  // ✅ CORRECTION : useEffect simplifié - plus de gestion d'auth
+  // Charger les commandes
   useEffect(() => {
     if (user) {
       fetchOrders();
     }
   }, [user]);
 
-  // ✅ CORRECTION : Plus besoin de checkUser
-  
   const fetchOrders = async () => {
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select('*')
-      .order('date', { ascending: false });
-
-    if (error) {
-      console.error('Erreur:', error);
-    } else {
-      setOrders(data || []);
-    }
-  };
-
-  const handleEdit = (order) => {
-    setEditMode(true);
-    setEditingId(order.id);
-    setFormData({
-      client_name: order.client_name,
-      client_po: order.client_po,
-      submission_no: order.submission_no,
-      date: order.date,
-      amount: order.amount,
-      status: order.status,
-      notes: order.notes || '',
-      files: []
-    });
-    // Charger les fichiers existants
-    const files = [];
-    if (order.pdf_url) {
-      files.push({
-        url: order.pdf_url,
-        name: order.pdf_file_name || 'Document',
-        type: 'existing'
-      });
-    }
-    setExistingFiles(files);
-    setShowForm(true);
-  };
-
-  // FONCTION POUR ENVOYER LE RAPPORT - SORTIE DE handleSubmit
-  const handleSendReport = async () => {
     try {
-      setLoading(true);
-      
-      const thisWeek = new Date();
-      thisWeek.setDate(thisWeek.getDate() - 7);
-
       const { data, error } = await supabase
         .from('purchase_orders')
         .select('*')
-        .gte('date', thisWeek.toISOString().split('T')[0]);
+        .order('date', { ascending: false });
 
       if (error) {
-        alert("Erreur lors de la récupération des bons d'achat.");
-        return;
-      }
-
-      const doc = new jsPDF();
-      doc.text("Rapport des Bons d'Achat - Semaine", 14, 15);
-      autoTable(doc, {
-        head: [['Date', 'Client', 'PO', 'Soumission', 'Montant', 'Statut']],
-        body: data.map(order => [
-          new Date(order.date).toLocaleDateString('fr-CA'),
-          order.client_name,
-          order.client_po,
-          order.submission_no,
-          `${order.amount} $`,
-          order.status
-        ])
-      });
-
-      const pdfBlob = doc.output('arraybuffer');
-      const pdfBuffer = Buffer.from(pdfBlob);
-      const fileBase64 = pdfBuffer.toString('base64');
-
-      const response = await fetch('/api/send-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: user.email,
-          fileBase64
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de l\'envoi du rapport');
-      }
-
-      alert("Rapport envoyé avec succès !");
-      
-    } catch (error) {
-      alert('Erreur: ' + error.message);
-      console.error('Erreur détaillée:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.client_name || !formData.client_po || !formData.submission_no) {
-      alert('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      let fileUrls = [];
-      let fileNames = [];
-
-      // Upload des nouveaux fichiers
-      if (formData.files && formData.files.length > 0) {
-        for (const file of formData.files) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('purchase-orders-pdfs')
-            .upload(fileName, file);
-
-          if (uploadError) {
-            console.error('Erreur upload:', uploadError);
-            continue;
-          }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from('purchase-orders-pdfs')
-            .getPublicUrl(fileName);
-
-          fileUrls.push(publicUrl);
-          fileNames.push(file.name);
-        }
-      }
-
-      // Si on modifie, garder les fichiers existants
-      if (editMode && existingFiles.length > 0) {
-        existingFiles.forEach(file => {
-          fileUrls.push(file.url);
-          fileNames.push(file.name);
-        });
-      }
-
-      // Préparer les données
-      const orderData = {
-        client_name: formData.client_name,
-        client_po: formData.client_po,
-        submission_no: formData.submission_no,
-        date: formData.date,
-        amount: formData.amount || 0,
-        status: formData.status,
-        notes: formData.notes,
-        pdf_url: fileUrls[0] || null,
-        pdf_file_name: fileNames[0] || null,
-        files_data: JSON.stringify({ urls: fileUrls, names: fileNames })
-      };
-
-      if (editMode) {
-        const { error } = await supabase
-          .from('purchase_orders')
-          .update(orderData)
-          .eq('id', editingId);
-
-        if (error) throw error;
+        console.error('Erreur:', error);
       } else {
-        const { error } = await supabase
-          .from('purchase_orders')
-          .insert([{
-            ...orderData,
-            created_by: user.id
-          }]);
-
-        if (error) throw error;
+        setOrders(data || []);
       }
-
-      await fetchOrders();
-      resetForm();
-      setShowForm(false);
-
     } catch (error) {
-      alert('Erreur: ' + error.message);
-      console.error('Erreur détaillée:', error);
-    } finally {
-      setLoading(false);
+      console.error('Erreur fetch:', error);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce bon d\'achat?')) return;
-
-    const { error } = await supabase
-      .from('purchase_orders')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      alert('Erreur: ' + error.message);
-    } else {
-      await fetchOrders();
-    }
+  // Test simple du bouton
+  const handleNewOrder = () => {
+    console.log('Bouton Nouveau Bon cliqué !');
+    alert('Bouton fonctionne !');
+    setShowForm(true);
   };
 
-  const handleStatusChange = async (orderId, newStatus) => {
-    const { error } = await supabase
-      .from('purchase_orders')
-      .update({ status: newStatus })
-      .eq('id', orderId);
-
-    if (error) {
-      alert('Erreur: ' + error.message);
-    } else {
-      await fetchOrders();
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder({...selectedOrder, status: newStatus});
-      }
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      client_name: '',
-      client_po: '',
-      submission_no: '',
-      date: new Date().toISOString().split('T')[0],
-      amount: '',
-      status: 'en_attente',
-      notes: '',
-      files: []
-    });
-    setExistingFiles([]);
-    setEditMode(false);
-    setEditingId(null);
-  };
-
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    const validFiles = files.filter(file => {
-      const ext = file.name.split('.').pop().toLowerCase();
-      return ['pdf', 'xls', 'xlsx'].includes(ext);
-    });
-    
-    if (validFiles.length !== files.length) {
-      alert('Seuls les fichiers PDF, XLS et XLSX sont acceptés');
-    }
-    
-    setFormData({ ...formData, files: validFiles });
-  };
-
-  const removeExistingFile = (index) => {
-    setExistingFiles(existingFiles.filter((_, i) => i !== index));
-  };
-
-  const filteredOrders = orders
-    .filter(order => {
-      const matchSearch = 
-        order.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.client_po.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.submission_no.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchClient = filterClient === '' || order.client_name === filterClient;
-      return matchSearch && matchClient;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'date') return new Date(b.date) - new Date(a.date);
-      if (sortBy === 'client') return a.client_name.localeCompare(b.client_name);
-      if (sortBy === 'amount') return parseFloat(b.amount) - parseFloat(a.amount);
-      return 0;
-    });
-
-  const uniqueClients = [...new Set(orders.map(order => order.client_name))];
-
-  const stats = {
-    total: orders.length,
-    enAttente: orders.filter(o => o.status === 'en_attente').length,
-    approuve: orders.filter(o => o.status === 'approuve').length,
-    montantTotal: orders.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0)
-  };
-
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'approuve':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'refuse':
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
-    }
-  };
-
-  const getFileIcon = (fileName) => {
-    const ext = fileName?.split('.').pop().toLowerCase();
-    if (['xls', 'xlsx'].includes(ext)) {
-      return <FileSpreadsheet className="w-5 h-5 text-green-600" />;
-    }
-    return <FileText className="w-5 h-5 text-blue-600" />;
-  };
-
-  const getAllFiles = (order) => {
-    const files = [];
-    
-    // Essayer de parser les données de fichiers
-    try {
-      if (order.files_data) {
-        const data = JSON.parse(order.files_data);
-        if (data.urls && data.names) {
-          data.urls.forEach((url, index) => {
-            files.push({ url, name: data.names[index] || 'Document' });
-          });
-          return files;
-        }
-      }
-    } catch (e) {
-      // Si parsing échoue, utiliser l'ancien format
-    }
-    
-    // Format legacy
-    if (order.pdf_url) {
-      files.push({ url: order.pdf_url, name: order.pdf_file_name || 'Document' });
-    }
-    
-    return files;
+  const closeForm = () => {
+    setShowForm(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <img 
-                src="/logo.png" 
-                alt="Logo" 
-                className="h-24 w-auto"
-              />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Gestionnaire de Bons d'Achat</h1>
-                <p className="text-sm text-gray-600 mt-1">Connecté: {user.email}</p>
-              </div>
-            </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => {
-                  resetForm();
-                  setShowForm(true);
-                }}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Nouveau Bon
-              </button>
-              <button
-                onClick={handleSendReport}
-                disabled={loading}
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                {loading ? 'Envoi...' : 'Envoyer Rapport PDF'}
-              </button>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Test simple */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            Gestionnaire de Bons d'Achat - Test
+          </h1>
+          <p className="text-gray-600 mb-4">Connecté: {user?.email}</p>
+          
+          <div className="flex space-x-4">
+            <button
+              onClick={handleNewOrder}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Nouveau Bon (Test)
+            </button>
+            
+            <button
+              onClick={() => alert('Test réussi !')}
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Test Bouton
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* GARDEZ TOUT LE RESTE DE VOTRE JSX EXACTEMENT PAREIL */}
-      {/* Je n'ai mis que la partie corrigée pour éviter la répétition */}
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        {/* Vos statistiques, tableau, modales etc. - gardez tout comme c'était */}
-        {/* ... COPIEZ TOUT LE RESTE DE VOTRE CODE JSX ICI ... */}
+        {/* Statistiques simples */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h3 className="text-lg font-semibold mb-4">Statistiques</h3>
+          <p>Nombre de bons d'achat: <strong>{orders.length}</strong></p>
+          {orders.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-medium">Derniers bons d'achat:</h4>
+              <ul className="mt-2 space-y-1">
+                {orders.slice(0, 3).map((order, index) => (
+                  <li key={index} className="text-sm text-gray-600">
+                    {order.client_name} - {order.client_po} - ${order.amount}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Modal de test */}
+        {showForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Test Modal</h2>
+                <button
+                  onClick={closeForm}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <p>✅ Le bouton fonctionne !</p>
+                <p>✅ La modal s'ouvre !</p>
+                <p>✅ JavaScript fonctionne !</p>
+                
+                <button
+                  onClick={closeForm}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Debug info */}
+        <div className="bg-gray-100 rounded-lg p-4">
+          <h3 className="font-semibold mb-2">Debug Info:</h3>
+          <p><strong>User:</strong> {user ? '✅ Connecté' : '❌ Non connecté'}</p>
+          <p><strong>Orders:</strong> {orders.length} chargées</p>
+          <p><strong>ShowForm:</strong> {showForm ? '✅ Ouvert' : '❌ Fermé'}</p>
+          <p><strong>Loading:</strong> {loading ? '⏳ Oui' : '✅ Non'}</p>
+        </div>
       </div>
     </div>
   );
