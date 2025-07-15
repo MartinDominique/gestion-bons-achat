@@ -38,7 +38,17 @@ export default function PurchaseOrderManager() {
 
   useEffect(() => {
     checkUser();
-    
+      async function loadQuotes() {
+    const { data, error } = await supabase
+      .from('quotes')
+      .select('id, created_at, total, client:clients(name)')
+      .order('created_at', { ascending: false });
+
+    if (!error) setQuotes(data || []);
+  }
+  loadQuotes();
+}, []);
+  
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
       if (session?.user) {
