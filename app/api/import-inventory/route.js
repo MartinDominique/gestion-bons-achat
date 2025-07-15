@@ -2,38 +2,29 @@ import { supabase } from '../../../lib/supabase';
 import Papa from 'papaparse';
 
 export async function POST(req) {
-  try {
-    // ------- lire le fichier --------
-    const data = await req.formData();
-    const file = data.get('file');
-    if (!file) {
-      return Response.json({ error: 'missing file' }, { status: 400 });
-    }
+  const data = await req.formData();
+  const file = data.get('file');
+  if (!file) return Response.json({ error: 'missing file' }, { status: 400 });
 
-    const text = await file.text();
+  const csvText = await file.text();
 
-    // ------- parser CSV --------
-    const { data: rows, errors } = Papa.parse(text, {
-      header: true,
-      skipEmptyLines: true,
-    });
+  // --- parse sans en‑têtes ---
+  const { data: rows, errors } = Papa.parse(csvText, { header: false, skipEmptyLines: true });
+  if (errors.length) return Response.json({ error: errors[0].message }, { status: 400 });
 
-    if (errors.length) {
-      return Response.json({ error: errors[0].message }, { status: 400 });
-    }
+  // --- mapper positions -> champs ---
+  const mapped = rows.map((cols) => ({
+    product_id: cols[0]?.trim(),
+    description: cols[1]?.trim(),
+    selling_price: parseFloat(cols[2]) || 0,
+    cost_price:   parseFloat(cols[3]) || 0
+    // ajoute d'autres positions si besoin
+  }));
 
-    // ------- upsert dans Supabase --------
-    const { error } = await supabase.from('products').upsert(rows, {
-      onConflict: 'product_id', // ajuste selon ta clé unique
-    });
+  const { error } = await supabase.from('products').upsert(mapped, {
+    onConflict: 'product_id',
+  });
+  if (error) return Response.json({ error }, { status: 500 });
 
-    if (error) {
-      return Response.json({ error }, { status: 500 });
-    }
-
-    return Response.json({ rows: rows.length });
-  } catch (err) {
-    console.error(err);
-    return Response.json({ error: err.message }, { status: 500 });
-  }
+  return Response.json({ rows: mapped.length });
 }
