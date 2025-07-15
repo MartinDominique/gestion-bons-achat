@@ -4,43 +4,43 @@ import { supabase } from '../lib/supabase';
 import ClientModal from './ClientModal';
 import {
   Plus, FileText, Save, Calculator, Package,
-  Upload, Trash2, ChevronDown, ChevronUp
+  Upload, Trash2
 } from 'lucide-react';
 
 export default function SoumissionsManager({ user }) {
-  /* ---------- états principaux ---------- */
+  /* ---------- états ---------- */
   const [products, setProducts] = useState([]);
   const [clients,  setClients]  = useState([]);
-  const [quotes,   setQuotes]   = useState([]);
-
-  /* ---------- soumission courante ---------- */
   const [currentQuote, setCurrentQuote] = useState([]);
   const [currentQuoteId, setCurrentQuoteId] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
 
-  /* ---------- recherche produit ---------- */
+  /* recherche */
   const [productSearch, setProductSearch] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [suggestions, setSuggestions] = useState([]);
-  const [showSug, setShowSug]   = useState(false);
-  const [selIdx,  setSelIdx]    = useState(0);     // index sélectionné (↑/↓)
+  const [showSug, setShowSug] = useState(false);
+  const [selIdx,  setSelIdx]  = useState(0);
 
-  /* ---------- autres UI ---------- */
+  /* ui */
   const [showClientModal, setShowClientModal] = useState(false);
-  const [editClient,      setEditClient]      = useState(null);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
 
   /* ---------- chargement initial ---------- */
   useEffect(() => {
     if (!user) return;
-    (async()=>{
-      const { data: p } = await supabase.from('products').select('*');
-      const { data: c } = await supabase.from('clients').select('*');
-      setProducts(p||[]); setClients(c||[]);
-    })();
-    generateNewQuoteNumber();
+    loadProducts(); loadClients(); generateNewQuoteNumber();
   }, [user]);
+
+  async function loadProducts() {
+    const { data } = await supabase.from('products').select('*');
+    setProducts(data || []);
+  }
+  async function loadClients() {
+    const { data } = await supabase.from('clients').select('*');
+    setClients(data || []);
+  }
 
   function generateNewQuoteNumber() {
     const d = new Date();
@@ -49,7 +49,7 @@ export default function SoumissionsManager({ user }) {
     );
   }
 
-  /* ---------- recherche ---------- */
+  /* ---------- recherche produit ---------- */
   function updateSearch(val) {
     setProductSearch(val); setSelIdx(0);
     if (val.length < 2) { setShowSug(false); return; }
@@ -59,24 +59,17 @@ export default function SoumissionsManager({ user }) {
     ).slice(0,10);
     setSuggestions(list); setShowSug(true);
   }
-
   function addFromInput() {
-    const exact = products.find(p =>
-      p.product_id.toLowerCase() === productSearch.toLowerCase()
-    );
-    const item  = exact || suggestions[selIdx];
+    const item = suggestions[selIdx];
     if (!item) return alert('Produit non trouvé');
     addProduct(item, quantity);
   }
 
   /* ---------- ajouter / retirer produit ---------- */
-  function addProduct(prod, qty=1) {
-    const idx = currentQuote.findIndex(i=>i.product_id===prod.product_id);
-    if (idx !== -1) {
-      const u=[...currentQuote]; u[idx].quantity += qty; setCurrentQuote(u);
-    } else {
-      setCurrentQuote([...currentQuote,{...prod,quantity:qty,note:''}]);
-    }
+  function addProduct(prod, qty=1){
+    const idx=currentQuote.findIndex(i=>i.product_id===prod.product_id);
+    if(idx>-1){ const u=[...currentQuote];u[idx].quantity+=qty;setCurrentQuote(u);}
+    else {setCurrentQuote([...currentQuote,{...prod,quantity:qty,note:''}]);}
     setProductSearch(''); setQuantity(1); setShowSug(false);
   }
   function removeProduct(i){ setCurrentQuote(currentQuote.filter((_,x)=>x!==i)); }
@@ -96,7 +89,7 @@ export default function SoumissionsManager({ user }) {
     const fd=new FormData(); fd.append('file',f);
     const r=await fetch('/api/import-inventory',{method:'POST',body:fd});
     const j=await r.json(); setImporting(false);
-    if(r.ok){ alert(`${j.rows} produits mis à jour 👍`); location.reload(); }
+    if(r.ok){ alert(`${j.rows} produits mis à jour 👍`); loadProducts(); }
     else alert(j.error);
   }
 
@@ -104,38 +97,22 @@ export default function SoumissionsManager({ user }) {
   return (
   <div className="min-h-screen bg-gray-50">
     <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* En‑tête */}
+      {/* En‑tête : numéro, date, client */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-3xl font-bold flex items-center">
-            <Calculator className="w-8 h-8 mr-3 text-blue-600"/> Gestion des Soumissions
-          </h1>
-          <div className="flex gap-3">
-            <button onClick={()=>fileInputRef.current?.click()}
-              disabled={importing}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center disabled:opacity-50">
-              {importing ? 'Import…' : <><Upload className="w-4 h-4 mr-2"/>Importer CSV</>}
-            </button>
-            <button onClick={()=>{setEditClient(null);setShowClientModal(true);}}
-              className="px-3 py-2 bg-purple-600 text-white rounded-lg flex items-center">
-              <Plus className="w-4 h-4 mr-1"/> Client
-            </button>
-            <input ref={fileInputRef} hidden type="file" accept=".csv" onChange={handleImport}/>
-          </div>
-        </div>
-
-        {/* infos soumission */}
+        <h1 className="text-2xl font-bold flex items-center mb-4">
+          <Calculator className="w-7 h-7 mr-2 text-blue-600"/> Gestion des Soumissions
+        </h1>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div><label className="block text-sm">N°</label>
+          <div><label className="text-sm">N°</label>
             <input value={currentQuoteId} readOnly className="w-full bg-gray-100 border px-3 py-2 rounded"/>
           </div>
-          <div><label className="block text-sm">Date</label>
+          <div><label className="text-sm">Date</label>
             <input value={new Date().toLocaleDateString('fr-CA')} readOnly className="w-full bg-gray-100 border px-3 py-2 rounded"/>
           </div>
-          <div><label className="block text-sm">Client</label>
-            <select value={selectedClient?.id||''} onChange={e=>{
-              setSelectedClient(clients.find(c=>String(c.id)===e.target.value));
-            }} className="w-full border px-3 py-2 rounded">
+          <div><label className="text-sm">Client</label>
+            <select value={selectedClient?.id||''}
+              onChange={e=>setSelectedClient(clients.find(c=>String(c.id)===e.target.value))}
+              className="w-full border px-3 py-2 rounded">
               <option value="">-- Sélectionner --</option>
               {clients.map(c=>(
                 <option key={c.id} value={c.id}>
@@ -145,15 +122,26 @@ export default function SoumissionsManager({ user }) {
             </select>
           </div>
         </div>
+        <div className="flex gap-3 mt-4">
+          <button onClick={()=>fileInputRef.current?.click()}
+            disabled={importing}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50">
+            {importing?'Import…':'Importer CSV'}
+          </button>
+          <button onClick={()=>setShowClientModal(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg">
+            Nouveau client
+          </button>
+          <input hidden ref={fileInputRef} type="file" accept=".csv" onChange={handleImport}/>
+        </div>
       </div>
 
-      {/* Recherche + bouton Ajouter */}
+      {/* Recherche produits */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h3 className="text-lg font-semibold mb-4">Ajouter des produits</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* champ recherche */}
           <div className="md:col-span-2 relative">
-            <label className="block text-sm">Recherche</label>
+            <label className="text-sm">Recherche</label>
             <input value={productSearch}
               onChange={e=>updateSearch(e.target.value)}
               onKeyDown={e=>{
@@ -161,9 +149,7 @@ export default function SoumissionsManager({ user }) {
                 if(e.key==='ArrowUp'){e.preventDefault();setSelIdx(i=>Math.max(i-1,0));}
                 if(e.key==='Enter'){e.preventDefault();addFromInput();}
               }}
-              placeholder="Nom ou # produit…"
-              className="w-full border px-3 py-2 rounded"
-            />
+              className="w-full border px-3 py-2 rounded"/>
             {showSug && (
               <div className="absolute z-10 w-full bg-white border rounded mt-1 max-h-60 overflow-y-auto">
                 {suggestions.map((p,i)=>(
@@ -180,18 +166,16 @@ export default function SoumissionsManager({ user }) {
               </div>
             )}
           </div>
-          {/* quantité */}
           <div>
-            <label className="block text-sm">Qté</label>
-            <input type="number" min="1"
-              value={quantity} onChange={e=>setQuantity(parseInt(e.target.value)||1)}
+            <label className="text-sm">Qté</label>
+            <input type="number" min="1" value={quantity}
+              onChange={e=>setQuantity(parseInt(e.target.value)||1)}
               className="w-full border px-3 py-2 rounded text-center"/>
           </div>
-          {/* bouton ajouter */}
           <div className="flex items-end">
             <button onClick={addFromInput}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex justify-center items-center">
-              <Plus className="w-4 h-4 mr-1"/> Ajouter
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
+              <Plus className="w-4 h-4 inline mr-1"/> Ajouter
             </button>
           </div>
         </div>
@@ -199,12 +183,12 @@ export default function SoumissionsManager({ user }) {
 
       {/* Tableau produits */}
       <div className="bg-white rounded-lg shadow-md overflow-x-auto mb-6">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50"><tr>
-            {['Produit #','Description','Note','Qté','Prix unit.','Sous-total',''].map(h=>(
-              <th key={h} className="px-6 py-3 text-left text-xs text-gray-500 uppercase">{h}</th>
-            ))}
-          </tr></thead>
+        <table className="min-w-full divide-y">
+          <thead className="bg-gray-50">
+            <tr>{['#','Description','Note','Qté','PU','Sous-total',''].map(h=>
+              <th key={h} className="px-6 py-3 text-left text-xs text-gray-500 uppercase">{h}</th>)}
+            </tr>
+          </thead>
           <tbody>
             {currentQuote.map((it,idx)=>(
               <tr key={idx} className="divide-x">
@@ -220,31 +204,34 @@ export default function SoumissionsManager({ user }) {
                   onChange={e=>{const u=[...currentQuote];u[idx].selling_price=parseFloat(e.target.value)||0;setCurrentQuote(u);}}
                   step="0.01" className="border px-2 py-1 rounded w-24 text-right text-sm"/></td>
                 <td className="px-6 py-4 font-medium">${(it.quantity*it.selling_price).toFixed(2)}</td>
-                <td className="px-6 py-4"><button onClick={()=>removeProduct(idx)} className="text-red-600">
-                  <Trash2 className="w-5 h-5"/></button></td>
+                <td className="px-6 py-4">
+                  <button onClick={()=>removeProduct(idx)} className="text-red-600"><Trash2 className="w-5 h-5"/></button>
+                </td>
               </tr>
             ))}
+            {currentQuote.length===0 && (
+              <tr><td colSpan={7} className="text-center py-8 text-gray-500">
+                <Package className="mx-auto w-10 h-10 mb-2"/> Aucun produit</td></tr>
+            )}
           </tbody>
         </table>
-        {currentQuote.length===0 && (
-          <div className="text-center py-12">
-            <Package className="mx-auto w-12 h-12 text-gray-400"/>
-            <p className="mt-2 text-gray-600">Aucun produit ajouté</p>
-          </div>
-        )}
       </div>
 
       {/* Résumé */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold mb-4">Résumé</h3>
-        <div className="space-y-2">
-          <div className="flex justify-between"><span>Coût total :</span><span className="text-red-600">${totals.totalCost.toFixed(2)}</span></div>
-          <div className="flex justify-between"><span>Sous-total :</span><span>${totals.subtotal.toFixed(2)}</span></div>
-          <div className="flex justify-between"><span>TPS 5 % :</span><span>${totals.gst.toFixed(2)}</span></div>
-          <div className="flex justify-between"><span>TVQ 9.975 % :</span><span>${totals.pst.toFixed(2)}</span></div>
-          <div className="flex justify-between border-t pt-2 text-lg font-bold">
-            <span>TOTAL :</span><span className="text-green-600">${totals.total.toFixed(2)}</span>
+        {[
+          ['Coût total', totals.totalCost.toFixed(2), 'text-red-600'],
+          ['Sous-total', totals.subtotal.toFixed(2)],
+          ['TPS 5 %',     totals.gst.toFixed(2)],
+          ['TVQ 9.975 %', totals.pst.toFixed(2)],
+        ].map(([lbl,val,color])=>(
+          <div key={lbl} className="flex justify-between mb-1">
+            <span>{lbl} :</span><span className={color}>{'$'+val}</span>
           </div>
+        ))}
+        <div className="flex justify-between border-t pt-2 text-lg font-bold">
+          <span>TOTAL :</span><span className="text-green-600">${totals.total.toFixed(2)}</span>
         </div>
       </div>
     </div>
@@ -253,8 +240,8 @@ export default function SoumissionsManager({ user }) {
     <ClientModal
       open={showClientModal}
       onClose={()=>setShowClientModal(false)}
-      onSaved={()=>{loadClients();}}
-      client={editClient}
+      onSaved={loadClients}
+      client={null}
     />
   </div>
   );
