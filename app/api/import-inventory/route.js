@@ -3,13 +3,15 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import Papa from 'papaparse';
 
 export async function POST(req) {
+  /* ---------- client Supabase avec session ---------- */
   const supabase = createRouteHandlerClient({ cookies });
+
+  // DEBUG : vérifier l’UID
   const { data: dbg } = await supabase.auth.getUser();
   console.log('import-inventory | uid =', dbg.user?.id ?? 'null');
   if (!dbg.user) {
     return Response.json({ error: 'not authenticated' }, { status: 401 });
   }
-}
 
   /* ---------- récupérer le fichier CSV ---------- */
   const form = await req.formData();
@@ -29,15 +31,13 @@ export async function POST(req) {
   }
 
   /* ---------- mapping colonnes -> champs ---------- */
-const mapped = rows.map((c) => ({
-  // c[0] = numéro de ligne (ignoré)
-  product_id:    c[1]?.trim(),          // index 1
-  description:   c[2]?.trim(),          // index 2
-  selling_price: parseFloat(c[4]) || 0, // index 4
-  cost_price:    parseFloat(c[5]) || 0  // index 5
-  // si ta table a d'autres colonnes (unit, stock_qty),
-  // ajoute-les ici et dans la table
-}));
+  const mapped = rows.map((c) => ({
+    // c[0] = numéro de ligne (ignoré)
+    product_id:    c[1]?.trim(),          // index 1
+    description:   c[2]?.trim(),          // index 2
+    selling_price: parseFloat(c[4]) || 0, // index 4
+    cost_price:    parseFloat(c[5]) || 0  // index 5
+  }));
 
   /* ---------- UPSERT dans products ---------- */
   const { error } = await supabase
