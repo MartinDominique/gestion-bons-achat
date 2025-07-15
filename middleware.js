@@ -6,17 +6,15 @@ export async function middleware(req) {
   const supabase = createMiddlewareClient({ req, res });
   const { data: { session } } = await supabase.auth.getSession();
 
-  // Chemins protégés
   const protectedPaths = ['/bons-achat', '/soumissions'];
-
   const path = req.nextUrl.pathname;
 
-  // 1) Pas connecté ET on demande une page protégée → /login
+  // non connecté → /login
   if (!session && protectedPaths.some(p => path.startsWith(p))) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // 2) Déjà connecté ET on va sur /login → /bons-achat
+  // déjà connecté → /bons-achat
   if (session && path === '/login') {
     return NextResponse.redirect(new URL('/bons-achat', req.url));
   }
@@ -24,7 +22,6 @@ export async function middleware(req) {
   return res;
 }
 
-// Le middleware ne s’exécute que sur ces routes
 export const config = {
   matcher: ['/login', '/bons-achat', '/soumissions'],
 };
