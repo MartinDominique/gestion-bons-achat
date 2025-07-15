@@ -10,6 +10,11 @@ export async function POST(req) {
   if (!dbg.user) {
     return Response.json({ error: 'not authenticated' }, { status: 401 });
   }
+const supabase = createRouteHandlerClient({ cookies });
+
+// DEBUG : regardons la session
+const { data: dbg } = await supabase.auth.getUser();
+console.log('import-inventory | uid =', dbg.user?.id ?? 'null');
 
   const form = await req.formData();
   const file = form.get('file');
