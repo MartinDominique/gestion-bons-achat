@@ -1,9 +1,8 @@
 import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { supabaseAdmin as supabase } from '../../../lib/supabaseAdmin';
 import Papa from 'papaparse';
 
 export async function POST(req) {
-  const supabase = createRouteHandlerClient({ cookies });
 
   // Vérifier la session
   const { data: { user } } = await supabase.auth.getUser();
