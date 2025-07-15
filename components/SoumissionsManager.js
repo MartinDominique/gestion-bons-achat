@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import ClientModal from './ClientModal';
-
 import {
   Plus, FileText, Save, Calculator, Package,
   Upload, Trash2
@@ -11,8 +10,8 @@ import {
 export default function SoumissionsManager({ user }) {
   /* ---------- états principaux ---------- */
   const [products, setProducts] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [quotes,  setQuotes]  = useState([]);
+  const [clients,  setClients]  = useState([]);
+  const [quotes,   setQuotes]   = useState([]);
 
   const [currentQuote, setCurrentQuote] = useState([]);
   const [currentQuoteId, setCurrentQuoteId] = useState('');
@@ -22,14 +21,14 @@ export default function SoumissionsManager({ user }) {
   const [productSearch, setProductSearch] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions]   = useState(false);
+  const [showSuggestions,   setShowSuggestions]   = useState(false);
 
-  const [showClientModal, setShowClientModal]   = useState(false);
-  const [editClient, setEditClient]             = useState(null);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [editClient,      setEditClient]      = useState(null);
 
   const [showQuoteHistoryModal, setShowQuoteHistoryModal] = useState(false);
 
-  /* ---------- chargement au démarrage ---------- */
+  /* ---------- chargement initial ---------- */
   useEffect(() => {
     if (!user) return;
     loadProducts();
@@ -39,30 +38,19 @@ export default function SoumissionsManager({ user }) {
   }, [user]);
 
   async function loadProducts() {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('product_id');
-    if (!error) setProducts(data);
+    const { data } = await supabase.from('products').select('*').order('product_id');
+    setProducts(data || []);
   }
-
   async function loadClients() {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .order('name');
-    if (!error) setClients(data);
+    const { data } = await supabase.from('clients').select('*').order('name');
+    setClients(data || []);
   }
-
   async function loadQuotes() {
-    const { data, error } = await supabase
-      .from('quotes')
-      .select('*, clients (*)')
-      .order('created_at', { ascending: false });
-    if (!error) setQuotes(data);
+    const { data } = await supabase.from('quotes').select('*, clients (*)').order('created_at', { ascending: false });
+    setQuotes(data || []);
   }
 
-  /* ---------- numéro unique ---------- */
+  /* ---------- nouveau n° ---------- */
   function generateNewQuoteNumber() {
     const d = new Date();
     setCurrentQuoteId(
@@ -78,65 +66,50 @@ export default function SoumissionsManager({ user }) {
       p.product_id.toLowerCase().includes(val.toLowerCase()) ||
       p.description.toLowerCase().includes(val.toLowerCase())
     ).slice(0,10);
-    setSearchSuggestions(res);
-    setShowSuggestions(true);
+    setSearchSuggestions(res); setShowSuggestions(true);
   }
 
-  /* ---------- ajouter produit ---------- */
-  function addProductToQuote(product, qty = null) {
+  /* ---------- ajouter / retirer produit ---------- */
+  function addProductToQuote(prod, qty = null) {
     const q = qty || quantity;
-    const idx = currentQuote.findIndex(i => i.product_id === product.product_id);
+    const idx = currentQuote.findIndex(i => i.product_id === prod.product_id);
     if (idx !== -1) {
-      const updated = [...currentQuote];
-      updated[idx].quantity += q;
-      setCurrentQuote(updated);
+      const upd = [...currentQuote]; upd[idx].quantity += q; setCurrentQuote(upd);
     } else {
-      setCurrentQuote([
-        ...currentQuote,
-        { ...product, quantity: q, note: '' }
-      ]);
+      setCurrentQuote([...currentQuote, { ...prod, quantity: q, note: '' }]);
     }
-    setProductSearch('');
-    setQuantity(1);
-    setShowSuggestions(false);
+    setProductSearch(''); setQuantity(1); setShowSuggestions(false);
   }
-
   function removeProductFromQuote(i) {
     setCurrentQuote(currentQuote.filter((_,idx)=> idx!==i));
   }
 
   /* ---------- totaux ---------- */
   function calculateTotals() {
-    const sub = currentQuote.reduce((s,it)=> s + it.quantity*it.selling_price, 0);
-    const cost= currentQuote.reduce((s,it)=> s + it.quantity*it.cost_price,    0);
-    const gst = sub * 0.05;
-    const pst = sub * 0.09975;
-    return { subtotal: sub, totalCost: cost, gst, pst, total: sub+gst+pst };
+    const sub  = currentQuote.reduce((s,it)=> s + it.quantity*it.selling_price,0);
+    const cost = currentQuote.reduce((s,it)=> s + it.quantity*it.cost_price,0);
+    const gst  = sub*0.05, pst=sub*0.09975;
+    return { subtotal:sub, totalCost:cost, gst, pst, total: sub+gst+pst };
   }
+  const totals = calculateTotals();
 
-  /* ---------- sauvegarder soumission ---------- */
+  /* ---------- sauvegarder ---------- */
   async function saveQuote() {
     if (!selectedClient) return alert('Sélectionnez un client');
     if (!currentQuote.length) return alert('Aucun produit');
 
     const t = calculateTotals();
-    const { error: qErr } = await supabase
-      .from('quotes')
-      .upsert({
-        id: currentQuoteId,
-        client_id: selectedClient.id,
-        quote_date: new Date().toISOString().slice(0,10),
-        subtotal: t.subtotal,
-        total_cost: t.totalCost,
-        gst: t.gst, pst: t.pst, total: t.total,
-        status: 'draft'
-      });
+    const { error: qErr } = await supabase.from('quotes').upsert({
+      id: currentQuoteId,
+      client_id: selectedClient.id,
+      quote_date: new Date().toISOString().slice(0,10),
+      subtotal: t.subtotal, total_cost: t.totalCost,
+      gst: t.gst, pst: t.pst, total: t.total,
+      status: 'draft'
+    });
     if (qErr) return alert(qErr.message);
 
-    await supabase.from('quote_items')
-      .delete()
-      .eq('quote_id', currentQuoteId);
-
+    await supabase.from('quote_items').delete().eq('quote_id', currentQuoteId);
     const items = currentQuote.map(it => ({
       quote_id: currentQuoteId,
       product_id: it.product_id,
@@ -156,27 +129,22 @@ export default function SoumissionsManager({ user }) {
   /* ---------- import CSV ---------- */
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
-
   async function handleImport(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     setImporting(true);
-    const form = new FormData();
-    form.append('file', file);
-    const res  = await fetch('/api/import-inventory', { method:'POST', body:form });
-    const json = await res.json();
-    setImporting(false);
+    const form = new FormData(); form.append('file', file);
+    const res = await fetch('/api/import-inventory',{ method:'POST', body:form });
+    const json = await res.json(); setImporting(false);
     if (res.ok) { alert(`${json.rows} produits mis à jour 👍`); loadProducts(); }
     else alert('Erreur : ' + json.error);
   }
 
-  const totals = calculateTotals();
-
-  /* ---------- Rendu ---------- */
+  /* ---------- rendu ---------- */
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* --- En‑tête --- */}
+
+        {/* En-tête */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold flex items-center">
@@ -184,36 +152,28 @@ export default function SoumissionsManager({ user }) {
               Gestion des Soumissions
             </h1>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowQuoteHistoryModal(true)}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center"
-              >
+              <button onClick={()=>setShowQuoteHistoryModal(true)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg flex items-center">
                 <FileText className="w-5 h-5 mr-2"/> Historique
               </button>
-              <button
-                onClick={saveQuote}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
-              >
+              <button onClick={saveQuote}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center">
                 <Save className="w-5 h-5 mr-2"/> Sauvegarder
               </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
+              <button onClick={()=>fileInputRef.current?.click()}
                 disabled={importing}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center disabled:opacity-50"
-              >
-                {importing ? 'Import…' : <><Upload className="w-4 h-4 mr-2"/>Importer CSV</>}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center disabled:opacity-50">
+                {importing ? 'Import…' : <><Upload className="w-4 h-4 mr-2"/>Importer CSV</>}
               </button>
-              <button
-                onClick={()=>{ setEditClient(null); setShowClientModal(true); }}
-                className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center"
-              >
+              <button onClick={()=>{ setEditClient(null); setShowClientModal(true); }}
+                className="px-3 py-2 bg-purple-600 text-white rounded-lg flex items-center">
                 <Plus className="w-4 h-4 mr-1"/> Client
               </button>
               <input ref={fileInputRef} type="file" accept=".csv" hidden onChange={handleImport}/>
             </div>
           </div>
 
-          {/* --- info soumission --- */}
+          {/* infos soumission */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium">N° Soumission</label>
@@ -225,24 +185,26 @@ export default function SoumissionsManager({ user }) {
             </div>
             <div>
               <label className="block text-sm font-medium">Client</label>
-               <select
-                  value={selectedClient?.id || ''}
-                   onChange={(e) => {
-                     const client = clients.find(c => String(c.id) === e.target.value); // ← compare string à string
-                      setSelectedClient(client);
-                 }}
+              <select
+                value={selectedClient?.id || ''}
+                onChange={e=>{
+                  const c = clients.find(cl => String(cl.id) === e.target.value);
+                  setSelectedClient(c);
+                }}
                 className="w-full border px-3 py-2 rounded"
               >
                 <option value="">-- Sélectionner --</option>
                 {clients.map(c=>(
-                  <option key={c.id} value={c.id}>{c.company ? `${c.name} (${c.company})` : c.name}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.company ? `${c.name} (${c.company})` : c.name}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
         </div>
 
-        {/* --- Recherche produits --- */}
+        {/* Recherche produits */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">Ajouter des produits</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -257,8 +219,7 @@ export default function SoumissionsManager({ user }) {
               {showSuggestions && (
                 <div className="absolute z-10 w-full bg-white border rounded mt-1 max-h-60 overflow-y-auto">
                   {searchSuggestions.map(p=>(
-                    <div
-                      key={p.product_id}
+                    <div key={p.product_id}
                       onClick={()=>addProductToQuote(p)}
                       className="p-3 hover:bg-gray-100 cursor-pointer border-b"
                     >
@@ -272,9 +233,7 @@ export default function SoumissionsManager({ user }) {
             </div>
             <div>
               <label className="block text-sm font-medium">Quantité</label>
-              <input
-                type="number"
-                min="1"
+              <input type="number" min="1"
                 value={quantity}
                 onChange={e=>setQuantity(parseInt(e.target.value)||1)}
                 className="w-full border px-3 py-2 rounded text-center"
@@ -283,15 +242,12 @@ export default function SoumissionsManager({ user }) {
           </div>
         </div>
 
-        {/* --- Tableau produits --- */}
+        {/* Tableau produits */}
         <div className="bg-white rounded-lg shadow-md overflow-x-auto mb-6">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
-              <tr>
-                {['Produit #','Description','Note','Qté','Prix unit.','Sous‑total',''].map(h=>(
-                  <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{h}</th>
-                ))}
-              </tr>
+              <tr>{['Produit #','Description','Note','Qté','Prix unit.','Sous-total','']
+              .map(h=><th key={h} className="px-6 py-3 text-left text-xs text-gray-500 uppercase">{h}</th>)}</tr>
             </thead>
             <tbody>
               {currentQuote.map((it,idx)=>(
@@ -299,31 +255,20 @@ export default function SoumissionsManager({ user }) {
                   <td className="px-6 py-4">{it.product_id}</td>
                   <td className="px-6 py-4">{it.description}</td>
                   <td className="px-6 py-4">
-                    <input
-                      value={it.note}
-                      onChange={e=>{
-                        const u=[...currentQuote]; u[idx].note=e.target.value; setCurrentQuote(u);
-                      }}
+                    <input value={it.note}
+                      onChange={e=>{ const u=[...currentQuote]; u[idx].note=e.target.value; setCurrentQuote(u); }}
                       className="border px-2 py-1 rounded w-full text-sm"
                     />
                   </td>
                   <td className="px-6 py-4">
-                    <input
-                      type="number"
-                      value={it.quantity}
-                      onChange={e=>{
-                        const u=[...currentQuote]; u[idx].quantity=parseInt(e.target.value)||1; setCurrentQuote(u);
-                      }}
+                    <input type="number" value={it.quantity}
+                      onChange={e=>{ const u=[...currentQuote]; u[idx].quantity=parseInt(e.target.value)||1; setCurrentQuote(u); }}
                       className="border px-2 py-1 rounded w-20 text-center text-sm"
                     />
                   </td>
                   <td className="px-6 py-4">
-                    <input
-                      type="number"
-                      value={it.selling_price}
-                      onChange={e=>{
-                        const u=[...currentQuote]; u[idx].selling_price=parseFloat(e.target.value)||0; setCurrentQuote(u);
-                      }}
+                    <input type="number" value={it.selling_price}
+                      onChange={e=>{ const u=[...currentQuote]; u[idx].selling_price=parseFloat(e.target.value)||0; setCurrentQuote(u); }}
                       step="0.01" className="border px-2 py-1 rounded w-24 text-right text-sm"
                     />
                   </td>
@@ -347,20 +292,22 @@ export default function SoumissionsManager({ user }) {
           )}
         </div>
 
-        {/* --- Résumé --- */}
+        {/* Résumé */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold mb-4">Résumé</h3>
           <div className="space-y-2">
-            <div className="flex justify-between"><span>Coût total :</span><span className="text-red-600">${totals.totalCost.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>Sous‑total :</span><span>${totals.subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>TPS 5 % :</span><span>${totals.gst.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>TVQ 9.975 % :</span><span>${totals.pst.toFixed(2)}</span></div>
-            <div className="flex justify-between border-t pt-2 text-lg font-bold"><span>TOTAL :</span><span className="text-green-600">${totals.total.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Coût total :</span><span className="text-red-600">${totals.totalCost.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Sous-total :</span><span>${totals.subtotal.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>TPS 5 % :</span><span>${totals.gst.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>TVQ 9.975 % :</span><span>${totals.pst.toFixed(2)}</span></div>
+            <div className="flex justify-between border-t pt-2 text-lg font-bold">
+              <span>TOTAL :</span><span className="text-green-600">${totals.total.toFixed(2)}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ---- Modal client ---- */}
+      {/* Modal client */}
       <ClientModal
         open={showClientModal}
         onClose={()=>setShowClientModal(false)}
