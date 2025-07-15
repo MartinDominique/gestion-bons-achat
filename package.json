@@ -18,6 +18,7 @@
     "tailwindcss": "^3.3.5",
     "resend": "^3.0.0",
     "jspdf": "^2.5.1",
+    "papaparse": "^5.4.1",
 "jspdf-autotable": "^3.5.31"
   }
 }
