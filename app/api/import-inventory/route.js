@@ -32,12 +32,12 @@ export async function POST(req) {
 
   /* ---------- mapping colonnes -> champs ---------- */
   const mapped = rows.map((c) => ({
-    // c[0] = numéro de ligne (ignoré)
-    product_id:    c[1]?.trim(),          // index 1
-    description:   c[2]?.trim(),          // index 2
-    selling_price: parseFloat(c[4]) || 0, // index 4
-    cost_price:    parseFloat(c[5]) || 0  // index 5
-  }));
+  product_id:    c[1]?.trim(),
+  description:   c[2]?.trim(),
+  selling_price: parseFloat(c[4]) || 0,
+  cost_price:    parseFloat(c[5]) || 0,
+  created_by:    dbg.user.id        // ← important si tu gardes la policy ALL
+}));
 
   /* ---------- UPSERT dans products ---------- */
   const { error } = await supabase
