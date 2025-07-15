@@ -34,6 +34,29 @@ export default function SoumissionsManager({ user }) {
   
   // États de chargement
   const [loading, setLoading] = useState(false);
+  
+const fileInputRef = useRef(null);
+
+const handleImport = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const form = new FormData();
+  form.append('file', file);
+
+  const res = await fetch('/api/import-inventory', {
+    method: 'POST',
+    body: form,
+  });
+  const json = await res.json();
+
+  if (res.ok) {
+    alert(`${json.rows} produits mis à jour 👍`);
+    loadProducts?.();
+  } else {
+    alert('Erreur : ' + (json.error?.message || 'inconnue'));
+  }
+};
 
   // Charger les données au démarrage
   useEffect(() => {
