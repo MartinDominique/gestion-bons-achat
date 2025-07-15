@@ -225,9 +225,12 @@ export default function SoumissionsManager({ user }) {
             </div>
             <div>
               <label className="block text-sm font-medium">Client</label>
-              <select
-                value={selectedClient?.id || ''}
-                onChange={e=>setSelectedClient(clients.find(c=>c.id==e.target.value))}
+               <select
+                  value={selectedClient?.id || ''}
+                   onChange={(e) => {
+                     const client = clients.find(c => c.id === e.target.value); // ← compare string à string
+                      setSelectedClient(client);
+                 }}
                 className="w-full border px-3 py-2 rounded"
               >
                 <option value="">-- Sélectionner --</option>
