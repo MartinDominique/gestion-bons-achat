@@ -1,9 +1,10 @@
 'use client';
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';   // ← clé publique (NEXT_PUBLIC_)
+import { supabase } from '../lib/supabase';          // client public
 import { X } from 'lucide-react';
 
 export default function ClientModal({ open, onClose, onSaved, client }) {
+  /* ---------- états ---------- */
   const [form, setForm] = useState(
     client ?? { name: '', company: '', email: '', phone: '' }
   );
@@ -11,20 +12,31 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
 
   if (!open) return null;
 
-  const res = await fetch('/api/save-client', {
-   method: 'POST',
-   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ ...form, id: client?.id })
- });
- const json = await res.json();
- if (!res.ok) return alert(json.error || 'Erreur inconnue');
-    onSaved();      // rechargera la liste
-    onClose();
-  };
-
+  /* ---------- helpers ---------- */
   const onChange = (k) => (e) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  /* ---------- save ---------- */
+  async function save() {
+    if (!form.name) return alert('Nom requis');
+    setSaving(true);
+
+    // appel serveur (service_role) — pas d’await hors async
+    const res = await fetch('/api/save-client', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, id: client?.id })
+    });
+    const json = await res.json();
+    setSaving(false);
+
+    if (!res.ok) return alert(json.error || 'Erreur inconnue');
+
+    onSaved();   // recharger la liste
+    onClose();
+  }
+
+  /* ---------- render ---------- */
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white w-full max-w-md rounded-lg p-6 relative">
@@ -34,6 +46,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
         >
           <X className="w-5 h-5" />
         </button>
+
         <h2 className="text-xl font-bold mb-4">
           {client ? 'Modifier client' : 'Nouveau client'}
         </h2>
