@@ -30,13 +30,15 @@ export async function POST(req) {
     return Response.json({ error: errors[0].message }, { status: 400 });
   }
 
-  /* ---------- mapping colonnes -> champs ---------- */
-  const mapped = rows.map((c) => ({
-  product_id:    c[1]?.trim(),
-  description:   c[2]?.trim(),
-  selling_price: parseFloat(c[4]) || 0,
-  cost_price:    parseFloat(c[5]) || 0,
-  created_by:    dbg.user.id        // ← important si tu gardes la policy ALL
+const mapped = rows.map((c) => ({
+  product_group:  c[0]?.trim(),             // index 0  (optionnel, retire si non voulu)
+  product_id:     c[1]?.trim(),             // index 1  (# produit)
+  description:    c[2]?.trim(),             // index 2
+  unit:           c[3]?.trim(),             // index 3  (u/m) – retire si tu n'as pas 'unit'
+  selling_price:  parseFloat(c[4]) || 0,    // index 4  (vendu)
+  cost_price:     parseFloat(c[5]) || 0,    // index 5  (coutant)
+  stock_qty:      parseFloat(c[6]) || 0     // index 6  (en inventaire) – retire si pas de colonne
+  // created_by:  user.id                  // décommente si tu gardes la policy created_by
 }));
 
   /* ---------- UPSERT dans products ---------- */
