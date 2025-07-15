@@ -1,6 +1,6 @@
 // components/SoumissionsManager.js
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
   Search, Plus, FileText, Calendar, Building, Hash, 
@@ -226,6 +226,10 @@ export default function SoumissionsManager({ user }) {
 
   // états
 const [importing, setImporting] = useState(false);
+
+  const fileInputRef = useRef(null); 
+
+   const fileInputRef = useRef(null);
 
 async function handleImport(e) {
   const file = e.target.files[0];
