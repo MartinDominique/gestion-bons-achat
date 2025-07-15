@@ -32,11 +32,17 @@ export async function POST(req) {
 
   // --- Mapper colonnes -> champs ---------------
   const mapped = rows.map((c) => ({
-    product_id:    c[0]?.trim(),
-    description:   c[1]?.trim(),
-    selling_price: parseFloat(c[2]) || 0,
-    cost_price:    parseFloat(c[3]) || 0,
-  }));
+-  product_id:    c[0]?.trim(),
+-  description:   c[1]?.trim(),
+-  selling_price: parseFloat(c[2]) || 0,
+-  cost_price:    parseFloat(c[3]) || 0,
++  product_id:    c[1]?.trim(),                 // index 1
++  description:   c[2]?.trim(),                 // index 2
++  unit:          c[3]?.trim(),                 // index 3  (facultatif)
++  selling_price: parseFloat(c[4]) || 0,        // index 4
++  cost_price:    parseFloat(c[5]) || 0,        // index 5
++  stock_qty:     parseFloat(c[6]) || 0         // index 6  (facultatif)
+}));
 
   // --- Upsert dans la table 'products' ---------
   const { error } = await supabase.from('products')
