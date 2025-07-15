@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabaseAdmin as supabase } from '../lib/supabaseAdmin';
 import { X } from 'lucide-react';
 
 export default function ClientModal({ open, onClose, onSaved, client }) {
