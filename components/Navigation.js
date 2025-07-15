@@ -2,20 +2,21 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Package, FileText } from 'lucide-react';
+import { Package, FileText, LogOut } from 'lucide-react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-/** Pages à afficher dans la barre */
 const pages = [
   { id: 'bons-achat', name: "Bons d'achat", icon: Package },
-  { id: 'soumissions', name: 'Soumissions',  icon: FileText }
+  { id: 'soumissions', name: 'Soumissions', icon: FileText }
 ];
 
-export default function Navigation() {
-  const pathname = usePathname();           // URL courante
+export default function Navigation({ user }) {
+  const pathname = usePathname();
+  const supabase = createClientComponentClient();
 
   return (
-    <nav className="bg-white shadow-md mb-6">
-      <ul className="flex gap-2 p-4">
+    <nav className="bg-white shadow mb-6">
+      <ul className="flex gap-2 p-4 items-center">
         {pages.map(({ id, name, icon: Icon }) => {
           const active = pathname.startsWith('/' + id);
           return (
@@ -34,6 +35,22 @@ export default function Navigation() {
             </li>
           );
         })}
+
+        {user && (
+          <li className="ml-auto flex items-center gap-4">
+            <span className="text-sm text-gray-700">Bonjour {user.email}</span>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/login';
+              }}
+              className="flex items-center text-red-600 hover:underline"
+            >
+              <LogOut className="w-4 h-4 mr-1" />
+              Se déconnecter
+            </button>
+          </li>
+        )}
       </ul>
     </nav>
   );
