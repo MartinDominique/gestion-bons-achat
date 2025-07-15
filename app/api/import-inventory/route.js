@@ -1,8 +1,12 @@
-import { supabase } from '../../../lib/supabase';
+import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import Papa from 'papaparse';
 
 export async function POST(req) {
+  const supabase = createRouteHandlerClient({ cookies });
+
   const data = await req.formData();
+  
   const file = data.get('file');
   if (!file) return Response.json({ error: 'missing file' }, { status: 400 });
 
