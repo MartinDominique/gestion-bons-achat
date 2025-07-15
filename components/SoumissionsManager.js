@@ -227,8 +227,6 @@ export default function SoumissionsManager({ user }) {
   // états
 const [importing, setImporting] = useState(false);
 
-  const fileInputRef = useRef(null); 
-
    const fileInputRef = useRef(null);
 
 async function handleImport(e) {
