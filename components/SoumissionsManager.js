@@ -224,6 +224,29 @@ export default function SoumissionsManager({ user }) {
     }
   };
 
+  // états
+const [importing, setImporting] = useState(false);
+
+async function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  setImporting(true);
+  const form = new FormData();
+  form.append('file', file);
+
+  const res = await fetch('/api/import-inventory', { method: 'POST', body: form });
+  const json = await res.json();
+  setImporting(false);
+
+  if (res.ok) {
+    alert(`${json.rows} produits mis à jour 👍`);
+    loadProducts?.();
+  } else {
+    alert('Erreur : ' + (json.error?.message || 'inconnue'));
+  }
+}
+
   const totals = calculateTotals();
 
   return (
@@ -256,6 +279,14 @@ export default function SoumissionsManager({ user }) {
                 <Save className="w-5 h-5 mr-2" />
                 {loading ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
+              <button
+  onClick={() => fileInputRef.current?.click()}
+  disabled={importing}
+  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+>
+  {importing ? '⏳ Import…' : (<><Upload className="w-4 h-4" />Importer CSV</>)}
+</button>
+
             </div>
           </div>
 
