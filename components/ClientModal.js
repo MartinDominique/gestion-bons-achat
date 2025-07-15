@@ -11,14 +11,13 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
 
   if (!open) return null;
 
-  const save = async () => {
-    if (!form.name) return alert('Nom requis');
-    setSaving(true);
-    const { error } = await supabase
-      .from('clients')
-      .upsert({ ...form, id: client?.id });
-    setSaving(false);
-    if (error) return alert(error.message);
+  const res = await fetch('/api/save-client', {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ ...form, id: client?.id })
+ });
+ const json = await res.json();
+ if (!res.ok) return alert(json.error || 'Erreur inconnue');
     onSaved();      // rechargera la liste
     onClose();
   };
