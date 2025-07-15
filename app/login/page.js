@@ -13,14 +13,20 @@ export default function LoginPage() {
     e.preventDefault();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setError(error.message);
-    else window.location.href = '/bons-achat';   // page par défaut après login
+    else window.location.href = '/bons-achat';
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
       <form onSubmit={handleSubmit} className="bg-white p-8 shadow-lg rounded-lg w-80">
         <h1 className="text-2xl font-bold mb-6 text-center">Connexion</h1>
-        {error && <p className="text-red-600 mb-4">{error}</p>}
+
+        {error && (
+          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded">
+            {error}
+          </div>
+        )}
+
         <input
           type="email"
           placeholder="Email"
