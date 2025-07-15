@@ -27,14 +27,13 @@ export async function POST(req) {
   }
 
   // mapping index -> champs
-  const mapped = rows.map((c) => ({
-    product_id:    c[1]?.trim(),                 // index 1
-    description:   c[2]?.trim(),                 // index 2
-    unit:          c[3]?.trim(),                 // index 3 (si ta table a 'unit')
-    selling_price: parseFloat(c[4]) || 0,        // index 4
-    cost_price:    parseFloat(c[5]) || 0,        // index 5
-    stock_qty:     parseFloat(c[6]) || 0         // index 6 (si ta table a 'stock_qty')
-  }));
+const mapped = rows.map((c) => ({
+  product_id:    c[1]?.trim(),
+  description:   c[2]?.trim(),
+  selling_price: parseFloat(c[4]) || 0,
+  cost_price:    parseFloat(c[5]) || 0
+  // supprime unit et stock_qty
+}));
 
   // upsert
   const { error } = await supabase
