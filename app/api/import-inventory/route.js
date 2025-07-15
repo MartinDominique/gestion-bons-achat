@@ -1,15 +1,7 @@
-import { cookies } from 'next/headers';
 import { supabaseAdmin as supabase } from '../../../lib/supabaseAdmin';
 import Papa from 'papaparse';
 
 export async function POST(req) {
-
-  // Vérifier la session
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return Response.json({ error: 'not authenticated' }, { status: 401 });
-  }
-
   /* ---------- récupérer le fichier CSV ---------- */
   const form = await req.formData();
   const file = form.get('file');
@@ -21,7 +13,7 @@ export async function POST(req) {
   /* ---------- parser CSV (sans en‑têtes) ---------- */
   const { data: rows, errors } = Papa.parse(csvText, {
     header: false,
-    skipEmptyLines: true,
+    skipEmptyLines: true
   });
   if (errors.length) {
     return Response.json({ error: errors[0].message }, { status: 400 });
@@ -29,10 +21,13 @@ export async function POST(req) {
 
   /* ---------- mapping colonnes -> champs ---------- */
   const mapped = rows.map((c) => ({
-    product_id:    c[1]?.trim(),          // index 1
-    description:   c[2]?.trim(),          // index 2
-    selling_price: parseFloat(c[4]) || 0, // index 4
-    cost_price:    parseFloat(c[5]) || 0  // index 5
+    product_group:  c[0]?.trim(),             // ← retire si ta table n’a pas cette colonne
+    product_id:     c[1]?.trim(),             // ← clé unique
+    description:    c[2]?.trim(),
+    unit:           c[3]?.trim(),             // ← retire si ta table n’a pas 'unit'
+    selling_price:  parseFloat(c[4]) || 0,
+    cost_price:     parseFloat(c[5]) || 0,
+    stock_qty:      parseFloat(c[6]) || 0     // ← retire si ta table n’a pas 'stock_qty'
   }));
 
   /* ---------- UPSERT dans products ---------- */
