@@ -1,13 +1,12 @@
 // components/SoumissionsManager.js
-'use client'
-import { Upload } from 'lucide-react';
-import { useRef } from 'react';
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { 
-  Search, Plus, FileText, Calendar, Building, Hash, 
-  Trash2, Eye, X, CheckCircle, Clock, XCircle, 
-  Save, Edit2, Calculator, Users, Package, 
+import {
+  Search, Plus, FileText, Calendar, Building, Hash,
+  Trash2, Eye, X, CheckCircle, Clock, XCircle,
+  Save, Edit2, Calculator, Users, Package,
   Download, Upload, Printer
 } from 'lucide-react';
 
@@ -255,34 +254,62 @@ const handleImport = async (e) => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* En-tête */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <Calculator className="w-8 h-8 mr-3 text-blue-600" />
-                Gestion des Soumissions
-              </h1>
-              <p className="text-gray-600 mt-1">Créer et gérer vos soumissions professionnelles</p>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowQuoteHistoryModal(true)}
-                className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
-                <FileText className="w-5 h-5 mr-2" />
-                Historique
-              </button>
-              <button
-                onClick={saveQuote}
-                disabled={loading}
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-              >
-                <Save className="w-5 h-5 mr-2" />
-                {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-              </button>
-            </div>
-          </div>
+{/* En-tête */}
+<div className="bg-white rounded-lg shadow-md p-6 mb-6">
+  <div className="flex justify-between items-center mb-4">
+    <div>
+      <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+        <Calculator className="w-8 h-8 mr-3 text-blue-600" />
+        Gestion des Soumissions
+      </h1>
+      <p className="text-gray-600 mt-1">
+        Créer et gérer vos soumissions professionnelles
+      </p>
+    </div>
+
+    {/* ↓ CONTENEUR DES BOUTONS ↓ */}
+    <div className="flex space-x-3">
+      {/* Historique */}
+      <button
+        onClick={() => setShowQuoteHistoryModal(true)}
+        className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+      >
+        <FileText className="w-5 h-5 mr-2" />
+        Historique
+      </button>
+
+      {/* Sauvegarder */}
+      <button
+        onClick={saveQuote}
+        disabled={loading}
+        className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+      >
+        <Save className="w-5 h-5 mr-2" />
+        {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+      </button>
+
+      {/* ===== NOUVEAU : Importer CSV ===== */}
+      <input
+        type="file"
+        accept=".csv"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleImport}
+      />
+
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+      >
+        <Upload className="w-4 h-4" />
+        Importer CSV
+      </button>
+    </div>
+    {/* ↑ FIN DES BOUTONS ↑ */}
+  </div>
+  {/* … le reste du composant ne bouge pas … */}
+</div>
+
 
           {/* Informations de la soumission */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
