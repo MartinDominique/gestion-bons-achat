@@ -1,4 +1,4 @@
-import { supabase } from '../../../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 import Papa from 'papaparse';
 
 export async function POST(req) {
