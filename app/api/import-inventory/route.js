@@ -29,11 +29,20 @@ export async function POST(req) {
     cost_price:     parseFloat(c[5]) || 0,
     stock_qty:      parseFloat(c[6]) || 0     // ← retire si ta table n’a pas 'stock_qty'
   }));
+  
+/* ---- dé‑duplication par product_id ---- */
+const uniqueById = new Map();
+for (const row of mapped) {
+  if (!uniqueById.has(row.product_id)) {
+    uniqueById.set(row.product_id, row);   // garde la 1ʳᵉ occurrence
+  }
+}
+const deduped = [...uniqueById.values()];
 
   /* ---------- UPSERT dans products ---------- */
   const { error } = await supabase
     .from('products')
-    .upsert(mapped, { onConflict: 'product_id' });
+    .upsert(deduped, { onConflict: 'product_id' });
 
   if (error) {
     console.error('upsert error:', error.message);
