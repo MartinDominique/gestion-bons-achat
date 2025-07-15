@@ -44,7 +44,7 @@ const mapped = rows.map((c) => ({
   /* ---------- UPSERT dans products ---------- */
   const { error } = await supabase
     .from('products')
-    .upsert(mapped, { onConflict: 'product_id' });
+    .upsert(mapped, { onConflict: 'id' });
 
   if (error) {
     console.error('upsert error:', error.message);
