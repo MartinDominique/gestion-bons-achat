@@ -294,7 +294,135 @@ export default function SoumissionsManager() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         
-        {/* En-tête avec boutons d'action */}
+        {/* Vue professionnelle pour impression */}
+        <div className="hidden print:block">
+          <div className="quote-container">
+            {/* En-tête professionnel */}
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <div className="flex items-center mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center mr-4">
+                    <span className="text-white font-bold text-2xl">ST</span>
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Services TMT</h1>
+                    <p className="text-gray-600">Solutions techniques et maintenance</p>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <p>123 Rue Principale</p>
+                  <p>Saint-Georges, QC G5Y 1A1</p>
+                  <p>Tél: (418) 555-0123</p>
+                  <p>Email: info@servicestmt.com</p>
+                </div>
+              </div>
+              
+              <div className="text-right">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">SOUMISSION</h2>
+                <div className="text-sm">
+                  <p><strong>N°:</strong> {currentQuoteId}</p>
+                  <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+                  <p><strong>Valide jusqu'au:</strong> {new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('fr-CA')}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Informations client */}
+            {selectedClient && (
+              <div className="client-info bg-gray-50 border border-gray-300 p-4 rounded mb-6">
+                <h3 className="font-bold text-lg mb-2">FACTURÉ À:</h3>
+                <div>
+                  <p className="font-semibold">{selectedClient.name}</p>
+                  {selectedClient.company && <p>{selectedClient.company}</p>}
+                  {selectedClient.email && <p>Email: {selectedClient.email}</p>}
+                  {selectedClient.phone && <p>Tél: {selectedClient.phone}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Tableau des articles pour impression */}
+            {currentQuote.length > 0 && (
+              <div className="mb-8">
+                <table className="w-full border-collapse border border-gray-400">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-400 px-3 py-2 text-left">Code</th>
+                      <th className="border border-gray-400 px-3 py-2 text-left">Description</th>
+                      <th className="border border-gray-400 px-3 py-2 text-center">Qté</th>
+                      <th className="border border-gray-400 px-3 py-2 text-right">Prix unit.</th>
+                      <th className="border border-gray-400 px-3 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentQuote.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="border border-gray-400 px-3 py-2 font-mono text-sm">{item.product_id}</td>
+                        <td className="border border-gray-400 px-3 py-2">
+                          <div className="text-sm">{item.description}</div>
+                          {item.note && (
+                            <div className="text-xs text-gray-600 italic mt-1">Note: {item.note}</div>
+                          )}
+                        </td>
+                        <td className="border border-gray-400 px-3 py-2 text-center">{item.quantity}</td>
+                        <td className="border border-gray-400 px-3 py-2 text-right text-sm">
+                          ${(item.selling_price || 0).toFixed(2)}
+                        </td>
+                        <td className="border border-gray-400 px-3 py-2 text-right font-semibold text-sm">
+                          ${((item.quantity || 0) * (item.selling_price || 0)).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Résumé financier pour impression */}
+            <div className="grid grid-cols-2 gap-8 border-2 border-gray-800 p-4">
+              <div>
+                <h4 className="font-bold mb-3">TERMES ET CONDITIONS:</h4>
+                <div className="text-sm space-y-1">
+                  <p>• Paiement net 30 jours</p>
+                  <p>• Prix valides pour 30 jours</p>
+                  <p>• Installation non incluse</p>
+                  <p>• Garantie: 1 an pièces et main d'œuvre</p>
+                </div>
+                
+                <div className="mt-4">
+                  <p className="font-semibold text-sm">Merci de votre confiance!</p>
+                  <p className="text-sm">Pour questions: info@servicestmt.com</p>
+                </div>
+              </div>
+              
+              <div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Sous-total:</span>
+                    <span>${totals.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>TPS (5%):</span>
+                    <span>${totals.gst.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>TVQ (9.975%):</span>
+                    <span>${totals.pst.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t-2 border-gray-800 pt-2 flex justify-between text-lg font-bold">
+                    <span>TOTAL:</span>
+                    <span>${totals.total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Interface normale (masquée à l'impression) */}
+        <div className="print:hidden">
+          
+          {/* En-tête avec boutons d'action */}
+
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold flex items-center">
             <Calculator className="w-8 h-8 mr-3 text-blue-600" />
@@ -309,9 +437,10 @@ export default function SoumissionsManager() {
             </button>
             <button 
               onClick={() => window.print()} 
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center"
+              disabled={currentQuote.length === 0 || !selectedClient}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="w-4 h-4 mr-2" />Imprimer
+              <Download className="w-4 h-4 mr-2" />Imprimer PDF
             </button>
             <button 
               onClick={() => fileInputRef.current?.click()} 
@@ -625,6 +754,8 @@ export default function SoumissionsManager() {
             </div>
           </div>
         )}
+        </div> {/* Fin de print:hidden */}
+
       </div>
 
       {/* Modal de gestion des clients */}
