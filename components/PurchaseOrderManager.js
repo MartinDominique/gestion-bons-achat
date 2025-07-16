@@ -135,10 +135,10 @@ export default function PurchaseOrderManager() {
             .select('id, name, company')
             .in('id', clientIds);
           
-          // Enrichir les bons d'achat avec les infos clients
+          // Enrichir les bons d'achat avec les infos clients (comparer en INTEGER)
           const enrichedOrders = data.map(order => ({
             ...order,
-            clients: clientsData?.find(client => client.id === order.client_id) || null
+            clients: clientsData?.find(client => parseInt(client.id) === parseInt(order.client_id)) || null
           }));
           
           console.log('✅ Bons d\'achat enrichis avec clients');
@@ -235,10 +235,10 @@ export default function PurchaseOrderManager() {
       }
       console.log('✅ Utilisateur connecté:', user.email);
 
-      // Adapté à ta structure réelle
+      // Adapté à ta structure : client_id INTEGER
       const orderData = {
         date: formData.date,
-        client_id: selectedClient.id,
+        client_id: parseInt(selectedClient.id), // Convertir en INTEGER
         client_name: selectedClient.name,
         client_po: formData.client_po || '',
         submission_no: formData.submission_no || '',
