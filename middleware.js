@@ -1,27 +1,50 @@
-import { NextResponse } from 'next/server';
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+// middleware.js
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse } from 'next/server'
 
 export async function middleware(req) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
-  const { data: { session } } = await supabase.auth.getSession();
+  let res = NextResponse.next()
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name) {
+          return req.cookies.get(name)?.value
+        },
+        set(name, value, options) {
+          req.cookies.set({ name, value, ...options })
+          res = NextResponse.next({ request: { headers: req.headers } })
+          res.cookies.set({ name, value, ...options })
+        },
+        remove(name, options) {
+          req.cookies.set({ name, value: '', ...options })
+          res = NextResponse.next({ request: { headers: req.headers } })
+          res.cookies.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
 
-  const protectedPaths = ['/bons-achat', '/soumissions'];
-  const path = req.nextUrl.pathname;
+  const { data: { session } } = await supabase.auth.getSession()
 
-  // non connecté → /login
+  const protectedPaths = ['/bons-achat', '/soumissions']
+  const path = req.nextUrl.pathname
+
+  // Si pas de session et tentative d'accès aux pages protégées
   if (!session && protectedPaths.some(p => path.startsWith(p))) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // déjà connecté → /bons-achat
+  // Si déjà connecté et va sur /login, rediriger vers bons-achat
   if (session && path === '/login') {
-    return NextResponse.redirect(new URL('/bons-achat', req.url));
+    return NextResponse.redirect(new URL('/bons-achat', req.url))
   }
 
-  return res;
+  return res
 }
 
 export const config = {
-  matcher: ['/login', '/bons-achat', '/soumissions'],
-};
+  matcher: ['/login', '/bons-achat/:path*', '/soumissions/:path*']
+}
