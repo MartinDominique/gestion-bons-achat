@@ -105,40 +105,54 @@ export default function PurchaseOrderManager() {
     try {
       console.log('📋 Chargement des bons d\'achat...');
       
+      // Version simplifiée SANS jointure pour éviter l'erreur 400
       const { data, error } = await supabase
         .from('purchase_orders')
-        .select(`
-          *,
-          clients!client_id (
-            id,
-            name, 
-            company
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (error) {
         console.error('❌ Erreur chargement bons d\'achat:', error);
-        // Essayer sans la jointure si ça pose problème
-        const { data: dataSimple, error: errorSimple } = await supabase
-          .from('purchase_orders')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (errorSimple) {
-          console.error('❌ Erreur même en simple:', errorSimple);
-          return;
-        }
-        
-        console.log('✅ Chargement simple réussi:', dataSimple?.length || 0, 'bons d\'achat');
-        setPurchaseOrders(dataSimple || []);
+        console.error('❌ Message:', error.message);
+        console.error('❌ Code:', error.code);
+        console.error('❌ Details:', error.details);
+        setPurchaseOrders([]);
         return;
       }
       
-      console.log('✅ Chargement avec jointure réussi:', data?.length || 0, 'bons d\'achat');
-      setPurchaseOrders(data || []);
+      console.log('✅ Bons d\'achat chargés:', data?.length || 0);
+      
+      // Si on a des données, charger les infos clients séparément
+      if (data && data.length > 0) {
+        console.log('📋 Exemple de bon d\'achat:', data[0]);
+        
+        // Récupérer les infos clients pour affichage
+        const clientIds = [...new Set(data.map(order => order.client_id).filter(Boolean))];
+        
+        if (clientIds.length > 0) {
+          const { data: clientsData } = await supabase
+            .from('clients')
+            .select('id, name, company')
+            .in('id', clientIds);
+          
+          // Enrichir les bons d'achat avec les infos clients
+          const enrichedOrders = data.map(order => ({
+            ...order,
+            clients: clientsData?.find(client => client.id === order.client_id) || null
+          }));
+          
+          console.log('✅ Bons d\'achat enrichis avec clients');
+          setPurchaseOrders(enrichedOrders);
+        } else {
+          setPurchaseOrders(data);
+        }
+      } else {
+        setPurchaseOrders([]);
+      }
+      
     } catch (error) {
       console.error('❌ Exception loadPurchaseOrders:', error);
+      setPurchaseOrders([]);
     }
   }
 
