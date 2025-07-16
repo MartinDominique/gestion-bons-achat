@@ -63,20 +63,56 @@ export default function SoumissionsManager() {
 
   async function loadProducts() {
     try {
-      // Charger TOUS les produits - ajusté pour 3700 produits
-      const { data, error } = await supabase
+      console.log('🔄 Chargement de TOUS les produits...');
+      
+      // Première tentative avec limite très élevée
+      let { data, error, count } = await supabase
         .from('products')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('product_id')
-        .limit(10000); // Limite suffisante pour tes 6700 produits
+        .range(0, 9999); // Utiliser range() au lieu de limit()
       
       if (error) {
         console.error('Erreur chargement produits:', error);
         return;
       }
       
-      console.log(`✅ ${data?.length || 0} produits chargés sur environ 3700 attendus`);
-      setProducts(data || []);
+      console.log(`✅ ${data?.length || 0} produits chargés sur ${count} total`);
+      
+      // Si on a moins que le total, il faut paginer
+      if (data.length < count) {
+        console.log('📄 Pagination nécessaire, chargement en plusieurs fois...');
+        
+        let allProducts = [...data];
+        let from = data.length;
+        
+        while (from < count) {
+          const { data: nextBatch, error: nextError } = await supabase
+            .from('products')
+            .select('*')
+            .order('product_id')
+            .range(from, from + 999);
+          
+          if (nextError) {
+            console.error('Erreur pagination:', nextError);
+            break;
+          }
+          
+          allProducts = [...allProducts, ...nextBatch];
+          from += nextBatch.length;
+          
+          console.log(`📄 Chargé ${allProducts.length}/${count} produits...`);
+          
+          if (nextBatch.length === 0) break;
+        }
+        
+        setProducts(allProducts);
+        console.log(`🎉 TOUS les ${allProducts.length} produits chargés avec succès !`);
+      } else {
+        setProducts(data || []);
+        console.log(`🎉 Tous les ${data.length} produits chargés en une fois !`);
+      }
+      
     } catch (error) {
       console.error('Erreur loadProducts:', error);
     }
