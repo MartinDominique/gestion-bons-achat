@@ -62,8 +62,8 @@ export default function Navigation() {
               <Image
                 src="/logo.png"
                 alt="Services TMT Logo"
-                width={48}
-                height={48}
+                width={200}
+                height={75}
                 className="rounded-lg"
               />
               */}
