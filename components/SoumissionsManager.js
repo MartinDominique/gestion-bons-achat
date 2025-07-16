@@ -66,12 +66,6 @@ export default function SoumissionsManager() {
     supplier: ''
   });
 
-  useEffect(() => {
-    fetchSoumissions();
-    fetchProducts();
-    fetchClients();
-  }, []);
-
   // Calcul automatique du montant vente (ET coût pour affichage seulement)
   const [calculatedCostTotal, setCalculatedCostTotal] = useState(0);
   
@@ -91,6 +85,12 @@ export default function SoumissionsManager() {
     
     setCalculatedCostTotal(totalCost);
   }, [selectedItems]);
+
+  useEffect(() => {
+    fetchSoumissions();
+    fetchProducts();
+    fetchClients();
+  }, []);
 
   const fetchSoumissions = async () => {
     try {
@@ -346,116 +346,9 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Gestion des clients
-  const handleClientSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingClient && typeof editingClient.id === 'number') {
-        const { error } = await supabase
-          .from('clients')
-          .update(clientForm)
-          .eq('id', editingClient.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('clients')
-          .insert([clientForm]);
-        if (error) throw error;
-      }
-
-      await fetchClients();
-      setEditingClient(null);
-      setClientForm({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        contact_person: ''
-      });
-      alert('✅ Client sauvegardé !');
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('❌ Erreur lors de la sauvegarde du client: ' + error.message);
-    }
-  };
-
-  const handleDeleteClient = async (client) => {
-    if (!confirm(`🗑️ Supprimer le client "${client.name}" ?`)) return;
-    
-    try {
-      if (typeof client.id === 'number' && client.id >= 0) {
-        const { error } = await supabase
-          .from('clients')
-          .delete()
-          .eq('id', client.id);
-        
-        if (error) throw error;
-      } else {
-        alert('⚠️ Ce client provient des soumissions et ne peut pas être supprimé directement.');
-        return;
-      }
-      
-      await fetchClients();
-      alert('✅ Client supprimé !');
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('❌ Erreur lors de la suppression: ' + error.message);
-    }
-  };
-
-  // Gestion items non-inventaire
-  const handleNonInventorySubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const { error } = await supabase
-        .from('non_inventory_items')
-        .insert([nonInventoryForm]);
-      
-      if (error) throw error;
-      
-      setNonInventoryForm({
-        name: '',
-        description: '',
-        price: '',
-        category: '',
-        supplier: ''
-      });
-      setShowNonInventoryForm(false);
-      alert('✅ Item non-inventaire ajouté !');
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('❌ Erreur: ' + error.message);
-    }
-  };
-
-  // Suppression soumission (historique)
-  const handleDeleteSubmission = async (id) => {
-    if (!confirm('🗑️ Supprimer définitivement cette soumission ?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('submissions')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      await fetchSoumissions();
-      alert('✅ Soumission supprimée !');
-    } catch (error) {
-      console.error('Erreur:', error);
-      alert('❌ Erreur lors de la suppression: ' + error.message);
-    }
-  };
-
-  const handleEditClient = (client) => {
-    setEditingClient(client);
-    setClientForm({
-      name: client.name || '',
-      email: client.email || '',
-      phone: client.phone || '',
-      address: client.address || '',
-      contact_person: client.contact_person || ''
-    });
+  // Fonction d'impression
+  const handlePrint = () => {
+    window.print();
   };
 
   const formatCurrency = (amount) => {
@@ -476,315 +369,11 @@ export default function SoumissionsManager() {
     return matchesSearch && matchesStatus;
   });
 
-  // Fonction d'impression
-  const handlePrint = () => {
-    window.print();
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
         <p className="ml-4 text-purple-600 font-medium">Chargement des soumissions...</p>
-      </div>
-    );
-  }
-
-  // Formulaire item non-inventaire
-  if (showNonInventoryForm) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-gradient-to-br from-orange-50 via-white to-red-50 rounded-xl shadow-lg border border-orange-200 p-8">
-          <div className="bg-orange-600 text-white px-6 py-4 rounded-lg mb-6">
-            <h2 className="text-2xl font-bold">📦 Ajouter Item Non-Inventaire</h2>
-          </div>
-          
-          <form onSubmit={handleNonInventorySubmit} className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <label className="block text-sm font-semibold text-blue-800 mb-2">Nom de l'item</label>
-              <input
-                type="text"
-                value={nonInventoryForm.name}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, name: e.target.value})}
-                className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                required
-              />
-            </div>
-
-            <div className="bg-green-50 p-4 rounded-lg">
-              <label className="block text-sm font-semibold text-green-800 mb-2">Description</label>
-              <textarea
-                value={nonInventoryForm.description}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, description: e.target.value})}
-                className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
-                rows="3"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-yellow-50 p-4 rounded-lg">
-                <label className="block text-sm font-semibold text-yellow-800 mb-2">Prix</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={nonInventoryForm.price}
-                  onChange={(e) => setNonInventoryForm({...nonInventoryForm, price: e.target.value})}
-                  className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-3"
-                  required
-                />
-              </div>
-
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <label className="block text-sm font-semibold text-purple-800 mb-2">Catégorie</label>
-                <input
-                  type="text"
-                  value={nonInventoryForm.category}
-                  onChange={(e) => setNonInventoryForm({...nonInventoryForm, category: e.target.value})}
-                  className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3"
-                />
-              </div>
-            </div>
-
-            <div className="bg-indigo-50 p-4 rounded-lg">
-              <label className="block text-sm font-semibold text-indigo-800 mb-2">Fournisseur</label>
-              <input
-                type="text"
-                value={nonInventoryForm.supplier}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, supplier: e.target.value})}
-                className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setShowNonInventoryForm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                ❌ Annuler
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 border border-transparent rounded-lg text-white bg-orange-600 hover:bg-orange-700"
-              >
-                ✅ Ajouter
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // Gestionnaire de clients
-  if (showClientManager) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 rounded-xl shadow-lg p-6 text-white">
-          <div className="flex justify-between items-center">
-            <h2 className="text-3xl font-bold">👥 Gestion des Clients</h2>
-            <button
-              onClick={() => setShowClientManager(false)}
-              className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30"
-            >
-              ← Retour
-            </button>
-          </div>
-        </div>
-
-        {/* Formulaire client */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-xl font-bold mb-4">
-            {editingClient ? '✏️ Modifier Client' : '➕ Nouveau Client'}
-          </h3>
-          <form onSubmit={handleClientSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-              <input
-                type="text"
-                value={clientForm.name}
-                onChange={(e) => setClientForm({...clientForm, name: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={clientForm.email}
-                onChange={(e) => setClientForm({...clientForm, email: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-              <input
-                type="tel"
-                value={clientForm.phone}
-                onChange={(e) => setClientForm({...clientForm, phone: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Personne contact</label>
-              <input
-                type="text"
-                value={clientForm.contact_person}
-                onChange={(e) => setClientForm({...clientForm, contact_person: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-              <textarea
-                value={clientForm.address}
-                onChange={(e) => setClientForm({...clientForm, address: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                rows="2"
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-end space-x-3">
-              {editingClient && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingClient(null);
-                    setClientForm({name: '', email: '', phone: '', address: '', contact_person: ''});
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-              )}
-              <button
-                type="submit"
-                className="px-4 py-2 border border-transparent rounded-lg text-white bg-blue-600 hover:bg-blue-700"
-              >
-                {editingClient ? 'Mettre à jour' : 'Créer'}
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* Liste des clients */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b">
-            <h3 className="text-lg font-medium text-gray-900">Liste des Clients ({clients.length})</h3>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {clients.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
-                Aucun client enregistré
-              </div>
-            ) : (
-              clients.map((client, index) => (
-                <div key={client.id || index} className="p-6 hover:bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900">{client.name}</h4>
-                      <div className="mt-1 text-sm text-gray-500 space-y-1">
-                        {client.email && <p>📧 {client.email}</p>}
-                        {client.phone && <p>📞 {client.phone}</p>}
-                        {client.contact_person && <p>👤 {client.contact_person}</p>}
-                        {client.address && <p>📍 {client.address}</p>}
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditClient(client)}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
-                        disabled={!(typeof client.id === 'number')}
-                      >
-                        ✏️ Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClient(client)}
-                        className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded-lg hover:bg-red-200"
-                        disabled={!(typeof client.id === 'number')}
-                      >
-                        🗑️ Supprimer
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Historique (avec option de suppression)
-  if (showHistory) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 rounded-xl shadow-lg p-6 text-white">
-          <div className="flex justify-between items-center">
-            <h2 className="text-3xl font-bold">📚 Historique des Soumissions</h2>
-            <button
-              onClick={() => setShowHistory(false)}
-              className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30"
-            >
-              ← Retour
-            </button>
-          </div>
-          <p className="mt-2 text-white/90">Gérer et supprimer définitivement les soumissions</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {soumissions.length === 0 ? (
-            <div className="p-12 text-center">
-              <span className="text-6xl mb-4 block">📋</span>
-              <p className="text-gray-500 text-lg">Aucune soumission dans l'historique</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-200">
-              {soumissions.map((submission) => (
-                <li key={submission.id} className="p-6 hover:bg-gray-50">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">
-                        👤 {submission.client_name}
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        📝 {submission.description}
-                      </p>
-                      <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                        <span>💰 Vente: {formatCurrency(submission.amount)}</span>
-                        {calculatedCostTotal > 0 && (
-                          <span>🏷️ Coût: {formatCurrency(calculatedCostTotal)}</span>
-                        )}: {formatCurrency(submission.cost_total)}</span>
-                        )}
-                        <span>📅 {formatDate(submission.created_at)}</span>
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                          submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {submission.status === 'sent' ? '📤 Envoyée' :
-                           submission.status === 'draft' ? '📝 Brouillon' : '✅ Acceptée'}
-                        </span>
-                        {submission.items && submission.items.length > 0 && (
-                          <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">
-                            📦 {submission.items.length} items
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteSubmission(submission.id)}
-                      className="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 border border-red-200"
-                    >
-                      🗑️ Supprimer
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
       </div>
     );
   }
@@ -1129,12 +718,12 @@ export default function SoumissionsManager() {
             )}
 
             {/* Totaux (vente et coût) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-green-100 p-4 rounded-lg border border-green-300">
                 <label className="block text-lg font-semibold text-green-800 mb-2">
-                  💰 Total Vente (Calculé automatiquement)
+                  💰 Total Vente
                 </label>
-                <div className="text-3xl font-bold text-green-900">
+                <div className="text-2xl font-bold text-green-900">
                   {formatCurrency(submissionForm.amount)}
                 </div>
               </div>
@@ -1143,50 +732,33 @@ export default function SoumissionsManager() {
                 <label className="block text-lg font-semibold text-orange-800 mb-2">
                   🏷️ Total Coût
                 </label>
-                <div className="text-3xl font-bold text-orange-900">
-                  {formatCurrency(submissionForm.cost_total)}
+                <div className="text-2xl font-bold text-orange-900">
+                  {formatCurrency(calculatedCostTotal)}
                 </div>
+              </div>
+
+              {/* Marge bénéficiaire */}
+              <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
+                <label className="block text-lg font-semibold text-blue-800 mb-2">
+                  📈 Marge
+                </label>
+                <div className="text-2xl font-bold text-blue-900">
+                  {formatCurrency(submissionForm.amount - calculatedCostTotal)}
+                </div>
+                {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
+                  <div className="text-sm text-blue-700">
+                    {((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Marge bénéficiaire */}
-            {submissionForm.amount > 0 && submissionForm.cost_total > 0 && (
-              <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-blue-800">📈 Marge Bénéficiaire</span>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-blue-900">
-                      {formatCurrency(submissionForm.amount - submissionForm.cost_total)}
-                    </div>
-                    <div className="text-sm text-blue-700">
-                      {((submissionForm.amount - submissionForm.cost_total) / submissionForm.amount * 100).toFixed(1)}% marge
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingSubmission(null);
-                  setSelectedItems([]);
-                  setSubmissionForm({client_name: '', description: '', amount: 0, cost_total: 0, status: 'draft', items: []});
-                  setProductSearchTerm('');
-                  setFocusedProductIndex(-1);
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                ❌ Annuler
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 border border-transparent rounded-lg text-white bg-purple-600 hover:bg-purple-700"
-              >
-                {editingSubmission ? '💾 Mettre à jour' : '✨ Créer'}
-              </button>
+            {/* Note de fin */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
+              <p className="text-gray-600 text-sm">
+                📋 {selectedItems.length} produit(s) sélectionné(s) • 
+                Utilisez les boutons dans la barre mauve ci-dessus pour sauvegarder ou imprimer
+              </p>
             </div>
           </form>
         </div>
@@ -1231,6 +803,7 @@ export default function SoumissionsManager() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Garder l'ordre normal pour l'impression (pas inversé) */}
                   {selectedItems.map((item) => (
                     <tr key={item.product_id}>
                       <td className="border border-gray-300 p-2">{item.product_id}</td>
@@ -1251,13 +824,13 @@ export default function SoumissionsManager() {
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <p className="text-lg font-semibold">Total Vente: {formatCurrency(submissionForm.amount)}</p>
-                <p className="text-lg font-semibold">Total Coût: {formatCurrency(submissionForm.cost_total)}</p>
+                <p className="text-lg font-semibold">Total Coût: {formatCurrency(calculatedCostTotal)}</p>
               </div>
               <div className="text-right">
-                <p className="text-xl font-bold">Marge: {formatCurrency(submissionForm.amount - submissionForm.cost_total)}</p>
-                {submissionForm.amount > 0 && (
+                <p className="text-xl font-bold">Marge: {formatCurrency(submissionForm.amount - calculatedCostTotal)}</p>
+                {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
                   <p className="text-sm text-gray-600">
-                    ({((submissionForm.amount - submissionForm.cost_total) / submissionForm.amount * 100).toFixed(1)}%)
+                    ({((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%)
                   </p>
                 )}
               </div>
@@ -1281,24 +854,6 @@ export default function SoumissionsManager() {
               className="px-3 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium backdrop-blur-sm"
             >
               📧 {sendingReport ? 'Envoi...' : 'Rapport'}
-            </button>
-            <button
-              onClick={() => setShowNonInventoryForm(true)}
-              className="px-3 py-2 bg-orange-600 rounded-lg hover:bg-orange-700 text-sm font-medium"
-            >
-              📦 Item Non-Inventaire
-            </button>
-            <button
-              onClick={() => setShowClientManager(true)}
-              className="px-3 py-2 bg-cyan-600 rounded-lg hover:bg-cyan-700 text-sm font-medium"
-            >
-              👥 Gestion Clients
-            </button>
-            <button
-              onClick={() => setShowHistory(true)}
-              className="px-3 py-2 bg-pink-600 rounded-lg hover:bg-pink-700 text-sm font-medium"
-            >
-              📚 Historique
             </button>
             <button
               onClick={() => setShowForm(true)}
@@ -1412,12 +967,18 @@ export default function SoumissionsManager() {
                     </p>
                     <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                       <span className="font-medium text-green-600">💰 Vente: {formatCurrency(submission.amount)}</span>
-                      {submission.cost_total && (
-                        <span className="font-medium text-orange-600">🏷️ Coût: {formatCurrency(submission.cost_total)}</span>
+                      {submission.items && submission.items.length > 0 && (
+                        <span className="font-medium text-orange-600">
+                          🏷️ Coût: {formatCurrency(
+                            submission.items.reduce((sum, item) => sum + ((item.cost_price || 0) * (item.quantity || 0)), 0)
+                          )}
+                        </span>
                       )}
-                      {submission.amount > 0 && submission.cost_total > 0 && (
+                      {submission.amount > 0 && submission.items && submission.items.length > 0 && (
                         <span className="font-medium text-blue-600">
-                          📈 Marge: {formatCurrency(submission.amount - submission.cost_total)}
+                          📈 Marge: {formatCurrency(
+                            submission.amount - submission.items.reduce((sum, item) => sum + ((item.cost_price || 0) * (item.quantity || 0)), 0)
+                          )}
                         </span>
                       )}
                       <span>📅 {formatDate(submission.created_at)}</span>
@@ -1449,7 +1010,7 @@ export default function SoumissionsManager() {
                       setSelectedItems(submission.items || []);
                       // Calculer le coût total à partir des items existants
                       const existingCostTotal = (submission.items || []).reduce((sum, item) => 
-                        sum + (item.cost_price * item.quantity), 0
+                        sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
                       );
                       setCalculatedCostTotal(existingCostTotal);
                       setShowForm(true);
