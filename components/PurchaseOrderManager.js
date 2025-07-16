@@ -1,19 +1,23 @@
 import { useState, useEffect } from 'react';
-import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, CheckIcon, ClockIcon, XMarkIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../lib/supabase';
-import PurchaseOrderForm from './PurchaseOrderForm';
-import PurchaseOrderView from './PurchaseOrderView';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showView, setShowView] = useState(false);
   const [editingPO, setEditingPO] = useState(null);
-  const [viewingPO, setViewingPO] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    po_number: '',
+    vendor: '',
+    description: '',
+    amount: '',
+    status: 'pending'
+  });
 
   useEffect(() => {
     fetchPurchaseOrders();
@@ -60,7 +64,8 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
       if (editingPO) {
         const { error } = await supabase
@@ -80,10 +85,29 @@ export default function PurchaseOrderManager() {
       await fetchPurchaseOrders();
       setShowForm(false);
       setEditingPO(null);
+      setFormData({
+        po_number: '',
+        vendor: '',
+        description: '',
+        amount: '',
+        status: 'pending'
+      });
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       alert('Erreur lors de la sauvegarde du bon d\'achat');
     }
+  };
+
+  const handleEdit = (po) => {
+    setEditingPO(po);
+    setFormData({
+      po_number: po.po_number || '',
+      vendor: po.vendor || '',
+      description: po.description || '',
+      amount: po.amount || '',
+      status: po.status || 'pending'
+    });
+    setShowForm(true);
   };
 
   const handleDelete = async (id) => {
@@ -120,16 +144,12 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusEmoji = (status) => {
     switch (status) {
-      case 'approved':
-        return <CheckIcon className="h-5 w-5 text-green-500" />;
-      case 'pending':
-        return <ClockIcon className="h-5 w-5 text-yellow-500" />;
-      case 'rejected':
-        return <XMarkIcon className="h-5 w-5 text-red-500" />;
-      default:
-        return <ClockIcon className="h-5 w-5 text-gray-500" />;
+      case 'approved': return '✅';
+      case 'pending': return '⏳';
+      case 'rejected': return '❌';
+      default: return '⏳';
     }
   };
 
@@ -180,31 +200,92 @@ export default function PurchaseOrderManager() {
 
   if (showForm) {
     return (
-      <PurchaseOrderForm
-        purchaseOrder={editingPO}
-        onSubmit={handleSubmit}
-        onCancel={() => {
-          setShowForm(false);
-          setEditingPO(null);
-        }}
-      />
-    );
-  }
-
-  if (showView && viewingPO) {
-    return (
-      <PurchaseOrderView
-        purchaseOrder={viewingPO}
-        onClose={() => {
-          setShowView(false);
-          setViewingPO(null);
-        }}
-        onEdit={() => {
-          setEditingPO(viewingPO);
-          setShowView(false);
-          setShowForm(true);
-        }}
-      />
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold mb-4">
+            {editingPO ? 'Modifier le Bon d\'Achat' : 'Nouveau Bon d\'Achat'}
+          </h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Numéro PO</label>
+              <input
+                type="text"
+                value={formData.po_number}
+                onChange={(e) => setFormData({...formData, po_number: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Fournisseur</label>
+              <input
+                type="text"
+                value={formData.vendor}
+                onChange={(e) => setFormData({...formData, vendor: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                rows="3"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Montant</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.amount}
+                onChange={(e) => setFormData({...formData, amount: parseFloat(e.target.value) || 0})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Statut</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="pending">En attente</option>
+                <option value="approved">Approuvé</option>
+                <option value="rejected">Rejeté</option>
+              </select>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingPO(null);
+                  setFormData({
+                    po_number: '',
+                    vendor: '',
+                    description: '',
+                    amount: '',
+                    status: 'pending'
+                  });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              >
+                {editingPO ? 'Mettre à jour' : 'Créer'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     );
   }
 
@@ -220,15 +301,13 @@ export default function PurchaseOrderManager() {
               disabled={sendingReport}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              <EnvelopeIcon className="h-4 w-4 mr-2" />
-              {sendingReport ? 'Envoi...' : 'Envoyer Rapport'}
+              📧 {sendingReport ? 'Envoi...' : 'Envoyer Rapport'}
             </button>
             <button
               onClick={() => setShowForm(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Nouveau Bon d'Achat
+              ➕ Nouveau Bon d'Achat
             </button>
           </div>
         </div>
@@ -237,7 +316,7 @@ export default function PurchaseOrderManager() {
           <div className="bg-blue-50 p-4 rounded-lg">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <CheckIcon className="h-8 w-8 text-blue-600" />
+                <span className="text-2xl">📊</span>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-blue-600">Total</p>
@@ -249,7 +328,7 @@ export default function PurchaseOrderManager() {
           <div className="bg-green-50 p-4 rounded-lg">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <CheckIcon className="h-8 w-8 text-green-600" />
+                <span className="text-2xl">✅</span>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-green-600">Approuvés</p>
@@ -263,7 +342,7 @@ export default function PurchaseOrderManager() {
           <div className="bg-yellow-50 p-4 rounded-lg">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <ClockIcon className="h-8 w-8 text-yellow-600" />
+                <span className="text-2xl">⏳</span>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-yellow-600">En Attente</p>
@@ -328,7 +407,7 @@ export default function PurchaseOrderManager() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0">
-                      {getStatusIcon(po.status)}
+                      <span className="text-xl">{getStatusEmoji(po.status)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3">
@@ -364,46 +443,33 @@ export default function PurchaseOrderManager() {
                       <>
                         <button
                           onClick={() => handleStatusChange(po.id, 'approved')}
-                          className="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
                           title="Approuver"
                         >
-                          <CheckIcon className="h-4 w-4" />
+                          ✅ Approuver
                         </button>
                         <button
                           onClick={() => handleStatusChange(po.id, 'rejected')}
-                          className="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
                           title="Rejeter"
                         >
-                          <XMarkIcon className="h-4 w-4" />
+                          ❌ Rejeter
                         </button>
                       </>
                     )}
                     <button
-                      onClick={() => {
-                        setViewingPO(po);
-                        setShowView(true);
-                      }}
-                      className="inline-flex items-center p-2 border border-gray-300 rounded-full shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      title="Voir"
-                    >
-                      <EyeIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingPO(po);
-                        setShowForm(true);
-                      }}
-                      className="inline-flex items-center p-2 border border-gray-300 rounded-full shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      onClick={() => handleEdit(po)}
+                      className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                       title="Modifier"
                     >
-                      <PencilIcon className="h-4 w-4" />
+                      ✏️ Modifier
                     </button>
                     <button
                       onClick={() => handleDelete(po.id)}
-                      className="inline-flex items-center p-2 border border-gray-300 rounded-full shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                       title="Supprimer"
                     >
-                      <TrashIcon className="h-4 w-4" />
+                      🗑️ Supprimer
                     </button>
                   </div>
                 </div>
