@@ -10,13 +10,15 @@ export default function PurchaseOrderManager() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
   
-  // Form state avec le bon ordre
+  // Form state avec TES vraies colonnes
   const [formData, setFormData] = useState({
-    client: '',
+    client_name: '',
     po_number: '',
-    description: '',
+    submission_no: '',
+    date: new Date().toISOString().split('T')[0], // Format YYYY-MM-DD
     amount: '',
     status: 'pending',
+    notes: '',
     files: []
   });
 
@@ -35,7 +37,7 @@ export default function PurchaseOrderManager() {
         console.error('Erreur Supabase:', error);
         throw error;
       }
-      console.log('Données récupérées:', data);
+      console.log('Bons d\'achat chargés:', data?.length || 0);
       setPurchaseOrders(data || []);
     } catch (error) {
       console.error('Erreur lors du chargement des bons d\'achat:', error);
@@ -74,33 +76,32 @@ export default function PurchaseOrderManager() {
     e.preventDefault();
     
     // Validation
-    if (!formData.client || !formData.po_number || !formData.amount) {
+    if (!formData.client_name || !formData.po_number || !formData.amount) {
       alert('⚠️ Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     try {
       const dataToSave = {
-        client: formData.client,
+        client_name: formData.client_name,
+        client: formData.client_name, // Pour compatibilité (doublon dans ta table)
         po_number: formData.po_number,
-        vendor: formData.client, // Pour compatibilité avec l'ancien système
-        description: formData.description,
+        submission_no: formData.submission_no,
+        date: formData.date,
         amount: parseFloat(formData.amount),
         status: formData.status,
-        created_at: new Date().toISOString(), // Forcer la date de création
-        updated_at: new Date().toISOString()  // Forcer la date de mise à jour
+        notes: formData.notes,
+        description: formData.notes, // Pour compatibilité
+        vendor: formData.client_name, // Pour compatibilité
+        files: formData.files
       };
 
       console.log('Données à sauvegarder:', dataToSave);
 
       if (editingPO) {
-        // Pour la mise à jour, ne pas envoyer created_at
-        const updateData = { ...dataToSave };
-        delete updateData.created_at;
-        
         const { data, error } = await supabase
           .from('purchase_orders')
-          .update(updateData)
+          .update(dataToSave)
           .eq('id', editingPO.id)
           .select();
 
@@ -126,11 +127,13 @@ export default function PurchaseOrderManager() {
       setShowForm(false);
       setEditingPO(null);
       setFormData({
-        client: '',
+        client_name: '',
         po_number: '',
-        description: '',
+        submission_no: '',
+        date: new Date().toISOString().split('T')[0],
         amount: '',
         status: 'pending',
+        notes: '',
         files: []
       });
       
@@ -144,12 +147,14 @@ export default function PurchaseOrderManager() {
   const handleEdit = (po) => {
     setEditingPO(po);
     setFormData({
-      client: po.client || po.vendor || '',
+      client_name: po.client_name || po.client || '',
       po_number: po.po_number || '',
-      description: po.description || '',
+      submission_no: po.submission_no || '',
+      date: po.date || new Date().toISOString().split('T')[0],
       amount: po.amount || '',
       status: po.status || 'pending',
-      files: []
+      notes: po.notes || po.description || '',
+      files: po.files || []
     });
     setShowForm(true);
   };
@@ -192,16 +197,21 @@ export default function PurchaseOrderManager() {
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
-    setFormData({...formData, files: [...formData.files, ...files]});
+    const fileData = files.map(file => ({
+      name: file.name,
+      size: file.size,
+      type: file.type
+    }));
+    setFormData({...formData, files: [...(formData.files || []), ...fileData]});
   };
 
   const removeFile = (index) => {
-    const newFiles = formData.files.filter((_, i) => i !== index);
+    const newFiles = (formData.files || []).filter((_, i) => i !== index);
     setFormData({...formData, files: newFiles});
   };
 
   const getStatusEmoji = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'approved': return '✅';
       case 'pending': return '⏳';
       case 'rejected': return '❌';
@@ -211,7 +221,7 @@ export default function PurchaseOrderManager() {
 
   const getStatusBadge = (status) => {
     const baseClasses = "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium";
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'approved':
         return `${baseClasses} bg-green-100 text-green-800 border border-green-200`;
       case 'pending':
@@ -231,16 +241,20 @@ export default function PurchaseOrderManager() {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('fr-CA');
   };
 
   const filteredPurchaseOrders = purchaseOrders.filter(po => {
-    const matchesSearch = po.po_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         po.vendor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         po.client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         po.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchText = searchTerm.toLowerCase();
+    const matchesSearch = 
+      po.po_number?.toLowerCase().includes(searchText) ||
+      po.client_name?.toLowerCase().includes(searchText) ||
+      po.client?.toLowerCase().includes(searchText) ||
+      po.submission_no?.toLowerCase().includes(searchText) ||
+      po.notes?.toLowerCase().includes(searchText);
     
-    const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || po.status?.toLowerCase() === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -259,7 +273,7 @@ export default function PurchaseOrderManager() {
   if (showForm) {
     return (
       <div className="max-w-4xl mx-auto">
-        {/* Formulaire avec couleurs */}
+        {/* Formulaire avec couleurs et tes vraies colonnes */}
         <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl shadow-lg border border-indigo-200 p-8">
           <div className="bg-indigo-600 text-white px-6 py-4 rounded-lg mb-6">
             <h2 className="text-2xl font-bold flex items-center">
@@ -275,56 +289,85 @@ export default function PurchaseOrderManager() {
               </label>
               <input
                 type="text"
-                value={formData.client}
-                onChange={(e) => setFormData({...formData, client: e.target.value})}
+                value={formData.client_name}
+                onChange={(e) => setFormData({...formData, client_name: e.target.value})}
                 className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-3"
                 placeholder="Nom du client..."
                 required
               />
             </div>
 
-            {/* No. Bon d'Achat */}
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <label className="block text-sm font-semibold text-green-800 mb-2">
-                📄 Numéro Bon d'Achat *
-              </label>
-              <input
-                type="text"
-                value={formData.po_number}
-                onChange={(e) => setFormData({...formData, po_number: e.target.value})}
-                className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-lg p-3"
-                placeholder="Ex: PO-2025-001"
-                required
-              />
+            {/* No. Bon d'Achat + Soumission */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <label className="block text-sm font-semibold text-green-800 mb-2">
+                  📄 Numéro Bon d'Achat *
+                </label>
+                <input
+                  type="text"
+                  value={formData.po_number}
+                  onChange={(e) => setFormData({...formData, po_number: e.target.value})}
+                  className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-lg p-3"
+                  placeholder="Ex: PO-2025-001"
+                  required
+                />
+              </div>
+
+              <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
+                <label className="block text-sm font-semibold text-cyan-800 mb-2">
+                  📋 Numéro Soumission
+                </label>
+                <input
+                  type="text"
+                  value={formData.submission_no}
+                  onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
+                  className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-lg p-3"
+                  placeholder="Ex: SUB-2025-001"
+                />
+              </div>
             </div>
 
-            {/* Description */}
+            {/* Date + Montant */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
+                <label className="block text-sm font-semibold text-pink-800 mb-2">
+                  📅 Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  className="block w-full rounded-lg border-pink-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-lg p-3"
+                />
+              </div>
+
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <label className="block text-sm font-semibold text-yellow-800 mb-2">
+                  💰 Montant *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                  className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-lg p-3"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
               <label className="block text-sm font-semibold text-purple-800 mb-2">
-                📝 Description
+                📝 Notes
               </label>
               <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-lg p-3"
                 rows="3"
-                placeholder="Description détaillée du bon d'achat..."
-              />
-            </div>
-
-            {/* Montant */}
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <label className="block text-sm font-semibold text-yellow-800 mb-2">
-                💰 Montant *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-lg p-3"
-                placeholder="0.00"
-                required
+                placeholder="Notes et commentaires..."
               />
             </div>
 
@@ -340,11 +383,11 @@ export default function PurchaseOrderManager() {
                 onChange={handleFileUpload}
                 className="block w-full text-sm text-indigo-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
               />
-              {formData.files.length > 0 && (
+              {formData.files && formData.files.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {formData.files.map((file, index) => (
                     <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                      <span className="text-sm text-gray-700">📄 {file.name}</span>
+                      <span className="text-sm text-gray-700">📄 {file.name || `Fichier ${index + 1}`}</span>
                       <button
                         type="button"
                         onClick={() => removeFile(index)}
@@ -382,11 +425,13 @@ export default function PurchaseOrderManager() {
                   setShowForm(false);
                   setEditingPO(null);
                   setFormData({
-                    client: '',
+                    client_name: '',
                     po_number: '',
-                    description: '',
+                    submission_no: '',
+                    date: new Date().toISOString().split('T')[0],
                     amount: '',
                     status: 'pending',
+                    notes: '',
                     files: []
                   });
                 }}
@@ -447,7 +492,7 @@ export default function PurchaseOrderManager() {
               <div>
                 <p className="text-sm font-medium text-white/90">Approuvés</p>
                 <p className="text-2xl font-bold text-white">
-                  {purchaseOrders.filter(po => po.status === 'approved').length}
+                  {purchaseOrders.filter(po => po.status?.toLowerCase() === 'approved').length}
                 </p>
               </div>
             </div>
@@ -459,7 +504,7 @@ export default function PurchaseOrderManager() {
               <div>
                 <p className="text-sm font-medium text-white/90">En Attente</p>
                 <p className="text-2xl font-bold text-white">
-                  {purchaseOrders.filter(po => po.status === 'pending').length}
+                  {purchaseOrders.filter(po => po.status?.toLowerCase() === 'pending').length}
                 </p>
               </div>
             </div>
@@ -483,7 +528,7 @@ export default function PurchaseOrderManager() {
           <div className="flex-1 max-w-lg">
             <input
               type="text"
-              placeholder="🔍 Rechercher par numéro, client ou description..."
+              placeholder="🔍 Rechercher par numéro PO, client, soumission, notes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg p-3"
@@ -542,32 +587,42 @@ export default function PurchaseOrderManager() {
                         <p className="text-lg font-semibold text-gray-900">
                           📄 {po.po_number || 'N/A'}
                         </p>
+                        {po.submission_no && (
+                          <p className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                            📋 {po.submission_no}
+                          </p>
+                        )}
                         <span className={getStatusBadge(po.status)}>
                           {po.status === 'approved' ? 'Approuvé' : 
                            po.status === 'pending' ? 'En attente' : 
-                           po.status === 'rejected' ? 'Rejeté' : 'Inconnu'}
+                           po.status === 'rejected' ? 'Rejeté' : (po.status || 'Inconnu')}
                         </span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
                         <p>
-                          <span className="font-medium">👤 Client:</span> {po.client || po.vendor || 'N/A'}
+                          <span className="font-medium">👤 Client:</span> {po.client_name || po.client || 'N/A'}
                         </p>
                         <p>
                           <span className="font-medium">💰 Montant:</span> {formatCurrency(po.amount)}
                         </p>
                         <p>
-                          <span className="font-medium">📅 Date:</span> {formatDate(po.created_at)}
+                          <span className="font-medium">📅 Date:</span> {formatDate(po.date || po.created_at)}
                         </p>
                       </div>
-                      {po.description && (
+                      {po.notes && (
                         <p className="text-sm text-gray-500 mt-2 bg-gray-50 p-2 rounded">
-                          📝 {po.description}
+                          📝 {po.notes}
+                        </p>
+                      )}
+                      {po.files && po.files.length > 0 && (
+                        <p className="text-xs text-indigo-600 mt-1">
+                          📎 {po.files.length} fichier(s) joint(s)
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {po.status === 'pending' && (
+                    {po.status?.toLowerCase() === 'pending' && (
                       <>
                         <button
                           onClick={() => handleStatusChange(po.id, 'approved')}
