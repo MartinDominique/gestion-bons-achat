@@ -49,9 +49,14 @@ export default function Navigation() {
           <div className="flex items-center">
             <div className="flex-shrink-0 mr-6">
               {/* Remplace cette div par ton logo */}
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">ST</span>
-              </div>
+              <Image
+  src="/logo.png"
+  alt="Services TMT Logo"
+  width={48}
+  height={48}
+  className="rounded-lg object-contain"
+  priority
+/>
               {/* 
               Si tu as un fichier logo, remplace par:
               <Image
