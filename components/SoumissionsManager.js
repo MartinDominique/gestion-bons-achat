@@ -16,15 +16,20 @@ export default function SoumissionsManager() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
   
-  // Recherche produits
+  // Recherche produits avec navigation clavier
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
+  const [focusedProductIndex, setFocusedProductIndex] = useState(-1);
+  const [tempQuantity, setTempQuantity] = useState('1');
+  const [showQuantityInput, setShowQuantityInput] = useState(false);
+  const [selectedProductForQuantity, setSelectedProductForQuantity] = useState(null);
   
   // Form states
   const [submissionForm, setSubmissionForm] = useState({
     client_name: '',
     description: '',
     amount: 0,
+    cost_total: 0,
     status: 'draft',
     items: []
   });
@@ -51,12 +56,21 @@ export default function SoumissionsManager() {
     fetchClients();
   }, []);
 
-  // Calcul automatique du montant
+  // Calcul automatique du montant vente ET coût
   useEffect(() => {
-    const total = selectedItems.reduce((sum, item) => {
+    const totalSelling = selectedItems.reduce((sum, item) => {
       return sum + (item.selling_price * item.quantity);
     }, 0);
-    setSubmissionForm(prev => ({ ...prev, amount: total }));
+    
+    const totalCost = selectedItems.reduce((sum, item) => {
+      return sum + (item.cost_price * item.quantity);
+    }, 0);
+    
+    setSubmissionForm(prev => ({ 
+      ...prev, 
+      amount: totalSelling,
+      cost_total: totalCost 
+    }));
   }, [selectedItems]);
 
   const fetchSoumissions = async () => {
@@ -97,23 +111,48 @@ export default function SoumissionsManager() {
 
   const fetchClients = async () => {
     try {
-      const { data, error } = await supabase
+      // Essayer d'abord la table clients
+      const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
         .order('name', { ascending: true });
 
-      if (error) {
-        console.log('Table clients pas trouvée, utilisation des clients des soumissions');
-        const { data: submissionsData } = await supabase
-          .from('submissions')
-          .select('client_name')
-          .order('client_name');
-        
-        const uniqueClients = [...new Set(submissionsData?.map(s => s.client_name).filter(Boolean))];
-        setClients(uniqueClients.map((name, index) => ({ id: index, name, email: '', phone: '', address: '', contact_person: '' })));
+      if (!clientsError && clientsData) {
+        setClients(clientsData);
         return;
       }
-      setClients(data || []);
+
+      // Sinon, récupérer les clients des soumissions ET purchase_orders
+      console.log('Table clients pas trouvée, récupération des noms depuis soumissions et purchase_orders');
+      
+      const [submissionsResult, purchaseOrdersResult] = await Promise.all([
+        supabase.from('submissions').select('client_name').order('client_name'),
+        supabase.from('purchase_orders').select('client_name, client').order('client_name')
+      ]);
+
+      const allClientNames = new Set();
+      
+      // Ajouter les clients des soumissions
+      submissionsResult.data?.forEach(s => {
+        if (s.client_name) allClientNames.add(s.client_name);
+      });
+      
+      // Ajouter les clients des purchase_orders
+      purchaseOrdersResult.data?.forEach(po => {
+        if (po.client_name) allClientNames.add(po.client_name);
+        if (po.client) allClientNames.add(po.client);
+      });
+
+      const uniqueClients = Array.from(allClientNames).map((name, index) => ({
+        id: `client_${index}`,
+        name,
+        email: '',
+        phone: '',
+        address: '',
+        contact_person: ''
+      }));
+
+      setClients(uniqueClients);
     } catch (error) {
       console.error('Erreur lors du chargement des clients:', error);
       setClients([]);
@@ -143,20 +182,77 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Gestion des items de produits
-  const addItemToSubmission = (product) => {
+  // Navigation clavier pour recherche produits
+  const handleProductKeyDown = (e) => {
+    const filteredProducts = products.filter(product => 
+      product.description?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+      product.product_id?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+      product.product_group?.toLowerCase().includes(productSearchTerm.toLowerCase())
+    );
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFocusedProductIndex(prev => 
+        prev < filteredProducts.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFocusedProductIndex(prev => prev > 0 ? prev - 1 : prev);
+    } else if (e.key === 'Tab' || e.key === 'Enter') {
+      e.preventDefault();
+      if (focusedProductIndex >= 0 && filteredProducts[focusedProductIndex]) {
+        selectProductForQuantity(filteredProducts[focusedProductIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setFocusedProductIndex(-1);
+    }
+  };
+
+  const selectProductForQuantity = (product) => {
+    setSelectedProductForQuantity(product);
+    setShowQuantityInput(true);
+    setTempQuantity('1');
+    setTimeout(() => {
+      document.getElementById('quantity-input')?.focus();
+    }, 100);
+  };
+
+  const handleQuantityKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedProductForQuantity && tempQuantity && parseFloat(tempQuantity) > 0) {
+        addItemToSubmission(selectedProductForQuantity, parseFloat(tempQuantity));
+        setShowQuantityInput(false);
+        setSelectedProductForQuantity(null);
+        setTempQuantity('1');
+        setProductSearchTerm('');
+        setFocusedProductIndex(-1);
+        // Remettre le focus sur la recherche
+        setTimeout(() => {
+          document.getElementById('product-search')?.focus();
+        }, 100);
+      }
+    } else if (e.key === 'Escape') {
+      setShowQuantityInput(false);
+      setSelectedProductForQuantity(null);
+      setTempQuantity('1');
+    }
+  };
+
+  // Gestion des items de produits avec quantité
+  const addItemToSubmission = (product, quantity = 1) => {
     const existingItem = selectedItems.find(item => item.product_id === product.product_id);
     
     if (existingItem) {
       setSelectedItems(selectedItems.map(item => 
         item.product_id === product.product_id 
-          ? { ...item, quantity: item.quantity + 1 }
+          ? { ...item, quantity: item.quantity + quantity }
           : item
       ));
     } else {
       setSelectedItems([...selectedItems, {
         ...product,
-        quantity: 1
+        quantity: quantity
       }]);
     }
   };
@@ -166,7 +262,7 @@ export default function SoumissionsManager() {
       setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
     } else {
       setSelectedItems(selectedItems.map(item =>
-        item.product_id === productId ? { ...item, quantity: parseInt(quantity) } : item
+        item.product_id === productId ? { ...item, quantity: parseFloat(quantity) } : item
       ));
     }
   };
@@ -205,6 +301,7 @@ export default function SoumissionsManager() {
         client_name: '',
         description: '',
         amount: 0,
+        cost_total: 0,
         status: 'draft',
         items: []
       });
@@ -350,6 +447,11 @@ export default function SoumissionsManager() {
     product.product_id?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
     product.product_group?.toLowerCase().includes(productSearchTerm.toLowerCase())
   );
+
+  // Fonction d'impression
+  const handlePrint = () => {
+    window.print();
+  };
 
   if (loading) {
     return (
@@ -622,7 +724,10 @@ export default function SoumissionsManager() {
                         📝 {submission.description}
                       </p>
                       <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                        <span>💰 {formatCurrency(submission.amount)}</span>
+                        <span>💰 Vente: {formatCurrency(submission.amount)}</span>
+                        {submission.cost_total && (
+                          <span>🏷️ Coût: {formatCurrency(submission.cost_total)}</span>
+                        )}
                         <span>📅 {formatDate(submission.created_at)}</span>
                         <span className={`px-2 py-1 rounded text-xs ${
                           submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
@@ -655,29 +760,43 @@ export default function SoumissionsManager() {
     );
   }
 
-  // Formulaire soumission avec recherche produits
+  // Formulaire soumission avec dropdown clients et navigation clavier
   if (showForm) {
     return (
       <div className="max-w-6xl mx-auto">
-        <div className="bg-gradient-to-br from-purple-50 via-white to-indigo-50 rounded-xl shadow-lg border border-purple-200 p-8">
-          <div className="bg-purple-600 text-white px-6 py-4 rounded-lg mb-6">
+        {/* Version écran */}
+        <div className="print:hidden bg-gradient-to-br from-purple-50 via-white to-indigo-50 rounded-xl shadow-lg border border-purple-200 p-8">
+          <div className="bg-purple-600 text-white px-6 py-4 rounded-lg mb-6 flex justify-between items-center">
             <h2 className="text-2xl font-bold">
               {editingSubmission ? '✏️ Modifier Soumission' : '📝 Nouvelle Soumission'}
             </h2>
+            <button
+              onClick={handlePrint}
+              className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30"
+            >
+              🖨️ Imprimer
+            </button>
           </div>
           
           <form onSubmit={handleSubmissionSubmit} className="space-y-6">
             {/* Informations de base */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Dropdown Client */}
               <div className="bg-blue-50 p-4 rounded-lg">
-                <label className="block text-sm font-semibold text-blue-800 mb-2">Client</label>
-                <input
-                  type="text"
+                <label className="block text-sm font-semibold text-blue-800 mb-2">Client *</label>
+                <select
                   value={submissionForm.client_name}
                   onChange={(e) => setSubmissionForm({...submissionForm, client_name: e.target.value})}
                   className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                   required
-                />
+                >
+                  <option value="">Sélectionner un client...</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.name}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -705,15 +824,26 @@ export default function SoumissionsManager() {
               />
             </div>
 
-            {/* Recherche produits */}
+            {/* Recherche produits avec navigation clavier */}
             <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
-              <h3 className="text-lg font-semibold text-indigo-800 mb-4">🔍 Recherche Produits</h3>
+              <h3 className="text-lg font-semibold text-indigo-800 mb-4">
+                🔍 Recherche Produits 
+                <span className="text-sm font-normal text-indigo-600 ml-2">
+                  (↑↓ pour naviguer, TAB/ENTER pour sélectionner)
+                </span>
+              </h3>
               <input
+                id="product-search"
                 type="text"
                 placeholder="Rechercher un produit (ID, description, groupe)..."
                 value={productSearchTerm}
-                onChange={(e) => setProductSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setProductSearchTerm(e.target.value);
+                  setFocusedProductIndex(-1);
+                }}
+                onKeyDown={handleProductKeyDown}
                 className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 mb-4"
+                autoComplete="off"
               />
               
               {productSearchTerm && (
@@ -723,8 +853,14 @@ export default function SoumissionsManager() {
                       Aucun produit trouvé
                     </div>
                   ) : (
-                    filteredProducts.map((product) => (
-                      <div key={product.product_id} className="p-3 border-b border-indigo-100 hover:bg-indigo-50 flex justify-between items-center">
+                    filteredProducts.map((product, index) => (
+                      <div 
+                        key={product.product_id} 
+                        className={`p-3 border-b border-indigo-100 hover:bg-indigo-50 flex justify-between items-center cursor-pointer ${
+                          index === focusedProductIndex ? 'bg-indigo-100 border-indigo-300' : ''
+                        }`}
+                        onClick={() => selectProductForQuantity(product)}
+                      >
                         <div>
                           <h4 className="font-medium text-gray-900">
                             {product.product_id} - {product.description}
@@ -734,13 +870,17 @@ export default function SoumissionsManager() {
                             <span>📏 Unité: {product.unit}</span>
                             <span>📊 Stock: {product.stock_qty}</span>
                           </div>
-                          <p className="text-sm text-indigo-600 font-medium">
-                            💰 Prix vente: {formatCurrency(product.selling_price)}
-                          </p>
+                          <div className="flex space-x-4 text-sm">
+                            <span className="text-indigo-600 font-medium">
+                              💰 Vente: {formatCurrency(product.selling_price)}
+                            </span>
+                            <span className="text-orange-600 font-medium">
+                              🏷️ Coût: {formatCurrency(product.cost_price)}
+                            </span>
+                          </div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => addItemToSubmission(product)}
                           className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
                         >
                           ➕ Ajouter
@@ -751,6 +891,74 @@ export default function SoumissionsManager() {
                 </div>
               )}
             </div>
+
+            {/* Modal quantité */}
+            {showQuantityInput && selectedProductForQuantity && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Quantité pour: {selectedProductForQuantity.description}
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quantité ({selectedProductForQuantity.unit})
+                      </label>
+                      <input
+                        id="quantity-input"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={tempQuantity}
+                        onChange={(e) => setTempQuantity(e.target.value)}
+                        onKeyDown={handleQuantityKeyDown}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 text-lg"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <p>Prix vente: {formatCurrency(selectedProductForQuantity.selling_price)} / {selectedProductForQuantity.unit}</p>
+                      <p>Prix coût: {formatCurrency(selectedProductForQuantity.cost_price)} / {selectedProductForQuantity.unit}</p>
+                      <p className="font-medium text-green-700">
+                        Total vente: {formatCurrency(selectedProductForQuantity.selling_price * parseFloat(tempQuantity || 0))}
+                      </p>
+                      <p className="font-medium text-orange-700">
+                        Total coût: {formatCurrency(selectedProductForQuantity.cost_price * parseFloat(tempQuantity || 0))}
+                      </p>
+                    </div>
+                    <div className="flex justify-end space-x-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowQuantityInput(false);
+                          setSelectedProductForQuantity(null);
+                          setTempQuantity('1');
+                        }}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (tempQuantity && parseFloat(tempQuantity) > 0) {
+                            addItemToSubmission(selectedProductForQuantity, parseFloat(tempQuantity));
+                            setShowQuantityInput(false);
+                            setSelectedProductForQuantity(null);
+                            setTempQuantity('1');
+                            setProductSearchTerm('');
+                            setFocusedProductIndex(-1);
+                          }
+                        }}
+                        className="px-4 py-2 border border-transparent rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Items sélectionnés */}
             {selectedItems.length > 0 && (
@@ -766,17 +974,23 @@ export default function SoumissionsManager() {
                         <div className="text-sm text-gray-500">
                           <span>📦 {item.product_group}</span> • <span>📏 {item.unit}</span>
                         </div>
-                        <p className="text-sm text-yellow-600 font-medium">
-                          {formatCurrency(item.selling_price)} × {item.quantity} = {formatCurrency(item.selling_price * item.quantity)}
-                        </p>
+                        <div className="grid grid-cols-2 gap-4 text-sm mt-1">
+                          <p className="text-green-600 font-medium">
+                            💰 Vente: {formatCurrency(item.selling_price)} × {item.quantity} = {formatCurrency(item.selling_price * item.quantity)}
+                          </p>
+                          <p className="text-orange-600 font-medium">
+                            🏷️ Coût: {formatCurrency(item.cost_price)} × {item.quantity} = {formatCurrency(item.cost_price * item.quantity)}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <input
                           type="number"
-                          min="1"
+                          step="0.01"
+                          min="0.01"
                           value={item.quantity}
                           onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
-                          className="w-16 rounded border-gray-300 text-center"
+                          className="w-20 rounded border-gray-300 text-center"
                         />
                         <button
                           type="button"
@@ -792,18 +1006,43 @@ export default function SoumissionsManager() {
               </div>
             )}
 
-            {/* Montant total (calculé automatiquement) */}
-            <div className="bg-green-100 p-4 rounded-lg border border-green-300">
-              <label className="block text-lg font-semibold text-green-800 mb-2">
-                💰 Montant Total (Calculé automatiquement)
-              </label>
-              <div className="text-3xl font-bold text-green-900">
-                {formatCurrency(submissionForm.amount)}
+            {/* Totaux (vente et coût) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-green-100 p-4 rounded-lg border border-green-300">
+                <label className="block text-lg font-semibold text-green-800 mb-2">
+                  💰 Total Vente (Calculé automatiquement)
+                </label>
+                <div className="text-3xl font-bold text-green-900">
+                  {formatCurrency(submissionForm.amount)}
+                </div>
               </div>
-              <p className="text-sm text-green-600 mt-1">
-                Basé sur {selectedItems.length} produit(s) sélectionné(s)
-              </p>
+              
+              <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
+                <label className="block text-lg font-semibold text-orange-800 mb-2">
+                  🏷️ Total Coût
+                </label>
+                <div className="text-3xl font-bold text-orange-900">
+                  {formatCurrency(submissionForm.cost_total)}
+                </div>
+              </div>
             </div>
+
+            {/* Marge bénéficiaire */}
+            {submissionForm.amount > 0 && submissionForm.cost_total > 0 && (
+              <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-blue-800">📈 Marge Bénéficiaire</span>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-blue-900">
+                      {formatCurrency(submissionForm.amount - submissionForm.cost_total)}
+                    </div>
+                    <div className="text-sm text-blue-700">
+                      {((submissionForm.amount - submissionForm.cost_total) / submissionForm.amount * 100).toFixed(1)}% marge
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end space-x-3 pt-4">
               <button
@@ -812,8 +1051,9 @@ export default function SoumissionsManager() {
                   setShowForm(false);
                   setEditingSubmission(null);
                   setSelectedItems([]);
-                  setSubmissionForm({client_name: '', description: '', amount: 0, status: 'draft', items: []});
+                  setSubmissionForm({client_name: '', description: '', amount: 0, cost_total: 0, status: 'draft', items: []});
                   setProductSearchTerm('');
+                  setFocusedProductIndex(-1);
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
@@ -827,6 +1067,80 @@ export default function SoumissionsManager() {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Version impression */}
+        <div className="hidden print:block bg-white p-8 max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-900">SOUMISSION</h1>
+            <p className="text-gray-600">Date: {new Date().toLocaleDateString('fr-CA')}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8 mb-8">
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">Client:</h3>
+              <p>{submissionForm.client_name}</p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">Statut:</h3>
+              <p>{submissionForm.status === 'draft' ? 'Brouillon' : 
+                  submissionForm.status === 'sent' ? 'Envoyée' : 'Acceptée'}</p>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <h3 className="font-semibold text-gray-900 mb-2">Description:</h3>
+            <p>{submissionForm.description}</p>
+          </div>
+
+          {selectedItems.length > 0 && (
+            <div className="mb-8">
+              <h3 className="font-semibold text-gray-900 mb-4">Articles:</h3>
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 p-2 text-left">Code</th>
+                    <th className="border border-gray-300 p-2 text-left">Description</th>
+                    <th className="border border-gray-300 p-2 text-center">Qté</th>
+                    <th className="border border-gray-300 p-2 text-right">Prix Unit.</th>
+                    <th className="border border-gray-300 p-2 text-right">Coût Unit.</th>
+                    <th className="border border-gray-300 p-2 text-right">Total Vente</th>
+                    <th className="border border-gray-300 p-2 text-right">Total Coût</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedItems.map((item) => (
+                    <tr key={item.product_id}>
+                      <td className="border border-gray-300 p-2">{item.product_id}</td>
+                      <td className="border border-gray-300 p-2">{item.description}</td>
+                      <td className="border border-gray-300 p-2 text-center">{item.quantity}</td>
+                      <td className="border border-gray-300 p-2 text-right">{formatCurrency(item.selling_price)}</td>
+                      <td className="border border-gray-300 p-2 text-right">{formatCurrency(item.cost_price)}</td>
+                      <td className="border border-gray-300 p-2 text-right">{formatCurrency(item.selling_price * item.quantity)}</td>
+                      <td className="border border-gray-300 p-2 text-right">{formatCurrency(item.cost_price * item.quantity)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="border-t-2 border-gray-300 pt-4">
+            <div className="grid grid-cols-2 gap-8">
+              <div>
+                <p className="text-lg font-semibold">Total Vente: {formatCurrency(submissionForm.amount)}</p>
+                <p className="text-lg font-semibold">Total Coût: {formatCurrency(submissionForm.cost_total)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xl font-bold">Marge: {formatCurrency(submissionForm.amount - submissionForm.cost_total)}</p>
+                {submissionForm.amount > 0 && (
+                  <p className="text-sm text-gray-600">
+                    ({((submissionForm.amount - submissionForm.cost_total) / submissionForm.amount * 100).toFixed(1)}%)
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -910,7 +1224,7 @@ export default function SoumissionsManager() {
             <div className="flex items-center">
               <span className="text-3xl mr-3">💰</span>
               <div>
-                <p className="text-sm font-medium text-white/90">Total</p>
+                <p className="text-sm font-medium text-white/90">Total Vente</p>
                 <p className="text-2xl font-bold">
                   {formatCurrency(soumissions.reduce((sum, s) => sum + (s.amount || 0), 0))}
                 </p>
@@ -923,7 +1237,7 @@ export default function SoumissionsManager() {
       {/* Debug info */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-sm text-yellow-800">
-          🔍 <strong>Debug:</strong> {products.length} produits dans la table 'products', {clients.length} clients, {soumissions.length} soumissions
+          🔍 <strong>Debug:</strong> {products.length} produits, {clients.length} clients disponibles dans dropdown, {soumissions.length} soumissions
         </p>
       </div>
 
@@ -970,7 +1284,15 @@ export default function SoumissionsManager() {
                       📝 {submission.description}
                     </p>
                     <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                      <span>💰 {formatCurrency(submission.amount)}</span>
+                      <span className="font-medium text-green-600">💰 Vente: {formatCurrency(submission.amount)}</span>
+                      {submission.cost_total && (
+                        <span className="font-medium text-orange-600">🏷️ Coût: {formatCurrency(submission.cost_total)}</span>
+                      )}
+                      {submission.amount > 0 && submission.cost_total > 0 && (
+                        <span className="font-medium text-blue-600">
+                          📈 Marge: {formatCurrency(submission.amount - submission.cost_total)}
+                        </span>
+                      )}
                       <span>📅 {formatDate(submission.created_at)}</span>
                       <span className={`px-2 py-1 rounded text-xs ${
                         submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
@@ -994,6 +1316,7 @@ export default function SoumissionsManager() {
                         client_name: submission.client_name,
                         description: submission.description,
                         amount: submission.amount,
+                        cost_total: submission.cost_total || 0,
                         status: submission.status,
                         items: submission.items || []
                       });
