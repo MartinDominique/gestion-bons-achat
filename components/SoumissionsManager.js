@@ -9,6 +9,8 @@ export default function SoumissionsManager() {
   const [showClientManager, setShowClientManager] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showNonInventoryForm, setShowNonInventoryForm] = useState(false);
+  const [showQuickAddProduct, setShowQuickAddProduct] = useState(false);
+  const [showInventoryUpload, setShowInventoryUpload] = useState(false);
   const [editingSubmission, setEditingSubmission] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,6 +66,15 @@ export default function SoumissionsManager() {
     price: '',
     category: '',
     supplier: ''
+  });
+
+  const [quickProductForm, setQuickProductForm] = useState({
+    product_id: '',
+    description: '',
+    selling_price: '',
+    cost_price: '',
+    unit: 'pcs',
+    product_group: 'Divers'
   });
 
   // Calcul automatique du montant vente (ET coût pour affichage seulement)
@@ -385,10 +396,33 @@ export default function SoumissionsManager() {
         {/* Version écran */}
         <div className="print:hidden bg-gradient-to-br from-purple-50 via-white to-indigo-50 rounded-xl shadow-lg border border-purple-200 p-8">
           <div className="bg-purple-600 text-white px-6 py-4 rounded-lg mb-6 flex justify-between items-center">
-            <h2 className="text-2xl font-bold">
-              {editingSubmission ? '✏️ Modifier Soumission' : '📝 Nouvelle Soumission'}
-            </h2>
+            <div className="flex items-center space-x-6">
+              <h2 className="text-2xl font-bold">
+                {editingSubmission ? '✏️ Modifier Soumission' : '📝 Nouvelle Soumission'}
+              </h2>
+              {/* Statut dans la barre mauve pendant l'édition */}
+              {editingSubmission && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">Statut:</span>
+                  <select
+                    value={submissionForm.status}
+                    onChange={(e) => setSubmissionForm({...submissionForm, status: e.target.value})}
+                    className="rounded-md border-white/20 bg-white/10 text-white text-sm px-3 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  >
+                    <option value="draft" className="text-gray-900">📝 Brouillon</option>
+                    <option value="sent" className="text-gray-900">📤 Envoyée</option>
+                    <option value="accepted" className="text-gray-900">✅ Acceptée</option>
+                  </select>
+                </div>
+              )}
+            </div>
             <div className="flex space-x-3">
+              <button
+                onClick={() => setShowInventoryUpload(true)}
+                className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 flex items-center text-sm"
+              >
+                📁 Import CSV
+              </button>
               <button
                 onClick={handlePrint}
                 className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 flex items-center"
@@ -421,7 +455,7 @@ export default function SoumissionsManager() {
           </div>
           
           <form id="submission-form" onSubmit={handleSubmissionSubmit} className="space-y-6">
-            {/* Informations de base */}
+            {/* Informations de base - Client et Description sur même ligne */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Dropdown Client */}
               <div className="bg-blue-50 p-4 rounded-lg">
@@ -441,32 +475,21 @@ export default function SoumissionsManager() {
                 </select>
               </div>
 
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <label className="block text-sm font-semibold text-gray-800 mb-2">Statut</label>
-                <select
-                  value={submissionForm.status}
-                  onChange={(e) => setSubmissionForm({...submissionForm, status: e.target.value})}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3"
-                >
-                  <option value="draft">📝 Brouillon</option>
-                  <option value="sent">📤 Envoyée</option>
-                  <option value="accepted">✅ Acceptée</option>
-                </select>
+              {/* Description sur 1 ligne */}
+              <div className="bg-green-50 p-4 rounded-lg">
+                <label className="block text-sm font-semibold text-green-800 mb-2">Description *</label>
+                <input
+                  type="text"
+                  value={submissionForm.description}
+                  onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value})}
+                  className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
+                  placeholder="Description de la soumission..."
+                  required
+                />
               </div>
             </div>
 
-            <div className="bg-green-50 p-4 rounded-lg">
-              <label className="block text-sm font-semibold text-green-800 mb-2">Description</label>
-              <textarea
-                value={submissionForm.description}
-                onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value})}
-                className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
-                rows="3"
-                required
-              />
-            </div>
-
-            {/* Recherche produits avec navigation clavier */}
+            {/* Recherche produits avec navigation clavier - Réduite de moitié + bouton ajout rapide */}
             <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
               <h3 className="text-lg font-semibold text-indigo-800 mb-4">
                 🔍 Recherche Produits (6718 au total)
@@ -474,19 +497,32 @@ export default function SoumissionsManager() {
                   (Tapez 2+ caractères, ↑↓ pour naviguer, TAB/ENTER pour sélectionner)
                 </span>
               </h3>
-              <input
-                id="product-search"
-                type="text"
-                placeholder="Rechercher un produit (ID, description, groupe) - minimum 2 caractères..."
-                value={productSearchTerm}
-                onChange={(e) => {
-                  setProductSearchTerm(e.target.value);
-                  setFocusedProductIndex(-1);
-                }}
-                onKeyDown={handleProductKeyDown}
-                className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 mb-4"
-                autoComplete="off"
-              />
+              
+              {/* Barre de recherche réduite + bouton ajout rapide */}
+              <div className="flex gap-4 mb-4">
+                <div className="flex-1 max-w-md">
+                  <input
+                    id="product-search"
+                    type="text"
+                    placeholder="Rechercher un produit - minimum 2 caractères..."
+                    value={productSearchTerm}
+                    onChange={(e) => {
+                      setProductSearchTerm(e.target.value);
+                      setFocusedProductIndex(-1);
+                    }}
+                    onKeyDown={handleProductKeyDown}
+                    className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
+                    autoComplete="off"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickAddProduct(true)}
+                  className="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 whitespace-nowrap flex items-center"
+                >
+                  ➕ Produit Non-Inventaire
+                </button>
+              </div>
               
               {/* Indicateur de recherche */}
               {searchingProducts && (
@@ -620,6 +656,195 @@ export default function SoumissionsManager() {
                         Ajouter
                       </button>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal ajout rapide produit non-inventaire */}
+            {showQuickAddProduct && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+                  <h3 className="text-lg font-semibold mb-4 text-orange-600">
+                    ➕ Ajouter Produit Non-Inventaire
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Code Produit *</label>
+                      <input
+                        type="text"
+                        value={quickProductForm.product_id}
+                        onChange={(e) => setQuickProductForm({...quickProductForm, product_id: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3"
+                        placeholder="Ex: TEMP-001"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Unité</label>
+                      <select
+                        value={quickProductForm.unit}
+                        onChange={(e) => setQuickProductForm({...quickProductForm, unit: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3"
+                      >
+                        <option value="pcs">pcs</option>
+                        <option value="m">m</option>
+                        <option value="m2">m²</option>
+                        <option value="kg">kg</option>
+                        <option value="litre">litre</option>
+                        <option value="heure">heure</option>
+                        <option value="lot">lot</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                      <input
+                        type="text"
+                        value={quickProductForm.description}
+                        onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3"
+                        placeholder="Description du produit..."
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Prix Coût *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={quickProductForm.cost_price}
+                        onChange={(e) => setQuickProductForm({...quickProductForm, cost_price: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vente *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={quickProductForm.selling_price}
+                        onChange={(e) => setQuickProductForm({...quickProductForm, selling_price: e.target.value})}
+                        className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Calcul automatique de la marge */}
+                  {quickProductForm.selling_price && quickProductForm.cost_price && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        💰 Marge: {formatCurrency(parseFloat(quickProductForm.selling_price || 0) - parseFloat(quickProductForm.cost_price || 0))} 
+                        ({((parseFloat(quickProductForm.selling_price || 0) - parseFloat(quickProductForm.cost_price || 0)) / parseFloat(quickProductForm.selling_price || 1) * 100).toFixed(1)}%)
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-end space-x-3 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowQuickAddProduct(false);
+                        setQuickProductForm({
+                          product_id: '',
+                          description: '',
+                          selling_price: '',
+                          cost_price: '',
+                          unit: 'pcs',
+                          product_group: 'Divers'
+                        });
+                      }}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (quickProductForm.product_id && quickProductForm.description && 
+                            quickProductForm.selling_price && quickProductForm.cost_price) {
+                          // Créer le produit temporaire et l'ajouter directement
+                          const tempProduct = {
+                            product_id: quickProductForm.product_id,
+                            description: quickProductForm.description,
+                            selling_price: parseFloat(quickProductForm.selling_price),
+                            cost_price: parseFloat(quickProductForm.cost_price),
+                            unit: quickProductForm.unit,
+                            product_group: quickProductForm.product_group,
+                            stock_qty: 0 // Produit non-inventaire
+                          };
+                          
+                          // Ajouter avec quantité 1 par défaut
+                          addItemToSubmission(tempProduct, 1);
+                          
+                          // Fermer le modal et réinitialiser
+                          setShowQuickAddProduct(false);
+                          setQuickProductForm({
+                            product_id: '',
+                            description: '',
+                            selling_price: '',
+                            cost_price: '',
+                            unit: 'pcs',
+                            product_group: 'Divers'
+                          });
+                        }
+                      }}
+                      className="px-4 py-2 border border-transparent rounded-lg text-white bg-orange-600 hover:bg-orange-700"
+                    >
+                      ✅ Ajouter à la soumission
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal upload CSV inventaire */}
+            {showInventoryUpload && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+                  <h3 className="text-lg font-semibold mb-4 text-green-600">
+                    📁 Import Inventaire CSV
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Fichier CSV
+                      </label>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                      />
+                    </div>
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                      <p className="font-medium mb-2">Format attendu (en-têtes) :</p>
+                      <p>product_id, description, selling_price, cost_price, unit, product_group, stock_qty</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end space-x-3 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowInventoryUpload(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Ici tu peux ajouter la logique d'import CSV
+                        alert('⚠️ Fonctionnalité import CSV à implémenter');
+                        setShowInventoryUpload(false);
+                      }}
+                      className="px-4 py-2 border border-transparent rounded-lg text-white bg-green-600 hover:bg-green-700"
+                    >
+                      📁 Importer
+                    </button>
                   </div>
                 </div>
               </div>
