@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPO, setEditingPO] = useState(null);
@@ -24,7 +26,54 @@ export default function PurchaseOrderManager() {
 
   useEffect(() => {
     fetchPurchaseOrders();
+    fetchClients();
+    fetchSubmissions();
+    
+    // Déconnexion automatique à la fermeture du navigateur
+    const handleBeforeUnload = () => {
+      supabase.auth.signOut();
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Erreur chargement clients:', error);
+      } else {
+        setClients(data || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des clients:', error);
+    }
+  };
+
+  const fetchSubmissions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .order('submission_number', { ascending: true });
+
+      if (error) {
+        console.error('Erreur chargement soumissions:', error);
+      } else {
+        setSubmissions(data || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des soumissions:', error);
+    }
+  };
 
   const fetchPurchaseOrders = async () => {
     try {
@@ -275,33 +324,85 @@ export default function PurchaseOrderManager() {
       <div className="max-w-4xl mx-auto">
         {/* Formulaire avec couleurs et tes vraies colonnes */}
         <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl shadow-lg border border-indigo-200 p-8">
-          <div className="bg-indigo-600 text-white px-6 py-4 rounded-lg mb-6">
+          <div className="bg-indigo-600 text-white px-6 py-4 rounded-lg mb-6 flex justify-between items-center">
             <h2 className="text-2xl font-bold flex items-center">
               {editingPO ? '✏️ Modifier le Bon d\'Achat' : '➕ Nouveau Bon d\'Achat'}
             </h2>
+            {/* Boutons déplacés dans le rectangle bleu */}
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingPO(null);
+                  setFormData({
+                    client_name: '',
+                    po_number: '',
+                    submission_no: '',
+                    date: new Date().toISOString().split('T')[0],
+                    amount: '',
+                    status: 'pending',
+                    notes: '',
+                    files: []
+                  });
+                }}
+                className="px-4 py-2 border border-white/30 rounded-lg text-sm font-medium text-white bg-white/20 hover:bg-white/30 backdrop-blur-sm"
+              >
+                ❌ Annuler
+              </button>
+              <button
+                type="submit"
+                form="po-form"
+                className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-indigo-600 bg-white hover:bg-gray-100"
+              >
+                {editingPO ? '💾 Mettre à jour' : '✨ Créer'}
+              </button>
+            </div>
           </div>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Client */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <label className="block text-sm font-semibold text-blue-800 mb-2">
-                👤 Client *
-              </label>
-              <input
-                type="text"
-                value={formData.client_name}
-                onChange={(e) => setFormData({...formData, client_name: e.target.value})}
-                className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-3"
-                placeholder="Nom du client..."
-                required
-              />
+          <form id="po-form" onSubmit={handleSubmit} className="space-y-6">
+            {/* Client (sélection) + Statut */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <label className="block text-sm font-semibold text-blue-800 mb-2">
+                  👤 Client *
+                </label>
+                <select
+                  value={formData.client_name}
+                  onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+                  className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-3"
+                  required
+                >
+                  <option value="">Sélectionner un client...</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.name}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  🏷️ Statut
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg p-3"
+                >
+                  <option value="pending">⏳ En attente</option>
+                  <option value="approved">✅ Approuvé</option>
+                  <option value="rejected">❌ Rejeté</option>
+                </select>
+              </div>
             </div>
 
-            {/* No. Bon d'Achat + Soumission */}
+            {/* No. Bon Achat Client + Soumission */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                 <label className="block text-sm font-semibold text-green-800 mb-2">
-                  📄 Numéro Bon d'Achat *
+                  📄 No. Bon Achat Client *
                 </label>
                 <input
                   type="text"
@@ -315,15 +416,29 @@ export default function PurchaseOrderManager() {
 
               <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
                 <label className="block text-sm font-semibold text-cyan-800 mb-2">
-                  📋 Numéro Soumission
+                  📋 No. Soumission
                 </label>
-                <input
-                  type="text"
-                  value={formData.submission_no}
-                  onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
-                  className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-lg p-3"
-                  placeholder="Ex: SUB-2025-001"
-                />
+                <div className="space-y-2">
+                  <select
+                    value={formData.submission_no}
+                    onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
+                    className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-lg p-3"
+                  >
+                    <option value="">Sélectionner ou entrer manuellement...</option>
+                    {submissions.map((submission) => (
+                      <option key={submission.id} value={submission.submission_number}>
+                        {submission.submission_number}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={formData.submission_no}
+                    onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
+                    className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-lg p-3"
+                    placeholder="Ou entrer manuellement..."
+                  />
+                </div>
               </div>
             </div>
 
@@ -357,16 +472,16 @@ export default function PurchaseOrderManager() {
               </div>
             </div>
 
-            {/* Notes */}
+            {/* Notes (réduit à une ligne) */}
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
               <label className="block text-sm font-semibold text-purple-800 mb-2">
                 📝 Notes
               </label>
-              <textarea
+              <input
+                type="text"
                 value={formData.notes}
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-lg p-3"
-                rows="3"
                 placeholder="Notes et commentaires..."
               />
             </div>
@@ -400,52 +515,6 @@ export default function PurchaseOrderManager() {
                 </div>
               )}
             </div>
-
-            {/* Statut */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
-                🏷️ Statut
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg p-3"
-              >
-                <option value="pending">⏳ En attente</option>
-                <option value="approved">✅ Approuvé</option>
-                <option value="rejected">❌ Rejeté</option>
-              </select>
-            </div>
-
-            {/* Boutons */}
-            <div className="flex justify-end space-x-4 pt-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingPO(null);
-                  setFormData({
-                    client_name: '',
-                    po_number: '',
-                    submission_no: '',
-                    date: new Date().toISOString().split('T')[0],
-                    amount: '',
-                    status: 'pending',
-                    notes: '',
-                    files: []
-                  });
-                }}
-                className="px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-              >
-                ❌ Annuler
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                {editingPO ? '💾 Mettre à jour' : '✨ Créer'}
-              </button>
-            </div>
           </form>
         </div>
       </div>
@@ -454,10 +523,19 @@ export default function PurchaseOrderManager() {
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec statistiques colorées */}
+      {/* En-tête avec logo agrandi 3x et statistiques colorées */}
       <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-6 text-white">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
+          <div className="flex items-center space-x-6">
+            {/* Logo agrandi 3x (315x142 -> 945x426) */}
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              className="w-[315px] h-[142px]"
+              style={{ width: '315px', height: '142px' }}
+            />
+            <h2 className="text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
+          </div>
           <div className="flex space-x-3">
             <button
               onClick={handleSendReport}
