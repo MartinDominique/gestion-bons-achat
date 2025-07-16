@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 
 export default function SoumissionsManager() {
   const [soumissions, setSoumissions] = useState([]);
-  const [inventory, setInventory] = useState([]);
+  const [products, setProducts] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -16,8 +16,8 @@ export default function SoumissionsManager() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
   
-  // Recherche inventaire
-  const [inventorySearchTerm, setInventorySearchTerm] = useState('');
+  // Recherche produits
+  const [productSearchTerm, setProductSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
   
   // Form states
@@ -47,14 +47,14 @@ export default function SoumissionsManager() {
 
   useEffect(() => {
     fetchSoumissions();
-    fetchInventory();
+    fetchProducts();
     fetchClients();
   }, []);
 
   // Calcul automatique du montant
   useEffect(() => {
     const total = selectedItems.reduce((sum, item) => {
-      return sum + (item.price * item.quantity);
+      return sum + (item.selling_price * item.quantity);
     }, 0);
     setSubmissionForm(prev => ({ ...prev, amount: total }));
   }, [selectedItems]);
@@ -75,36 +75,35 @@ export default function SoumissionsManager() {
     }
   };
 
-  const fetchInventory = async () => {
+  const fetchProducts = async () => {
     try {
       const { data, error } = await supabase
-        .from('inventory')
+        .from('products')
         .select('*')
-        .order('name', { ascending: true });
+        .order('description', { ascending: true });
 
       if (error) {
-        console.error('Table inventory pas trouvée:', error);
-        setInventory([]);
+        console.error('Erreur lors du chargement des produits:', error);
+        setProducts([]);
         return;
       }
-      setInventory(data || []);
+      console.log('Produits chargés:', data?.length || 0);
+      setProducts(data || []);
     } catch (error) {
-      console.error('Erreur lors du chargement de l\'inventaire:', error);
-      setInventory([]);
+      console.error('Erreur lors du chargement des produits:', error);
+      setProducts([]);
     }
   };
 
   const fetchClients = async () => {
     try {
-      // Essayer de récupérer les clients depuis la table clients
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .order('name', { ascending: true });
 
       if (error) {
-        // Si la table n'existe pas, utiliser les clients des soumissions
-        console.log('Table clients n\'existe pas, utilisation des clients des soumissions');
+        console.log('Table clients pas trouvée, utilisation des clients des soumissions');
         const { data: submissionsData } = await supabase
           .from('submissions')
           .select('client_name')
@@ -144,36 +143,36 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Gestion des items d'inventaire
-  const addItemToSubmission = (inventoryItem) => {
-    const existingItem = selectedItems.find(item => item.id === inventoryItem.id);
+  // Gestion des items de produits
+  const addItemToSubmission = (product) => {
+    const existingItem = selectedItems.find(item => item.product_id === product.product_id);
     
     if (existingItem) {
       setSelectedItems(selectedItems.map(item => 
-        item.id === inventoryItem.id 
+        item.product_id === product.product_id 
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
       setSelectedItems([...selectedItems, {
-        ...inventoryItem,
+        ...product,
         quantity: 1
       }]);
     }
   };
 
-  const updateItemQuantity = (itemId, quantity) => {
+  const updateItemQuantity = (productId, quantity) => {
     if (quantity <= 0) {
-      setSelectedItems(selectedItems.filter(item => item.id !== itemId));
+      setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
     } else {
       setSelectedItems(selectedItems.map(item =>
-        item.id === itemId ? { ...item, quantity: parseInt(quantity) } : item
+        item.product_id === productId ? { ...item, quantity: parseInt(quantity) } : item
       ));
     }
   };
 
-  const removeItemFromSubmission = (itemId) => {
-    setSelectedItems(selectedItems.filter(item => item.id !== itemId));
+  const removeItemFromSubmission = (productId) => {
+    setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
 
   // Gestion des soumissions
@@ -216,41 +215,11 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Gestion des clients (avec vérification d'existence de table)
-  const createClientsTable = async () => {
-    try {
-      // Tentative de création de la table clients
-      const { error } = await supabase.rpc('create_clients_table');
-      if (!error) {
-        console.log('Table clients créée');
-        await fetchClients();
-      }
-    } catch (error) {
-      console.log('Impossible de créer la table clients automatiquement');
-    }
-  };
-
+  // Gestion des clients
   const handleClientSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Vérifier si on peut utiliser la table clients
-      let canUseClientsTable = true;
-      
-      try {
-        const { data: testData } = await supabase
-          .from('clients')
-          .select('count')
-          .limit(1);
-      } catch (testError) {
-        canUseClientsTable = false;
-      }
-
-      if (!canUseClientsTable) {
-        alert('⚠️ Table clients non disponible. Fonctionnalité limitée aux noms de clients dans les soumissions.');
-        return;
-      }
-
-      if (editingClient && editingClient.id) {
+      if (editingClient && typeof editingClient.id === 'number') {
         const { error } = await supabase
           .from('clients')
           .update(clientForm)
@@ -283,7 +252,6 @@ export default function SoumissionsManager() {
     if (!confirm(`🗑️ Supprimer le client "${client.name}" ?`)) return;
     
     try {
-      // Si c'est un vrai client de la table
       if (typeof client.id === 'number' && client.id >= 0) {
         const { error } = await supabase
           .from('clients')
@@ -323,7 +291,6 @@ export default function SoumissionsManager() {
       });
       setShowNonInventoryForm(false);
       alert('✅ Item non-inventaire ajouté !');
-      await fetchInventory(); // Rafraîchir l'inventaire
     } catch (error) {
       console.error('Erreur:', error);
       alert('❌ Erreur: ' + error.message);
@@ -378,9 +345,10 @@ export default function SoumissionsManager() {
     return matchesSearch && matchesStatus;
   });
 
-  const filteredInventory = inventory.filter(item => 
-    item.name?.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
-    item.description?.toLowerCase().includes(inventorySearchTerm.toLowerCase())
+  const filteredProducts = products.filter(product => 
+    product.description?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+    product.product_id?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+    product.product_group?.toLowerCase().includes(productSearchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -492,9 +460,6 @@ export default function SoumissionsManager() {
               ← Retour
             </button>
           </div>
-          <p className="mt-2 text-white/90">
-            ⚠️ Fonctionnalité limitée - Table clients non configurée dans Supabase
-          </p>
         </div>
 
         {/* Formulaire client */}
@@ -593,23 +558,20 @@ export default function SoumissionsManager() {
                         {client.phone && <p>📞 {client.phone}</p>}
                         {client.contact_person && <p>👤 {client.contact_person}</p>}
                         {client.address && <p>📍 {client.address}</p>}
-                        <p className="text-xs text-gray-400">
-                          {typeof client.id === 'number' && client.id >= 0 ? 'Client BD' : 'Client soumissions'}
-                        </p>
                       </div>
                     </div>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleEditClient(client)}
                         className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
-                        disabled={!(typeof client.id === 'number' && client.id >= 0)}
+                        disabled={!(typeof client.id === 'number')}
                       >
                         ✏️ Modifier
                       </button>
                       <button
                         onClick={() => handleDeleteClient(client)}
                         className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded-lg hover:bg-red-200"
-                        disabled={!(typeof client.id === 'number' && client.id >= 0)}
+                        disabled={!(typeof client.id === 'number')}
                       >
                         🗑️ Supprimer
                       </button>
@@ -693,7 +655,7 @@ export default function SoumissionsManager() {
     );
   }
 
-  // Formulaire soumission avec recherche inventaire
+  // Formulaire soumission avec recherche produits
   if (showForm) {
     return (
       <div className="max-w-6xl mx-auto">
@@ -743,34 +705,42 @@ export default function SoumissionsManager() {
               />
             </div>
 
-            {/* Recherche inventaire */}
+            {/* Recherche produits */}
             <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
-              <h3 className="text-lg font-semibold text-indigo-800 mb-4">🔍 Recherche Inventaire</h3>
+              <h3 className="text-lg font-semibold text-indigo-800 mb-4">🔍 Recherche Produits</h3>
               <input
                 type="text"
-                placeholder="Rechercher un item dans l'inventaire..."
-                value={inventorySearchTerm}
-                onChange={(e) => setInventorySearchTerm(e.target.value)}
+                placeholder="Rechercher un produit (ID, description, groupe)..."
+                value={productSearchTerm}
+                onChange={(e) => setProductSearchTerm(e.target.value)}
                 className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 mb-4"
               />
               
-              {inventorySearchTerm && (
+              {productSearchTerm && (
                 <div className="max-h-60 overflow-y-auto border border-indigo-200 rounded-lg">
-                  {filteredInventory.length === 0 ? (
+                  {filteredProducts.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
-                      Aucun item trouvé dans l'inventaire
+                      Aucun produit trouvé
                     </div>
                   ) : (
-                    filteredInventory.map((item) => (
-                      <div key={item.id} className="p-3 border-b border-indigo-100 hover:bg-indigo-50 flex justify-between items-center">
+                    filteredProducts.map((product) => (
+                      <div key={product.product_id} className="p-3 border-b border-indigo-100 hover:bg-indigo-50 flex justify-between items-center">
                         <div>
-                          <h4 className="font-medium text-gray-900">{item.name}</h4>
-                          <p className="text-sm text-gray-500">{item.description}</p>
-                          <p className="text-sm text-indigo-600 font-medium">{formatCurrency(item.price)}</p>
+                          <h4 className="font-medium text-gray-900">
+                            {product.product_id} - {product.description}
+                          </h4>
+                          <div className="text-sm text-gray-500 space-x-4">
+                            <span>📦 Groupe: {product.product_group}</span>
+                            <span>📏 Unité: {product.unit}</span>
+                            <span>📊 Stock: {product.stock_qty}</span>
+                          </div>
+                          <p className="text-sm text-indigo-600 font-medium">
+                            💰 Prix vente: {formatCurrency(product.selling_price)}
+                          </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => addItemToSubmission(item)}
+                          onClick={() => addItemToSubmission(product)}
                           className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
                         >
                           ➕ Ajouter
@@ -785,15 +755,19 @@ export default function SoumissionsManager() {
             {/* Items sélectionnés */}
             {selectedItems.length > 0 && (
               <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-                <h3 className="text-lg font-semibold text-yellow-800 mb-4">📦 Items Sélectionnés</h3>
+                <h3 className="text-lg font-semibold text-yellow-800 mb-4">📦 Produits Sélectionnés</h3>
                 <div className="space-y-3">
                   {selectedItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-yellow-200">
+                    <div key={item.product_id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-yellow-200">
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{item.name}</h4>
-                        <p className="text-sm text-gray-500">{item.description}</p>
+                        <h4 className="font-medium text-gray-900">
+                          {item.product_id} - {item.description}
+                        </h4>
+                        <div className="text-sm text-gray-500">
+                          <span>📦 {item.product_group}</span> • <span>📏 {item.unit}</span>
+                        </div>
                         <p className="text-sm text-yellow-600 font-medium">
-                          {formatCurrency(item.price)} × {item.quantity} = {formatCurrency(item.price * item.quantity)}
+                          {formatCurrency(item.selling_price)} × {item.quantity} = {formatCurrency(item.selling_price * item.quantity)}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -801,12 +775,12 @@ export default function SoumissionsManager() {
                           type="number"
                           min="1"
                           value={item.quantity}
-                          onChange={(e) => updateItemQuantity(item.id, e.target.value)}
+                          onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
                           className="w-16 rounded border-gray-300 text-center"
                         />
                         <button
                           type="button"
-                          onClick={() => removeItemFromSubmission(item.id)}
+                          onClick={() => removeItemFromSubmission(item.product_id)}
                           className="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
                         >
                           ❌
@@ -827,7 +801,7 @@ export default function SoumissionsManager() {
                 {formatCurrency(submissionForm.amount)}
               </div>
               <p className="text-sm text-green-600 mt-1">
-                Basé sur {selectedItems.length} item(s) sélectionné(s)
+                Basé sur {selectedItems.length} produit(s) sélectionné(s)
               </p>
             </div>
 
@@ -839,7 +813,7 @@ export default function SoumissionsManager() {
                   setEditingSubmission(null);
                   setSelectedItems([]);
                   setSubmissionForm({client_name: '', description: '', amount: 0, status: 'draft', items: []});
-                  setInventorySearchTerm('');
+                  setProductSearchTerm('');
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
@@ -949,7 +923,7 @@ export default function SoumissionsManager() {
       {/* Debug info */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-sm text-yellow-800">
-          🔍 <strong>Debug:</strong> {inventory.length} items inventaire, {clients.length} clients, {soumissions.length} soumissions
+          🔍 <strong>Debug:</strong> {products.length} produits dans la table 'products', {clients.length} clients, {soumissions.length} soumissions
         </p>
       </div>
 
