@@ -1,18 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Package, FileText, LogOut } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '../lib/supabase';
+import { useEffect, useState } from 'react';
 
 const pages = [
   { id: 'bons-achat', name: "Bons d'achat", icon: Package },
   { id: 'soumissions', name: 'Soumissions', icon: FileText }
 ];
 
-export default function Navigation({ user }) {
+export default function Navigation() {
   const pathname = usePathname();
-  const supabase = createClientComponentClient();
+  const router = useRouter();
+  const supabase = createClient();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Récupérer l'utilisateur actuel
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+
+    getUser();
+
+    // Écouter les changements d'auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase.auth]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <nav className="bg-white shadow mb-6">
@@ -38,12 +63,9 @@ export default function Navigation({ user }) {
 
         {user && (
           <li className="ml-auto flex items-center gap-4">
-            <span className="text-sm text-gray-700">Bonjour {user.email}</span>
+            <span className="text-sm text-gray-700">Bonjour {user.email}</span>
             <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                window.location.href = '/login';
-              }}
+              onClick={handleSignOut}
               className="flex items-center text-red-600 hover:underline"
             >
               <LogOut className="w-4 h-4 mr-1" />
