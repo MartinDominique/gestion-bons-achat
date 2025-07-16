@@ -157,7 +157,7 @@ export default function SoumissionsManager() {
 
   // Gestion de sélection client avec debug
   function handleClientSelection(clientId) {
-    addDebugLog('🎯 Sélection client ID: ' + clientId);
+    addDebugLog('🎯 Sélection client ID: ' + clientId + ' (type: ' + typeof clientId + ')');
     
     if (!clientId) {
       setSelectedClient(null);
@@ -165,7 +165,11 @@ export default function SoumissionsManager() {
       return;
     }
     
-    const client = clients.find(c => c.id === clientId);
+    // Debug: afficher les IDs des clients pour comparer
+    addDebugLog('IDs disponibles: ' + clients.map(c => c.id + ' (' + typeof c.id + ')').join(', '));
+    
+    // Corriger le problème de type - comparer en string
+    const client = clients.find(c => String(c.id) === String(clientId));
     addDebugLog('Client trouvé: ' + (client ? JSON.stringify(client) : 'AUCUN'));
     
     setSelectedClient(client || null);
@@ -378,6 +382,46 @@ export default function SoumissionsManager() {
           <div className="mt-2 text-sm">
             <strong>État actuel:</strong> {clients.length} clients, {products.length} produits, 
             Client sélectionné: {selectedClient ? selectedClient.name : 'AUCUN'}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button 
+              onClick={() => {
+                addDebugLog('🧪 Test recherche basique...');
+                if (products.length > 0) {
+                  // Tester avec les premiers caractères du premier produit
+                  const firstProduct = products[0];
+                  const testTerm = firstProduct.product_id ? firstProduct.product_id.substring(0, 2) : 'test';
+                  addDebugLog('Test avec: "' + testTerm + '"');
+                  handleProductSearch(testTerm);
+                } else {
+                  addDebugLog('❌ Aucun produit pour tester');
+                }
+              }}
+              className="px-3 py-1 bg-yellow-600 text-white rounded text-sm"
+            >
+              🧪 Test recherche
+            </button>
+            <button 
+              onClick={() => {
+                addDebugLog('🧪 Test sélection client...');
+                if (clients.length > 0) {
+                  const firstClient = clients[0];
+                  addDebugLog('Test sélection: ' + firstClient.id);
+                  handleClientSelection(firstClient.id);
+                } else {
+                  addDebugLog('❌ Aucun client pour tester');
+                }
+              }}
+              className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+            >
+              🧪 Test client
+            </button>
+            <button 
+              onClick={() => setDebugInfo('')}
+              className="px-3 py-1 bg-gray-600 text-white rounded text-sm"
+            >
+              🗑️ Vider log
+            </button>
           </div>
         </div>
 
