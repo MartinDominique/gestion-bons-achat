@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 
 export default function SoumissionsManager() {
   const [soumissions, setSoumissions] = useState([]);
-  const [products, setProducts] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -18,7 +17,7 @@ export default function SoumissionsManager() {
   
   // Recherche produits avec debounce et navigation clavier
   const [productSearchTerm, setProductSearchTerm] = useState('');
-  const [products, setProducts] = useState([]); // Sera vide au démarrage
+  const [products, setProducts] = useState([]); // Sera vide au démarrage - recherche dynamique
   const [searchingProducts, setSearchingProducts] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [focusedProductIndex, setFocusedProductIndex] = useState(-1);
