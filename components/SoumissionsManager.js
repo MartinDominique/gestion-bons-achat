@@ -31,19 +31,32 @@ export default function SoumissionsManager() {
   const [importing, setImporting] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // États de debug
+  const [debugInfo, setDebugInfo] = useState('');
+
+  // Fonction de log debug
+  const addDebugLog = (message) => {
+    console.log('🔍 DEBUG:', message);
+    setDebugInfo(prev => prev + '\n' + new Date().toLocaleTimeString() + ': ' + message);
+  };
+
   // Vérifier l'authentification et charger les données
   useEffect(() => {
     const initializeData = async () => {
       try {
+        addDebugLog('Initialisation...');
+        
         // Vérifier l'utilisateur
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.error('Utilisateur non connecté');
+          addDebugLog('❌ Utilisateur non connecté');
           return;
         }
+        addDebugLog('✅ Utilisateur connecté: ' + user.email);
         setUser(user);
 
         // Charger toutes les données
+        addDebugLog('Chargement des données...');
         await Promise.all([
           loadProducts(),
           loadClients(), 
@@ -52,9 +65,10 @@ export default function SoumissionsManager() {
         
         generateNewQuoteNumber();
       } catch (error) {
-        console.error('Erreur initialisation:', error);
+        addDebugLog('❌ Erreur initialisation: ' + error.message);
       } finally {
         setLoading(false);
+        addDebugLog('✅ Initialisation terminée');
       }
     };
 
@@ -63,44 +77,57 @@ export default function SoumissionsManager() {
 
   async function loadProducts() {
     try {
+      addDebugLog('📦 Chargement produits...');
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('product_id');
       
       if (error) {
-        console.error('Erreur chargement produits:', error);
+        addDebugLog('❌ Erreur produits: ' + error.message);
         return;
       }
       
-      console.log('Produits chargés:', data?.length || 0);
+      addDebugLog(`✅ ${data?.length || 0} produits chargés`);
       setProducts(data || []);
+      
+      // Log des premiers produits pour vérification
+      if (data && data.length > 0) {
+        addDebugLog('Premier produit: ' + JSON.stringify(data[0]));
+      }
     } catch (error) {
-      console.error('Erreur loadProducts:', error);
+      addDebugLog('❌ Exception loadProducts: ' + error.message);
     }
   }
 
   async function loadClients() {
     try {
+      addDebugLog('👥 Chargement clients...');
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .order('name');
       
       if (error) {
-        console.error('Erreur chargement clients:', error);
+        addDebugLog('❌ Erreur clients: ' + error.message);
         return;
       }
       
-      console.log('Clients chargés:', data?.length || 0);
+      addDebugLog(`✅ ${data?.length || 0} clients chargés`);
       setClients(data || []);
+      
+      // Log des clients pour vérification
+      if (data && data.length > 0) {
+        addDebugLog('Premier client: ' + JSON.stringify(data[0]));
+      }
     } catch (error) {
-      console.error('Erreur loadClients:', error);
+      addDebugLog('❌ Exception loadClients: ' + error.message);
     }
   }
 
   async function loadQuotes() {
     try {
+      addDebugLog('📋 Chargement soumissions...');
       const { data, error } = await supabase
         .from('quotes')
         .select(`
@@ -110,14 +137,14 @@ export default function SoumissionsManager() {
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Erreur chargement soumissions:', error);
+        addDebugLog('❌ Erreur soumissions: ' + error.message);
         return;
       }
       
-      console.log('Soumissions chargées:', data?.length || 0);
+      addDebugLog(`✅ ${data?.length || 0} soumissions chargées`);
       setQuotes(data || []);
     } catch (error) {
-      console.error('Erreur loadQuotes:', error);
+      addDebugLog('❌ Exception loadQuotes: ' + error.message);
     }
   }
 
@@ -125,39 +152,71 @@ export default function SoumissionsManager() {
     const d = new Date();
     const quoteId = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${d.getTime().toString().slice(-4)}`;
     setCurrentQuoteId(quoteId);
-    console.log('Nouveau numéro de soumission:', quoteId);
+    addDebugLog('📄 Nouveau numéro: ' + quoteId);
   }
 
+  // Gestion de sélection client avec debug
+  function handleClientSelection(clientId) {
+    addDebugLog('🎯 Sélection client ID: ' + clientId);
+    
+    if (!clientId) {
+      setSelectedClient(null);
+      addDebugLog('❌ Aucun client sélectionné');
+      return;
+    }
+    
+    const client = clients.find(c => c.id === clientId);
+    addDebugLog('Client trouvé: ' + (client ? JSON.stringify(client) : 'AUCUN'));
+    
+    setSelectedClient(client || null);
+    
+    if (client) {
+      addDebugLog('✅ Client sélectionné: ' + client.name);
+    }
+  }
+
+  // Gestion de recherche produit avec debug
   function handleProductSearch(val) {
+    addDebugLog('🔍 Recherche: "' + val + '"');
     setProductSearch(val);
-    console.log('Recherche:', val, 'Produits disponibles:', products.length);
     
     if (val.length < 2) {
       setShowSuggestions(false);
       setSearchSuggestions([]);
+      addDebugLog('❌ Recherche trop courte');
       return;
     }
     
+    addDebugLog('📦 Recherche dans ' + products.length + ' produits...');
+    
     const res = products.filter(p => {
       const searchTerm = val.toLowerCase();
-      return (
-        (p.product_id?.toLowerCase() || '').includes(searchTerm) ||
-        (p.description?.toLowerCase() || '').includes(searchTerm)
-      );
-    }).slice(0, 8); // Limiter à 8 résultats
+      const matchId = (p.product_id?.toLowerCase() || '').includes(searchTerm);
+      const matchDesc = (p.description?.toLowerCase() || '').includes(searchTerm);
+      return matchId || matchDesc;
+    }).slice(0, 8);
     
-    console.log('Suggestions trouvées:', res.length);
+    addDebugLog(`✅ ${res.length} suggestions trouvées`);
     setSearchSuggestions(res);
-    setShowSuggestions(res.length > 0);
+    setShowSuggestions(true);
+    
+    // Log des suggestions
+    res.forEach((p, i) => {
+      addDebugLog(`  ${i+1}. ${p.product_id} - ${p.description}`);
+    });
   }
 
   function addProductToQuote(product, qty = null) {
+    addDebugLog('➕ Ajout produit: ' + product.product_id);
+    
     const q = qty || quantity;
     const idx = currentQuote.findIndex(i => i.product_id === product.product_id);
+    
     if (idx !== -1) {
       const updated = [...currentQuote];
       updated[idx].quantity += q;
       setCurrentQuote(updated);
+      addDebugLog('📈 Quantité mise à jour');
     } else {
       setCurrentQuote([...currentQuote, { 
         ...product, 
@@ -166,13 +225,16 @@ export default function SoumissionsManager() {
         selling_price: product.selling_price || 0,
         cost_price: product.cost_price || 0
       }]);
+      addDebugLog('➕ Nouveau produit ajouté');
     }
+    
     setProductSearch('');
     setQuantity(1);
     setShowSuggestions(false);
   }
 
   function removeProductFromQuote(i) {
+    addDebugLog('🗑️ Suppression produit index: ' + i);
     setCurrentQuote(currentQuote.filter((_, idx) => idx !== i));
   }
 
@@ -185,17 +247,22 @@ export default function SoumissionsManager() {
   }
 
   async function saveQuote() {
+    addDebugLog('💾 Sauvegarde soumission...');
+    
     if (!selectedClient) {
       alert('Veuillez sélectionner un client');
+      addDebugLog('❌ Aucun client sélectionné');
       return;
     }
     if (!currentQuote.length) {
       alert('Veuillez ajouter au moins un produit');
+      addDebugLog('❌ Aucun produit dans la soumission');
       return;
     }
 
     try {
       const t = calculateTotals();
+      addDebugLog('💰 Total calculé: ' + t.total);
       
       // Sauvegarder la soumission
       const { error: qErr } = await supabase.from('quotes').upsert({
@@ -211,10 +278,12 @@ export default function SoumissionsManager() {
       });
       
       if (qErr) {
-        console.error('Erreur sauvegarde soumission:', qErr);
+        addDebugLog('❌ Erreur sauvegarde: ' + qErr.message);
         alert('Erreur: ' + qErr.message);
         return;
       }
+
+      addDebugLog('✅ Soumission sauvegardée');
 
       // Supprimer les anciens items
       await supabase.from('quote_items').delete().eq('quote_id', currentQuoteId);
@@ -233,11 +302,12 @@ export default function SoumissionsManager() {
       const { error: iErr } = await supabase.from('quote_items').insert(items);
       
       if (iErr) {
-        console.error('Erreur sauvegarde items:', iErr);
+        addDebugLog('❌ Erreur items: ' + iErr.message);
         alert('Erreur items: ' + iErr.message);
         return;
       }
 
+      addDebugLog('✅ Items sauvegardés');
       alert('Soumission sauvegardée avec succès !');
       
       // Réinitialiser
@@ -247,7 +317,7 @@ export default function SoumissionsManager() {
       await loadQuotes();
       
     } catch (error) {
-      console.error('Erreur saveQuote:', error);
+      addDebugLog('❌ Exception saveQuote: ' + error.message);
       alert('Erreur: ' + error.message);
     }
   }
@@ -256,7 +326,9 @@ export default function SoumissionsManager() {
     const file = e.target.files[0];
     if (!file) return;
     
+    addDebugLog('📥 Import fichier: ' + file.name);
     setImporting(true);
+    
     try {
       const form = new FormData();
       form.append('file', file);
@@ -264,12 +336,15 @@ export default function SoumissionsManager() {
       const json = await res.json();
       
       if (res.ok) {
+        addDebugLog('✅ Import réussi: ' + json.rows + ' produits');
         alert(`${json.rows} produits mis à jour`);
         await loadProducts();
       } else {
+        addDebugLog('❌ Erreur import: ' + json.error);
         alert('Erreur import: ' + json.error);
       }
     } catch (error) {
+      addDebugLog('❌ Exception import: ' + error.message);
       alert('Erreur: ' + error.message);
     } finally {
       setImporting(false);
@@ -294,135 +369,19 @@ export default function SoumissionsManager() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         
-        {/* Vue professionnelle pour impression */}
-        <div className="hidden print:block">
-          <div className="quote-container">
-            {/* En-tête professionnel */}
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <div className="flex items-center mb-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center mr-4">
-                    <span className="text-white font-bold text-2xl">ST</span>
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Services TMT</h1>
-                    <p className="text-gray-600">Solutions techniques et maintenance</p>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <p>123 Rue Principale</p>
-                  <p>Saint-Georges, QC G5Y 1A1</p>
-                  <p>Tél: (418) 555-0123</p>
-                  <p>Email: info@servicestmt.com</p>
-                </div>
-              </div>
-              
-              <div className="text-right">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">SOUMISSION</h2>
-                <div className="text-sm">
-                  <p><strong>N°:</strong> {currentQuoteId}</p>
-                  <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                  <p><strong>Valide jusqu'au:</strong> {new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('fr-CA')}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Informations client */}
-            {selectedClient && (
-              <div className="client-info bg-gray-50 border border-gray-300 p-4 rounded mb-6">
-                <h3 className="font-bold text-lg mb-2">FACTURÉ À:</h3>
-                <div>
-                  <p className="font-semibold">{selectedClient.name}</p>
-                  {selectedClient.company && <p>{selectedClient.company}</p>}
-                  {selectedClient.email && <p>Email: {selectedClient.email}</p>}
-                  {selectedClient.phone && <p>Tél: {selectedClient.phone}</p>}
-                </div>
-              </div>
-            )}
-
-            {/* Tableau des articles pour impression */}
-            {currentQuote.length > 0 && (
-              <div className="mb-8">
-                <table className="w-full border-collapse border border-gray-400">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-gray-400 px-3 py-2 text-left">Code</th>
-                      <th className="border border-gray-400 px-3 py-2 text-left">Description</th>
-                      <th className="border border-gray-400 px-3 py-2 text-center">Qté</th>
-                      <th className="border border-gray-400 px-3 py-2 text-right">Prix unit.</th>
-                      <th className="border border-gray-400 px-3 py-2 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentQuote.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="border border-gray-400 px-3 py-2 font-mono text-sm">{item.product_id}</td>
-                        <td className="border border-gray-400 px-3 py-2">
-                          <div className="text-sm">{item.description}</div>
-                          {item.note && (
-                            <div className="text-xs text-gray-600 italic mt-1">Note: {item.note}</div>
-                          )}
-                        </td>
-                        <td className="border border-gray-400 px-3 py-2 text-center">{item.quantity}</td>
-                        <td className="border border-gray-400 px-3 py-2 text-right text-sm">
-                          ${(item.selling_price || 0).toFixed(2)}
-                        </td>
-                        <td className="border border-gray-400 px-3 py-2 text-right font-semibold text-sm">
-                          ${((item.quantity || 0) * (item.selling_price || 0)).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Résumé financier pour impression */}
-            <div className="grid grid-cols-2 gap-8 border-2 border-gray-800 p-4">
-              <div>
-                <h4 className="font-bold mb-3">TERMES ET CONDITIONS:</h4>
-                <div className="text-sm space-y-1">
-                  <p>• Paiement net 30 jours</p>
-                  <p>• Prix valides pour 30 jours</p>
-                  <p>• Installation non incluse</p>
-                  <p>• Garantie: 1 an pièces et main d'œuvre</p>
-                </div>
-                
-                <div className="mt-4">
-                  <p className="font-semibold text-sm">Merci de votre confiance!</p>
-                  <p className="text-sm">Pour questions: info@servicestmt.com</p>
-                </div>
-              </div>
-              
-              <div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Sous-total:</span>
-                    <span>${totals.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>TPS (5%):</span>
-                    <span>${totals.gst.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>TVQ (9.975%):</span>
-                    <span>${totals.pst.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t-2 border-gray-800 pt-2 flex justify-between text-lg font-bold">
-                    <span>TOTAL:</span>
-                    <span>${totals.total.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Zone de debug */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-6">
+          <h3 className="font-bold text-yellow-800 mb-2">🔍 Debug Info:</h3>
+          <div className="text-xs font-mono bg-white p-2 rounded max-h-32 overflow-y-auto">
+            <pre>{debugInfo}</pre>
+          </div>
+          <div className="mt-2 text-sm">
+            <strong>État actuel:</strong> {clients.length} clients, {products.length} produits, 
+            Client sélectionné: {selectedClient ? selectedClient.name : 'AUCUN'}
           </div>
         </div>
 
-        {/* Interface normale (masquée à l'impression) */}
-        <div className="print:hidden">
-          
-          {/* En-tête avec boutons d'action */}
-
+        {/* En-tête avec boutons d'action */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold flex items-center">
             <Calculator className="w-8 h-8 mr-3 text-blue-600" />
@@ -487,12 +446,7 @@ export default function SoumissionsManager() {
             <label className="block text-sm font-medium mb-1">Client *</label>
             <select
               value={selectedClient?.id || ''}
-              onChange={(e) => {
-                console.log('Client sélectionné:', e.target.value);
-                const client = clients.find(c => c.id === e.target.value);
-                console.log('Client trouvé:', client);
-                setSelectedClient(client || null);
-              }}
+              onChange={(e) => handleClientSelection(e.target.value)}
               className="w-full border border-gray-300 px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">-- Sélectionner un client --</option>
@@ -528,28 +482,38 @@ export default function SoumissionsManager() {
                 value={productSearch}
                 onChange={e => handleProductSearch(e.target.value)}
                 onFocus={() => {
+                  addDebugLog('🎯 Focus sur recherche');
                   if (productSearch.length >= 2 && searchSuggestions.length > 0) {
                     setShowSuggestions(true);
                   }
                 }}
-                onBlur={() => {
-                  // Délai pour permettre le clic sur une suggestion
-                  setTimeout(() => setShowSuggestions(false), 200);
-                }}
                 placeholder="Tapez au moins 2 caractères..."
                 className="w-full border border-gray-300 px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
+              
               {products.length === 0 && (
                 <p className="text-sm text-orange-600 mt-1">
                   Aucun produit dans l'inventaire. Importez un fichier CSV d'abord.
                 </p>
               )}
+              
+              {/* Debug: Afficher l'état des suggestions */}
+              <div className="text-xs text-gray-500 mt-1">
+                Debug: showSuggestions={showSuggestions.toString()}, suggestions={searchSuggestions.length}
+              </div>
+              
               {showSuggestions && searchSuggestions.length > 0 && (
-                <div className="absolute z-50 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                  {searchSuggestions.map(p => (
+                <div className="absolute z-50 w-full bg-white border-2 border-blue-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-xl">
+                  <div className="bg-blue-50 px-3 py-1 text-xs text-blue-700 font-medium">
+                    {searchSuggestions.length} résultat(s) trouvé(s)
+                  </div>
+                  {searchSuggestions.map((p, index) => (
                     <div
-                      key={p.id}
-                      onMouseDown={() => addProductToQuote(p)} // onMouseDown au lieu de onClick pour éviter le blur
+                      key={p.id || index}
+                      onClick={() => {
+                        addDebugLog('🖱️ Clic sur produit: ' + p.product_id);
+                        addProductToQuote(p);
+                      }}
                       className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                     >
                       <div className="font-medium text-gray-900">{p.product_id}</div>
@@ -564,12 +528,14 @@ export default function SoumissionsManager() {
                   ))}
                 </div>
               )}
+              
               {showSuggestions && searchSuggestions.length === 0 && productSearch.length >= 2 && (
                 <div className="absolute z-50 w-full bg-white border border-gray-300 rounded-md mt-1 p-3 shadow-lg">
                   <div className="text-gray-500 text-sm">Aucun produit trouvé pour "{productSearch}"</div>
                 </div>
               )}
             </div>
+            
             <div>
               <label className="block text-sm font-medium mb-1">Quantité</label>
               <input
@@ -577,14 +543,17 @@ export default function SoumissionsManager() {
                 min="1"
                 value={quantity}
                 onChange={e => setQuantity(parseInt(e.target.value) || 1)}
-                className="w-full border px-3 py-2 rounded text-center focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2 rounded text-center focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            
             <div className="flex items-end">
               <button
                 onClick={() => {
                   if (searchSuggestions.length > 0) {
                     addProductToQuote(searchSuggestions[0]);
+                  } else {
+                    addDebugLog('❌ Aucune suggestion à ajouter');
                   }
                 }}
                 disabled={!productSearch || searchSuggestions.length === 0}
@@ -754,8 +723,6 @@ export default function SoumissionsManager() {
             </div>
           </div>
         )}
-        </div> {/* Fin de print:hidden */}
-
       </div>
 
       {/* Modal de gestion des clients */}
