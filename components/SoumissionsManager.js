@@ -46,7 +46,6 @@ export default function SoumissionsManager() {
     client_name: '',
     description: '',
     amount: 0,
-    cost_total: 0,
     status: 'draft',
     items: []
   });
@@ -73,7 +72,9 @@ export default function SoumissionsManager() {
     fetchClients();
   }, []);
 
-  // Calcul automatique du montant vente ET coût
+  // Calcul automatique du montant vente (ET coût pour affichage seulement)
+  const [calculatedCostTotal, setCalculatedCostTotal] = useState(0);
+  
   useEffect(() => {
     const totalSelling = selectedItems.reduce((sum, item) => {
       return sum + (item.selling_price * item.quantity);
@@ -85,9 +86,10 @@ export default function SoumissionsManager() {
     
     setSubmissionForm(prev => ({ 
       ...prev, 
-      amount: totalSelling,
-      cost_total: totalCost 
+      amount: totalSelling
     }));
+    
+    setCalculatedCostTotal(totalCost);
   }, [selectedItems]);
 
   const fetchSoumissions = async () => {
@@ -333,10 +335,10 @@ export default function SoumissionsManager() {
         client_name: '',
         description: '',
         amount: 0,
-        cost_total: 0,
         status: 'draft',
         items: []
       });
+      setCalculatedCostTotal(0);
       alert('✅ Soumission sauvegardée !');
     } catch (error) {
       console.error('Erreur:', error);
@@ -751,8 +753,9 @@ export default function SoumissionsManager() {
                       </p>
                       <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                         <span>💰 Vente: {formatCurrency(submission.amount)}</span>
-                        {submission.cost_total && (
-                          <span>🏷️ Coût: {formatCurrency(submission.cost_total)}</span>
+                        {calculatedCostTotal > 0 && (
+                          <span>🏷️ Coût: {formatCurrency(calculatedCostTotal)}</span>
+                        )}: {formatCurrency(submission.cost_total)}</span>
                         )}
                         <span>📅 {formatDate(submission.created_at)}</span>
                         <span className={`px-2 py-1 rounded text-xs ${
@@ -796,15 +799,39 @@ export default function SoumissionsManager() {
             <h2 className="text-2xl font-bold">
               {editingSubmission ? '✏️ Modifier Soumission' : '📝 Nouvelle Soumission'}
             </h2>
-            <button
-              onClick={handlePrint}
-              className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30"
-            >
-              🖨️ Imprimer
-            </button>
+            <div className="flex space-x-3">
+              <button
+                onClick={handlePrint}
+                className="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 flex items-center"
+              >
+                🖨️ Imprimer
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingSubmission(null);
+                  setSelectedItems([]);
+                  setSubmissionForm({client_name: '', description: '', amount: 0, status: 'draft', items: []});
+                  setCalculatedCostTotal(0);
+                  setProductSearchTerm('');
+                  setFocusedProductIndex(-1);
+                }}
+                className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 flex items-center"
+              >
+                ❌ Annuler
+              </button>
+              <button
+                type="submit"
+                form="submission-form"
+                className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-50 font-medium flex items-center"
+              >
+                {editingSubmission ? '💾 Mettre à jour' : '✨ Créer'}
+              </button>
+            </div>
           </div>
           
-          <form onSubmit={handleSubmissionSubmit} className="space-y-6">
+          <form id="submission-form" onSubmit={handleSubmissionSubmit} className="space-y-6">
             {/* Informations de base */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Dropdown Client */}
@@ -1009,48 +1036,94 @@ export default function SoumissionsManager() {
               </div>
             )}
 
-            {/* Items sélectionnés */}
+            {/* Items sélectionnés - Version compacte pour 50+ items */}
             {selectedItems.length > 0 && (
               <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-                <h3 className="text-lg font-semibold text-yellow-800 mb-4">📦 Produits Sélectionnés</h3>
-                <div className="space-y-3">
-                  {selectedItems.map((item) => (
-                    <div key={item.product_id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-yellow-200">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">
-                          {item.product_id} - {item.description}
-                        </h4>
-                        <div className="text-sm text-gray-500">
-                          <span>📦 {item.product_group}</span> • <span>📏 {item.unit}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm mt-1">
-                          <p className="text-green-600 font-medium">
-                            💰 Vente: {formatCurrency(item.selling_price)} × {item.quantity} = {formatCurrency(item.selling_price * item.quantity)}
-                          </p>
-                          <p className="text-orange-600 font-medium">
-                            🏷️ Coût: {formatCurrency(item.cost_price)} × {item.quantity} = {formatCurrency(item.cost_price * item.quantity)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          value={item.quantity}
-                          onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
-                          className="w-20 rounded border-gray-300 text-center"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeItemFromSubmission(item.product_id)}
-                          className="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
-                        >
-                          ❌
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <h3 className="text-lg font-semibold text-yellow-800 mb-4">
+                  📦 Produits Sélectionnés ({selectedItems.length})
+                  <span className="text-sm font-normal text-yellow-600 ml-2">
+                    (Dernier ajouté en haut)
+                  </span>
+                </h3>
+                
+                {/* Tableau compact pour beaucoup d'items */}
+                <div className="max-h-80 overflow-y-auto border border-yellow-200 rounded-lg bg-white">
+                  <table className="w-full text-sm">
+                    <thead className="bg-yellow-100 sticky top-0">
+                      <tr>
+                        <th className="text-left p-2 font-semibold">Code</th>
+                        <th className="text-left p-2 font-semibold">Description</th>
+                        <th className="text-center p-2 font-semibold">Qté</th>
+                        <th className="text-right p-2 font-semibold">Prix Unit.</th>
+                        <th className="text-right p-2 font-semibold">Total Vente</th>
+                        <th className="text-right p-2 font-semibold">Total Coût</th>
+                        <th className="text-center p-2 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Inverser l'ordre pour afficher le dernier ajouté en premier */}
+                      {[...selectedItems].reverse().map((item, reverseIndex) => {
+                        const originalIndex = selectedItems.length - 1 - reverseIndex;
+                        return (
+                          <tr key={item.product_id} className="border-b border-yellow-100 hover:bg-yellow-50">
+                            <td className="p-2 font-mono text-xs">{item.product_id}</td>
+                            <td className="p-2">
+                              <div className="max-w-xs">
+                                <div className="font-medium text-gray-900 truncate">{item.description}</div>
+                                <div className="text-xs text-gray-500">{item.product_group} • {item.unit}</div>
+                              </div>
+                            </td>
+                            <td className="p-2 text-center">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={item.quantity}
+                                onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
+                                className="w-16 text-center rounded border-gray-300 text-sm"
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <div className="text-green-600 font-medium">{formatCurrency(item.selling_price)}</div>
+                              <div className="text-orange-600 text-xs">{formatCurrency(item.cost_price)}</div>
+                            </td>
+                            <td className="p-2 text-right font-medium text-green-700">
+                              {formatCurrency(item.selling_price * item.quantity)}
+                            </td>
+                            <td className="p-2 text-right font-medium text-orange-700">
+                              {formatCurrency(item.cost_price * item.quantity)}
+                            </td>
+                            <td className="p-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeItemFromSubmission(item.product_id)}
+                                className="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-xs"
+                                title="Supprimer"
+                              >
+                                ❌
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Résumé rapide */}
+                <div className="mt-3 flex justify-between items-center text-sm">
+                  <span className="text-yellow-700">
+                    📊 {selectedItems.length} article(s) • 
+                    Total quantité: {selectedItems.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                  <div className="flex space-x-4">
+                    <span className="text-green-700 font-medium">
+                      💰 {formatCurrency(submissionForm.amount)}
+                    </span>
+                    <span className="text-orange-700 font-medium">
+                      🏷️ {formatCurrency(calculatedCostTotal)}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -1370,11 +1443,15 @@ export default function SoumissionsManager() {
                         client_name: submission.client_name,
                         description: submission.description,
                         amount: submission.amount,
-                        cost_total: submission.cost_total || 0,
                         status: submission.status,
                         items: submission.items || []
                       });
                       setSelectedItems(submission.items || []);
+                      // Calculer le coût total à partir des items existants
+                      const existingCostTotal = (submission.items || []).reduce((sum, item) => 
+                        sum + (item.cost_price * item.quantity), 0
+                      );
+                      setCalculatedCostTotal(existingCostTotal);
                       setShowForm(true);
                     }}
                     className="px-4 py-2 bg-purple-100 text-purple-800 rounded-lg hover:bg-purple-200"
