@@ -1,21 +1,17 @@
-'use client';
+// app/layout.js
 import './globals.css';
 import Navigation from '../components/Navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { useEffect, useState } from 'react';
+
+export const metadata = {
+  title: 'Gestion Bons d\'Achat',
+  description: 'Application de gestion des bons d\'achat et soumissions'
+};
 
 export default function RootLayout({ children }) {
-  const supabase = createClientComponentClient();
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-  }, []);
-
   return (
     <html lang="fr">
       <body className="bg-gray-100">
-        <Navigation user={user} />
+        <Navigation />
         <main className="max-w-6xl mx-auto p-6 bg-white rounded-lg shadow">
           {children}
         </main>
