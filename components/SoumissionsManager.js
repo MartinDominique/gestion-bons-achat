@@ -63,19 +63,19 @@ export default function SoumissionsManager() {
 
   async function loadProducts() {
     try {
-      // Charger TOUS les produits (pas de limite)
+      // Charger TOUS les produits - ajusté pour 3700 produits
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('product_id')
-        .limit(10000); // Limite élevée pour charger tous les produits
+        .limit(10000); // Limite suffisante pour tes 6700 produits
       
       if (error) {
         console.error('Erreur chargement produits:', error);
         return;
       }
       
-      console.log(`✅ ${data?.length || 0} produits chargés`);
+      console.log(`✅ ${data?.length || 0} produits chargés sur environ 3700 attendus`);
       setProducts(data || []);
     } catch (error) {
       console.error('Erreur loadProducts:', error);
@@ -298,7 +298,7 @@ export default function SoumissionsManager() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Chargement des données...</p>
-          <p className="text-sm text-gray-500 mt-2">Chargement de {products.length > 0 ? products.length : 'plus de 6000'} produits</p>
+          <p className="text-sm text-gray-500 mt-2">Chargement de ~3700 produits</p>
         </div>
       </div>
     );
