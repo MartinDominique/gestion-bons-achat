@@ -86,15 +86,21 @@ export default function PurchaseOrderManager() {
         vendor: formData.client, // Pour compatibilité avec l'ancien système
         description: formData.description,
         amount: parseFloat(formData.amount),
-        status: formData.status
+        status: formData.status,
+        created_at: new Date().toISOString(), // Forcer la date de création
+        updated_at: new Date().toISOString()  // Forcer la date de mise à jour
       };
 
       console.log('Données à sauvegarder:', dataToSave);
 
       if (editingPO) {
+        // Pour la mise à jour, ne pas envoyer created_at
+        const updateData = { ...dataToSave };
+        delete updateData.created_at;
+        
         const { data, error } = await supabase
           .from('purchase_orders')
-          .update(dataToSave)
+          .update(updateData)
           .eq('id', editingPO.id)
           .select();
 
