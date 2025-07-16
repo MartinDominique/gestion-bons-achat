@@ -16,13 +16,31 @@ export default function SoumissionsManager() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
   
-  // Recherche produits avec navigation clavier
+  // Recherche produits avec debounce et navigation clavier
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [products, setProducts] = useState([]); // Sera vide au démarrage
+  const [searchingProducts, setSearchingProducts] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [focusedProductIndex, setFocusedProductIndex] = useState(-1);
   const [tempQuantity, setTempQuantity] = useState('1');
   const [showQuantityInput, setShowQuantityInput] = useState(false);
   const [selectedProductForQuantity, setSelectedProductForQuantity] = useState(null);
+
+  // Debounce pour la recherche produits
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (productSearchTerm.length >= 2) {
+        setSearchingProducts(true);
+        searchProducts(productSearchTerm).finally(() => {
+          setSearchingProducts(false);
+        });
+      } else {
+        setProducts([]);
+      }
+    }, 300); // Attendre 300ms après la dernière frappe
+
+    return () => clearTimeout(timeoutId);
+  }, [productSearchTerm]);
   
   // Form states
   const [submissionForm, setSubmissionForm] = useState({
@@ -89,22 +107,40 @@ export default function SoumissionsManager() {
     }
   };
 
+  // Ne plus charger tous les produits au démarrage - recherche dynamique uniquement
   const fetchProducts = async () => {
+    // Ne rien faire - les produits seront chargés dynamiquement via searchProducts
+    console.log('Recherche dynamique activée - pas de chargement initial des 6718 produits');
+    setProducts([]);
+  };
+
+  // Recherche dynamique côté serveur avec limite
+  const searchProducts = async (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setProducts([]);
+      return;
+    }
+
     try {
+      console.log('🔍 Recherche dynamique:', searchTerm);
+      
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .order('description', { ascending: true });
+        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%,product_group.ilike.%${searchTerm}%`)
+        .order('description', { ascending: true })
+        .limit(50); // Limite à 50 résultats pour la performance
 
       if (error) {
-        console.error('Erreur lors du chargement des produits:', error);
+        console.error('Erreur recherche produits:', error);
         setProducts([]);
         return;
       }
-      console.log('Produits chargés:', data?.length || 0);
+
+      console.log(`📦 Trouvé ${data?.length || 0} produits sur 6718`);
       setProducts(data || []);
     } catch (error) {
-      console.error('Erreur lors du chargement des produits:', error);
+      console.error('Erreur lors de la recherche dynamique:', error);
       setProducts([]);
     }
   };
@@ -182,26 +218,23 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Navigation clavier pour recherche produits
+  // Navigation clavier pour recherche produits (utilise les résultats de searchProducts)
   const handleProductKeyDown = (e) => {
-    const filteredProducts = products.filter(product => 
-      product.description?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-      product.product_id?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-      product.product_group?.toLowerCase().includes(productSearchTerm.toLowerCase())
-    );
+    // Les produits sont maintenant chargés dynamiquement via searchProducts
+    const availableProducts = products; // Résultats de la recherche côté serveur
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setFocusedProductIndex(prev => 
-        prev < filteredProducts.length - 1 ? prev + 1 : prev
+        prev < availableProducts.length - 1 ? prev + 1 : prev
       );
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setFocusedProductIndex(prev => prev > 0 ? prev - 1 : prev);
     } else if (e.key === 'Tab' || e.key === 'Enter') {
       e.preventDefault();
-      if (focusedProductIndex >= 0 && filteredProducts[focusedProductIndex]) {
-        selectProductForQuantity(filteredProducts[focusedProductIndex]);
+      if (focusedProductIndex >= 0 && availableProducts[focusedProductIndex]) {
+        selectProductForQuantity(availableProducts[focusedProductIndex]);
       }
     } else if (e.key === 'Escape') {
       setFocusedProductIndex(-1);
@@ -441,12 +474,6 @@ export default function SoumissionsManager() {
     const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
-
-  const filteredProducts = products.filter(product => 
-    product.description?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-    product.product_id?.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
-    product.product_group?.toLowerCase().includes(productSearchTerm.toLowerCase())
-  );
 
   // Fonction d'impression
   const handlePrint = () => {
@@ -827,15 +854,15 @@ export default function SoumissionsManager() {
             {/* Recherche produits avec navigation clavier */}
             <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
               <h3 className="text-lg font-semibold text-indigo-800 mb-4">
-                🔍 Recherche Produits 
+                🔍 Recherche Produits (6718 au total)
                 <span className="text-sm font-normal text-indigo-600 ml-2">
-                  (↑↓ pour naviguer, TAB/ENTER pour sélectionner)
+                  (Tapez 2+ caractères, ↑↓ pour naviguer, TAB/ENTER pour sélectionner)
                 </span>
               </h3>
               <input
                 id="product-search"
                 type="text"
-                placeholder="Rechercher un produit (ID, description, groupe)..."
+                placeholder="Rechercher un produit (ID, description, groupe) - minimum 2 caractères..."
                 value={productSearchTerm}
                 onChange={(e) => {
                   setProductSearchTerm(e.target.value);
@@ -846,47 +873,70 @@ export default function SoumissionsManager() {
                 autoComplete="off"
               />
               
-              {productSearchTerm && (
+              {/* Indicateur de recherche */}
+              {searchingProducts && (
+                <div className="flex items-center justify-center p-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mr-2"></div>
+                  <span className="text-indigo-600">Recherche en cours...</span>
+                </div>
+              )}
+              
+              {/* Message d'aide */}
+              {productSearchTerm && productSearchTerm.length < 2 && !searchingProducts && (
+                <div className="p-4 text-center text-gray-500 border border-gray-200 rounded-lg">
+                  Tapez au moins 2 caractères pour rechercher dans les 6718 produits
+                </div>
+              )}
+              
+              {/* Résultats de recherche */}
+              {productSearchTerm.length >= 2 && !searchingProducts && (
                 <div className="max-h-60 overflow-y-auto border border-indigo-200 rounded-lg">
-                  {filteredProducts.length === 0 ? (
+                  {products.length === 0 ? (
                     <div className="p-4 text-center text-gray-500">
-                      Aucun produit trouvé
+                      Aucun produit trouvé pour "{productSearchTerm}"
+                      <br />
+                      <span className="text-xs">Essayez avec d'autres mots-clés</span>
                     </div>
                   ) : (
-                    filteredProducts.map((product, index) => (
-                      <div 
-                        key={product.product_id} 
-                        className={`p-3 border-b border-indigo-100 hover:bg-indigo-50 flex justify-between items-center cursor-pointer ${
-                          index === focusedProductIndex ? 'bg-indigo-100 border-indigo-300' : ''
-                        }`}
-                        onClick={() => selectProductForQuantity(product)}
-                      >
-                        <div>
-                          <h4 className="font-medium text-gray-900">
-                            {product.product_id} - {product.description}
-                          </h4>
-                          <div className="text-sm text-gray-500 space-x-4">
-                            <span>📦 Groupe: {product.product_group}</span>
-                            <span>📏 Unité: {product.unit}</span>
-                            <span>📊 Stock: {product.stock_qty}</span>
-                          </div>
-                          <div className="flex space-x-4 text-sm">
-                            <span className="text-indigo-600 font-medium">
-                              💰 Vente: {formatCurrency(product.selling_price)}
-                            </span>
-                            <span className="text-orange-600 font-medium">
-                              🏷️ Coût: {formatCurrency(product.cost_price)}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
-                        >
-                          ➕ Ajouter
-                        </button>
+                    <>
+                      <div className="p-2 bg-gray-50 text-xs text-gray-600 border-b">
+                        {products.length} résultat(s) trouvé(s) {products.length === 50 ? '(50 max affichés)' : ''}
                       </div>
-                    ))
+                      {products.map((product, index) => (
+                        <div 
+                          key={product.product_id} 
+                          className={`p-3 border-b border-indigo-100 hover:bg-indigo-50 flex justify-between items-center cursor-pointer ${
+                            index === focusedProductIndex ? 'bg-indigo-100 border-indigo-300' : ''
+                          }`}
+                          onClick={() => selectProductForQuantity(product)}
+                        >
+                          <div>
+                            <h4 className="font-medium text-gray-900">
+                              {product.product_id} - {product.description}
+                            </h4>
+                            <div className="text-sm text-gray-500 space-x-4">
+                              <span>📦 Groupe: {product.product_group}</span>
+                              <span>📏 Unité: {product.unit}</span>
+                              <span>📊 Stock: {product.stock_qty}</span>
+                            </div>
+                            <div className="flex space-x-4 text-sm">
+                              <span className="text-indigo-600 font-medium">
+                                💰 Vente: {formatCurrency(product.selling_price)}
+                              </span>
+                              <span className="text-orange-600 font-medium">
+                                🏷️ Coût: {formatCurrency(product.cost_price)}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                          >
+                            ➕ Ajouter
+                          </button>
+                        </div>
+                      ))}
+                    </>
                   )}
                 </div>
               )}
@@ -1237,8 +1287,13 @@ export default function SoumissionsManager() {
       {/* Debug info */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-sm text-yellow-800">
-          🔍 <strong>Debug:</strong> {products.length} produits, {clients.length} clients disponibles dans dropdown, {soumissions.length} soumissions
+          🔍 <strong>Debug:</strong> Recherche dynamique activée sur 6718 produits (max 50 résultats), {clients.length} clients disponibles, {soumissions.length} soumissions
         </p>
+        {productSearchTerm && (
+          <p className="text-xs text-yellow-700 mt-1">
+            Recherche actuelle: "{productSearchTerm}" → {products.length} résultats
+          </p>
+        )}
       </div>
 
       {/* Filtres */}
