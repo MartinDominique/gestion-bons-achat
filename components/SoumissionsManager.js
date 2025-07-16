@@ -4,7 +4,7 @@ import { createClient } from '../lib/supabase';
 import ClientModal from './ClientModal';
 import {
   Plus, FileText, Save, Calculator, Package,
-  Upload, Trash2, Download, Users, History, Edit2, X, Mail
+  Upload, Trash2, Download, Users, History, Edit, X, Eye, Mail
 } from 'lucide-react';
 
 export default function SoumissionsManager() {
@@ -17,7 +17,7 @@ export default function SoumissionsManager() {
   const [currentQuote, setCurrentQuote] = useState([]);
   const [currentQuoteId, setCurrentQuoteId] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
-  const [editingQuoteId, setEditingQuoteId] = useState(null); // Pour modification
+  const [editingQuote, setEditingQuote] = useState(null);
 
   const [productSearch, setProductSearch] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -27,12 +27,13 @@ export default function SoumissionsManager() {
   const [showClientModal, setShowClientModal] = useState(false);
   const [editClient, setEditClient] = useState(null);
   const [showQuoteHistory, setShowQuoteHistory] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedHistoryQuote, setSelectedHistoryQuote] = useState(null);
 
   const fileInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingReport, setSendingReport] = useState(false);
 
   // Vérifier l'authentification et charger les données
   useEffect(() => {
@@ -81,6 +82,7 @@ export default function SoumissionsManager() {
       
       if (data.length < count) {
         console.log('📄 Pagination nécessaire...');
+        
         let allProducts = [...data];
         let from = data.length;
         
@@ -92,14 +94,19 @@ export default function SoumissionsManager() {
             .range(from, from + 999);
           
           if (nextError) break;
+          
           allProducts = [...allProducts, ...nextBatch];
           from += nextBatch.length;
+          
           if (nextBatch.length === 0) break;
         }
+        
         setProducts(allProducts);
+        console.log(`🎉 TOUS les ${allProducts.length} produits chargés !`);
       } else {
         setProducts(data || []);
       }
+      
     } catch (error) {
       console.error('Erreur loadProducts:', error);
     }
@@ -129,8 +136,7 @@ export default function SoumissionsManager() {
         .from('quotes')
         .select(`
           *,
-          clients (*),
-          quote_items (*)
+          clients (*)
         `)
         .order('created_at', { ascending: false });
       
@@ -145,43 +151,70 @@ export default function SoumissionsManager() {
     }
   }
 
-  // Génération automatique du numéro de soumission (format 2507-01)
+  // Fonction de numérotation automatique YYYYMM-XX
   async function generateNewQuoteNumber() {
     try {
       const now = new Date();
-      const yearMonth = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const prefix = `${yearMonth}-`;
-
-      // Trouver le dernier numéro utilisé ce mois
+      const yearMonth = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Chercher le dernier numéro de ce mois
       const { data, error } = await supabase
         .from('quotes')
         .select('id')
-        .like('id', `${prefix}%`)
+        .like('id', `${yearMonth}-%`)
         .order('id', { ascending: false })
         .limit(1);
-
+      
       if (error) {
         console.error('Erreur génération numéro:', error);
-        setCurrentQuoteId(`${prefix}01`);
+        setCurrentQuoteId(`${yearMonth}-01`);
         return;
       }
-
+      
       let nextNumber = 1;
       if (data && data.length > 0) {
         const lastId = data[0].id;
-        const lastNumber = parseInt(lastId.split('-')[1]);
+        const lastNumber = parseInt(lastId.split('-')[1]) || 0;
         nextNumber = lastNumber + 1;
       }
-
-      const newQuoteId = `${prefix}${String(nextNumber).padStart(2, '0')}`;
+      
+      const newQuoteId = `${yearMonth}-${String(nextNumber).padStart(2, '0')}`;
       setCurrentQuoteId(newQuoteId);
-      console.log('📄 Nouveau numéro généré:', newQuoteId);
+      console.log('📄 Nouveau numéro de soumission:', newQuoteId);
+      
     } catch (error) {
       console.error('Erreur generateNewQuoteNumber:', error);
-      // Fallback
       const now = new Date();
-      const yearMonth = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const yearMonth = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
       setCurrentQuoteId(`${yearMonth}-01`);
+    }
+  }
+
+  // Fonction d'envoi du rapport hebdomadaire
+  async function sendWeeklyReport() {
+    setSendingReport(true);
+    try {
+      console.log('📧 Envoi du rapport hebdomadaire...');
+      
+      const response = await fetch('/api/send-weekly-report', {
+        method: 'GET'
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        alert(`✅ Rapport envoyé avec succès !\n\n${result.message}\nEmail ID: ${result.emailId}`);
+        console.log('✅ Rapport envoyé:', result);
+      } else {
+        alert(`❌ Erreur envoi rapport: ${result.error}`);
+        console.error('❌ Erreur:', result);
+      }
+      
+    } catch (error) {
+      console.error('❌ Erreur sendWeeklyReport:', error);
+      alert(`❌ Erreur technique: ${error.message}`);
+    } finally {
+      setSendingReport(false);
     }
   }
 
@@ -192,7 +225,7 @@ export default function SoumissionsManager() {
       return;
     }
     
-    const client = clients.find(c => parseInt(c.id) === parseInt(clientId));
+    const client = clients.find(c => String(c.id) === String(clientId));
     setSelectedClient(client || null);
   }
 
@@ -207,6 +240,7 @@ export default function SoumissionsManager() {
     }
     
     const searchTerm = val.toLowerCase();
+    
     const res = products.filter(p => {
       const productId = p.product_id ? String(p.product_id).toLowerCase() : '';
       const description = p.description ? String(p.description).toLowerCase() : '';
@@ -252,7 +286,6 @@ export default function SoumissionsManager() {
     return { subtotal: sub, totalCost: cost, gst, pst, total: sub + gst + pst };
   }
 
-  // Sauvegarder ou modifier une soumission
   async function saveQuote() {
     if (!selectedClient) {
       alert('Veuillez sélectionner un client');
@@ -265,20 +298,17 @@ export default function SoumissionsManager() {
 
     try {
       const t = calculateTotals();
-      const isEditing = editingQuoteId !== null;
-      const quoteId = editingQuoteId || currentQuoteId;
       
-      // Sauvegarder la soumission
       const { error: qErr } = await supabase.from('quotes').upsert({
-        id: quoteId,
-        client_id: parseInt(selectedClient.id),
+        id: currentQuoteId,
+        client_id: selectedClient.id,
         quote_date: new Date().toISOString().slice(0, 10),
         subtotal: t.subtotal,
         total_cost: t.totalCost,
         gst: t.gst, 
         pst: t.pst, 
         total: t.total,
-        status: 'draft'
+        status: editingQuote ? editingQuote.status : 'draft'
       });
       
       if (qErr) {
@@ -287,12 +317,10 @@ export default function SoumissionsManager() {
         return;
       }
 
-      // Supprimer les anciens items
-      await supabase.from('quote_items').delete().eq('quote_id', quoteId);
+      await supabase.from('quote_items').delete().eq('quote_id', currentQuoteId);
 
-      // Ajouter les nouveaux items
       const items = currentQuote.map(it => ({
-        quote_id: quoteId,
+        quote_id: currentQuoteId,
         product_id: it.product_id,
         description: it.description,
         quantity: it.quantity,
@@ -309,9 +337,8 @@ export default function SoumissionsManager() {
         return;
       }
 
-      alert(isEditing ? 'Soumission modifiée avec succès !' : 'Soumission sauvegardée avec succès !');
+      alert(editingQuote ? 'Soumission modifiée avec succès !' : 'Soumission sauvegardée avec succès !');
       
-      // Réinitialiser
       resetForm();
       await loadQuotes();
       
@@ -321,74 +348,62 @@ export default function SoumissionsManager() {
     }
   }
 
-  // Charger une soumission pour modification
-  async function editQuote(quote) {
+  // Fonction pour charger une soumission à modifier
+  async function loadQuoteForEdit(quote) {
     try {
-      // Charger les items de la soumission
+      setEditingQuote(quote);
+      setCurrentQuoteId(quote.id);
+      
+      const client = clients.find(c => c.id === quote.client_id);
+      setSelectedClient(client || null);
+      
       const { data: items, error } = await supabase
         .from('quote_items')
         .select('*')
         .eq('quote_id', quote.id);
-
+      
       if (error) {
         console.error('Erreur chargement items:', error);
-        alert('Erreur lors du chargement de la soumission');
         return;
       }
-
-      // Populer le formulaire
-      setEditingQuoteId(quote.id);
-      setCurrentQuoteId(quote.id);
-      setSelectedClient(quote.clients);
+      
       setCurrentQuote(items || []);
       setShowQuoteHistory(false);
-
-      console.log('✏️ Soumission chargée pour modification:', quote.id);
+      setShowQuoteModal(false);
+      
     } catch (error) {
-      console.error('Erreur editQuote:', error);
-      alert('Erreur: ' + error.message);
+      console.error('Erreur loadQuoteForEdit:', error);
     }
   }
 
-  // Réinitialiser le formulaire
+  // Fonction pour voir les détails d'une soumission
+  async function viewQuoteDetails(quote) {
+    try {
+      const { data: items, error } = await supabase
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quote.id);
+      
+      if (error) {
+        console.error('Erreur chargement détails:', error);
+        return;
+      }
+      
+      setSelectedHistoryQuote({
+        ...quote,
+        items: items || []
+      });
+      
+    } catch (error) {
+      console.error('Erreur viewQuoteDetails:', error);
+    }
+  }
+
   function resetForm() {
     setCurrentQuote([]);
     setSelectedClient(null);
-    setEditingQuoteId(null);
+    setEditingQuote(null);
     generateNewQuoteNumber();
-  }
-
-  // Sélectionner une soumission depuis l'historique
-  function selectFromHistory(quote) {
-    setSelectedHistoryQuote(quote);
-  }
-
-  // Envoyer rapport par email
-  async function sendEmailReport() {
-    if (!user?.email) {
-      alert('Aucun email configuré pour l\'utilisateur');
-      return;
-    }
-
-    setSendingEmail(true);
-    try {
-      const response = await fetch('/api/send-weekly-report', {
-        method: 'GET'
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        alert(`Rapport envoyé avec succès ! ${result.message || ''}`);
-      } else {
-        alert('Erreur envoi email: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Erreur envoi email:', error);
-      alert('Erreur technique: ' + error.message);
-    } finally {
-      setSendingEmail(false);
-    }
   }
 
   async function handleImport(e) {
@@ -415,7 +430,6 @@ export default function SoumissionsManager() {
     }
   }
 
-  // Afficher loading
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -436,7 +450,126 @@ export default function SoumissionsManager() {
 
         {/* Vue professionnelle pour impression */}
         <div className="hidden print:block">
-          {/* ... Code d'impression identique ... */}
+          <div className="quote-container">
+            {/* En-tête professionnel */}
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <div className="flex items-center mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg flex items-center justify-center mr-4">
+                    <span className="text-white font-bold text-2xl">ST</span>
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Services TMT</h1>
+                    <p className="text-gray-600">Solutions techniques et maintenance</p>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <p>123 Rue Principale</p>
+                  <p>Saint-Georges, QC G5Y 1A1</p>
+                  <p>Tél: (418) 555-0123</p>
+                  <p>Email: info@servicestmt.com</p>
+                </div>
+              </div>
+              
+              <div className="text-right">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">SOUMISSION</h2>
+                <div className="text-sm">
+                  <p><strong>N°:</strong> {currentQuoteId}</p>
+                  <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+                  <p><strong>Valide jusqu'au:</strong> {new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('fr-CA')}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Informations client */}
+            {selectedClient && (
+              <div className="client-info bg-gray-50 border border-gray-300 p-4 rounded mb-6">
+                <h3 className="font-bold text-lg mb-2">FACTURÉ À:</h3>
+                <div>
+                  <p className="font-semibold">{selectedClient.name}</p>
+                  {selectedClient.company && <p>{selectedClient.company}</p>}
+                  {selectedClient.email && <p>Email: {selectedClient.email}</p>}
+                  {selectedClient.phone && <p>Tél: {selectedClient.phone}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Tableau des articles pour impression */}
+            {currentQuote.length > 0 && (
+              <div className="mb-8">
+                <table className="w-full border-collapse border border-gray-400">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-400 px-3 py-2 text-left">Code</th>
+                      <th className="border border-gray-400 px-3 py-2 text-left">Description</th>
+                      <th className="border border-gray-400 px-3 py-2 text-center">Qté</th>
+                      <th className="border border-gray-400 px-3 py-2 text-right">Prix unit.</th>
+                      <th className="border border-gray-400 px-3 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentQuote.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="border border-gray-400 px-3 py-2 font-mono text-sm">{item.product_id}</td>
+                        <td className="border border-gray-400 px-3 py-2">
+                          <div className="text-sm">{item.description}</div>
+                          {item.note && (
+                            <div className="text-xs text-gray-600 italic mt-1">Note: {item.note}</div>
+                          )}
+                        </td>
+                        <td className="border border-gray-400 px-3 py-2 text-center">{item.quantity}</td>
+                        <td className="border border-gray-400 px-3 py-2 text-right text-sm">
+                          ${(item.selling_price || 0).toFixed(2)}
+                        </td>
+                        <td className="border border-gray-400 px-3 py-2 text-right font-semibold text-sm">
+                          ${((item.quantity || 0) * (item.selling_price || 0)).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Résumé financier pour impression */}
+            <div className="grid grid-cols-2 gap-8 border-2 border-gray-800 p-4">
+              <div>
+                <h4 className="font-bold mb-3">TERMES ET CONDITIONS:</h4>
+                <div className="text-sm space-y-1">
+                  <p>• Paiement net 30 jours</p>
+                  <p>• Prix valides pour 30 jours</p>
+                  <p>• Installation non incluse</p>
+                  <p>• Garantie: 1 an pièces et main d'œuvre</p>
+                </div>
+                
+                <div className="mt-4">
+                  <p className="font-semibold text-sm">Merci de votre confiance!</p>
+                  <p className="text-sm">Pour questions: info@servicestmt.com</p>
+                </div>
+              </div>
+              
+              <div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Sous-total:</span>
+                    <span>${totals.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>TPS (5%):</span>
+                    <span>${totals.gst.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>TVQ (9.975%):</span>
+                    <span>${totals.pst.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t-2 border-gray-800 pt-2 flex justify-between text-lg font-bold">
+                    <span>TOTAL:</span>
+                    <span>${totals.total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Interface normale (masquée à l'impression) */}
@@ -446,13 +579,13 @@ export default function SoumissionsManager() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold flex items-center">
               <Calculator className="w-8 h-8 mr-3 text-blue-600" />
-              {editingQuoteId ? 'Modifier Soumission' : 'Gestion des Soumissions'}
+              {editingQuote ? 'Modification Soumission' : 'Gestion des Soumissions'}
               <span className="ml-4 text-sm font-normal text-gray-500">
                 ({products.length} produits disponibles)
               </span>
             </h1>
             <div className="flex gap-3">
-              {editingQuoteId && (
+              {editingQuote && (
                 <button 
                   onClick={resetForm}
                   className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center"
@@ -465,8 +598,7 @@ export default function SoumissionsManager() {
                 disabled={!selectedClient || currentQuote.length === 0}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-5 h-5 mr-2" /> 
-                {editingQuoteId ? 'Modifier' : 'Sauvegarder'}
+                <Save className="w-5 h-5 mr-2" /> {editingQuote ? 'Modifier' : 'Sauvegarder'}
               </button>
               <button 
                 onClick={() => window.print()} 
@@ -476,12 +608,22 @@ export default function SoumissionsManager() {
                 <Download className="w-4 h-4 mr-2" />Imprimer PDF
               </button>
               <button 
-                onClick={sendEmailReport}
-                disabled={sendingEmail}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center disabled:opacity-50"
+                onClick={sendWeeklyReport}
+                disabled={sendingReport}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center disabled:opacity-50"
+                title="Envoyer rapport par email"
               >
-                <Mail className="w-4 h-4 mr-2" />
-                {sendingEmail ? 'Envoi...' : 'Email Rapport'}
+                {sendingReport ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Envoi...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4 mr-2" />
+                    📧 Rapport
+                  </>
+                )}
               </button>
               <button 
                 onClick={() => fileInputRef.current?.click()} 
@@ -497,7 +639,7 @@ export default function SoumissionsManager() {
                 <Users className="w-4 h-4 mr-1" /> Clients
               </button>
               <button 
-                onClick={() => setShowQuoteHistory(!showQuoteHistory)} 
+                onClick={() => setShowQuoteModal(true)} 
                 className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center"
               >
                 <History className="w-4 h-4 mr-1" /> Historique
@@ -506,15 +648,13 @@ export default function SoumissionsManager() {
             </div>
           </div>
 
-          {/* Alert si modification en cours */}
-          {editingQuoteId && (
+          {/* Message si en cours de modification */}
+          {editingQuote && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center">
-                <Edit2 className="w-5 h-5 text-blue-600 mr-2" />
-                <span className="text-blue-800 font-medium">
-                  Modification en cours de la soumission {editingQuoteId}
-                </span>
-              </div>
+              <p className="text-blue-800">
+                <strong>Modification en cours:</strong> Soumission {editingQuote.id} - 
+                Client: {clients.find(c => c.id === editingQuote.client_id)?.name || 'Inconnu'}
+              </p>
             </div>
           )}
 
@@ -761,12 +901,15 @@ export default function SoumissionsManager() {
 
       </div>
 
-      {/* Modal - Historique des soumissions amélioré */}
-      {showQuoteHistory && (
+      {/* Modal - Historique des Soumissions avec choix défilant */}
+      {showQuoteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white w-full max-w-6xl rounded-lg p-6 relative shadow-xl max-h-[90vh] overflow-y-auto">
             <button
-              onClick={() => setShowQuoteHistory(false)}
+              onClick={() => {
+                setShowQuoteModal(false);
+                setSelectedHistoryQuote(null);
+              }}
               className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
             >
               <X className="w-5 h-5" />
@@ -774,67 +917,104 @@ export default function SoumissionsManager() {
 
             <h2 className="text-xl font-bold mb-6">Historique des Soumissions ({quotes.length})</h2>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Soumission</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {quotes.map(q => (
-                    <tr key={q.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{q.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {new Date(q.created_at).toLocaleDateString('fr-CA')}
-                      </td>
-                      <td className="px-6 py-4 text-sm">{q.clients?.name || 'Client supprimé'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        ${(q.total || 0).toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          q.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
-                          q.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {q.status || 'draft'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => editQuote(q)}
-                            className="text-blue-600 hover:text-blue-800"
-                            title="Modifier"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => selectFromHistory(q)}
-                            className="text-green-600 hover:text-green-800"
-                            title="Sélectionner"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Liste des soumissions */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Liste des soumissions</h3>
+                <div className="max-h-96 overflow-y-auto border border-gray-200 rounded">
+                  {quotes.map(quote => (
+                    <div 
+                      key={quote.id} 
+                      className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                        selectedHistoryQuote?.id === quote.id ? 'bg-blue-50 border-blue-200' : ''
+                      }`}
+                      onClick={() => viewQuoteDetails(quote)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium text-gray-900">{quote.id}</p>
+                          <p className="text-sm text-gray-600">{quote.clients?.name || 'Client supprimé'}</p>
+                          <p className="text-sm text-gray-500">{new Date(quote.created_at).toLocaleDateString('fr-CA')}</p>
                         </div>
-                      </td>
-                    </tr>
+                        <div className="text-right">
+                          <p className="font-medium text-green-600">${(quote.total || 0).toFixed(2)}</p>
+                          <div className="flex gap-1 mt-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                loadQuoteForEdit(quote);
+                              }}
+                              className="text-blue-600 hover:text-blue-800"
+                              title="Modifier"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                viewQuoteDetails(quote);
+                              }}
+                              className="text-gray-600 hover:text-gray-800"
+                              title="Voir détails"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                   {quotes.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                        Aucune soumission trouvée
-                      </td>
-                    </tr>
+                    <div className="p-8 text-center text-gray-500">
+                      Aucune soumission trouvée
+                    </div>
                   )}
-                </tbody>
-              </table>
+                </div>
+              </div>
+
+              {/* Détails de la soumission sélectionnée */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Détails de la soumission</h3>
+                {selectedHistoryQuote ? (
+                  <div className="border border-gray-200 rounded p-4">
+                    <div className="mb-4">
+                      <h4 className="font-medium text-gray-900">{selectedHistoryQuote.id}</h4>
+                      <p className="text-sm text-gray-600">Client: {selectedHistoryQuote.clients?.name}</p>
+                      <p className="text-sm text-gray-600">Date: {new Date(selectedHistoryQuote.created_at).toLocaleDateString('fr-CA')}</p>
+                      <p className="text-sm text-green-600 font-medium">Total: ${(selectedHistoryQuote.total || 0).toFixed(2)}</p>
+                    </div>
+                    
+                    <div className="max-h-64 overflow-y-auto">
+                      <h5 className="font-medium mb-2">Articles ({selectedHistoryQuote.items?.length || 0}):</h5>
+                      {selectedHistoryQuote.items?.map((item, idx) => (
+                        <div key={idx} className="text-sm border-b border-gray-100 py-2">
+                          <div className="flex justify-between">
+                            <span className="font-medium">{item.product_id}</span>
+                            <span>${((item.quantity || 0) * (item.selling_price || 0)).toFixed(2)}</span>
+                          </div>
+                          <div className="text-gray-600">{item.description}</div>
+                          <div className="text-gray-500">Qté: {item.quantity} × ${(item.selling_price || 0).toFixed(2)}</div>
+                          {item.note && <div className="text-gray-500 italic">Note: {item.note}</div>}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => loadQuoteForEdit(selectedHistoryQuote)}
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center"
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Modifier
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border border-gray-200 rounded p-8 text-center text-gray-500">
+                    Cliquez sur une soumission pour voir les détails
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
