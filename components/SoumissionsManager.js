@@ -130,16 +130,25 @@ export default function SoumissionsManager() {
 
   function handleProductSearch(val) {
     setProductSearch(val);
+    console.log('Recherche:', val, 'Produits disponibles:', products.length);
+    
     if (val.length < 2) {
       setShowSuggestions(false);
+      setSearchSuggestions([]);
       return;
     }
-    const res = products.filter(p =>
-      p.product_id?.toLowerCase().includes(val.toLowerCase()) ||
-      p.description?.toLowerCase().includes(val.toLowerCase())
-    ).slice(0, 10);
+    
+    const res = products.filter(p => {
+      const searchTerm = val.toLowerCase();
+      return (
+        (p.product_id?.toLowerCase() || '').includes(searchTerm) ||
+        (p.description?.toLowerCase() || '').includes(searchTerm)
+      );
+    }).slice(0, 8); // Limiter à 8 résultats
+    
+    console.log('Suggestions trouvées:', res.length);
     setSearchSuggestions(res);
-    setShowSuggestions(true);
+    setShowSuggestions(res.length > 0);
   }
 
   function addProductToQuote(product, qty = null) {
@@ -350,10 +359,12 @@ export default function SoumissionsManager() {
             <select
               value={selectedClient?.id || ''}
               onChange={(e) => {
+                console.log('Client sélectionné:', e.target.value);
                 const client = clients.find(c => c.id === e.target.value);
+                console.log('Client trouvé:', client);
                 setSelectedClient(client || null);
               }}
-              className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">-- Sélectionner un client --</option>
               {clients.map(c => (
@@ -365,6 +376,11 @@ export default function SoumissionsManager() {
             {clients.length === 0 && (
               <p className="text-sm text-orange-600 mt-1">
                 Aucun client trouvé. Créez-en un d'abord.
+              </p>
+            )}
+            {selectedClient && (
+              <p className="text-sm text-green-600 mt-1">
+                ✓ Client sélectionné: {selectedClient.name}
               </p>
             )}
           </div>
@@ -382,8 +398,17 @@ export default function SoumissionsManager() {
               <input
                 value={productSearch}
                 onChange={e => handleProductSearch(e.target.value)}
-                placeholder="Nom ou # produit…"
-                className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-blue-500"
+                onFocus={() => {
+                  if (productSearch.length >= 2 && searchSuggestions.length > 0) {
+                    setShowSuggestions(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Délai pour permettre le clic sur une suggestion
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
+                placeholder="Tapez au moins 2 caractères..."
+                className="w-full border border-gray-300 px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               {products.length === 0 && (
                 <p className="text-sm text-orange-600 mt-1">
@@ -391,20 +416,28 @@ export default function SoumissionsManager() {
                 </p>
               )}
               {showSuggestions && searchSuggestions.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border rounded mt-1 max-h-60 overflow-y-auto shadow-lg">
+                <div className="absolute z-50 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
                   {searchSuggestions.map(p => (
                     <div
-                      key={p.product_id}
-                      onClick={() => addProductToQuote(p)}
-                      className="p-3 hover:bg-gray-100 cursor-pointer border-b"
+                      key={p.id}
+                      onMouseDown={() => addProductToQuote(p)} // onMouseDown au lieu de onClick pour éviter le blur
+                      className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                     >
-                      <div className="font-medium">{p.product_id}</div>
-                      <div className="text-sm text-gray-600">{p.description}</div>
+                      <div className="font-medium text-gray-900">{p.product_id}</div>
+                      <div className="text-sm text-gray-600 truncate">{p.description}</div>
                       <div className="text-sm text-blue-600 font-medium">
                         ${(p.selling_price || 0).toFixed(2)}
+                        {p.stock_qty && (
+                          <span className="text-gray-500 ml-2">Stock: {p.stock_qty}</span>
+                        )}
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              {showSuggestions && searchSuggestions.length === 0 && productSearch.length >= 2 && (
+                <div className="absolute z-50 w-full bg-white border border-gray-300 rounded-md mt-1 p-3 shadow-lg">
+                  <div className="text-gray-500 text-sm">Aucun produit trouvé pour "{productSearch}"</div>
                 </div>
               )}
             </div>
