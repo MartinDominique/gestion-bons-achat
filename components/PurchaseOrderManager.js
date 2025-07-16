@@ -103,22 +103,42 @@ export default function PurchaseOrderManager() {
 
   async function loadPurchaseOrders() {
     try {
+      console.log('📋 Chargement des bons d\'achat...');
+      
       const { data, error } = await supabase
         .from('purchase_orders')
         .select(`
           *,
-          clients (name, company)
+          clients!client_id (
+            id,
+            name, 
+            company
+          )
         `)
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Erreur chargement bons d\'achat:', error);
+        console.error('❌ Erreur chargement bons d\'achat:', error);
+        // Essayer sans la jointure si ça pose problème
+        const { data: dataSimple, error: errorSimple } = await supabase
+          .from('purchase_orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (errorSimple) {
+          console.error('❌ Erreur même en simple:', errorSimple);
+          return;
+        }
+        
+        console.log('✅ Chargement simple réussi:', dataSimple?.length || 0, 'bons d\'achat');
+        setPurchaseOrders(dataSimple || []);
         return;
       }
       
+      console.log('✅ Chargement avec jointure réussi:', data?.length || 0, 'bons d\'achat');
       setPurchaseOrders(data || []);
     } catch (error) {
-      console.error('Erreur loadPurchaseOrders:', error);
+      console.error('❌ Exception loadPurchaseOrders:', error);
     }
   }
 
@@ -193,6 +213,15 @@ export default function PurchaseOrderManager() {
     }
 
     try {
+      console.log('🔐 Vérification de l\'authentification...');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Vous devez être connecté pour sauvegarder');
+        return;
+      }
+      console.log('✅ Utilisateur connecté:', user.email);
+
+      // Adapté à ta structure réelle
       const orderData = {
         date: formData.date,
         client_id: selectedClient.id,
@@ -200,26 +229,46 @@ export default function PurchaseOrderManager() {
         client_po: formData.client_po || '',
         submission_no: formData.submission_no || '',
         amount: parseFloat(formData.amount),
-        status: formData.status
+        status: formData.status || 'en_attente'
       };
 
-      const { error } = await supabase
+      console.log('💾 Données à sauvegarder:', orderData);
+      console.log('👤 Client sélectionné:', selectedClient);
+
+      const { data, error } = await supabase
         .from('purchase_orders')
-        .insert(orderData);
+        .insert(orderData)
+        .select();
 
       if (error) {
-        console.error('Erreur sauvegarde bon d\'achat:', error);
-        alert('Erreur: ' + error.message);
+        console.error('❌ Erreur Supabase détaillée:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        
+        // Messages d'erreur plus clairs
+        if (error.message.includes('client_id')) {
+          alert('Erreur: Problème avec l\'ID du client. Vérifiez que le client existe.');
+        } else if (error.message.includes('RLS')) {
+          alert('Erreur: Problème de permissions. Contactez l\'administrateur.');
+        } else if (error.message.includes('schema')) {
+          alert('Erreur: Structure de base de données. Rafraîchissez la page.');
+        } else {
+          alert('Erreur de sauvegarde: ' + error.message);
+        }
         return;
       }
 
+      console.log('✅ Bon d\'achat sauvegardé avec succès:', data);
       alert('Bon d\'achat sauvegardé avec succès !');
       await loadPurchaseOrders();
       resetForm();
       
     } catch (error) {
-      console.error('Erreur savePurchaseOrder:', error);
-      alert('Erreur: ' + error.message);
+      console.error('❌ Exception JavaScript:', error);
+      alert('Erreur technique: ' + error.message);
     }
   }
 
