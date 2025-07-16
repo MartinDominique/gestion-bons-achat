@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 
 export default function SoumissionsManager() {
   const [soumissions, setSoumissions] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -15,12 +16,17 @@ export default function SoumissionsManager() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
   
+  // Recherche inventaire
+  const [inventorySearchTerm, setInventorySearchTerm] = useState('');
+  const [selectedItems, setSelectedItems] = useState([]);
+  
   // Form states
   const [submissionForm, setSubmissionForm] = useState({
     client_name: '',
     description: '',
-    amount: '',
-    status: 'draft'
+    amount: 0,
+    status: 'draft',
+    items: []
   });
 
   const [clientForm, setClientForm] = useState({
@@ -41,8 +47,17 @@ export default function SoumissionsManager() {
 
   useEffect(() => {
     fetchSoumissions();
+    fetchInventory();
     fetchClients();
   }, []);
+
+  // Calcul automatique du montant
+  useEffect(() => {
+    const total = selectedItems.reduce((sum, item) => {
+      return sum + (item.price * item.quantity);
+    }, 0);
+    setSubmissionForm(prev => ({ ...prev, amount: total }));
+  }, [selectedItems]);
 
   const fetchSoumissions = async () => {
     try {
@@ -60,16 +75,43 @@ export default function SoumissionsManager() {
     }
   };
 
+  const fetchInventory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Table inventory pas trouvée:', error);
+        setInventory([]);
+        return;
+      }
+      setInventory(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement de l\'inventaire:', error);
+      setInventory([]);
+    }
+  };
+
   const fetchClients = async () => {
     try {
+      // Essayer de récupérer les clients depuis la table clients
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .order('name', { ascending: true });
 
       if (error) {
-        console.error('Table clients pas trouvée, création simulée');
-        setClients([]);
+        // Si la table n'existe pas, utiliser les clients des soumissions
+        console.log('Table clients n\'existe pas, utilisation des clients des soumissions');
+        const { data: submissionsData } = await supabase
+          .from('submissions')
+          .select('client_name')
+          .order('client_name');
+        
+        const uniqueClients = [...new Set(submissionsData?.map(s => s.client_name).filter(Boolean))];
+        setClients(uniqueClients.map((name, index) => ({ id: index, name, email: '', phone: '', address: '', contact_person: '' })));
         return;
       }
       setClients(data || []);
@@ -102,44 +144,113 @@ export default function SoumissionsManager() {
     }
   };
 
+  // Gestion des items d'inventaire
+  const addItemToSubmission = (inventoryItem) => {
+    const existingItem = selectedItems.find(item => item.id === inventoryItem.id);
+    
+    if (existingItem) {
+      setSelectedItems(selectedItems.map(item => 
+        item.id === inventoryItem.id 
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setSelectedItems([...selectedItems, {
+        ...inventoryItem,
+        quantity: 1
+      }]);
+    }
+  };
+
+  const updateItemQuantity = (itemId, quantity) => {
+    if (quantity <= 0) {
+      setSelectedItems(selectedItems.filter(item => item.id !== itemId));
+    } else {
+      setSelectedItems(selectedItems.map(item =>
+        item.id === itemId ? { ...item, quantity: parseInt(quantity) } : item
+      ));
+    }
+  };
+
+  const removeItemFromSubmission = (itemId) => {
+    setSelectedItems(selectedItems.filter(item => item.id !== itemId));
+  };
+
   // Gestion des soumissions
   const handleSubmissionSubmit = async (e) => {
     e.preventDefault();
     try {
+      const submissionData = {
+        ...submissionForm,
+        items: selectedItems
+      };
+
       if (editingSubmission) {
         const { error } = await supabase
           .from('submissions')
-          .update(submissionForm)
+          .update(submissionData)
           .eq('id', editingSubmission.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('submissions')
-          .insert([submissionForm]);
+          .insert([submissionData]);
         if (error) throw error;
       }
 
       await fetchSoumissions();
       setShowForm(false);
       setEditingSubmission(null);
+      setSelectedItems([]);
       setSubmissionForm({
         client_name: '',
         description: '',
-        amount: '',
-        status: 'draft'
+        amount: 0,
+        status: 'draft',
+        items: []
       });
       alert('✅ Soumission sauvegardée !');
     } catch (error) {
       console.error('Erreur:', error);
-      alert('❌ Erreur lors de la sauvegarde');
+      alert('❌ Erreur lors de la sauvegarde: ' + error.message);
     }
   };
 
-  // Gestion des clients
+  // Gestion des clients (avec vérification d'existence de table)
+  const createClientsTable = async () => {
+    try {
+      // Tentative de création de la table clients
+      const { error } = await supabase.rpc('create_clients_table');
+      if (!error) {
+        console.log('Table clients créée');
+        await fetchClients();
+      }
+    } catch (error) {
+      console.log('Impossible de créer la table clients automatiquement');
+    }
+  };
+
   const handleClientSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingClient) {
+      // Vérifier si on peut utiliser la table clients
+      let canUseClientsTable = true;
+      
+      try {
+        const { data: testData } = await supabase
+          .from('clients')
+          .select('count')
+          .limit(1);
+      } catch (testError) {
+        canUseClientsTable = false;
+      }
+
+      if (!canUseClientsTable) {
+        alert('⚠️ Table clients non disponible. Fonctionnalité limitée aux noms de clients dans les soumissions.');
+        return;
+      }
+
+      if (editingClient && editingClient.id) {
         const { error } = await supabase
           .from('clients')
           .update(clientForm)
@@ -164,25 +275,32 @@ export default function SoumissionsManager() {
       alert('✅ Client sauvegardé !');
     } catch (error) {
       console.error('Erreur:', error);
-      alert('❌ Erreur lors de la sauvegarde du client');
+      alert('❌ Erreur lors de la sauvegarde du client: ' + error.message);
     }
   };
 
-  const handleDeleteClient = async (id) => {
-    if (!confirm('🗑️ Supprimer ce client ?')) return;
+  const handleDeleteClient = async (client) => {
+    if (!confirm(`🗑️ Supprimer le client "${client.name}" ?`)) return;
     
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id);
+      // Si c'est un vrai client de la table
+      if (typeof client.id === 'number' && client.id >= 0) {
+        const { error } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', client.id);
+        
+        if (error) throw error;
+      } else {
+        alert('⚠️ Ce client provient des soumissions et ne peut pas être supprimé directement.');
+        return;
+      }
       
-      if (error) throw error;
       await fetchClients();
       alert('✅ Client supprimé !');
     } catch (error) {
       console.error('Erreur:', error);
-      alert('❌ Erreur lors de la suppression');
+      alert('❌ Erreur lors de la suppression: ' + error.message);
     }
   };
 
@@ -205,6 +323,7 @@ export default function SoumissionsManager() {
       });
       setShowNonInventoryForm(false);
       alert('✅ Item non-inventaire ajouté !');
+      await fetchInventory(); // Rafraîchir l'inventaire
     } catch (error) {
       console.error('Erreur:', error);
       alert('❌ Erreur: ' + error.message);
@@ -226,7 +345,7 @@ export default function SoumissionsManager() {
       alert('✅ Soumission supprimée !');
     } catch (error) {
       console.error('Erreur:', error);
-      alert('❌ Erreur lors de la suppression');
+      alert('❌ Erreur lors de la suppression: ' + error.message);
     }
   };
 
@@ -258,6 +377,11 @@ export default function SoumissionsManager() {
     const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const filteredInventory = inventory.filter(item => 
+    item.name?.toLowerCase().includes(inventorySearchTerm.toLowerCase()) ||
+    item.description?.toLowerCase().includes(inventorySearchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -368,6 +492,9 @@ export default function SoumissionsManager() {
               ← Retour
             </button>
           </div>
+          <p className="mt-2 text-white/90">
+            ⚠️ Fonctionnalité limitée - Table clients non configurée dans Supabase
+          </p>
         </div>
 
         {/* Formulaire client */}
@@ -456,8 +583,8 @@ export default function SoumissionsManager() {
                 Aucun client enregistré
               </div>
             ) : (
-              clients.map((client) => (
-                <div key={client.id} className="p-6 hover:bg-gray-50">
+              clients.map((client, index) => (
+                <div key={client.id || index} className="p-6 hover:bg-gray-50">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-lg font-medium text-gray-900">{client.name}</h4>
@@ -466,18 +593,23 @@ export default function SoumissionsManager() {
                         {client.phone && <p>📞 {client.phone}</p>}
                         {client.contact_person && <p>👤 {client.contact_person}</p>}
                         {client.address && <p>📍 {client.address}</p>}
+                        <p className="text-xs text-gray-400">
+                          {typeof client.id === 'number' && client.id >= 0 ? 'Client BD' : 'Client soumissions'}
+                        </p>
                       </div>
                     </div>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleEditClient(client)}
                         className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
+                        disabled={!(typeof client.id === 'number' && client.id >= 0)}
                       >
                         ✏️ Modifier
                       </button>
                       <button
-                        onClick={() => handleDeleteClient(client.id)}
+                        onClick={() => handleDeleteClient(client)}
                         className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded-lg hover:bg-red-200"
+                        disabled={!(typeof client.id === 'number' && client.id >= 0)}
                       >
                         🗑️ Supprimer
                       </button>
@@ -538,6 +670,11 @@ export default function SoumissionsManager() {
                           {submission.status === 'sent' ? '📤 Envoyée' :
                            submission.status === 'draft' ? '📝 Brouillon' : '✅ Acceptée'}
                         </span>
+                        {submission.items && submission.items.length > 0 && (
+                          <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">
+                            📦 {submission.items.length} items
+                          </span>
+                        )}
                       </div>
                     </div>
                     <button
@@ -556,10 +693,10 @@ export default function SoumissionsManager() {
     );
   }
 
-  // Formulaire soumission
+  // Formulaire soumission avec recherche inventaire
   if (showForm) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="bg-gradient-to-br from-purple-50 via-white to-indigo-50 rounded-xl shadow-lg border border-purple-200 p-8">
           <div className="bg-purple-600 text-white px-6 py-4 rounded-lg mb-6">
             <h2 className="text-2xl font-bold">
@@ -567,16 +704,32 @@ export default function SoumissionsManager() {
             </h2>
           </div>
           
-          <form onSubmit={handleSubmissionSubmit} className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <label className="block text-sm font-semibold text-blue-800 mb-2">Client</label>
-              <input
-                type="text"
-                value={submissionForm.client_name}
-                onChange={(e) => setSubmissionForm({...submissionForm, client_name: e.target.value})}
-                className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                required
-              />
+          <form onSubmit={handleSubmissionSubmit} className="space-y-6">
+            {/* Informations de base */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <label className="block text-sm font-semibold text-blue-800 mb-2">Client</label>
+                <input
+                  type="text"
+                  value={submissionForm.client_name}
+                  onChange={(e) => setSubmissionForm({...submissionForm, client_name: e.target.value})}
+                  className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                  required
+                />
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Statut</label>
+                <select
+                  value={submissionForm.status}
+                  onChange={(e) => setSubmissionForm({...submissionForm, status: e.target.value})}
+                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3"
+                >
+                  <option value="draft">📝 Brouillon</option>
+                  <option value="sent">📤 Envoyée</option>
+                  <option value="accepted">✅ Acceptée</option>
+                </select>
+              </div>
             </div>
 
             <div className="bg-green-50 p-4 rounded-lg">
@@ -590,29 +743,92 @@ export default function SoumissionsManager() {
               />
             </div>
 
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <label className="block text-sm font-semibold text-yellow-800 mb-2">Montant</label>
+            {/* Recherche inventaire */}
+            <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
+              <h3 className="text-lg font-semibold text-indigo-800 mb-4">🔍 Recherche Inventaire</h3>
               <input
-                type="number"
-                step="0.01"
-                value={submissionForm.amount}
-                onChange={(e) => setSubmissionForm({...submissionForm, amount: e.target.value})}
-                className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-3"
-                required
+                type="text"
+                placeholder="Rechercher un item dans l'inventaire..."
+                value={inventorySearchTerm}
+                onChange={(e) => setInventorySearchTerm(e.target.value)}
+                className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 mb-4"
               />
+              
+              {inventorySearchTerm && (
+                <div className="max-h-60 overflow-y-auto border border-indigo-200 rounded-lg">
+                  {filteredInventory.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      Aucun item trouvé dans l'inventaire
+                    </div>
+                  ) : (
+                    filteredInventory.map((item) => (
+                      <div key={item.id} className="p-3 border-b border-indigo-100 hover:bg-indigo-50 flex justify-between items-center">
+                        <div>
+                          <h4 className="font-medium text-gray-900">{item.name}</h4>
+                          <p className="text-sm text-gray-500">{item.description}</p>
+                          <p className="text-sm text-indigo-600 font-medium">{formatCurrency(item.price)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addItemToSubmission(item)}
+                          className="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                        >
+                          ➕ Ajouter
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <label className="block text-sm font-semibold text-gray-800 mb-2">Statut</label>
-              <select
-                value={submissionForm.status}
-                onChange={(e) => setSubmissionForm({...submissionForm, status: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3"
-              >
-                <option value="draft">📝 Brouillon</option>
-                <option value="sent">📤 Envoyée</option>
-                <option value="accepted">✅ Acceptée</option>
-              </select>
+            {/* Items sélectionnés */}
+            {selectedItems.length > 0 && (
+              <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+                <h3 className="text-lg font-semibold text-yellow-800 mb-4">📦 Items Sélectionnés</h3>
+                <div className="space-y-3">
+                  {selectedItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-yellow-200">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{item.name}</h4>
+                        <p className="text-sm text-gray-500">{item.description}</p>
+                        <p className="text-sm text-yellow-600 font-medium">
+                          {formatCurrency(item.price)} × {item.quantity} = {formatCurrency(item.price * item.quantity)}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateItemQuantity(item.id, e.target.value)}
+                          className="w-16 rounded border-gray-300 text-center"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeItemFromSubmission(item.id)}
+                          className="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
+                        >
+                          ❌
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Montant total (calculé automatiquement) */}
+            <div className="bg-green-100 p-4 rounded-lg border border-green-300">
+              <label className="block text-lg font-semibold text-green-800 mb-2">
+                💰 Montant Total (Calculé automatiquement)
+              </label>
+              <div className="text-3xl font-bold text-green-900">
+                {formatCurrency(submissionForm.amount)}
+              </div>
+              <p className="text-sm text-green-600 mt-1">
+                Basé sur {selectedItems.length} item(s) sélectionné(s)
+              </p>
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">
@@ -621,7 +837,9 @@ export default function SoumissionsManager() {
                 onClick={() => {
                   setShowForm(false);
                   setEditingSubmission(null);
-                  setSubmissionForm({client_name: '', description: '', amount: '', status: 'draft'});
+                  setSelectedItems([]);
+                  setSubmissionForm({client_name: '', description: '', amount: 0, status: 'draft', items: []});
+                  setInventorySearchTerm('');
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
               >
@@ -728,6 +946,13 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
+      {/* Debug info */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <p className="text-sm text-yellow-800">
+          🔍 <strong>Debug:</strong> {inventory.length} items inventaire, {clients.length} clients, {soumissions.length} soumissions
+        </p>
+      </div>
+
       {/* Filtres */}
       <div className="bg-white rounded-lg shadow-lg p-6">
         <div className="flex flex-col md:flex-row gap-4">
@@ -781,6 +1006,11 @@ export default function SoumissionsManager() {
                         {submission.status === 'sent' ? '📤 Envoyée' :
                          submission.status === 'draft' ? '📝 Brouillon' : '✅ Acceptée'}
                       </span>
+                      {submission.items && submission.items.length > 0 && (
+                        <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">
+                          📦 {submission.items.length} items
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button
@@ -790,8 +1020,10 @@ export default function SoumissionsManager() {
                         client_name: submission.client_name,
                         description: submission.description,
                         amount: submission.amount,
-                        status: submission.status
+                        status: submission.status,
+                        items: submission.items || []
                       });
+                      setSelectedItems(submission.items || []);
                       setShowForm(true);
                     }}
                     className="px-4 py-2 bg-purple-100 text-purple-800 rounded-lg hover:bg-purple-200"
