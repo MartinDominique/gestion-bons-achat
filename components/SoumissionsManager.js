@@ -347,6 +347,12 @@ export default function SoumissionsManager() {
     }
   };
 
+  const updateItemPrice = (productId, field, price) => {
+    setSelectedItems(selectedItems.map(item =>
+      item.product_id === productId ? { ...item, [field]: parseFloat(price) || 0 } : item
+    ));
+  };
+
   const removeItemFromSubmission = (productId) => {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
@@ -914,7 +920,7 @@ export default function SoumissionsManager() {
                 <h3 className="text-lg font-semibold text-yellow-800 mb-4">
                   📦 Produits Sélectionnés ({selectedItems.length})
                   <span className="text-sm font-normal text-yellow-600 ml-2">
-                    (Dernier ajouté en haut)
+                    (Dernier ajouté en haut - Prix modifiables directement)
                   </span>
                 </h3>
                 
@@ -926,7 +932,8 @@ export default function SoumissionsManager() {
                         <th className="text-left p-2 font-semibold">Code</th>
                         <th className="text-left p-2 font-semibold">Description</th>
                         <th className="text-center p-2 font-semibold">Qté</th>
-                        <th className="text-right p-2 font-semibold">Prix Unit.</th>
+                        <th className="text-right p-2 font-semibold text-green-700">💰 Prix Vente</th>
+                        <th className="text-right p-2 font-semibold text-orange-700">🏷️ Prix Coût</th>
                         <th className="text-right p-2 font-semibold">Total Vente</th>
                         <th className="text-right p-2 font-semibold">Total Coût</th>
                         <th className="text-center p-2 font-semibold">Actions</th>
@@ -956,8 +963,24 @@ export default function SoumissionsManager() {
                               />
                             </td>
                             <td className="p-2 text-right">
-                              <div className="text-green-600 font-medium">{formatCurrency(item.selling_price)}</div>
-                              <div className="text-orange-600 text-xs">{formatCurrency(item.cost_price)}</div>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.selling_price}
+                                onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
+                                className="w-20 text-right rounded border-green-300 text-sm focus:border-green-500 focus:ring-green-500"
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.cost_price}
+                                onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
+                                className="w-20 text-right rounded border-orange-300 text-sm focus:border-orange-500 focus:ring-orange-500"
+                              />
                             </td>
                             <td className="p-2 text-right font-medium text-green-700">
                               {formatCurrency(item.selling_price * item.quantity)}
@@ -983,18 +1006,23 @@ export default function SoumissionsManager() {
                 </div>
                 
                 {/* Résumé rapide */}
-                <div className="mt-3 flex justify-between items-center text-sm">
-                  <span className="text-yellow-700">
-                    📊 {selectedItems.length} article(s) • 
-                    Total quantité: {selectedItems.reduce((sum, item) => sum + item.quantity, 0)}
-                  </span>
-                  <div className="flex space-x-4">
-                    <span className="text-green-700 font-medium">
-                      💰 {formatCurrency(submissionForm.amount)}
+                <div className="mt-3 space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-yellow-700">
+                      📊 {selectedItems.length} article(s) • 
+                      Total quantité: {selectedItems.reduce((sum, item) => sum + item.quantity, 0)}
                     </span>
-                    <span className="text-orange-700 font-medium">
-                      🏷️ {formatCurrency(calculatedCostTotal)}
-                    </span>
+                    <div className="flex space-x-4">
+                      <span className="text-green-700 font-medium">
+                        💰 {formatCurrency(submissionForm.amount)}
+                      </span>
+                      <span className="text-orange-700 font-medium">
+                        🏷️ {formatCurrency(calculatedCostTotal)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded">
+                    💡 <strong>Astuce:</strong> Cliquez sur les prix vente (vert) et coût (orange) pour les modifier directement dans le tableau
                   </div>
                 </div>
               </div>
