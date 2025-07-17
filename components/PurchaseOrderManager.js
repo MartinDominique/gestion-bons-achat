@@ -90,7 +90,7 @@ export default function PurchaseOrderManager() {
       setPurchaseOrders(data || []);
     } catch (error) {
       console.error('Erreur lors du chargement des bons d\'achat:', error);
-      alert('Erreur lors du chargement: ' + error.message);
+      console.error('Erreur lors du chargement des bons d\'achat:', error.message);
     } finally {
       setLoading(false);
     }
@@ -107,15 +107,13 @@ export default function PurchaseOrderManager() {
       });
 
       if (response.ok) {
-        alert('📧 Rapport envoyé avec succès !');
+        console.log('📧 Rapport envoyé avec succès !');
       } else {
         const errorData = await response.text();
         console.error('Erreur:', errorData);
-        alert('❌ Erreur lors de l\'envoi du rapport');
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
-      alert('❌ Erreur lors de l\'envoi du rapport');
     } finally {
       setSendingReport(false);
     }
@@ -126,7 +124,7 @@ export default function PurchaseOrderManager() {
     
     // Validation
     if (!formData.client_name || !formData.po_number || !formData.amount) {
-      alert('⚠️ Veuillez remplir tous les champs obligatoires');
+      console.warn('⚠️ Veuillez remplir tous les champs obligatoires');
       return;
     }
 
@@ -186,10 +184,9 @@ export default function PurchaseOrderManager() {
         files: []
       });
       
-      alert('✅ Bon d\'achat sauvegardé avec succès !');
+      console.log('✅ Bon d\'achat sauvegardé avec succès !');
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      alert('❌ Erreur lors de la sauvegarde: ' + error.message);
+      console.error('Erreur lors de la sauvegarde:', error.message);
     }
   };
 
@@ -221,10 +218,9 @@ export default function PurchaseOrderManager() {
 
       if (error) throw error;
       await fetchPurchaseOrders();
-      alert('✅ Bon d\'achat supprimé !');
+      console.log('✅ Bon d\'achat supprimé !');
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      alert('❌ Erreur lors de la suppression: ' + error.message);
+      console.error('Erreur lors de la suppression:', error.message);
     }
   };
 
@@ -237,10 +233,9 @@ export default function PurchaseOrderManager() {
 
       if (error) throw error;
       await fetchPurchaseOrders();
-      alert(`✅ Statut mis à jour: ${newStatus === 'approved' ? 'Approuvé' : newStatus === 'rejected' ? 'Rejeté' : 'En attente'}`);
+      console.log(`✅ Statut mis à jour: ${newStatus === 'approved' ? 'Approuvé' : newStatus === 'rejected' ? 'Rejeté' : 'En attente'}`);
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
-      alert('❌ Erreur lors de la mise à jour du statut: ' + error.message);
+      console.error('Erreur lors de la mise à jour du statut:', error.message);
     }
   };
 
@@ -523,19 +518,10 @@ export default function PurchaseOrderManager() {
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec logo agrandi 3x et statistiques colorées */}
+      {/* En-tête sans logo et statistiques colorées */}
       <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-6 text-white">
         <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center space-x-6">
-            {/* Logo agrandi 3x (315x142 -> 945x426) */}
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
-              className="w-[315px] h-[142px]"
-              style={{ width: '315px', height: '142px' }}
-            />
-            <h2 className="text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
-          </div>
+          <h2 className="text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
           <div className="flex space-x-3">
             <button
               onClick={handleSendReport}
@@ -693,9 +679,30 @@ export default function PurchaseOrderManager() {
                         </p>
                       )}
                       {po.files && po.files.length > 0 && (
-                        <p className="text-xs text-indigo-600 mt-1">
-                          📎 {po.files.length} fichier(s) joint(s)
-                        </p>
+                        <div className="mt-2">
+                          <p className="text-xs text-indigo-600 mb-1">
+                            📎 {po.files.length} fichier(s) joint(s):
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {po.files.map((file, index) => (
+                              <button
+                                key={index}
+                                onClick={() => {
+                                  // Ouvrir le fichier dans un nouvel onglet ou télécharger
+                                  if (file.url) {
+                                    window.open(file.url, '_blank');
+                                  } else {
+                                    alert(`Fichier: ${file.name || `Fichier ${index + 1}`}\nTaille: ${file.size ? Math.round(file.size/1024) + ' KB' : 'N/A'}`);
+                                  }
+                                }}
+                                className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded border border-indigo-300 transition-colors"
+                                title={`Cliquer pour voir ${file.name || `Fichier ${index + 1}`}`}
+                              >
+                                📄 {file.name || `Fichier ${index + 1}`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
