@@ -107,7 +107,7 @@ export default function PurchaseOrderManager() {
       });
 
       if (response.ok) {
-        console.log('📧 Rapport envoyé avec succès !');
+        // Rapport envoyé avec succès
       } else {
         const errorData = await response.text();
         console.error('Erreur:', errorData);
@@ -124,7 +124,6 @@ export default function PurchaseOrderManager() {
     
     // Validation
     if (!formData.client_name || !formData.po_number || !formData.amount) {
-      console.warn('⚠️ Veuillez remplir tous les champs obligatoires');
       return;
     }
 
@@ -156,7 +155,6 @@ export default function PurchaseOrderManager() {
           console.error('Erreur UPDATE:', error);
           throw error;
         }
-        console.log('Mise à jour réussie:', data);
       } else {
         const { data, error } = await supabase
           .from('purchase_orders')
@@ -167,7 +165,6 @@ export default function PurchaseOrderManager() {
           console.error('Erreur INSERT:', error);
           throw error;
         }
-        console.log('Insertion réussie:', data);
       }
 
       await fetchPurchaseOrders();
@@ -184,7 +181,6 @@ export default function PurchaseOrderManager() {
         files: []
       });
       
-      console.log('✅ Bon d\'achat sauvegardé avec succès !');
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error.message);
     }
@@ -218,7 +214,6 @@ export default function PurchaseOrderManager() {
 
       if (error) throw error;
       await fetchPurchaseOrders();
-      console.log('✅ Bon d\'achat supprimé !');
     } catch (error) {
       console.error('Erreur lors de la suppression:', error.message);
     }
@@ -233,7 +228,6 @@ export default function PurchaseOrderManager() {
 
       if (error) throw error;
       await fetchPurchaseOrders();
-      console.log(`✅ Statut mis à jour: ${newStatus === 'approved' ? 'Approuvé' : newStatus === 'rejected' ? 'Rejeté' : 'En attente'}`);
     } catch (error) {
       console.error('Erreur lors de la mise à jour du statut:', error.message);
     }
@@ -597,9 +591,6 @@ export default function PurchaseOrderManager() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg p-3"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              💡 Recherche inclut: Client, N° PO, Soumission (ex: 2507-001), Notes
-            </p>
           </div>
           <div className="flex items-center space-x-4">
             <select
@@ -616,14 +607,11 @@ export default function PurchaseOrderManager() {
         </div>
       </div>
 
-      {/* Debug info */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <p className="text-sm text-yellow-800">
-          🔍 <strong>Debug:</strong> {purchaseOrders.length} bons d'achat en base, {filteredPurchaseOrders.length} affichés après filtres, {submissions.length} soumissions avec numéros automatiques
+      {/* Info système */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <p className="text-sm text-gray-600">
+          📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
         </p>
-        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
-          ✅ <strong>Soumissions:</strong> Format "2507-001 - Client: Description" • Numérotation automatique active
-        </div>
       </div>
 
       {/* Liste des bons d'achat */}
