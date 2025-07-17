@@ -49,7 +49,8 @@ export default function SoumissionsManager() {
     description: '',
     amount: 0,
     status: 'draft',
-    items: []
+    items: [],
+    submission_number: '' // Ajout du numéro de soumission
   });
 
   const [clientForm, setClientForm] = useState({
@@ -102,6 +103,41 @@ export default function SoumissionsManager() {
     fetchProducts();
     fetchClients();
   }, []);
+
+  // Fonction pour générer le numéro automatique
+  const generateSubmissionNumber = async () => {
+    const now = new Date();
+    const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+    
+    try {
+      // Chercher le dernier numéro du mois
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('submission_number')
+        .like('submission_number', `${yearMonth}-%`)
+        .order('submission_number', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Erreur récupération numéro:', error);
+        return `${yearMonth}-001`;
+      }
+
+      if (data && data.length > 0) {
+        const lastNumber = data[0].submission_number;
+        const sequenceMatch = lastNumber.match(/-(\d{3})$/);
+        if (sequenceMatch) {
+          const nextSequence = (parseInt(sequenceMatch[1]) + 1).toString().padStart(3, '0');
+          return `${yearMonth}-${nextSequence}`;
+        }
+      }
+      
+      return `${yearMonth}-001`;
+    } catch (error) {
+      console.error('Erreur génération numéro:', error);
+      return `${yearMonth}-001`;
+    }
+  };
 
   const fetchSoumissions = async () => {
     try {
@@ -218,13 +254,12 @@ export default function SoumissionsManager() {
       });
 
       if (response.ok) {
-        alert('📧 Rapport envoyé avec succès !');
+        console.log('📧 Rapport envoyé avec succès !');
       } else {
-        alert('❌ Erreur lors de l\'envoi du rapport');
+        console.error('❌ Erreur lors de l\'envoi du rapport');
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
-      alert('❌ Erreur lors de l\'envoi du rapport');
     } finally {
       setSendingReport(false);
     }
@@ -312,16 +347,30 @@ export default function SoumissionsManager() {
     }
   };
 
+  const updateItemPrice = (productId, field, price) => {
+    setSelectedItems(selectedItems.map(item =>
+      item.product_id === productId ? { ...item, [field]: parseFloat(price) || 0 } : item
+    ));
+  };
+
   const removeItemFromSubmission = (productId) => {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
 
-  // Gestion des soumissions
+  // Gestion des soumissions avec numéro automatique
   const handleSubmissionSubmit = async (e) => {
     e.preventDefault();
     try {
+      let submissionNumber = submissionForm.submission_number;
+      
+      // Générer automatiquement le numéro si c'est une nouvelle soumission
+      if (!editingSubmission) {
+        submissionNumber = await generateSubmissionNumber();
+      }
+
       const submissionData = {
         ...submissionForm,
+        submission_number: submissionNumber,
         items: selectedItems
       };
 
@@ -347,13 +396,13 @@ export default function SoumissionsManager() {
         description: '',
         amount: 0,
         status: 'draft',
-        items: []
+        items: [],
+        submission_number: ''
       });
       setCalculatedCostTotal(0);
-      alert('✅ Soumission sauvegardée !');
+      console.log('✅ Soumission sauvegardée !');
     } catch (error) {
-      console.error('Erreur:', error);
-      alert('❌ Erreur lors de la sauvegarde: ' + error.message);
+      console.error('Erreur:', error.message);
     }
   };
 
@@ -400,6 +449,12 @@ export default function SoumissionsManager() {
               <h2 className="text-2xl font-bold">
                 {editingSubmission ? '✏️ Modifier Soumission' : '📝 Nouvelle Soumission'}
               </h2>
+              {/* Affichage du numéro de soumission */}
+              {submissionForm.submission_number && (
+                <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg">
+                  <span className="text-sm font-medium">N°: {submissionForm.submission_number}</span>
+                </div>
+              )}
               {/* Statut dans la barre mauve pendant l'édition */}
               {editingSubmission && (
                 <div className="flex items-center space-x-2">
@@ -435,7 +490,14 @@ export default function SoumissionsManager() {
                   setShowForm(false);
                   setEditingSubmission(null);
                   setSelectedItems([]);
-                  setSubmissionForm({client_name: '', description: '', amount: 0, status: 'draft', items: []});
+                  setSubmissionForm({
+                    client_name: '', 
+                    description: '', 
+                    amount: 0, 
+                    status: 'draft', 
+                    items: [],
+                    submission_number: ''
+                  });
                   setCalculatedCostTotal(0);
                   setProductSearchTerm('');
                   setFocusedProductIndex(-1);
@@ -803,7 +865,7 @@ export default function SoumissionsManager() {
               </div>
             )}
 
-            {/* Modal upload CSV inventaire */}
+            {/* Modal upload CSV inventaire - ORDRE CORRIGÉ */}
             {showInventoryUpload && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
@@ -823,7 +885,9 @@ export default function SoumissionsManager() {
                     </div>
                     <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
                       <p className="font-medium mb-2">Format attendu (en-têtes) :</p>
-                      <p>product_id, description, selling_price, cost_price, unit, product_group, stock_qty</p>
+                      <p className="font-mono text-xs bg-white p-2 rounded border">
+                        product_group, product_id, description, unit, selling_price, cost_price, stock_qty
+                      </p>
                     </div>
                   </div>
                   <div className="flex justify-end space-x-3 mt-6">
@@ -838,7 +902,7 @@ export default function SoumissionsManager() {
                       type="button"
                       onClick={() => {
                         // Ici tu peux ajouter la logique d'import CSV
-                        alert('⚠️ Fonctionnalité import CSV à implémenter');
+                        console.log('⚠️ Fonctionnalité import CSV à implémenter');
                         setShowInventoryUpload(false);
                       }}
                       className="px-4 py-2 border border-transparent rounded-lg text-white bg-green-600 hover:bg-green-700"
@@ -856,7 +920,7 @@ export default function SoumissionsManager() {
                 <h3 className="text-lg font-semibold text-yellow-800 mb-4">
                   📦 Produits Sélectionnés ({selectedItems.length})
                   <span className="text-sm font-normal text-yellow-600 ml-2">
-                    (Dernier ajouté en haut)
+                    (Dernier ajouté en haut - Prix modifiables directement)
                   </span>
                 </h3>
                 
@@ -868,7 +932,8 @@ export default function SoumissionsManager() {
                         <th className="text-left p-2 font-semibold">Code</th>
                         <th className="text-left p-2 font-semibold">Description</th>
                         <th className="text-center p-2 font-semibold">Qté</th>
-                        <th className="text-right p-2 font-semibold">Prix Unit.</th>
+                        <th className="text-right p-2 font-semibold text-green-700">💰 Prix Vente</th>
+                        <th className="text-right p-2 font-semibold text-orange-700">🏷️ Prix Coût</th>
                         <th className="text-right p-2 font-semibold">Total Vente</th>
                         <th className="text-right p-2 font-semibold">Total Coût</th>
                         <th className="text-center p-2 font-semibold">Actions</th>
@@ -898,8 +963,24 @@ export default function SoumissionsManager() {
                               />
                             </td>
                             <td className="p-2 text-right">
-                              <div className="text-green-600 font-medium">{formatCurrency(item.selling_price)}</div>
-                              <div className="text-orange-600 text-xs">{formatCurrency(item.cost_price)}</div>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.selling_price}
+                                onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
+                                className="w-20 text-right rounded border-green-300 text-sm focus:border-green-500 focus:ring-green-500"
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.cost_price}
+                                onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
+                                className="w-20 text-right rounded border-orange-300 text-sm focus:border-orange-500 focus:ring-orange-500"
+                              />
                             </td>
                             <td className="p-2 text-right font-medium text-green-700">
                               {formatCurrency(item.selling_price * item.quantity)}
@@ -925,18 +1006,23 @@ export default function SoumissionsManager() {
                 </div>
                 
                 {/* Résumé rapide */}
-                <div className="mt-3 flex justify-between items-center text-sm">
-                  <span className="text-yellow-700">
-                    📊 {selectedItems.length} article(s) • 
-                    Total quantité: {selectedItems.reduce((sum, item) => sum + item.quantity, 0)}
-                  </span>
-                  <div className="flex space-x-4">
-                    <span className="text-green-700 font-medium">
-                      💰 {formatCurrency(submissionForm.amount)}
+                <div className="mt-3 space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-yellow-700">
+                      📊 {selectedItems.length} article(s) • 
+                      Total quantité: {selectedItems.reduce((sum, item) => sum + item.quantity, 0)}
                     </span>
-                    <span className="text-orange-700 font-medium">
-                      🏷️ {formatCurrency(calculatedCostTotal)}
-                    </span>
+                    <div className="flex space-x-4">
+                      <span className="text-green-700 font-medium">
+                        💰 {formatCurrency(submissionForm.amount)}
+                      </span>
+                      <span className="text-orange-700 font-medium">
+                        🏷️ {formatCurrency(calculatedCostTotal)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded">
+                    💡 <strong>Astuce:</strong> Cliquez sur les prix vente (vert) et coût (orange) pour les modifier directement dans le tableau
                   </div>
                 </div>
               </div>
@@ -988,11 +1074,23 @@ export default function SoumissionsManager() {
           </form>
         </div>
 
-        {/* Version impression */}
+        {/* Version impression - AVEC LOGO COULEUR */}
         <div className="hidden print:block bg-white p-8 max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">SOUMISSION</h1>
-            <p className="text-gray-600">Date: {new Date().toLocaleDateString('fr-CA')}</p>
+          <div className="flex items-center justify-between mb-8">
+            {/* Logo couleur à gauche */}
+            <img 
+              src="/logo.png" 
+              alt="Services TMT Logo" 
+              className="w-[200px] h-auto"
+            />
+            {/* Titre SOUMISSION à droite */}
+            <div className="text-right">
+              <h1 className="text-3xl font-bold text-gray-900">SOUMISSION</h1>
+              {submissionForm.submission_number && (
+                <p className="text-lg font-medium text-gray-700">N°: {submissionForm.submission_number}</p>
+              )}
+              <p className="text-gray-600">Date: {new Date().toLocaleDateString('fr-CA')}</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-8 mb-8">
@@ -1081,7 +1179,14 @@ export default function SoumissionsManager() {
               📧 {sendingReport ? 'Envoi...' : 'Rapport'}
             </button>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={async () => {
+                const newNumber = await generateSubmissionNumber();
+                setSubmissionForm(prev => ({
+                  ...prev,
+                  submission_number: newNumber
+                }));
+                setShowForm(true);
+              }}
               className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-50 font-medium"
             >
               ➕ Nouvelle Soumission
@@ -1184,9 +1289,16 @@ export default function SoumissionsManager() {
               <li key={submission.id} className="p-6 hover:bg-gray-50">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900">
-                      👤 {submission.client_name}
-                    </h3>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        👤 {submission.client_name}
+                      </h3>
+                      {submission.submission_number && (
+                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm font-medium">
+                          N°: {submission.submission_number}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 mt-1">
                       📝 {submission.description}
                     </p>
@@ -1230,7 +1342,8 @@ export default function SoumissionsManager() {
                         description: submission.description,
                         amount: submission.amount,
                         status: submission.status,
-                        items: submission.items || []
+                        items: submission.items || [],
+                        submission_number: submission.submission_number || ''
                       });
                       setSelectedItems(submission.items || []);
                       // Calculer le coût total à partir des items existants
