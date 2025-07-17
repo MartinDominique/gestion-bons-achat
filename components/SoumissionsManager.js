@@ -19,7 +19,7 @@ export default function SoumissionsManager() {
   
   // Recherche produits avec debounce et navigation clavier
   const [productSearchTerm, setProductSearchTerm] = useState('');
-  const [products, setProducts] = useState([]); // Sera vide au démarrage - recherche dynamique
+  const [products, setProducts] = useState([]);
   const [searchingProducts, setSearchingProducts] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [focusedProductIndex, setFocusedProductIndex] = useState(-1);
@@ -38,7 +38,7 @@ export default function SoumissionsManager() {
       } else {
         setProducts([]);
       }
-    }, 300); // Attendre 300ms après la dernière frappe
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [productSearchTerm]);
@@ -50,7 +50,7 @@ export default function SoumissionsManager() {
     amount: 0,
     status: 'draft',
     items: [],
-    submission_number: '' // Réactivé - colonne ajoutée dans Supabase
+    submission_number: ''
   });
 
   const [clientForm, setClientForm] = useState({
@@ -110,7 +110,6 @@ export default function SoumissionsManager() {
     const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     
     try {
-      // Chercher le dernier numéro du mois
       const { data, error } = await supabase
         .from('submissions')
         .select('submission_number')
@@ -157,9 +156,7 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Ne plus charger tous les produits au démarrage - recherche dynamique uniquement
   const fetchProducts = async () => {
-    // Recherche dynamique activée - pas de chargement initial des produits
     setProducts([]);
   };
 
@@ -193,7 +190,6 @@ export default function SoumissionsManager() {
 
   const fetchClients = async () => {
     try {
-      // Essayer d'abord la table clients
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
@@ -204,7 +200,6 @@ export default function SoumissionsManager() {
         return;
       }
 
-      // Sinon, récupérer les clients des soumissions ET purchase_orders
       const [submissionsResult, purchaseOrdersResult] = await Promise.all([
         supabase.from('submissions').select('client_name').order('client_name'),
         supabase.from('purchase_orders').select('client_name, client').order('client_name')
@@ -212,12 +207,10 @@ export default function SoumissionsManager() {
 
       const allClientNames = new Set();
       
-      // Ajouter les clients des soumissions
       submissionsResult.data?.forEach(s => {
         if (s.client_name) allClientNames.add(s.client_name);
       });
       
-      // Ajouter les clients des purchase_orders
       purchaseOrdersResult.data?.forEach(po => {
         if (po.client_name) allClientNames.add(po.client_name);
         if (po.client) allClientNames.add(po.client);
@@ -253,6 +246,9 @@ export default function SoumissionsManager() {
       console.error('Erreur suppression soumission:', error);
     }
   };
+
+  // FIX: Fonction handleSendReport correctement définie avec async
+  const handleSendReport = async () => {
     setSendingReport(true);
     try {
       const response = await fetch('/api/send-weekly-report', {
@@ -282,7 +278,6 @@ export default function SoumissionsManager() {
       e.preventDefault();
       setFocusedProductIndex(prev => {
         const newIndex = prev < availableProducts.length - 1 ? prev + 1 : prev;
-        // Auto-scroll vers l'élément sélectionné
         setTimeout(() => {
           const element = document.querySelector(`[data-product-index="${newIndex}"]`);
           if (element) {
@@ -295,7 +290,6 @@ export default function SoumissionsManager() {
       e.preventDefault();
       setFocusedProductIndex(prev => {
         const newIndex = prev > 0 ? prev - 1 : prev;
-        // Auto-scroll vers l'élément sélectionné
         setTimeout(() => {
           const element = document.querySelector(`[data-product-index="${newIndex}"]`);
           if (element) {
@@ -333,7 +327,6 @@ export default function SoumissionsManager() {
         setTempQuantity('1');
         setProductSearchTerm('');
         setFocusedProductIndex(-1);
-        // Remettre le focus sur la recherche
         setTimeout(() => {
           document.getElementById('product-search')?.focus();
         }, 100);
@@ -391,7 +384,6 @@ export default function SoumissionsManager() {
     try {
       let submissionNumber = submissionForm.submission_number;
       
-      // Générer automatiquement le numéro si c'est une nouvelle soumission
       if (!editingSubmission) {
         submissionNumber = await generateSubmissionNumber();
       }
@@ -433,7 +425,6 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Fonction d'impression
   const handlePrint = () => {
     window.print();
   };
@@ -465,7 +456,6 @@ export default function SoumissionsManager() {
     );
   }
 
-  // Formulaire soumission avec dropdown clients et navigation clavier
   if (showForm) {
     return (
       <div className="max-w-6xl mx-auto">
@@ -476,13 +466,11 @@ export default function SoumissionsManager() {
               <h2 className="text-2xl font-bold">
                 {editingSubmission ? '✏️ Modifier Soumission' : '📝 Nouvelle Soumission'}
               </h2>
-              {/* Affichage du numéro de soumission */}
               {submissionForm.submission_number && (
                 <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg">
                   <span className="text-sm font-medium">N°: {submissionForm.submission_number}</span>
                 </div>
               )}
-              {/* Statut dans la barre mauve pendant l'édition */}
               {editingSubmission && (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium">Statut:</span>
@@ -544,9 +532,7 @@ export default function SoumissionsManager() {
           </div>
           
           <form id="submission-form" onSubmit={handleSubmissionSubmit} className="space-y-6">
-            {/* Informations de base - Client et Description sur même ligne */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Dropdown Client */}
               <div className="bg-blue-50 p-4 rounded-lg">
                 <label className="block text-sm font-semibold text-blue-800 mb-2">Client *</label>
                 <select
@@ -564,7 +550,6 @@ export default function SoumissionsManager() {
                 </select>
               </div>
 
-              {/* Description sur 1 ligne */}
               <div className="bg-green-50 p-4 rounded-lg">
                 <label className="block text-sm font-semibold text-green-800 mb-2">Description *</label>
                 <input
@@ -578,13 +563,11 @@ export default function SoumissionsManager() {
               </div>
             </div>
 
-            {/* Recherche produits avec navigation clavier - Réduite de moitié + bouton ajout rapide */}
             <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
               <h3 className="text-lg font-semibold text-indigo-800 mb-4">
                 🔍 Recherche Produits (6718 au total)
               </h3>
               
-              {/* Barre de recherche réduite + bouton ajout rapide */}
               <div className="flex gap-4 mb-4">
                 <div className="flex-1 max-w-md">
                   <input
@@ -610,7 +593,6 @@ export default function SoumissionsManager() {
                 </button>
               </div>
               
-              {/* Indicateur de recherche */}
               {searchingProducts && (
                 <div className="flex items-center justify-center p-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mr-2"></div>
@@ -618,14 +600,12 @@ export default function SoumissionsManager() {
                 </div>
               )}
               
-              {/* Message d'aide */}
               {productSearchTerm && productSearchTerm.length < 2 && !searchingProducts && (
                 <div className="p-4 text-center text-gray-500 border border-gray-200 rounded-lg">
                   Tapez au moins 2 caractères pour rechercher dans les 6718 produits
                 </div>
               )}
               
-              {/* Résultats de recherche */}
               {productSearchTerm.length >= 2 && !searchingProducts && (
                 <div className="max-h-60 overflow-y-auto border border-indigo-200 rounded-lg">
                   {products.length === 0 ? (
@@ -699,7 +679,6 @@ export default function SoumissionsManager() {
                         min="1"
                         value={tempQuantity}
                         onChange={(e) => {
-                          // Ne permettre que des nombres entiers
                           const value = e.target.value;
                           if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
                             setTempQuantity(value);
@@ -828,7 +807,6 @@ export default function SoumissionsManager() {
                     </div>
                   </div>
                   
-                  {/* Calcul automatique de la marge */}
                   {quickProductForm.selling_price && quickProductForm.cost_price && (
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                       <p className="text-sm text-blue-800">
@@ -861,7 +839,6 @@ export default function SoumissionsManager() {
                       onClick={() => {
                         if (quickProductForm.product_id && quickProductForm.description && 
                             quickProductForm.selling_price && quickProductForm.cost_price) {
-                          // Créer le produit temporaire et l'ajouter directement
                           const tempProduct = {
                             product_id: quickProductForm.product_id,
                             description: quickProductForm.description,
@@ -869,13 +846,11 @@ export default function SoumissionsManager() {
                             cost_price: parseFloat(quickProductForm.cost_price),
                             unit: quickProductForm.unit,
                             product_group: quickProductForm.product_group,
-                            stock_qty: 0 // Produit non-inventaire
+                            stock_qty: 0
                           };
                           
-                          // Ajouter avec quantité 1 par défaut
                           addItemToSubmission(tempProduct, 1);
                           
-                          // Fermer le modal et réinitialiser
                           setShowQuickAddProduct(false);
                           setQuickProductForm({
                             product_id: '',
@@ -896,7 +871,7 @@ export default function SoumissionsManager() {
               </div>
             )}
 
-            {/* Modal upload CSV inventaire - ORDRE CORRIGÉ */}
+            {/* Modal upload CSV inventaire */}
             {showInventoryUpload && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
@@ -932,7 +907,6 @@ export default function SoumissionsManager() {
                     <button
                       type="button"
                       onClick={() => {
-                        // Ici tu peux ajouter la logique d'import CSV
                         console.log('⚠️ Fonctionnalité import CSV à implémenter');
                         setShowInventoryUpload(false);
                       }}
@@ -945,14 +919,13 @@ export default function SoumissionsManager() {
               </div>
             )}
 
-            {/* Items sélectionnés - Version compacte pour 50+ items */}
+            {/* Items sélectionnés */}
             {selectedItems.length > 0 && (
               <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
                 <h3 className="text-lg font-semibold text-yellow-800 mb-4">
                   📦 Produits Sélectionnés ({selectedItems.length})
                 </h3>
                 
-                {/* Tableau compact pour beaucoup d'items */}
                 <div className="max-h-80 overflow-y-auto border border-yellow-200 rounded-lg bg-white">
                   <table className="w-full text-sm">
                     <thead className="bg-yellow-100 sticky top-0">
@@ -968,7 +941,6 @@ export default function SoumissionsManager() {
                       </tr>
                     </thead>
                     <tbody>
-                      {/* Inverser l'ordre pour afficher le dernier ajouté en premier */}
                       {[...selectedItems].reverse().map((item, reverseIndex) => {
                         const originalIndex = selectedItems.length - 1 - reverseIndex;
                         return (
@@ -1038,7 +1010,6 @@ export default function SoumissionsManager() {
                   </table>
                 </div>
                 
-                {/* Résumé rapide */}
                 <div className="mt-3 space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-yellow-700">
@@ -1061,7 +1032,7 @@ export default function SoumissionsManager() {
               </div>
             )}
 
-            {/* Totaux (vente et coût) */}
+            {/* Totaux */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-green-100 p-4 rounded-lg border border-green-300">
                 <label className="block text-lg font-semibold text-green-800 mb-2">
@@ -1081,7 +1052,6 @@ export default function SoumissionsManager() {
                 </div>
               </div>
 
-              {/* Marge bénéficiaire */}
               <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
                 <label className="block text-lg font-semibold text-blue-800 mb-2">
                   📈 Marge
@@ -1097,7 +1067,6 @@ export default function SoumissionsManager() {
               </div>
             </div>
 
-            {/* Note de fin */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
               <p className="text-gray-600 text-sm">
                 📋 {selectedItems.length} produit(s) sélectionné(s) • 
@@ -1107,16 +1076,14 @@ export default function SoumissionsManager() {
           </form>
         </div>
 
-        {/* Version impression - AVEC LOGO COULEUR */}
+        {/* Version impression */}
         <div className="hidden print:block bg-white p-8 max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            {/* Logo couleur à gauche */}
             <img 
               src="/logo.png" 
               alt="Services TMT Logo" 
               className="w-[200px] h-auto"
             />
-            {/* Titre SOUMISSION à droite */}
             <div className="text-right">
               <h1 className="text-3xl font-bold text-gray-900">SOUMISSION</h1>
               {submissionForm.submission_number && (
@@ -1159,7 +1126,6 @@ export default function SoumissionsManager() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Garder l'ordre normal pour l'impression (pas inversé) */}
                   {selectedItems.map((item) => (
                     <tr key={item.product_id}>
                       <td className="border border-gray-300 p-2">{item.product_id}</td>
@@ -1197,7 +1163,8 @@ export default function SoumissionsManager() {
     );
   }
 
-  return 
+  // FIX: Retour principal du composant avec expression correcte
+  return (
     <div className="space-y-6">
       {/* En-tête avec boutons */}
       <div className="bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-xl shadow-lg p-6 text-white">
@@ -1222,7 +1189,6 @@ export default function SoumissionsManager() {
                   setShowForm(true);
                 } catch (error) {
                   console.error('Erreur génération numéro:', error);
-                  // Fallback - ouvrir quand même le formulaire
                   setShowForm(true);
                 }
               }}
@@ -1381,7 +1347,6 @@ export default function SoumissionsManager() {
                           submission_number: submission.submission_number || ''
                         });
                         setSelectedItems(submission.items || []);
-                        // Calculer le coût total à partir des items existants
                         const existingCostTotal = (submission.items || []).reduce((sum, item) => 
                           sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
                         );
