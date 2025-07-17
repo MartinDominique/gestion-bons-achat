@@ -104,12 +104,10 @@ export default function SoumissionsManager() {
     fetchClients();
   }, []);
 
-  // Fonction pour générer le numéro automatique - RÉACTIVÉE
+  // Fonction pour générer le numéro automatique
   const generateSubmissionNumber = async () => {
     const now = new Date();
     const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-    
-    console.log('🔢 Génération numéro pour:', yearMonth);
     
     try {
       // Chercher le dernier numéro du mois
@@ -120,9 +118,6 @@ export default function SoumissionsManager() {
         .order('submission_number', { ascending: false })
         .limit(1);
 
-      console.log('📋 Requête Supabase - Erreur:', error);
-      console.log('📋 Requête Supabase - Données:', data);
-
       if (error) {
         console.error('Erreur récupération numéro:', error);
         return `${yearMonth}-001`;
@@ -130,18 +125,15 @@ export default function SoumissionsManager() {
 
       if (data && data.length > 0) {
         const lastNumber = data[0].submission_number;
-        console.log('📋 Dernier numéro trouvé:', lastNumber);
         const sequenceMatch = lastNumber.match(/-(\d{3})$/);
         if (sequenceMatch) {
           const nextSequence = (parseInt(sequenceMatch[1]) + 1).toString().padStart(3, '0');
           const newNumber = `${yearMonth}-${nextSequence}`;
-          console.log('📋 Nouveau numéro généré:', newNumber);
           return newNumber;
         }
       }
       
       const firstNumber = `${yearMonth}-001`;
-      console.log('📋 Premier numéro du mois:', firstNumber);
       return firstNumber;
     } catch (error) {
       console.error('Erreur génération numéro:', error);
@@ -275,19 +267,36 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Navigation clavier pour recherche produits (utilise les résultats de searchProducts)
+  // Navigation clavier pour recherche produits avec auto-scroll
   const handleProductKeyDown = (e) => {
-    // Les produits sont maintenant chargés dynamiquement via searchProducts
-    const availableProducts = products; // Résultats de la recherche côté serveur
+    const availableProducts = products;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setFocusedProductIndex(prev => 
-        prev < availableProducts.length - 1 ? prev + 1 : prev
-      );
+      setFocusedProductIndex(prev => {
+        const newIndex = prev < availableProducts.length - 1 ? prev + 1 : prev;
+        // Auto-scroll vers l'élément sélectionné
+        setTimeout(() => {
+          const element = document.querySelector(`[data-product-index="${newIndex}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 0);
+        return newIndex;
+      });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setFocusedProductIndex(prev => prev > 0 ? prev - 1 : prev);
+      setFocusedProductIndex(prev => {
+        const newIndex = prev > 0 ? prev - 1 : prev;
+        // Auto-scroll vers l'élément sélectionné
+        setTimeout(() => {
+          const element = document.querySelector(`[data-product-index="${newIndex}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 0);
+        return newIndex;
+      });
     } else if (e.key === 'Tab' || e.key === 'Enter') {
       e.preventDefault();
       if (focusedProductIndex >= 0 && availableProducts[focusedProductIndex]) {
@@ -310,8 +319,8 @@ export default function SoumissionsManager() {
   const handleQuantityKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (selectedProductForQuantity && tempQuantity && parseFloat(tempQuantity) > 0) {
-        addItemToSubmission(selectedProductForQuantity, parseFloat(tempQuantity));
+      if (selectedProductForQuantity && tempQuantity && parseInt(tempQuantity) > 0) {
+        addItemToSubmission(selectedProductForQuantity, parseInt(tempQuantity));
         setShowQuantityInput(false);
         setSelectedProductForQuantity(null);
         setTempQuantity('1');
@@ -329,30 +338,32 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Gestion des items de produits avec quantité
+  // Gestion des items de produits avec quantité entière
   const addItemToSubmission = (product, quantity = 1) => {
+    const intQuantity = parseInt(quantity);
     const existingItem = selectedItems.find(item => item.product_id === product.product_id);
     
     if (existingItem) {
       setSelectedItems(selectedItems.map(item => 
         item.product_id === product.product_id 
-          ? { ...item, quantity: item.quantity + quantity }
+          ? { ...item, quantity: item.quantity + intQuantity }
           : item
       ));
     } else {
       setSelectedItems([...selectedItems, {
         ...product,
-        quantity: quantity
+        quantity: intQuantity
       }]);
     }
   };
 
   const updateItemQuantity = (productId, quantity) => {
-    if (quantity <= 0) {
+    const intQuantity = parseInt(quantity);
+    if (intQuantity <= 0 || isNaN(intQuantity)) {
       setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
     } else {
       setSelectedItems(selectedItems.map(item =>
-        item.product_id === productId ? { ...item, quantity: parseFloat(quantity) } : item
+        item.product_id === productId ? { ...item, quantity: intQuantity } : item
       ));
     }
   };
@@ -367,7 +378,7 @@ export default function SoumissionsManager() {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
 
-  // Gestion des soumissions avec numéro automatique - RÉACTIVÉE
+  // Gestion des soumissions avec numéro automatique
   const handleSubmissionSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -376,7 +387,6 @@ export default function SoumissionsManager() {
       // Générer automatiquement le numéro si c'est une nouvelle soumission
       if (!editingSubmission) {
         submissionNumber = await generateSubmissionNumber();
-        console.log('💾 Numéro à sauvegarder:', submissionNumber);
       }
 
       const submissionData = {
@@ -385,21 +395,17 @@ export default function SoumissionsManager() {
         items: selectedItems
       };
 
-      console.log('💾 Données complètes à sauvegarder:', submissionData);
-
       if (editingSubmission) {
         const { error } = await supabase
           .from('submissions')
           .update(submissionData)
           .eq('id', editingSubmission.id);
         if (error) throw error;
-        console.log('✅ Soumission mise à jour avec numéro:', submissionNumber);
       } else {
         const { error } = await supabase
           .from('submissions')
           .insert([submissionData]);
         if (error) throw error;
-        console.log('✅ Nouvelle soumission créée avec numéro:', submissionNumber);
       }
 
       await fetchSoumissions();
@@ -464,16 +470,12 @@ export default function SoumissionsManager() {
               <h2 className="text-2xl font-bold">
                 {editingSubmission ? '✏️ Modifier Soumission' : '📝 Nouvelle Soumission'}
               </h2>
-              {/* Affichage du numéro de soumission - RÉACTIVÉ */}
+              {/* Affichage du numéro de soumission */}
               {submissionForm.submission_number && (
                 <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg">
                   <span className="text-sm font-medium">N°: {submissionForm.submission_number}</span>
                 </div>
               )}
-              {/* Debug: afficher l'état du numéro */}
-              <div className="bg-red-100 px-2 py-1 rounded text-xs text-red-800">
-                DEBUG: {submissionForm.submission_number || 'PAS DE NUMÉRO'}
-              </div>
               {/* Statut dans la barre mauve pendant l'édition */}
               {editingSubmission && (
                 <div className="flex items-center space-x-2">
@@ -575,7 +577,7 @@ export default function SoumissionsManager() {
               <h3 className="text-lg font-semibold text-indigo-800 mb-4">
                 🔍 Recherche Produits (6718 au total)
                 <span className="text-sm font-normal text-indigo-600 ml-2">
-                  (Tapez 2+ caractères, ↑↓ pour naviguer, TAB/ENTER pour sélectionner)
+                  (2+ caractères, ↑↓ pour naviguer avec auto-scroll, TAB/ENTER pour sélectionner)
                 </span>
               </h3>
               
@@ -637,6 +639,7 @@ export default function SoumissionsManager() {
                       {products.map((product, index) => (
                         <div 
                           key={product.product_id} 
+                          data-product-index={index}
                           className={`p-3 border-b border-indigo-100 hover:bg-indigo-50 flex justify-between items-center cursor-pointer ${
                             index === focusedProductIndex ? 'bg-indigo-100 border-indigo-300' : ''
                           }`}
@@ -684,15 +687,21 @@ export default function SoumissionsManager() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Quantité ({selectedProductForQuantity.unit})
+                        Quantité ({selectedProductForQuantity.unit}) - Entiers seulement
                       </label>
                       <input
                         id="quantity-input"
                         type="number"
-                        step="0.01"
-                        min="0.01"
+                        step="1"
+                        min="1"
                         value={tempQuantity}
-                        onChange={(e) => setTempQuantity(e.target.value)}
+                        onChange={(e) => {
+                          // Ne permettre que des nombres entiers
+                          const value = e.target.value;
+                          if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
+                            setTempQuantity(value);
+                          }
+                        }}
                         onKeyDown={handleQuantityKeyDown}
                         className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 text-lg"
                         autoFocus
@@ -702,10 +711,10 @@ export default function SoumissionsManager() {
                       <p>Prix vente: {formatCurrency(selectedProductForQuantity.selling_price)} / {selectedProductForQuantity.unit}</p>
                       <p>Prix coût: {formatCurrency(selectedProductForQuantity.cost_price)} / {selectedProductForQuantity.unit}</p>
                       <p className="font-medium text-green-700">
-                        Total vente: {formatCurrency(selectedProductForQuantity.selling_price * parseFloat(tempQuantity || 0))}
+                        Total vente: {formatCurrency(selectedProductForQuantity.selling_price * parseInt(tempQuantity || 0))}
                       </p>
                       <p className="font-medium text-orange-700">
-                        Total coût: {formatCurrency(selectedProductForQuantity.cost_price * parseFloat(tempQuantity || 0))}
+                        Total coût: {formatCurrency(selectedProductForQuantity.cost_price * parseInt(tempQuantity || 0))}
                       </p>
                     </div>
                     <div className="flex justify-end space-x-3">
@@ -723,8 +732,8 @@ export default function SoumissionsManager() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (tempQuantity && parseFloat(tempQuantity) > 0) {
-                            addItemToSubmission(selectedProductForQuantity, parseFloat(tempQuantity));
+                          if (tempQuantity && parseInt(tempQuantity) > 0) {
+                            addItemToSubmission(selectedProductForQuantity, parseInt(tempQuantity));
                             setShowQuantityInput(false);
                             setSelectedProductForQuantity(null);
                             setTempQuantity('1');
@@ -974,10 +983,15 @@ export default function SoumissionsManager() {
                             <td className="p-2 text-center">
                               <input
                                 type="number"
-                                step="0.01"
-                                min="0.01"
+                                step="1"
+                                min="1"
                                 value={item.quantity}
-                                onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
+                                    updateItemQuantity(item.product_id, value);
+                                  }
+                                }}
                                 className="w-16 text-center rounded border-gray-300 text-sm"
                               />
                             </td>
@@ -1029,7 +1043,7 @@ export default function SoumissionsManager() {
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-yellow-700">
                       📊 {selectedItems.length} article(s) • 
-                      Total quantité: {selectedItems.reduce((sum, item) => sum + item.quantity, 0)}
+                      Total quantité: {selectedItems.reduce((sum, item) => sum + parseInt(item.quantity), 0)} unités
                     </span>
                     <div className="flex space-x-4">
                       <span className="text-green-700 font-medium">
@@ -1040,8 +1054,9 @@ export default function SoumissionsManager() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded">
-                    💡 <strong>Astuce:</strong> Cliquez sur les prix vente (vert) et coût (orange) pour les modifier directement dans le tableau
+                  <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded space-y-1">
+                    <div>💡 <strong>Navigation améliorée:</strong> Utilisez ↑↓ pour naviguer dans les produits (auto-scroll) • Quantités en unités entières uniquement (1, 2, 3...)</div>
+                    <div>✏️ <strong>Modification prix:</strong> Cliquez sur les prix vente (vert) et coût (orange) pour les modifier directement dans le tableau</div>
                   </div>
                 </div>
               </div>
@@ -1201,7 +1216,6 @@ export default function SoumissionsManager() {
               onClick={async () => {
                 try {
                   const newNumber = await generateSubmissionNumber();
-                  console.log('🔢 Numéro généré:', newNumber);
                   setSubmissionForm(prev => ({
                     ...prev,
                     submission_number: newNumber
@@ -1267,7 +1281,7 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
-      {/* Debug info - Numérotation automatique réactivée */}
+      {/* Debug info - Numérotation automatique active */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-sm text-yellow-800">
           🔍 <strong>Debug:</strong> Recherche dynamique activée sur 6718 produits (max 50 résultats), {clients.length} clients disponibles, {soumissions.length} soumissions
@@ -1279,14 +1293,10 @@ export default function SoumissionsManager() {
         )}
         <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
           <p className="text-sm text-green-800">
-            <strong>✅ Numérotation automatique ACTIVÉE</strong><br />
-            Format: AnnéeMois-001 (ex: 2507-001, 2507-002, etc.) • Génération automatique à la création
-          </p>
-        </div>
-        {/* Debug état actuel du formulaire */}
-        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
-          <p className="text-xs text-red-800">
-            <strong>DEBUG État formulaire:</strong> submission_number = "{submissionForm.submission_number || 'VIDE'}"
+            <strong>✅ Améliorations actives:</strong><br />
+            • Numérotation automatique: 2507-001, 2507-002, etc.<br />
+            • Navigation clavier: ↑↓ avec auto-scroll<br />
+            • Quantités entières uniquement: 1, 2, 3, 4, 5...
           </p>
         </div>
       </div>
