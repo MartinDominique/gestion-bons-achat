@@ -1197,7 +1197,7 @@ export default function SoumissionsManager() {
     );
   }
 
-  return (
+  return 
     <div className="space-y-6">
       {/* En-tête avec boutons */}
       <div className="bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-xl shadow-lg p-6 text-white">
