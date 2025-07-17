@@ -62,8 +62,8 @@ export default function PurchaseOrderManager() {
     try {
       const { data, error } = await supabase
         .from('submissions')
-        .select('*')
-        .order('submission_number', { ascending: true });
+        .select('id, submission_number, client_name, description, created_at')
+        .order('submission_number', { ascending: false });
 
       if (error) {
         console.error('Erreur chargement soumissions:', error);
@@ -422,7 +422,7 @@ export default function PurchaseOrderManager() {
                     <option value="">Sélectionner ou entrer manuellement...</option>
                     {submissions.map((submission) => (
                       <option key={submission.id} value={submission.submission_number}>
-                        {submission.submission_number}
+                        {submission.submission_number} - {submission.client_name}: {submission.description}
                       </option>
                     ))}
                   </select>
@@ -597,6 +597,9 @@ export default function PurchaseOrderManager() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg p-3"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              💡 Recherche inclut: Client, N° PO, Soumission (ex: 2507-001), Notes
+            </p>
           </div>
           <div className="flex items-center space-x-4">
             <select
@@ -616,8 +619,11 @@ export default function PurchaseOrderManager() {
       {/* Debug info */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <p className="text-sm text-yellow-800">
-          🔍 <strong>Debug:</strong> {purchaseOrders.length} bons d'achat en base, {filteredPurchaseOrders.length} affichés après filtres
+          🔍 <strong>Debug:</strong> {purchaseOrders.length} bons d'achat en base, {filteredPurchaseOrders.length} affichés après filtres, {submissions.length} soumissions avec numéros automatiques
         </p>
+        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+          ✅ <strong>Soumissions:</strong> Format "2507-001 - Client: Description" • Numérotation automatique active
+        </div>
       </div>
 
       {/* Liste des bons d'achat */}
