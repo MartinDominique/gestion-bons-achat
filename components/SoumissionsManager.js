@@ -49,8 +49,7 @@ export default function SoumissionsManager() {
     description: '',
     amount: 0,
     status: 'draft',
-    items: [],
-    submission_number: '' // Ajout du numéro de soumission
+    items: []
   });
 
   const [clientForm, setClientForm] = useState({
@@ -104,40 +103,13 @@ export default function SoumissionsManager() {
     fetchClients();
   }, []);
 
-  // Fonction pour générer le numéro automatique
-  const generateSubmissionNumber = async () => {
-    const now = new Date();
-    const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-    
-    try {
-      // Chercher le dernier numéro du mois
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('submission_number')
-        .like('submission_number', `${yearMonth}-%`)
-        .order('submission_number', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error('Erreur récupération numéro:', error);
-        return `${yearMonth}-001`;
-      }
-
-      if (data && data.length > 0) {
-        const lastNumber = data[0].submission_number;
-        const sequenceMatch = lastNumber.match(/-(\d{3})$/);
-        if (sequenceMatch) {
-          const nextSequence = (parseInt(sequenceMatch[1]) + 1).toString().padStart(3, '0');
-          return `${yearMonth}-${nextSequence}`;
-        }
-      }
-      
-      return `${yearMonth}-001`;
-    } catch (error) {
-      console.error('Erreur génération numéro:', error);
-      return `${yearMonth}-001`;
-    }
-  };
+  // Fonction pour générer le numéro automatique - TEMPORAIREMENT DÉSACTIVÉE
+  // const generateSubmissionNumber = async () => {
+  //   // Fonctionnalité désactivée - nécessite d'ajouter la colonne submission_number à la table submissions
+  //   const now = new Date();
+  //   const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+  //   return `${yearMonth}-001`;
+  // };
 
   const fetchSoumissions = async () => {
     try {
@@ -357,20 +329,12 @@ export default function SoumissionsManager() {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
 
-  // Gestion des soumissions avec numéro automatique
+  // Gestion des soumissions
   const handleSubmissionSubmit = async (e) => {
     e.preventDefault();
     try {
-      let submissionNumber = submissionForm.submission_number;
-      
-      // Générer automatiquement le numéro si c'est une nouvelle soumission
-      if (!editingSubmission) {
-        submissionNumber = await generateSubmissionNumber();
-      }
-
       const submissionData = {
         ...submissionForm,
-        submission_number: submissionNumber,
         items: selectedItems
       };
 
@@ -396,8 +360,7 @@ export default function SoumissionsManager() {
         description: '',
         amount: 0,
         status: 'draft',
-        items: [],
-        submission_number: ''
+        items: []
       });
       setCalculatedCostTotal(0);
       console.log('✅ Soumission sauvegardée !');
@@ -449,12 +412,7 @@ export default function SoumissionsManager() {
               <h2 className="text-2xl font-bold">
                 {editingSubmission ? '✏️ Modifier Soumission' : '📝 Nouvelle Soumission'}
               </h2>
-              {/* Affichage du numéro de soumission */}
-              {submissionForm.submission_number && (
-                <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg">
-                  <span className="text-sm font-medium">N°: {submissionForm.submission_number}</span>
-                </div>
-              )}
+              {/* TODO: Numéro automatique - nécessite d'ajouter la colonne submission_number */}
               {/* Statut dans la barre mauve pendant l'édition */}
               {editingSubmission && (
                 <div className="flex items-center space-x-2">
@@ -1086,9 +1044,7 @@ export default function SoumissionsManager() {
             {/* Titre SOUMISSION à droite */}
             <div className="text-right">
               <h1 className="text-3xl font-bold text-gray-900">SOUMISSION</h1>
-              {submissionForm.submission_number && (
-                <p className="text-lg font-medium text-gray-700">N°: {submissionForm.submission_number}</p>
-              )}
+              {/* TODO: Affichage numéro automatique quand la colonne sera ajoutée */}
               <p className="text-gray-600">Date: {new Date().toLocaleDateString('fr-CA')}</p>
             </div>
           </div>
@@ -1179,14 +1135,7 @@ export default function SoumissionsManager() {
               📧 {sendingReport ? 'Envoi...' : 'Rapport'}
             </button>
             <button
-              onClick={async () => {
-                const newNumber = await generateSubmissionNumber();
-                setSubmissionForm(prev => ({
-                  ...prev,
-                  submission_number: newNumber
-                }));
-                setShowForm(true);
-              }}
+              onClick={() => setShowForm(true)}
               className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-50 font-medium"
             >
               ➕ Nouvelle Soumission
@@ -1293,11 +1242,7 @@ export default function SoumissionsManager() {
                       <h3 className="text-lg font-medium text-gray-900">
                         👤 {submission.client_name}
                       </h3>
-                      {submission.submission_number && (
-                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm font-medium">
-                          N°: {submission.submission_number}
-                        </span>
-                      )}
+                      {/* TODO: Affichage numéro quand colonne sera ajoutée */}
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
                       📝 {submission.description}
@@ -1342,8 +1287,7 @@ export default function SoumissionsManager() {
                         description: submission.description,
                         amount: submission.amount,
                         status: submission.status,
-                        items: submission.items || [],
-                        submission_number: submission.submission_number || ''
+                        items: submission.items || []
                       });
                       setSelectedItems(submission.items || []);
                       // Calculer le coût total à partir des items existants
