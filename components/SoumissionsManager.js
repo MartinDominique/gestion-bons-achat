@@ -159,8 +159,7 @@ export default function SoumissionsManager() {
 
   // Ne plus charger tous les produits au démarrage - recherche dynamique uniquement
   const fetchProducts = async () => {
-    // Ne rien faire - les produits seront chargés dynamiquement via searchProducts
-    console.log('Recherche dynamique activée - pas de chargement initial des 6718 produits');
+    // Recherche dynamique activée - pas de chargement initial des produits
     setProducts([]);
   };
 
@@ -172,14 +171,12 @@ export default function SoumissionsManager() {
     }
 
     try {
-      console.log('🔍 Recherche dynamique:', searchTerm);
-      
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%,product_group.ilike.%${searchTerm}%`)
         .order('description', { ascending: true })
-        .limit(50); // Limite à 50 résultats pour la performance
+        .limit(50);
 
       if (error) {
         console.error('Erreur recherche produits:', error);
@@ -187,7 +184,6 @@ export default function SoumissionsManager() {
         return;
       }
 
-      console.log(`📦 Trouvé ${data?.length || 0} produits sur 6718`);
       setProducts(data || []);
     } catch (error) {
       console.error('Erreur lors de la recherche dynamique:', error);
@@ -209,8 +205,6 @@ export default function SoumissionsManager() {
       }
 
       // Sinon, récupérer les clients des soumissions ET purchase_orders
-      console.log('Table clients pas trouvée, récupération des noms depuis soumissions et purchase_orders');
-      
       const [submissionsResult, purchaseOrdersResult] = await Promise.all([
         supabase.from('submissions').select('client_name').order('client_name'),
         supabase.from('purchase_orders').select('client_name, client').order('client_name')
@@ -245,7 +239,20 @@ export default function SoumissionsManager() {
     }
   };
 
-  const handleSendReport = async () => {
+  const handleDeleteSubmission = async (id) => {
+    if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cette soumission ?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      await fetchSoumissions();
+    } catch (error) {
+      console.error('Erreur suppression soumission:', error);
+    }
+  };
     setSendingReport(true);
     try {
       const response = await fetch('/api/send-weekly-report', {
@@ -421,9 +428,8 @@ export default function SoumissionsManager() {
         submission_number: ''
       });
       setCalculatedCostTotal(0);
-      console.log('✅ Soumission sauvegardée avec succès !');
     } catch (error) {
-      console.error('❌ Erreur sauvegarde:', error.message);
+      console.error('Erreur sauvegarde:', error.message);
     }
   };
 
@@ -576,9 +582,6 @@ export default function SoumissionsManager() {
             <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
               <h3 className="text-lg font-semibold text-indigo-800 mb-4">
                 🔍 Recherche Produits (6718 au total)
-                <span className="text-sm font-normal text-indigo-600 ml-2">
-                  (2+ caractères, ↑↓ pour naviguer avec auto-scroll, TAB/ENTER pour sélectionner)
-                </span>
               </h3>
               
               {/* Barre de recherche réduite + bouton ajout rapide */}
@@ -687,7 +690,7 @@ export default function SoumissionsManager() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Quantité ({selectedProductForQuantity.unit}) - Entiers seulement
+                        Quantité ({selectedProductForQuantity.unit})
                       </label>
                       <input
                         id="quantity-input"
@@ -947,9 +950,6 @@ export default function SoumissionsManager() {
               <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
                 <h3 className="text-lg font-semibold text-yellow-800 mb-4">
                   📦 Produits Sélectionnés ({selectedItems.length})
-                  <span className="text-sm font-normal text-yellow-600 ml-2">
-                    (Dernier ajouté en haut - Prix modifiables directement)
-                  </span>
                 </h3>
                 
                 {/* Tableau compact pour beaucoup d'items */}
@@ -1054,9 +1054,8 @@ export default function SoumissionsManager() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded space-y-1">
-                    <div>💡 <strong>Navigation améliorée:</strong> Utilisez ↑↓ pour naviguer dans les produits (auto-scroll) • Quantités en unités entières uniquement (1, 2, 3...)</div>
-                    <div>✏️ <strong>Modification prix:</strong> Cliquez sur les prix vente (vert) et coût (orange) pour les modifier directement dans le tableau</div>
+                  <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded">
+                    💡 Utilisez ↑↓ pour naviguer, quantités entières uniquement, prix modifiables en cliquant
                   </div>
                 </div>
               </div>
@@ -1281,24 +1280,11 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
-      {/* Debug info - Numérotation automatique active */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <p className="text-sm text-yellow-800">
-          🔍 <strong>Debug:</strong> Recherche dynamique activée sur 6718 produits (max 50 résultats), {clients.length} clients disponibles, {soumissions.length} soumissions
+      {/* Info système */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <p className="text-sm text-gray-600">
+          📊 {soumissions.length} soumissions • {clients.length} clients • Recherche dynamique sur 6718 produits
         </p>
-        {productSearchTerm && (
-          <p className="text-xs text-yellow-700 mt-1">
-            Recherche actuelle: "{productSearchTerm}" → {products.length} résultats
-          </p>
-        )}
-        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded">
-          <p className="text-sm text-green-800">
-            <strong>✅ Améliorations actives:</strong><br />
-            • Numérotation automatique: 2507-001, 2507-002, etc.<br />
-            • Navigation clavier: ↑↓ avec auto-scroll<br />
-            • Quantités entières uniquement: 1, 2, 3, 4, 5...
-          </p>
-        </div>
       </div>
 
       {/* Filtres */}
@@ -1382,29 +1368,37 @@ export default function SoumissionsManager() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setEditingSubmission(submission);
-                      setSubmissionForm({
-                        client_name: submission.client_name,
-                        description: submission.description,
-                        amount: submission.amount,
-                        status: submission.status,
-                        items: submission.items || [],
-                        submission_number: submission.submission_number || ''
-                      });
-                      setSelectedItems(submission.items || []);
-                      // Calculer le coût total à partir des items existants
-                      const existingCostTotal = (submission.items || []).reduce((sum, item) => 
-                        sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
-                      );
-                      setCalculatedCostTotal(existingCostTotal);
-                      setShowForm(true);
-                    }}
-                    className="px-4 py-2 bg-purple-100 text-purple-800 rounded-lg hover:bg-purple-200"
-                  >
-                    ✏️ Modifier
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        setEditingSubmission(submission);
+                        setSubmissionForm({
+                          client_name: submission.client_name,
+                          description: submission.description,
+                          amount: submission.amount,
+                          status: submission.status,
+                          items: submission.items || [],
+                          submission_number: submission.submission_number || ''
+                        });
+                        setSelectedItems(submission.items || []);
+                        // Calculer le coût total à partir des items existants
+                        const existingCostTotal = (submission.items || []).reduce((sum, item) => 
+                          sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
+                        );
+                        setCalculatedCostTotal(existingCostTotal);
+                        setShowForm(true);
+                      }}
+                      className="px-4 py-2 bg-purple-100 text-purple-800 rounded-lg hover:bg-purple-200"
+                    >
+                      ✏️ Modifier
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSubmission(submission.id)}
+                      className="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200"
+                    >
+                      🗑️ Supprimer
+                    </button>
+                  </div>
                 </div>
               </li>
             ))}
