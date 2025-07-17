@@ -135,17 +135,17 @@ export default function Navigation() {
               <div className="flex-shrink-0 mr-6">
                 <Image
                   src="/logo.png"
-                  alt="Logo"
-                  width={210}
-                  height={95}
-                  className="rounded-lg object-contain"
+                  alt="Services TMT Logo"
+                  width={315}
+                  height={142}
+                  className="w-24 md:w-32 lg:w-48 h-auto rounded-lg object-contain"
                   priority
                 />
               </div>
               
               {/* Nom de l'entreprise */}
               <div className="hidden lg:block">
-                <h1 className="text-xl font-bold text-gray-900">Services TMT</h1>
+                <h1 className="text-xl font-bold text-gray-900"></h1>
                 <p className="text-sm text-gray-500">Gestion des soumissions</p>
               </div>
             </div>
