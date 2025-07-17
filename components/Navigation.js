@@ -135,9 +135,9 @@ export default function Navigation() {
               <div className="flex-shrink-0 mr-6">
                 <Image
                   src="/logo.png"
-                  alt="Services TMT Logo"
-                  width={315}
-                  height={142}
+                  alt="Logo"
+                  width={210}
+                  height={95}
                   className="rounded-lg object-contain"
                   priority
                 />
