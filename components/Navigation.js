@@ -110,17 +110,58 @@ export default function Navigation() {
   };
 
   const handleDeleteClient = async (id) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) return;
+    if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer ce client ?\n\n⚠️ ATTENTION: Cela supprimera aussi TOUTES ses soumissions et bons d\'achat !')) return;
     
     try {
-      const { error } = await supabase
+      // Récupérer le nom du client pour identifier ses données
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('name')
+        .eq('id', id)
+        .single();
+
+      if (clientError) throw clientError;
+      
+      const clientName = clientData.name;
+      console.log('🗑️ Suppression en cascade pour:', clientName);
+
+      // 1. Supprimer toutes les soumissions du client
+      const { error: submissionsError } = await supabase
+        .from('submissions')
+        .delete()
+        .eq('client_name', clientName);
+
+      if (submissionsError) {
+        console.error('Erreur suppression soumissions:', submissionsError);
+        // Continuer même si erreur (peut-être pas de soumissions)
+      }
+
+      // 2. Supprimer tous les bons d'achat du client
+      const { error: purchaseOrdersError } = await supabase
+        .from('purchase_orders')
+        .delete()
+        .or(`client_name.eq.${clientName},client.eq.${clientName}`);
+
+      if (purchaseOrdersError) {
+        console.error('Erreur suppression bons d\'achat:', purchaseOrdersError);
+        // Continuer même si erreur
+      }
+
+      // 3. Supprimer le client lui-même
+      const { error: clientDeleteError } = await supabase
         .from('clients')
         .delete()
         .eq('id', id);
-      if (error) throw error;
+
+      if (clientDeleteError) throw clientDeleteError;
+
+      // 4. Rafraîchir la liste
       await fetchClients();
+      
+      console.log('✅ Suppression en cascade réussie pour:', clientName);
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('Erreur suppression en cascade:', error);
+      alert('❌ Erreur lors de la suppression: ' + error.message);
     }
   };
 
@@ -138,14 +179,14 @@ export default function Navigation() {
                   alt="Services TMT Logo"
                   width={315}
                   height={142}
-                  className="w-24 md:w-32 lg:w-48 h-auto rounded-lg object-contain"
+                  className="rounded-lg object-contain"
                   priority
                 />
               </div>
               
               {/* Nom de l'entreprise */}
               <div className="hidden lg:block">
-                <h1 className="text-xl font-bold text-gray-900"></h1>
+                <h1 className="text-xl font-bold text-gray-900">Services TMT</h1>
                 <p className="text-sm text-gray-500">Gestion des soumissions</p>
               </div>
             </div>
