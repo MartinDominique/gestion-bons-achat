@@ -179,14 +179,14 @@ export default function Navigation() {
                   alt="Services TMT Logo"
                   width={315}
                   height={142}
-                  className="rounded-lg object-contain"
+                  className="w-32 h-auto rounded-lg object-contain"
                   priority
                 />
               </div>
               
               {/* Nom de l'entreprise */}
               <div className="hidden lg:block">
-                <h1 className="text-xl font-bold text-gray-900">Services TMT</h1>
+                <h1 className="text-xl font-bold text-gray-900">o</h1>
                 <p className="text-sm text-gray-500">Gestion des soumissions</p>
               </div>
             </div>
