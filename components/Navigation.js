@@ -17,6 +17,7 @@ export default function Navigation() {
   const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true); // AJOUT: État de chargement de l'auth
   const [showClientManager, setShowClientManager] = useState(false);
   const [clients, setClients] = useState([]);
   const [showClientForm, setShowClientForm] = useState(false);
@@ -30,13 +31,37 @@ export default function Navigation() {
   });
 
   useEffect(() => {
-    // Récupérer l'utilisateur actuel
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+    // MODIFICATION: Fonction d'authentification améliorée
+    const checkAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          console.error('Erreur auth:', error);
+          setUser(null);
+        } else {
+          setUser(user);
+        }
+
+        // AJOUT: Vérification de protection des routes
+        const protectedRoutes = ['/bons-achat', '/soumissions'];
+        const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+        
+        if (isProtectedRoute && !user) {
+          console.log('🚫 Accès non autorisé à:', pathname);
+          router.push('/login');
+        }
+        
+      } catch (error) {
+        console.error('Erreur lors de la vérification:', error);
+        setUser(null);
+        router.push('/login');
+      } finally {
+        setAuthLoading(false); // AJOUT: Fin du chargement
+      }
     };
 
-    getUser();
+    checkAuth();
 
     // Déconnexion automatique à la fermeture du navigateur
     const handleBeforeUnload = () => {
@@ -47,14 +72,20 @@ export default function Navigation() {
 
     // Écouter les changements d'auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event); // AJOUT: Log pour debug
       setUser(session?.user || null);
+      
+      // AJOUT: Redirection lors de la déconnexion
+      if (event === 'SIGNED_OUT' || !session) {
+        router.push('/login');
+      }
     });
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [supabase.auth]);
+  }, [supabase.auth, pathname, router]); // AJOUT: Dépendances pathname et router
 
   const fetchClients = async () => {
     try {
@@ -74,8 +105,12 @@ export default function Navigation() {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Erreur déconnexion:', error);
+    }
   };
 
   const handleClientSubmit = async (e) => {
@@ -165,6 +200,23 @@ export default function Navigation() {
     }
   };
 
+  // AJOUT: Affichage du loader pendant la vérification d'auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Vérification de l'authentification...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // AJOUT: Si pas d'utilisateur, ne pas afficher la navigation
+  if (!user) {
+    return null; // La redirection vers /login se fait dans useEffect
+  }
+
   return (
     <>
       <nav className="bg-white shadow-md mb-6 print:shadow-none">
@@ -186,7 +238,7 @@ export default function Navigation() {
               
               {/* Nom de l'entreprise */}
               <div className="hidden lg:block">
-                <h1 className="text-xl font-bold text-gray-900">o</h1>
+                <h1 className="text-xl font-bold text-gray-900">Services TMT</h1>
                 <p className="text-sm text-gray-500">Gestion des soumissions</p>
               </div>
             </div>
