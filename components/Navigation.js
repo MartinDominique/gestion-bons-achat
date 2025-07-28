@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, FileText, LogOut, Users } from 'lucide-react';
+import { Package, FileText, LogOut, Users, Menu, X } from 'lucide-react';
 import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 
@@ -17,11 +17,15 @@ export default function Navigation() {
   const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true); // AJOUT: État de chargement de l'auth
+  const [authLoading, setAuthLoading] = useState(true);
   const [showClientManager, setShowClientManager] = useState(false);
   const [clients, setClients] = useState([]);
   const [showClientForm, setShowClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  
+  // 📱 NOUVEAU: État pour menu mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
   const [clientForm, setClientForm] = useState({
     name: '',
     email: '',
@@ -31,7 +35,6 @@ export default function Navigation() {
   });
 
   useEffect(() => {
-    // MODIFICATION: Fonction d'authentification améliorée
     const checkAuth = async () => {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
@@ -43,7 +46,6 @@ export default function Navigation() {
           setUser(user);
         }
 
-        // AJOUT: Vérification de protection des routes
         const protectedRoutes = ['/bons-achat', '/soumissions'];
         const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
         
@@ -57,25 +59,22 @@ export default function Navigation() {
         setUser(null);
         router.push('/login');
       } finally {
-        setAuthLoading(false); // AJOUT: Fin du chargement
+        setAuthLoading(false);
       }
     };
 
     checkAuth();
 
-    // Déconnexion automatique à la fermeture du navigateur
     const handleBeforeUnload = () => {
       supabase.auth.signOut();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 
-    // Écouter les changements d'auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth event:', event); // AJOUT: Log pour debug
+      console.log('Auth event:', event);
       setUser(session?.user || null);
       
-      // AJOUT: Redirection lors de la déconnexion
       if (event === 'SIGNED_OUT' || !session) {
         router.push('/login');
       }
@@ -85,7 +84,12 @@ export default function Navigation() {
       subscription.unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [supabase.auth, pathname, router]); // AJOUT: Dépendances pathname et router
+  }, [supabase.auth, pathname, router]);
+
+  // 📱 NOUVEAU: Fermer menu mobile quand on change de page
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const fetchClients = async () => {
     try {
@@ -148,7 +152,6 @@ export default function Navigation() {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer ce client ?\n\n⚠️ ATTENTION: Cela supprimera aussi TOUTES ses soumissions et bons d\'achat !')) return;
     
     try {
-      // Récupérer le nom du client pour identifier ses données
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
         .select('name')
@@ -160,7 +163,6 @@ export default function Navigation() {
       const clientName = clientData.name;
       console.log('🗑️ Suppression en cascade pour:', clientName);
 
-      // 1. Supprimer toutes les soumissions du client
       const { error: submissionsError } = await supabase
         .from('submissions')
         .delete()
@@ -168,10 +170,8 @@ export default function Navigation() {
 
       if (submissionsError) {
         console.error('Erreur suppression soumissions:', submissionsError);
-        // Continuer même si erreur (peut-être pas de soumissions)
       }
 
-      // 2. Supprimer tous les bons d'achat du client
       const { error: purchaseOrdersError } = await supabase
         .from('purchase_orders')
         .delete()
@@ -179,10 +179,8 @@ export default function Navigation() {
 
       if (purchaseOrdersError) {
         console.error('Erreur suppression bons d\'achat:', purchaseOrdersError);
-        // Continuer même si erreur
       }
 
-      // 3. Supprimer le client lui-même
       const { error: clientDeleteError } = await supabase
         .from('clients')
         .delete()
@@ -190,7 +188,6 @@ export default function Navigation() {
 
       if (clientDeleteError) throw clientDeleteError;
 
-      // 4. Rafraîchir la liste
       await fetchClients();
       
       console.log('✅ Suppression en cascade réussie pour:', clientName);
@@ -200,7 +197,6 @@ export default function Navigation() {
     }
   };
 
-  // AJOUT: Affichage du loader pendant la vérification d'auth
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -212,33 +208,33 @@ export default function Navigation() {
     );
   }
 
-  // AJOUT: Si pas d'utilisateur, ne pas afficher la navigation
   if (!user) {
-    return null; // La redirection vers /login se fait dans useEffect
+    return null;
   }
 
   return (
     <>
+      {/* 📱 NAVIGATION MOBILE-FIRST */}
       <nav className="bg-white shadow-md mb-6 print:shadow-none">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between h-16 md:h-20">
             
-            {/* Logo à gauche - AGRANDI 3X */}
+            {/* 📱 Logo adaptatif */}
             <div className="flex items-center">
-              <div className="flex-shrink-0 mr-6">
+              <div className="flex-shrink-0">
                 <Image
                   src="/logo.png"
                   alt="Services TMT Logo"
                   width={315}
                   height={142}
-                  className="w-32 h-auto rounded-lg object-contain"
+                  className="w-20 h-auto md:w-32 rounded-lg object-contain"
                   priority
                 />
               </div>
             </div>
 
-            {/* Navigation centrale */}
-            <div className="flex space-x-4">
+            {/* 📱 Navigation desktop (cachée sur mobile) */}
+            <div className="hidden md:flex md:items-center md:space-x-4">
               {pages.map(({ id, name, icon: Icon }) => {
                 const active = pathname.startsWith('/' + id);
                 return (
@@ -257,7 +253,6 @@ export default function Navigation() {
                 );
               })}
               
-              {/* Bouton Gestion des Clients */}
               <button
                 onClick={() => {
                   setShowClientManager(true);
@@ -270,82 +265,190 @@ export default function Navigation() {
               </button>
             </div>
 
-            {/* Utilisateur et déconnexion à droite */}
-            {user && (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700 hidden md:block">
-                  Bonjour {user.email}
-                </span>
-                <button
-                  onClick={handleSignOut}
-                  className="flex items-center text-red-600 hover:text-red-800 transition-colors"
-                >
-                  <LogOut className="w-4 h-4 mr-1" />
-                  <span className="hidden sm:block">Se déconnecter</span>
-                </button>
-              </div>
-            )}
+            {/* 📱 Actions à droite */}
+            <div className="flex items-center space-x-2">
+              {/* 📱 Info utilisateur (adaptatif) */}
+              {user && (
+                <div className="hidden sm:flex items-center space-x-3">
+                  <span className="text-sm text-gray-700 hidden lg:block">
+                    Bonjour {user.email}
+                  </span>
+                  <button
+                    onClick={handleSignOut}
+                    className="flex items-center text-red-600 hover:text-red-800 transition-colors p-2"
+                  >
+                    <LogOut className="w-4 h-4 mr-1" />
+                    <span className="hidden md:block">Se déconnecter</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 📱 Bouton déconnexion mobile uniquement */}
+              <button
+                onClick={handleSignOut}
+                className="sm:hidden flex items-center text-red-600 hover:text-red-800 transition-colors p-2"
+                title="Se déconnecter"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+
+              {/* 📱 Menu hamburger (mobile uniquement) */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                aria-label="Menu mobile"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-6 h-6" />
+                ) : (
+                  <Menu className="w-6 h-6" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* 📱 Menu mobile déroulant */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
+            <div className="px-4 py-2 space-y-1">
+              {/* 📱 Navigation mobile */}
+              {pages.map(({ id, name, icon: Icon }) => {
+                const active = pathname.startsWith('/' + id);
+                return (
+                  <Link
+                    key={id}
+                    href={`/${id}`}
+                    className={`flex items-center px-3 py-3 rounded-lg font-medium transition-colors ${
+                      active
+                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 mr-3" />
+                    {name}
+                  </Link>
+                );
+              })}
+              
+              {/* 📱 Gestion clients mobile */}
+              <button
+                onClick={() => {
+                  setShowClientManager(true);
+                  fetchClients();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center px-3 py-3 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors"
+              >
+                <Users className="w-5 h-5 mr-3" />
+                Gestion des Clients
+              </button>
+
+              {/* 📱 Info utilisateur mobile */}
+              {user && (
+                <div className="border-t border-gray-200 pt-2 mt-2">
+                  <div className="px-3 py-2 text-sm text-gray-600">
+                    Connecté en tant que:
+                  </div>
+                  <div className="px-3 py-1 text-sm font-medium text-gray-900 truncate">
+                    {user.email}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </nav>
 
-      {/* Modal Gestion des Clients */}
+      {/* 📱 Modal Gestion des Clients - OPTIMISÉ MOBILE */}
       {showClientManager && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-green-600">👥 Gestion des Clients</h2>
-              <div className="flex space-x-3">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            
+            {/* 📱 En-tête responsive */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 sm:p-6 border-b bg-green-50">
+              <h2 className="text-xl sm:text-2xl font-bold text-green-600 mb-3 sm:mb-0">
+                👥 Gestion des Clients
+              </h2>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={() => setShowClientForm(true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
                 >
                   ➕ Nouveau Client
                 </button>
                 <button
                   onClick={() => setShowClientManager(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"
                 >
                   ❌ Fermer
                 </button>
               </div>
             </div>
 
-            {/* Liste des clients */}
-            <div className="space-y-4">
+            {/* 📱 Liste clients responsive */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {clients.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <p>Aucun client enregistré</p>
                 </div>
               ) : (
-                <div className="grid gap-4">
+                <div className="space-y-4">
                   {clients.map((client) => (
                     <div key={client.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">{client.name}</h3>
-                          <div className="text-sm text-gray-600 mt-1 space-y-1">
-                            {client.email && <p>📧 {client.email}</p>}
-                            {client.phone && <p>📞 {client.phone}</p>}
-                            {client.address && <p>📍 {client.address}</p>}
-                            {client.contact_person && <p>👤 Contact: {client.contact_person}</p>}
+                      
+                      {/* 📱 Affichage mobile-first */}
+                      <div className="flex flex-col sm:flex-row sm:justify-between">
+                        <div className="flex-1 mb-3 sm:mb-0">
+                          <h3 className="font-semibold text-gray-900 text-lg">{client.name}</h3>
+                          <div className="text-sm text-gray-600 mt-2 space-y-1">
+                            {client.email && (
+                              <p className="flex items-center">
+                                <span className="mr-2">📧</span>
+                                <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
+                                  {client.email}
+                                </a>
+                              </p>
+                            )}
+                            {client.phone && (
+                              <p className="flex items-center">
+                                <span className="mr-2">📞</span>
+                                <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
+                                  {client.phone}
+                                </a>
+                              </p>
+                            )}
+                            {client.address && (
+                              <p className="flex items-start">
+                                <span className="mr-2 mt-0.5">📍</span>
+                                <span>{client.address}</span>
+                              </p>
+                            )}
+                            {client.contact_person && (
+                              <p className="flex items-center">
+                                <span className="mr-2">👤</span>
+                                <span>Contact: {client.contact_person}</span>
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <div className="flex space-x-2 ml-4">
+                        
+                        {/* 📱 Boutons actions responsive */}
+                        <div className="flex flex-col sm:flex-row gap-2 sm:ml-4">
                           <button
                             onClick={() => {
                               setEditingClient(client);
                               setClientForm(client);
                               setShowClientForm(true);
                             }}
-                            className="px-3 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm"
+                            className="w-full sm:w-auto px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm font-medium"
                           >
                             ✏️ Modifier
                           </button>
                           <button
                             onClick={() => handleDeleteClient(client.id)}
-                            className="px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm"
+                            className="w-full sm:w-auto px-3 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200 text-sm font-medium"
                           >
                             🗑️ Supprimer
                           </button>
@@ -360,90 +463,108 @@ export default function Navigation() {
         </div>
       )}
 
-      {/* Modal Formulaire Client */}
+      {/* 📱 Modal Formulaire Client - OPTIMISÉ MOBILE */}
       {showClientForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <h3 className="text-xl font-bold text-green-600 mb-4">
-              {editingClient ? '✏️ Modifier Client' : '➕ Nouveau Client'}
-            </h3>
-            
-            <form onSubmit={handleClientSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
-                  <input
-                    type="text"
-                    value={clientForm.name}
-                    onChange={(e) => setClientForm({...clientForm, name: e.target.value})}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={clientForm.email}
-                    onChange={(e) => setClientForm({...clientForm, email: e.target.value})}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
-                  <input
-                    type="tel"
-                    value={clientForm.phone}
-                    onChange={(e) => setClientForm({...clientForm, phone: e.target.value})}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Personne Contact</label>
-                  <input
-                    type="text"
-                    value={clientForm.contact_person}
-                    onChange={(e) => setClientForm({...clientForm, contact_person: e.target.value})}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Adresse</label>
-                <textarea
-                  value={clientForm.address}
-                  onChange={(e) => setClientForm({...clientForm, address: e.target.value})}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
-                  rows="3"
-                />
-              </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-green-600 mb-4">
+                {editingClient ? '✏️ Modifier Client' : '➕ Nouveau Client'}
+              </h3>
               
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowClientForm(false);
-                    setEditingClient(null);
-                    setClientForm({
-                      name: '',
-                      email: '',
-                      phone: '',
-                      address: '',
-                      contact_person: ''
-                    });
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  {editingClient ? 'Mettre à jour' : 'Créer'}
-                </button>
-              </div>
-            </form>
+              <form onSubmit={handleClientSubmit} className="space-y-4">
+                {/* 📱 Formulaire empilé sur mobile */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nom *
+                    </label>
+                    <input
+                      type="text"
+                      value={clientForm.name}
+                      onChange={(e) => setClientForm({...clientForm, name: e.target.value})}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={clientForm.email}
+                      onChange={(e) => setClientForm({...clientForm, email: e.target.value})}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Téléphone
+                    </label>
+                    <input
+                      type="tel"
+                      value={clientForm.phone}
+                      onChange={(e) => setClientForm({...clientForm, phone: e.target.value})}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Personne Contact
+                    </label>
+                    <input
+                      type="text"
+                      value={clientForm.contact_person}
+                      onChange={(e) => setClientForm({...clientForm, contact_person: e.target.value})}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Adresse
+                    </label>
+                    <textarea
+                      value={clientForm.address}
+                      onChange={(e) => setClientForm({...clientForm, address: e.target.value})}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
+                      rows="3"
+                    />
+                  </div>
+                </div>
+                
+                {/* 📱 Boutons responsives */}
+                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowClientForm(false);
+                      setEditingClient(null);
+                      setClientForm({
+                        name: '',
+                        email: '',
+                        phone: '',
+                        address: '',
+                        contact_person: ''
+                      });
+                    }}
+                    className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                  >
+                    {editingClient ? 'Mettre à jour' : 'Créer'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
