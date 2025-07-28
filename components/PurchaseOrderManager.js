@@ -11,6 +11,7 @@ export default function PurchaseOrderManager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   
   // Form state avec TES vraies colonnes
   const [formData, setFormData] = useState({
@@ -201,21 +202,67 @@ export default function PurchaseOrderManager() {
     setShowForm(true);
   };
 
+  // Fonction pour nettoyer les fichiers lors de la suppression
+  const cleanupFilesForPO = async (files) => {
+    if (!files || files.length === 0) return;
+    
+    try {
+      const filePaths = files
+        .filter(file => file.path)
+        .map(file => file.path);
+      
+      if (filePaths.length > 0) {
+        const { error } = await supabase.storage
+          .from('purchase-orders-pdfs')
+          .remove(filePaths);
+        
+        if (error) {
+          console.error('❌ Erreur nettoyage fichiers:', error);
+        } else {
+          console.log(`🧹 ${filePaths.length} fichier(s) supprimé(s) du storage`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors du nettoyage:', error);
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer ce bon d\'achat ?')) {
       return;
     }
 
     try {
-      const { error } = await supabase
+      // Récupérer les infos du bon d'achat avant suppression
+      const { data: poData, error: fetchError } = await supabase
+        .from('purchase_orders')
+        .select('files')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) {
+        console.error('❌ Erreur récupération bon d\'achat:', fetchError);
+      }
+
+      // Supprimer le bon d'achat de la base de données
+      const { error: deleteError } = await supabase
         .from('purchase_orders')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
+
+      // Nettoyer les fichiers associés
+      if (poData?.files) {
+        await cleanupFilesForPO(poData.files);
+      }
+
       await fetchPurchaseOrders();
+      console.log('✅ Bon d\'achat et fichiers supprimés avec succès');
+
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error.message);
+      console.error('❌ Erreur lors de la suppression:', error.message);
+      alert('Erreur lors de la suppression du bon d\'achat');
     }
   };
 
@@ -233,44 +280,234 @@ export default function PurchaseOrderManager() {
     }
   };
 
+  // Fonction d'upload de fichiers CORRIGÉE
   const handleFileUpload = async (e) => {
-  const files = Array.from(e.target.files);
-  const uploadedFiles = [];
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
 
-  for (const file of files) {
-    try {
-      // Upload vers Supabase Storage
-      const fileName = `${Date.now()}_${file.name}`;
-      const { data, error } = await supabase.storage
-        .from('purchase-order-files')
-        .upload(`purchase-orders/${fileName}`, file);
+    setUploadingFiles(true);
+    const uploadedFiles = [];
 
-      if (error) throw error;
+    console.log('📤 Début upload de', files.length, 'fichier(s)');
 
-      // Obtenir l'URL publique
-      const { data: urlData } = supabase.storage
-        .from('purchase-order-files')
-        .getPublicUrl(`purchase-orders/${fileName}`);
+    for (const file of files) {
+      try {
+        console.log('📄 Upload en cours:', file.name);
 
-      uploadedFiles.push({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: urlData.publicUrl
-      });
+        // Nettoyer le nom du fichier
+        const cleanFileName = file.name
+          .replace(/\s+/g, '_')           // Remplacer espaces par _
+          .replace(/[^a-zA-Z0-9._-]/g, '') // Supprimer caractères spéciaux
+          .substring(0, 100);             // Limiter la longueur
 
-    } catch (error) {
-      console.error('Erreur upload:', error);
-      alert(`Erreur upload ${file.name}`);
+        // Ajouter timestamp pour éviter les doublons
+        const fileName = `${Date.now()}_${cleanFileName}`;
+        const filePath = `purchase-orders/${fileName}`;
+
+        console.log('📁 Nom nettoyé:', fileName);
+
+        // Upload vers VOTRE bucket existant
+        const { data, error } = await supabase.storage
+          .from('purchase-orders-pdfs')  // ← VOTRE BUCKET EXISTANT
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (error) {
+          console.error('❌ Erreur Supabase:', error);
+          throw new Error(`Erreur upload: ${error.message}`);
+        }
+
+        console.log('✅ Upload réussi:', data.path);
+
+        // Obtenir l'URL publique
+        const { data: urlData } = supabase.storage
+          .from('purchase-orders-pdfs')  // ← VOTRE BUCKET EXISTANT
+          .getPublicUrl(filePath);
+
+        console.log('🔗 URL générée:', urlData.publicUrl);
+
+        uploadedFiles.push({
+          name: file.name,              // Garder le nom original pour l'affichage
+          cleanName: cleanFileName,     // Nom nettoyé
+          size: file.size,
+          type: file.type,
+          path: data.path,
+          url: urlData.publicUrl,
+          uploaded_at: new Date().toISOString()
+        });
+
+        console.log('✅ Fichier traité avec succès:', file.name);
+
+      } catch (error) {
+        console.error('❌ Erreur upload fichier:', file.name, error);
+        
+        // Message d'erreur détaillé
+        let errorMessage = `Erreur upload "${file.name}": `;
+        
+        if (error.message.includes('not found')) {
+          errorMessage += 'Bucket "purchase-orders-pdfs" non trouvé. Vérifiez la configuration Supabase.';
+        } else if (error.message.includes('unauthorized')) {
+          errorMessage += 'Accès non autorisé. Vérifiez les politiques du bucket.';
+        } else if (error.message.includes('too large')) {
+          errorMessage += 'Fichier trop volumineux (max 50MB).';
+        } else {
+          errorMessage += error.message;
+        }
+        
+        alert(errorMessage);
+      }
     }
-  }
 
-  setFormData({...formData, files: [...(formData.files || []), ...uploadedFiles]});
-};
+    // Ajouter les fichiers uploadés avec succès
+    if (uploadedFiles.length > 0) {
+      setFormData({...formData, files: [...(formData.files || []), ...uploadedFiles]});
+      console.log(`✅ ${uploadedFiles.length}/${files.length} fichier(s) uploadé(s) avec succès`);
+      
+      if (uploadedFiles.length < files.length) {
+        alert(`${uploadedFiles.length}/${files.length} fichiers uploadés avec succès. Voir la console pour les erreurs.`);
+      }
+    }
 
-  const removeFile = (index) => {
-    const newFiles = (formData.files || []).filter((_, i) => i !== index);
+    setUploadingFiles(false);
+    // Réinitialiser l'input
+    e.target.value = '';
+  };
+
+  // Fonction pour supprimer un fichier
+  const removeFile = async (index) => {
+    const fileToRemove = formData.files[index];
+    
+    // Si le fichier a été uploadé, le supprimer du storage
+    if (fileToRemove.path) {
+      try {
+        const { error } = await supabase.storage
+          .from('purchase-orders-pdfs')
+          .remove([fileToRemove.path]);
+        
+        if (error) {
+          console.error('❌ Erreur suppression fichier:', error);
+        } else {
+          console.log('🗑️ Fichier supprimé du storage:', fileToRemove.path);
+        }
+      } catch (error) {
+        console.error('❌ Erreur suppression fichier:', error);
+      }
+    }
+    
+    // Retirer de la liste
+    const newFiles = formData.files.filter((_, i) => i !== index);
     setFormData({...formData, files: newFiles});
+  };
+
+  // Fonction pour ouvrir un fichier
+  const openFile = (file) => {
+    if (file.url) {
+      window.open(file.url, '_blank');
+    } else {
+      alert('Fichier non accessible - URL manquante');
+    }
+  };
+
+  // Fonction pour télécharger un fichier
+  const downloadFile = async (file) => {
+    if (!file.url) {
+      alert('Impossible de télécharger - URL manquante');
+      return;
+    }
+
+    try {
+      const response = await fetch(file.url);
+      const blob = await response.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('❌ Erreur téléchargement:', error);
+      alert('Erreur lors du téléchargement');
+    }
+  };
+
+  // Fonction pour obtenir l'icône du fichier
+  const getFileIcon = (fileType) => {
+    if (fileType?.includes('pdf')) return '📄';
+    if (fileType?.includes('excel') || fileType?.includes('sheet')) return '📊';
+    if (fileType?.includes('word') || fileType?.includes('document')) return '📝';
+    if (fileType?.includes('image')) return '🖼️';
+    return '📎';
+  };
+
+  // Fonction pour formater la taille du fichier
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Fonction de test pour votre bucket
+  const testExistingBucket = async () => {
+    try {
+      console.log('🔍 Test du bucket purchase-orders-pdfs...');
+      
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error('❌ Erreur accès buckets:', bucketsError);
+        return false;
+      }
+      
+      console.log('📦 Buckets disponibles:', buckets.map(b => b.name));
+      
+      const yourBucket = buckets.find(b => b.name === 'purchase-orders-pdfs');
+      if (!yourBucket) {
+        console.error('❌ Bucket "purchase-orders-pdfs" non trouvé');
+        alert('❌ Bucket "purchase-orders-pdfs" non trouvé');
+        return false;
+      }
+      
+      console.log('✅ Votre bucket trouvé:', yourBucket);
+      
+      // Test upload
+      const testContent = 'test file content';
+      const testBlob = new Blob([testContent], { type: 'text/plain' });
+      const testFileName = `test_${Date.now()}.txt`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('purchase-orders-pdfs')
+        .upload(`test/${testFileName}`, testBlob);
+      
+      if (uploadError) {
+        console.error('❌ Erreur test upload:', uploadError);
+        alert(`❌ Erreur test upload: ${uploadError.message}\n\nVérifiez les policies de votre bucket.`);
+        return false;
+      }
+      
+      console.log('✅ Test upload réussi');
+      
+      // Nettoyer le fichier test
+      await supabase.storage
+        .from('purchase-orders-pdfs')
+        .remove([`test/${testFileName}`]);
+      
+      console.log('✅ Test terminé avec succès');
+      alert('✅ Votre bucket purchase-orders-pdfs fonctionne parfaitement !');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Erreur test:', error);
+      alert(`❌ Erreur test: ${error.message}`);
+      return false;
+    }
   };
 
   const getStatusEmoji = (status) => {
@@ -344,6 +581,13 @@ export default function PurchaseOrderManager() {
             </h2>
             {/* Boutons déplacés dans le rectangle bleu */}
             <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={testExistingBucket}
+                className="px-3 py-1 text-xs bg-white/20 rounded border border-white/30 text-white hover:bg-white/30"
+              >
+                🔍 Test Storage
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -500,30 +744,90 @@ export default function PurchaseOrderManager() {
               />
             </div>
 
-            {/* Fichiers */}
+            {/* Section fichiers AMÉLIORÉE */}
             <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
               <label className="block text-sm font-semibold text-indigo-800 mb-2">
-                📎 Fichiers (PDF, XLS, DOC, etc.)
+                📎 Documents (PDF, XLS, DOC, etc.)
               </label>
-              <input
-                type="file"
-                multiple
-                accept=".pdf,.xls,.xlsx,.doc,.docx,.txt"
-                onChange={handleFileUpload}
-                className="block w-full text-sm text-indigo-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
-              />
+              
+              {/* Zone d'upload */}
+              <div className="mb-4">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.xls,.xlsx,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                  onChange={handleFileUpload}
+                  disabled={uploadingFiles}
+                  className="block w-full text-sm text-indigo-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 disabled:opacity-50"
+                />
+                {uploadingFiles && (
+                  <p className="text-sm text-indigo-600 mt-2 flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                    📤 Upload en cours... Veuillez patienter.
+                  </p>
+                )}
+              </div>
+
+              {/* Liste des fichiers */}
               {formData.files && formData.files.length > 0 && (
-                <div className="mt-3 space-y-2">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-indigo-700">
+                    📁 Documents joints ({formData.files.length})
+                  </p>
                   {formData.files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                      <span className="text-sm text-gray-700">📄 {file.name || `Fichier ${index + 1}`}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        ❌
-                      </button>
+                    <div key={index} className="bg-white p-3 rounded border border-indigo-200 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <span className="text-xl">{getFileIcon(file.type)}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {file.name}
+                            </p>
+                            <div className="flex items-center space-x-4 text-xs text-gray-500">
+                              <span>{formatFileSize(file.size)}</span>
+                              <span>{file.type}</span>
+                              {file.uploaded_at && (
+                                <span>📅 {new Date(file.uploaded_at).toLocaleDateString('fr-CA')}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          {file.url ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openFile(file)}
+                                className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors"
+                                title="Ouvrir le fichier"
+                              >
+                                👁️ Voir
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => downloadFile(file)}
+                                className="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded border border-green-300 transition-colors"
+                                title="Télécharger le fichier"
+                              >
+                                💾 Télécharger
+                              </button>
+                            </>
+                          ) : (
+                            <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
+                              🔄 En cours...
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-300 transition-colors"
+                            title="Supprimer le fichier"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -697,28 +1001,34 @@ export default function PurchaseOrderManager() {
                           📝 {po.notes}
                         </p>
                       )}
+                      {/* Affichage des fichiers AMÉLIORÉ */}
                       {po.files && po.files.length > 0 && (
                         <div className="mt-2">
                           <p className="text-xs text-indigo-600 mb-1">
-                            📎 {po.files.length} fichier(s) joint(s):
+                            📎 {po.files.length} document(s):
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {po.files.map((file, index) => (
-                              <button
-                                key={index}
-                                onClick={() => {
-                                  // Ouvrir le fichier dans un nouvel onglet ou télécharger
-                                  if (file.url) {
-                                    window.open(file.url, '_blank');
-                                  } else {
-                                    alert(`Fichier: ${file.name || `Fichier ${index + 1}`}\nTaille: ${file.size ? Math.round(file.size/1024) + ' KB' : 'N/A'}`);
-                                  }
-                                }}
-                                className="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded border border-indigo-300 transition-colors"
-                                title={`Cliquer pour voir ${file.name || `Fichier ${index + 1}`}`}
-                              >
-                                📄 {file.name || `Fichier ${index + 1}`}
-                              </button>
+                              <div key={index} className="flex items-center space-x-1">
+                                <button
+                                  onClick={() => openFile(file)}
+                                  className="inline-flex items-center text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded border border-indigo-300 transition-colors"
+                                  title={`Ouvrir ${file.name}`}
+                                  disabled={!file.url}
+                                >
+                                  <span className="mr-1">{getFileIcon(file.type)}</span>
+                                  {file.name}
+                                </button>
+                                {file.url && (
+                                  <button
+                                    onClick={() => downloadFile(file)}
+                                    className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-1 py-1 rounded border border-green-300 transition-colors"
+                                    title="Télécharger"
+                                  >
+                                    💾
+                                  </button>
+                                )}
+                              </div>
                             ))}
                           </div>
                         </div>
