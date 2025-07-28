@@ -235,6 +235,7 @@ export default function Navigation() {
                   priority
                 />
               </div>
+            </div>
 
             {/* Navigation centrale */}
             <div className="flex space-x-4">
