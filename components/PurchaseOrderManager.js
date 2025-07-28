@@ -233,15 +233,40 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const fileData = files.map(file => ({
-      name: file.name,
-      size: file.size,
-      type: file.type
-    }));
-    setFormData({...formData, files: [...(formData.files || []), ...fileData]});
-  };
+  const handleFileUpload = async (e) => {
+  const files = Array.from(e.target.files);
+  const uploadedFiles = [];
+
+  for (const file of files) {
+    try {
+      // Upload vers Supabase Storage
+      const fileName = `${Date.now()}_${file.name}`;
+      const { data, error } = await supabase.storage
+        .from('purchase-order-files')
+        .upload(`purchase-orders/${fileName}`, file);
+
+      if (error) throw error;
+
+      // Obtenir l'URL publique
+      const { data: urlData } = supabase.storage
+        .from('purchase-order-files')
+        .getPublicUrl(`purchase-orders/${fileName}`);
+
+      uploadedFiles.push({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        url: urlData.publicUrl
+      });
+
+    } catch (error) {
+      console.error('Erreur upload:', error);
+      alert(`Erreur upload ${file.name}`);
+    }
+  }
+
+  setFormData({...formData, files: [...(formData.files || []), ...uploadedFiles]});
+};
 
   const removeFile = (index) => {
     const newFiles = (formData.files || []).filter((_, i) => i !== index);
