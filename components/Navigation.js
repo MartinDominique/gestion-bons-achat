@@ -235,13 +235,6 @@ export default function Navigation() {
                   priority
                 />
               </div>
-              
-              {/* Nom de l'entreprise */}
-              <div className="hidden lg:block">
-                <h1 className="text-xl font-bold text-gray-900">Services TMT</h1>
-                <p className="text-sm text-gray-500">Gestion des soumissions</p>
-              </div>
-            </div>
 
             {/* Navigation centrale */}
             <div className="flex space-x-4">
