@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search } from 'lucide-react';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -12,13 +13,14 @@ export default function PurchaseOrderManager() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   
   // Form state avec TES vraies colonnes
   const [formData, setFormData] = useState({
     client_name: '',
     po_number: '',
     submission_no: '',
-    date: new Date().toISOString().split('T')[0], // Format YYYY-MM-DD
+    date: new Date().toISOString().split('T')[0],
     amount: '',
     status: 'pending',
     notes: '',
@@ -30,7 +32,6 @@ export default function PurchaseOrderManager() {
     fetchClients();
     fetchSubmissions();
     
-    // Déconnexion automatique à la fermeture du navigateur
     const handleBeforeUnload = () => {
       supabase.auth.signOut();
     };
@@ -123,7 +124,6 @@ export default function PurchaseOrderManager() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation
     if (!formData.client_name || !formData.po_number || !formData.amount) {
       return;
     }
@@ -131,15 +131,15 @@ export default function PurchaseOrderManager() {
     try {
       const dataToSave = {
         client_name: formData.client_name,
-        client: formData.client_name, // Pour compatibilité (doublon dans ta table)
+        client: formData.client_name,
         po_number: formData.po_number,
         submission_no: formData.submission_no,
         date: formData.date,
         amount: parseFloat(formData.amount),
         status: formData.status,
         notes: formData.notes,
-        description: formData.notes, // Pour compatibilité
-        vendor: formData.client_name, // Pour compatibilité
+        description: formData.notes,
+        vendor: formData.client_name,
         files: formData.files
       };
 
@@ -202,7 +202,6 @@ export default function PurchaseOrderManager() {
     setShowForm(true);
   };
 
-  // Fonction pour nettoyer les fichiers lors de la suppression
   const cleanupFilesForPO = async (files) => {
     if (!files || files.length === 0) return;
     
@@ -233,7 +232,6 @@ export default function PurchaseOrderManager() {
     }
 
     try {
-      // Récupérer les infos du bon d'achat avant suppression
       const { data: poData, error: fetchError } = await supabase
         .from('purchase_orders')
         .select('files')
@@ -244,7 +242,6 @@ export default function PurchaseOrderManager() {
         console.error('❌ Erreur récupération bon d\'achat:', fetchError);
       }
 
-      // Supprimer le bon d'achat de la base de données
       const { error: deleteError } = await supabase
         .from('purchase_orders')
         .delete()
@@ -252,7 +249,6 @@ export default function PurchaseOrderManager() {
 
       if (deleteError) throw deleteError;
 
-      // Nettoyer les fichiers associés
       if (poData?.files) {
         await cleanupFilesForPO(poData.files);
       }
@@ -280,7 +276,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // Fonction d'upload de fichiers CORRIGÉE
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
@@ -294,21 +289,18 @@ export default function PurchaseOrderManager() {
       try {
         console.log('📄 Upload en cours:', file.name);
 
-        // Nettoyer le nom du fichier
         const cleanFileName = file.name
-          .replace(/\s+/g, '_')           // Remplacer espaces par _
-          .replace(/[^a-zA-Z0-9._-]/g, '') // Supprimer caractères spéciaux
-          .substring(0, 100);             // Limiter la longueur
+          .replace(/\s+/g, '_')
+          .replace(/[^a-zA-Z0-9._-]/g, '')
+          .substring(0, 100);
 
-        // Ajouter timestamp pour éviter les doublons
         const fileName = `${Date.now()}_${cleanFileName}`;
         const filePath = `purchase-orders/${fileName}`;
 
         console.log('📁 Nom nettoyé:', fileName);
 
-        // Upload vers VOTRE bucket existant
         const { data, error } = await supabase.storage
-          .from('purchase-orders-pdfs')  // ← VOTRE BUCKET EXISTANT
+          .from('purchase-orders-pdfs')
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: false
@@ -321,16 +313,15 @@ export default function PurchaseOrderManager() {
 
         console.log('✅ Upload réussi:', data.path);
 
-        // Obtenir l'URL publique
         const { data: urlData } = supabase.storage
-          .from('purchase-orders-pdfs')  // ← VOTRE BUCKET EXISTANT
+          .from('purchase-orders-pdfs')
           .getPublicUrl(filePath);
 
         console.log('🔗 URL générée:', urlData.publicUrl);
 
         uploadedFiles.push({
-          name: file.name,              // Garder le nom original pour l'affichage
-          cleanName: cleanFileName,     // Nom nettoyé
+          name: file.name,
+          cleanName: cleanFileName,
           size: file.size,
           type: file.type,
           path: data.path,
@@ -343,7 +334,6 @@ export default function PurchaseOrderManager() {
       } catch (error) {
         console.error('❌ Erreur upload fichier:', file.name, error);
         
-        // Message d'erreur détaillé
         let errorMessage = `Erreur upload "${file.name}": `;
         
         if (error.message.includes('not found')) {
@@ -360,7 +350,6 @@ export default function PurchaseOrderManager() {
       }
     }
 
-    // Ajouter les fichiers uploadés avec succès
     if (uploadedFiles.length > 0) {
       setFormData({...formData, files: [...(formData.files || []), ...uploadedFiles]});
       console.log(`✅ ${uploadedFiles.length}/${files.length} fichier(s) uploadé(s) avec succès`);
@@ -371,15 +360,12 @@ export default function PurchaseOrderManager() {
     }
 
     setUploadingFiles(false);
-    // Réinitialiser l'input
     e.target.value = '';
   };
 
-  // Fonction pour supprimer un fichier
   const removeFile = async (index) => {
     const fileToRemove = formData.files[index];
     
-    // Si le fichier a été uploadé, le supprimer du storage
     if (fileToRemove.path) {
       try {
         const { error } = await supabase.storage
@@ -396,12 +382,10 @@ export default function PurchaseOrderManager() {
       }
     }
     
-    // Retirer de la liste
     const newFiles = formData.files.filter((_, i) => i !== index);
     setFormData({...formData, files: newFiles});
   };
 
-  // Fonction pour ouvrir un fichier
   const openFile = (file) => {
     if (file.url) {
       window.open(file.url, '_blank');
@@ -410,7 +394,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // Fonction pour télécharger un fichier
   const downloadFile = async (file) => {
     if (!file.url) {
       alert('Impossible de télécharger - URL manquante');
@@ -436,7 +419,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // Fonction pour obtenir l'icône du fichier
   const getFileIcon = (fileType) => {
     if (fileType?.includes('pdf')) return '📄';
     if (fileType?.includes('excel') || fileType?.includes('sheet')) return '📊';
@@ -445,69 +427,12 @@ export default function PurchaseOrderManager() {
     return '📎';
   };
 
-  // Fonction pour formater la taille du fichier
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  // Fonction de test pour votre bucket
-  const testExistingBucket = async () => {
-    try {
-      console.log('🔍 Test du bucket purchase-orders-pdfs...');
-      
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error('❌ Erreur accès buckets:', bucketsError);
-        return false;
-      }
-      
-      console.log('📦 Buckets disponibles:', buckets.map(b => b.name));
-      
-      const yourBucket = buckets.find(b => b.name === 'purchase-orders-pdfs');
-      if (!yourBucket) {
-        console.error('❌ Bucket "purchase-orders-pdfs" non trouvé');
-        alert('❌ Bucket "purchase-orders-pdfs" non trouvé');
-        return false;
-      }
-      
-      console.log('✅ Votre bucket trouvé:', yourBucket);
-      
-      // Test upload
-      const testContent = 'test file content';
-      const testBlob = new Blob([testContent], { type: 'text/plain' });
-      const testFileName = `test_${Date.now()}.txt`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('purchase-orders-pdfs')
-        .upload(`test/${testFileName}`, testBlob);
-      
-      if (uploadError) {
-        console.error('❌ Erreur test upload:', uploadError);
-        alert(`❌ Erreur test upload: ${uploadError.message}\n\nVérifiez les policies de votre bucket.`);
-        return false;
-      }
-      
-      console.log('✅ Test upload réussi');
-      
-      // Nettoyer le fichier test
-      await supabase.storage
-        .from('purchase-orders-pdfs')
-        .remove([`test/${testFileName}`]);
-      
-      console.log('✅ Test terminé avec succès');
-      alert('✅ Votre bucket purchase-orders-pdfs fonctionne parfaitement !');
-      return true;
-      
-    } catch (error) {
-      console.error('❌ Erreur test:', error);
-      alert(`❌ Erreur test: ${error.message}`);
-      return false;
-    }
   };
 
   const getStatusEmoji = (status) => {
@@ -520,7 +445,7 @@ export default function PurchaseOrderManager() {
   };
 
   const getStatusBadge = (status) => {
-    const baseClasses = "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium";
+    const baseClasses = "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium";
     switch (status?.toLowerCase()) {
       case 'approved':
         return `${baseClasses} bg-green-100 text-green-800 border border-green-200`;
@@ -572,313 +497,327 @@ export default function PurchaseOrderManager() {
 
   if (showForm) {
     return (
-      <div className="max-w-4xl mx-auto">
-        {/* Formulaire avec couleurs et tes vraies colonnes */}
-        <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl shadow-lg border border-indigo-200 p-8">
-          <div className="bg-indigo-600 text-white px-6 py-4 rounded-lg mb-6 flex justify-between items-center">
-            <h2 className="text-2xl font-bold flex items-center">
-              {editingPO ? '✏️ Modifier le Bon d\'Achat' : '➕ Nouveau Bon d\'Achat'}
-            </h2>
-            {/* Boutons déplacés dans le rectangle bleu */}
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={testExistingBucket}
-                className="px-3 py-1 text-xs bg-white/20 rounded border border-white/30 text-white hover:bg-white/30"
-              >
-                🔍 Test Storage
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingPO(null);
-                  setFormData({
-                    client_name: '',
-                    po_number: '',
-                    submission_no: '',
-                    date: new Date().toISOString().split('T')[0],
-                    amount: '',
-                    status: 'pending',
-                    notes: '',
-                    files: []
-                  });
-                }}
-                className="px-4 py-2 border border-white/30 rounded-lg text-sm font-medium text-white bg-white/20 hover:bg-white/30 backdrop-blur-sm"
-              >
-                ❌ Annuler
-              </button>
-              <button
-                type="submit"
-                form="po-form"
-                className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-indigo-600 bg-white hover:bg-gray-100"
-              >
-                {editingPO ? '💾 Mettre à jour' : '✨ Créer'}
-              </button>
+      <div className="max-w-6xl mx-auto p-4">
+        {/* 📱 FORMULAIRE MOBILE-FRIENDLY */}
+        <div className="bg-white rounded-xl shadow-lg border border-indigo-200 overflow-hidden">
+          
+          {/* 📱 En-tête du formulaire responsive */}
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold">
+                  {editingPO ? '✏️ Modifier le Bon d\'Achat' : '➕ Nouveau Bon d\'Achat'}
+                </h2>
+                <p className="text-indigo-100 text-sm mt-1">
+                  {editingPO ? 'Modifiez les informations' : 'Créez un nouveau bon d\'achat'}
+                </p>
+              </div>
+              
+              {/* 📱 Boutons d'action responsive */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingPO(null);
+                    setFormData({
+                      client_name: '',
+                      po_number: '',
+                      submission_no: '',
+                      date: new Date().toISOString().split('T')[0],
+                      amount: '',
+                      status: 'pending',
+                      notes: '',
+                      files: []
+                    });
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-sm font-medium"
+                >
+                  ❌ Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="po-form"
+                  className="w-full sm:w-auto px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-100 text-sm font-medium"
+                >
+                  {editingPO ? '💾 Mettre à jour' : '✨ Créer'}
+                </button>
+              </div>
             </div>
           </div>
           
-          <form id="po-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* Client (sélection) + Statut */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <label className="block text-sm font-semibold text-blue-800 mb-2">
-                  👤 Client *
-                </label>
-                <select
-                  value={formData.client_name}
-                  onChange={(e) => setFormData({...formData, client_name: e.target.value})}
-                  className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-lg p-3"
-                  required
-                >
-                  <option value="">Sélectionner un client...</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.name}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <label className="block text-sm font-semibold text-gray-800 mb-2">
-                  🏷️ Statut
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg p-3"
-                >
-                  <option value="pending">⏳ En attente</option>
-                  <option value="approved">✅ Approuvé</option>
-                  <option value="rejected">❌ Rejeté</option>
-                </select>
-              </div>
-            </div>
-
-            {/* No. Bon Achat Client + Soumission */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <label className="block text-sm font-semibold text-green-800 mb-2">
-                  📄 No. Bon Achat Client *
-                </label>
-                <input
-                  type="text"
-                  value={formData.po_number}
-                  onChange={(e) => setFormData({...formData, po_number: e.target.value})}
-                  className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-lg p-3"
-                  placeholder="Ex: PO-2025-001"
-                  required
-                />
-              </div>
-
-              <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
-                <label className="block text-sm font-semibold text-cyan-800 mb-2">
-                  📋 No. Soumission
-                </label>
-                <div className="space-y-2">
+          {/* 📱 Contenu du formulaire */}
+          <div className="p-4 sm:p-6">
+            <form id="po-form" onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* 📱 Client et Statut - Stack sur mobile */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <label className="block text-sm font-semibold text-blue-800 mb-2">
+                    👤 Client *
+                  </label>
                   <select
-                    value={formData.submission_no}
-                    onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
-                    className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-lg p-3"
+                    value={formData.client_name}
+                    onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+                    className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+                    required
                   >
-                    <option value="">Sélectionner ou entrer manuellement...</option>
-                    {submissions.map((submission) => (
-                      <option key={submission.id} value={submission.submission_number}>
-                        {submission.submission_number} - {submission.client_name}: {submission.description}
+                    <option value="">Sélectionner un client...</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.name}>
+                        {client.name}
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                    🏷️ Statut
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                  >
+                    <option value="pending">⏳ En attente</option>
+                    <option value="approved">✅ Approuvé</option>
+                    <option value="rejected">❌ Rejeté</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 📱 Numéro PO et Soumission */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <label className="block text-sm font-semibold text-green-800 mb-2">
+                    📄 No. Bon Achat Client *
+                  </label>
                   <input
                     type="text"
-                    value={formData.submission_no}
-                    onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
-                    className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-lg p-3"
-                    placeholder="Ou entrer manuellement..."
+                    value={formData.po_number}
+                    onChange={(e) => setFormData({...formData, po_number: e.target.value})}
+                    className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+                    placeholder="Ex: PO-2025-001"
+                    required
+                  />
+                </div>
+
+                <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
+                  <label className="block text-sm font-semibold text-cyan-800 mb-2">
+                    📋 No. Soumission
+                  </label>
+                  <div className="space-y-2">
+                    <select
+                      value={formData.submission_no}
+                      onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
+                      className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
+                    >
+                      <option value="">Sélectionner ou entrer manuellement...</option>
+                      {submissions.map((submission) => (
+                        <option key={submission.id} value={submission.submission_number}>
+                          {submission.submission_number} - {submission.client_name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={formData.submission_no}
+                      onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
+                      className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
+                      placeholder="Ou entrer manuellement..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 📱 Date et Montant */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
+                  <label className="block text-sm font-semibold text-pink-800 mb-2">
+                    📅 Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                    className="block w-full rounded-lg border-pink-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-base p-3"
+                  />
+                </div>
+
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <label className="block text-sm font-semibold text-yellow-800 mb-2">
+                    💰 Montant *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                    className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
+                    placeholder="0.00"
+                    required
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Date + Montant */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
-                <label className="block text-sm font-semibold text-pink-800 mb-2">
-                  📅 Date
+              {/* 📱 Notes */}
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <label className="block text-sm font-semibold text-purple-800 mb-2">
+                  📝 Notes
                 </label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
-                  className="block w-full rounded-lg border-pink-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-lg p-3"
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                  placeholder="Notes et commentaires..."
+                  rows="3"
                 />
               </div>
 
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                <label className="block text-sm font-semibold text-yellow-800 mb-2">
-                  💰 Montant *
+              {/* 📱 Section fichiers MOBILE-FRIENDLY */}
+              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                <label className="block text-sm font-semibold text-indigo-800 mb-2">
+                  📎 Documents (PDF, XLS, DOC, etc.)
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                  className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-lg p-3"
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-            </div>
+                
+                {/* 📱 Zone d'upload mobile-friendly */}
+                <div className="mb-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.xls,.xlsx,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                      onChange={handleFileUpload}
+                      disabled={uploadingFiles}
+                      className="block w-full text-sm text-indigo-600 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 disabled:opacity-50"
+                    />
+                  </div>
+                  {uploadingFiles && (
+                    <p className="text-sm text-indigo-600 mt-2 flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                      📤 Upload en cours... Veuillez patienter.
+                    </p>
+                  )}
+                </div>
 
-            {/* Notes (réduit à une ligne) */}
-            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-              <label className="block text-sm font-semibold text-purple-800 mb-2">
-                📝 Notes
-              </label>
-              <input
-                type="text"
-                value={formData.notes}
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-lg p-3"
-                placeholder="Notes et commentaires..."
-              />
-            </div>
-
-            {/* Section fichiers AMÉLIORÉE */}
-            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-              <label className="block text-sm font-semibold text-indigo-800 mb-2">
-                📎 Documents (PDF, XLS, DOC, etc.)
-              </label>
-              
-              {/* Zone d'upload */}
-              <div className="mb-4">
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.xls,.xlsx,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                  onChange={handleFileUpload}
-                  disabled={uploadingFiles}
-                  className="block w-full text-sm text-indigo-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 disabled:opacity-50"
-                />
-                {uploadingFiles && (
-                  <p className="text-sm text-indigo-600 mt-2 flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-                    📤 Upload en cours... Veuillez patienter.
-                  </p>
-                )}
-              </div>
-
-              {/* Liste des fichiers */}
-              {formData.files && formData.files.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-indigo-700">
-                    📁 Documents joints ({formData.files.length})
-                  </p>
-                  {formData.files.map((file, index) => (
-                    <div key={index} className="bg-white p-3 rounded border border-indigo-200 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3 flex-1">
-                          <span className="text-xl">{getFileIcon(file.type)}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {file.name}
-                            </p>
-                            <div className="flex items-center space-x-4 text-xs text-gray-500">
-                              <span>{formatFileSize(file.size)}</span>
-                              <span>{file.type}</span>
-                              {file.uploaded_at && (
-                                <span>📅 {new Date(file.uploaded_at).toLocaleDateString('fr-CA')}</span>
+                {/* 📱 Liste des fichiers mobile-friendly */}
+                {formData.files && formData.files.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-indigo-700">
+                      📁 Documents joints ({formData.files.length})
+                    </p>
+                    <div className="space-y-2">
+                      {formData.files.map((file, index) => (
+                        <div key={index} className="bg-white p-3 rounded border border-indigo-200 shadow-sm">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div className="flex items-center space-x-3 flex-1 min-w-0">
+                              <span className="text-xl flex-shrink-0">{getFileIcon(file.type)}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {file.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {formatFileSize(file.size)} • {file.type}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* 📱 Actions fichier responsive */}
+                            <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                              {file.url ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => openFile(file)}
+                                    className="flex-1 sm:flex-none px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors"
+                                    title="Ouvrir le fichier"
+                                  >
+                                    👁️ Voir
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadFile(file)}
+                                    className="flex-1 sm:flex-none px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded border border-green-300 transition-colors"
+                                    title="Télécharger le fichier"
+                                  >
+                                    💾 Télécharger
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
+                                  🔄 En cours...
+                                </span>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => removeFile(index)}
+                                className="flex-1 sm:flex-none px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-300 transition-colors"
+                                title="Supprimer le fichier"
+                              >
+                                🗑️
+                              </button>
                             </div>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          {file.url ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => openFile(file)}
-                                className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors"
-                                title="Ouvrir le fichier"
-                              >
-                                👁️ Voir
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => downloadFile(file)}
-                                className="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded border border-green-300 transition-colors"
-                                title="Télécharger le fichier"
-                              >
-                                💾 Télécharger
-                              </button>
-                            </>
-                          ) : (
-                            <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
-                              🔄 En cours...
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-300 transition-colors"
-                            title="Supprimer le fichier"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </form>
+                  </div>
+                )}
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* En-tête sans logo et statistiques colorées */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-6 text-white">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
-          <div className="flex space-x-3">
+    <div className="space-y-6 p-4">
+      {/* 📱 En-tête responsive avec statistiques */}
+      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
+            <p className="text-white/90 text-sm sm:text-base mt-1">
+              Gérez vos bons d'achat et commandes clients
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleSendReport}
               disabled={sendingReport}
-              className="inline-flex items-center px-4 py-2 border border-white/20 rounded-lg shadow-sm text-sm font-medium text-white bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white disabled:opacity-50 backdrop-blur-sm"
+              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm"
             >
-              📧 {sendingReport ? 'Envoi...' : 'Envoyer Rapport'}
+              📧 {sendingReport ? 'Envoi...' : 'Rapport'}
             </button>
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-indigo-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="w-full sm:w-auto px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-100 text-sm font-medium"
             >
               ➕ Nouveau Bon d'Achat
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* 📱 Statistiques responsive */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-3xl mr-3">📊</span>
+              <span className="text-2xl sm:text-3xl mr-3">📊</span>
               <div>
-                <p className="text-sm font-medium text-white/90">Total</p>
-                <p className="text-2xl font-bold text-white">{purchaseOrders.length}</p>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Total</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{purchaseOrders.length}</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-3xl mr-3">✅</span>
+              <span className="text-2xl sm:text-3xl mr-3">✅</span>
               <div>
-                <p className="text-sm font-medium text-white/90">Approuvés</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-xs sm:text-sm font-medium text-white/90">Approuvés</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">
                   {purchaseOrders.filter(po => po.status?.toLowerCase() === 'approved').length}
                 </p>
               </div>
@@ -887,10 +826,10 @@ export default function PurchaseOrderManager() {
 
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-3xl mr-3">⏳</span>
+              <span className="text-2xl sm:text-3xl mr-3">⏳</span>
               <div>
-                <p className="text-sm font-medium text-white/90">En Attente</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-xs sm:text-sm font-medium text-white/90">En Attente</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">
                   {purchaseOrders.filter(po => po.status?.toLowerCase() === 'pending').length}
                 </p>
               </div>
@@ -899,33 +838,36 @@ export default function PurchaseOrderManager() {
 
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-3xl mr-3">💰</span>
+              <span className="text-2xl sm:text-3xl mr-3">💰</span>
               <div>
-                <p className="text-sm font-medium text-white/90">Montant Total</p>
-                <p className="text-2xl font-bold text-white">{formatCurrency(totalAmount)}</p>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Montant Total</p>
+                <p className="text-lg sm:text-2xl font-bold text-white">{formatCurrency(totalAmount)}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filtres et recherche */}
-      <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-          <div className="flex-1 max-w-lg">
-            <input
-              type="text"
-              placeholder="🔍 Rechercher par numéro PO, client, soumission, notes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg p-3"
-            />
+      {/* 📱 Filtres et recherche responsive */}
+      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="🔍 Rechercher par numéro PO, client, soumission..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+              />
+            </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="w-full sm:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-lg p-3"
+              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
             >
               <option value="all">Tous les statuts</option>
               <option value="pending">⏳ En attente</option>
@@ -936,15 +878,8 @@ export default function PurchaseOrderManager() {
         </div>
       </div>
 
-      {/* Info système */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <p className="text-sm text-gray-600">
-          📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
-        </p>
-      </div>
-
-      {/* Liste des bons d'achat */}
-      <div className="bg-white shadow-lg overflow-hidden rounded-lg border border-gray-200">
+      {/* 📊 DESKTOP VIEW - Table (cachée sur mobile) */}
+      <div className="hidden lg:block bg-white shadow-lg overflow-hidden rounded-lg border border-gray-200">
         {filteredPurchaseOrders.length === 0 ? (
           <div className="text-center py-12">
             <span className="text-6xl mb-4 block">📋</span>
@@ -961,119 +896,318 @@ export default function PurchaseOrderManager() {
             )}
           </div>
         ) : (
-          <ul className="divide-y divide-gray-200">
-            {filteredPurchaseOrders.map((po) => (
-              <li key={po.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">
-                      <span className="text-2xl">{getStatusEmoji(po.status)}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <p className="text-lg font-semibold text-gray-900">
-                          📄 {po.po_number || 'N/A'}
-                        </p>
-                        {po.submission_no && (
-                          <p className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                            📋 {po.submission_no}
-                          </p>
-                        )}
-                        <span className={getStatusBadge(po.status)}>
-                          {po.status === 'approved' ? 'Approuvé' : 
-                           po.status === 'pending' ? 'En attente' : 
-                           po.status === 'rejected' ? 'Rejeté' : (po.status || 'Inconnu')}
-                        </span>
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Bon d'achat
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Montant
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Statut
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Fichiers
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredPurchaseOrders.map((po) => (
+                <tr key={po.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        📄 {po.po_number || 'N/A'}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                        <p>
-                          <span className="font-medium">👤 Client:</span> {po.client_name || po.client || 'N/A'}
-                        </p>
-                        <p>
-                          <span className="font-medium">💰 Montant:</span> {formatCurrency(po.amount)}
-                        </p>
-                        <p>
-                          <span className="font-medium">📅 Date:</span> {formatDate(po.date || po.created_at)}
-                        </p>
-                      </div>
-                      {po.notes && (
-                        <p className="text-sm text-gray-500 mt-2 bg-gray-50 p-2 rounded">
-                          📝 {po.notes}
-                        </p>
-                      )}
-                      {/* Affichage des fichiers AMÉLIORÉ */}
-                      {po.files && po.files.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs text-indigo-600 mb-1">
-                            📎 {po.files.length} document(s):
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {po.files.map((file, index) => (
-                              <div key={index} className="flex items-center space-x-1">
-                                <button
-                                  onClick={() => openFile(file)}
-                                  className="inline-flex items-center text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded border border-indigo-300 transition-colors"
-                                  title={`Ouvrir ${file.name}`}
-                                  disabled={!file.url}
-                                >
-                                  <span className="mr-1">{getFileIcon(file.type)}</span>
-                                  {file.name}
-                                </button>
-                                {file.url && (
-                                  <button
-                                    onClick={() => downloadFile(file)}
-                                    className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-1 py-1 rounded border border-green-300 transition-colors"
-                                    title="Télécharger"
-                                  >
-                                    💾
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                      {po.submission_no && (
+                        <div className="text-sm text-blue-600">
+                          📋 {po.submission_no}
                         </div>
                       )}
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {po.status?.toLowerCase() === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => handleStatusChange(po.id, 'approved')}
-                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 shadow-sm"
-                          title="Approuver"
-                        >
-                          ✅ Approuver
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(po.id, 'rejected')}
-                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 shadow-sm"
-                          title="Rejeter"
-                        >
-                          ❌ Rejeter
-                        </button>
-                      </>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{po.client_name || po.client || 'N/A'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(po.date || po.created_at)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                    {formatCurrency(po.amount)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={getStatusBadge(po.status)}>
+                      {getStatusEmoji(po.status)} {po.status === 'approved' ? 'Approuvé' : 
+                       po.status === 'pending' ? 'En attente' : 
+                       po.status === 'rejected' ? 'Rejeté' : (po.status || 'Inconnu')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {po.files && po.files.length > 0 ? (
+                      <div className="flex items-center">
+                        <FileText className="w-4 h-4 mr-1" />
+                        {po.files.length} fichier(s)
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">Aucun</span>
                     )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end space-x-2">
+                      {po.status?.toLowerCase() === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleStatusChange(po.id, 'approved')}
+                            className="text-green-600 hover:text-green-900 p-1"
+                            title="Approuver"
+                          >
+                            ✅
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(po.id, 'rejected')}
+                            className="text-red-600 hover:text-red-900 p-1"
+                            title="Rejeter"
+                          >
+                            ❌
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => handleEdit(po)}
+                        className="text-blue-600 hover:text-blue-900 p-1"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(po.id)}
+                        className="text-red-600 hover:text-red-900 p-1"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* 📱 MOBILE VIEW - Cards empilées */}
+      <div className="lg:hidden space-y-4">
+        {filteredPurchaseOrders.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <span className="text-6xl mb-4 block">📋</span>
+            <p className="text-gray-500 text-lg mb-4">
+              {purchaseOrders.length === 0 ? 'Aucun bon d\'achat créé' : 'Aucun bon d\'achat trouvé'}
+            </p>
+            {purchaseOrders.length === 0 && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+              >
+                ➕ Créer le premier bon d'achat
+              </button>
+            )}
+          </div>
+        ) : (
+          filteredPurchaseOrders.map((po) => (
+            <div key={po.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+              
+              {/* 📱 En-tête de la card */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">{getStatusEmoji(po.status)}</span>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-base">
+                        📄 {po.po_number || 'N/A'}
+                      </h3>
+                      <p className="text-sm text-gray-600">{po.client_name || po.client || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  {/* 📱 Menu actions mobile */}
+                  <div className="relative">
                     <button
-                      onClick={() => handleEdit(po)}
-                      className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                      title="Modifier"
+                      onClick={() => setSelectedOrderId(selectedOrderId === po.id ? null : po.id)}
+                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-white/50"
                     >
-                      ✏️ Modifier
+                      <MoreVertical className="w-5 h-5" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(po.id)}
-                      className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-red-50 hover:text-red-700 hover:border-red-300 shadow-sm"
-                      title="Supprimer"
-                    >
-                      🗑️ Supprimer
-                    </button>
+                    
+                    {/* 📱 Dropdown actions */}
+                    {selectedOrderId === po.id && (
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              handleEdit(po);
+                              setSelectedOrderId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Modifier
+                          </button>
+                          {po.status?.toLowerCase() === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  handleStatusChange(po.id, 'approved');
+                                  setSelectedOrderId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center"
+                              >
+                                ✅ Approuver
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleStatusChange(po.id, 'rejected');
+                                  setSelectedOrderId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center"
+                              >
+                                ❌ Rejeter
+                              </button>
+                            </>
+                          )}
+                          <hr className="my-1" />
+                          <button
+                            onClick={() => {
+                              handleDelete(po.id);
+                              setSelectedOrderId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </li>
-            ))}
-          </ul>
+              </div>
+
+              {/* 📱 Contenu de la card */}
+              <div className="p-4 space-y-3">
+                
+                {/* 📱 Informations principales */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500 block">📅 Date</span>
+                    <span className="font-medium text-gray-900">{formatDate(po.date || po.created_at)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">💰 Montant</span>
+                    <span className="font-bold text-green-600 text-base">{formatCurrency(po.amount)}</span>
+                  </div>
+                </div>
+
+                {/* 📱 Soumission si présente */}
+                {po.submission_no && (
+                  <div className="text-sm">
+                    <span className="text-gray-500">📋 Soumission</span>
+                    <span className="ml-2 text-blue-600 font-medium">{po.submission_no}</span>
+                  </div>
+                )}
+
+                {/* 📱 Statut */}
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 text-sm">Statut</span>
+                  <span className={getStatusBadge(po.status)}>
+                    {po.status === 'approved' ? 'Approuvé' : 
+                     po.status === 'pending' ? 'En attente' : 
+                     po.status === 'rejected' ? 'Rejeté' : (po.status || 'Inconnu')}
+                  </span>
+                </div>
+
+                {/* 📱 Notes si présentes */}
+                {po.notes && (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <span className="text-gray-500 text-sm block mb-1">📝 Notes</span>
+                    <p className="text-gray-700 text-sm">{po.notes}</p>
+                  </div>
+                )}
+
+                {/* 📱 Fichiers attachés */}
+                {po.files && po.files.length > 0 && (
+                  <div className="border-t pt-3">
+                    <span className="text-gray-500 text-sm block mb-2">📎 Fichiers ({po.files.length})</span>
+                    <div className="space-y-2">
+                      {po.files.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-2">
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
+                            <span className="text-lg">{getFileIcon(file.type)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-blue-800 truncate">{file.name}</p>
+                              <p className="text-xs text-blue-600">{formatFileSize(file.size)}</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => openFile(file)}
+                              className="p-1 text-blue-600 hover:bg-blue-200 rounded"
+                              title="Ouvrir"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => downloadFile(file)}
+                              className="p-1 text-green-600 hover:bg-green-200 rounded"
+                              title="Télécharger"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 📱 Actions rapides en bas */}
+              <div className="bg-gray-50 px-4 py-3 flex gap-2">
+                <button
+                  onClick={() => handleEdit(po)}
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  ✏️ Modifier
+                </button>
+                {po.status?.toLowerCase() === 'pending' && (
+                  <button
+                    onClick={() => handleStatusChange(po.id, 'approved')}
+                    className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                  >
+                    ✅ Approuver
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
         )}
+      </div>
+
+      {/* 📱 Note explicative */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-700">
+          📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
+        </p>
       </div>
     </div>
   );
