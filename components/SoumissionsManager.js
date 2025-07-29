@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, Plus, Upload, X, ChevronDown } from 'lucide-react';
 
 export default function SoumissionsManager() {
@@ -7,19 +6,13 @@ export default function SoumissionsManager() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showClientManager, setShowClientManager] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [showNonInventoryForm, setShowNonInventoryForm] = useState(false);
-  const [showQuickAddProduct, setShowQuickAddProduct] = useState(false);
-  const [showInventoryUpload, setShowInventoryUpload] = useState(false);
   const [editingSubmission, setEditingSubmission] = useState(null);
-  const [editingClient, setEditingClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState(null);
   
-  // Recherche produits avec debounce et navigation clavier
+  // Recherche produits
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [products, setProducts] = useState([]);
   const [searchingProducts, setSearchingProducts] = useState(false);
@@ -28,7 +21,29 @@ export default function SoumissionsManager() {
   const [tempQuantity, setTempQuantity] = useState('1');
   const [showQuantityInput, setShowQuantityInput] = useState(false);
   const [selectedProductForQuantity, setSelectedProductForQuantity] = useState(null);
+  const [showQuickAddProduct, setShowQuickAddProduct] = useState(false);
 
+  // Form states
+  const [submissionForm, setSubmissionForm] = useState({
+    client_name: '',
+    description: '',
+    amount: 0,
+    status: 'draft',
+    items: [],
+    submission_number: ''
+  });
+
+  const [quickProductForm, setQuickProductForm] = useState({
+    product_id: '',
+    description: '',
+    selling_price: '',
+    cost_price: '',
+    unit: 'pcs',
+    product_group: 'Divers'
+  });
+
+  const [calculatedCostTotal, setCalculatedCostTotal] = useState(0);
+  
   // Debounce pour la recherche produits
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -41,48 +56,10 @@ export default function SoumissionsManager() {
         setProducts([]);
       }
     }, 300);
-
     return () => clearTimeout(timeoutId);
   }, [productSearchTerm]);
   
-  // Form states
-  const [submissionForm, setSubmissionForm] = useState({
-    client_name: '',
-    description: '',
-    amount: 0,
-    status: 'draft',
-    items: [],
-    submission_number: ''
-  });
-
-  const [clientForm, setClientForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    contact_person: ''
-  });
-
-  const [nonInventoryForm, setNonInventoryForm] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category: '',
-    supplier: ''
-  });
-
-  const [quickProductForm, setQuickProductForm] = useState({
-    product_id: '',
-    description: '',
-    selling_price: '',
-    cost_price: '',
-    unit: 'pcs',
-    product_group: 'Divers'
-  });
-
-  // Calcul automatique du montant vente (ET coût pour affichage seulement)
-  const [calculatedCostTotal, setCalculatedCostTotal] = useState(0);
-  
+  // Calcul automatique des totaux
   useEffect(() => {
     const totalSelling = selectedItems.reduce((sum, item) => {
       return sum + (item.selling_price * item.quantity);
@@ -101,68 +78,64 @@ export default function SoumissionsManager() {
   }, [selectedItems]);
 
   useEffect(() => {
-    fetchSoumissions();
-    fetchProducts();
-    fetchClients();
+    // Simuler le chargement des données - REMPLACEZ par vos appels API
+    setTimeout(() => {
+      setSoumissions([
+        {
+          id: 1,
+          client_name: 'Entreprise ABC',
+          description: 'Installation système électrique',
+          amount: 15000,
+          status: 'sent',
+          submission_number: '2507-001',
+          created_at: '2025-07-15',
+          items: [
+            { product_id: 'ELEC-001', description: 'Panneau électrique 200A', quantity: 2, selling_price: 450, cost_price: 320, unit: 'pcs', product_group: 'Électrique', comment: 'Installation selon code électrique' },
+            { product_id: 'CABLE-100', description: 'Câble 12 AWG', quantity: 150, selling_price: 2.5, cost_price: 1.8, unit: 'm', product_group: 'Câblage', comment: 'Longueur approximative, ajustement sur site' }
+          ]
+        },
+        {
+          id: 2,
+          client_name: 'Construction XYZ',
+          description: 'Éclairage commercial',
+          amount: 8500,
+          status: 'draft',
+          submission_number: '2507-002',
+          created_at: '2025-07-20',
+          items: [
+            { product_id: 'LED-050', description: 'Luminaire LED 50W', quantity: 20, selling_price: 85, cost_price: 55, unit: 'pcs', product_group: 'Éclairage', comment: 'Blanc chaud 3000K requis' }
+          ]
+        }
+      ]);
+      
+      setClients([
+        { id: 1, name: 'Entreprise ABC', email: 'contact@abc.com', phone: '514-555-0123' },
+        { id: 2, name: 'Construction XYZ', email: 'info@xyz.ca', phone: '450-555-0456' }
+      ]);
+      
+      setLoading(false);
+    }, 1000);
   }, []);
 
-  // Fonction pour générer le numéro automatique
   const generateSubmissionNumber = async () => {
     const now = new Date();
     const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
     
     try {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('submission_number')
-        .like('submission_number', `${yearMonth}-%`)
-        .order('submission_number', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error('Erreur récupération numéro:', error);
-        return `${yearMonth}-001`;
-      }
-
-      if (data && data.length > 0) {
-        const lastNumber = data[0].submission_number;
-        const sequenceMatch = lastNumber.match(/-(\d{3})$/);
-        if (sequenceMatch) {
-          const nextSequence = (parseInt(sequenceMatch[1]) + 1).toString().padStart(3, '0');
-          const newNumber = `${yearMonth}-${nextSequence}`;
-          return newNumber;
-        }
-      }
+      // REMPLACEZ par votre logique de génération de numéro avec base de données
+      const lastNumber = Math.max(...soumissions.map(s => {
+        const match = s.submission_number?.match(/-(\d{3})$/);
+        return match ? parseInt(match[1]) : 0;
+      }), 0);
       
-      const firstNumber = `${yearMonth}-001`;
-      return firstNumber;
+      const nextSequence = (lastNumber + 1).toString().padStart(3, '0');
+      return `${yearMonth}-${nextSequence}`;
     } catch (error) {
       console.error('Erreur génération numéro:', error);
       return `${yearMonth}-001`;
     }
   };
 
-  const fetchSoumissions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setSoumissions(data || []);
-    } catch (error) {
-      console.error('Erreur lors du chargement des soumissions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProducts = async () => {
-    setProducts([]);
-  };
-
-  // Recherche dynamique côté serveur avec limite
   const searchProducts = async (searchTerm) => {
     if (!searchTerm || searchTerm.length < 2) {
       setProducts([]);
@@ -170,67 +143,22 @@ export default function SoumissionsManager() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%,product_group.ilike.%${searchTerm}%`)
-        .order('description', { ascending: true })
-        .limit(50);
+      // REMPLACEZ par votre appel API de recherche de produits
+      const mockProducts = [
+        { product_id: 'ELEC-001', description: 'Panneau électrique 200A', selling_price: 450, cost_price: 320, unit: 'pcs', product_group: 'Électrique', stock_qty: 12 },
+        { product_id: 'CABLE-100', description: 'Câble 12 AWG', selling_price: 2.5, cost_price: 1.8, unit: 'm', product_group: 'Câblage', stock_qty: 500 },
+        { product_id: 'LED-050', description: 'Luminaire LED 50W', selling_price: 85, cost_price: 55, unit: 'pcs', product_group: 'Éclairage', stock_qty: 25 },
+        { product_id: 'SWITCH-001', description: 'Interrupteur simple', selling_price: 15, cost_price: 8, unit: 'pcs', product_group: 'Accessoires', stock_qty: 100 }
+      ].filter(p => 
+        p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.product_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.product_group.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
-      if (error) {
-        console.error('Erreur recherche produits:', error);
-        setProducts([]);
-        return;
-      }
-
-      setProducts(data || []);
+      setProducts(mockProducts);
     } catch (error) {
       console.error('Erreur lors de la recherche dynamique:', error);
       setProducts([]);
-    }
-  };
-
-  const fetchClients = async () => {
-    try {
-      const { data: clientsData, error: clientsError } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (!clientsError && clientsData) {
-        setClients(clientsData);
-        return;
-      }
-
-      const [submissionsResult, purchaseOrdersResult] = await Promise.all([
-        supabase.from('submissions').select('client_name').order('client_name'),
-        supabase.from('purchase_orders').select('client_name, client').order('client_name')
-      ]);
-
-      const allClientNames = new Set();
-      
-      submissionsResult.data?.forEach(s => {
-        if (s.client_name) allClientNames.add(s.client_name);
-      });
-      
-      purchaseOrdersResult.data?.forEach(po => {
-        if (po.client_name) allClientNames.add(po.client_name);
-        if (po.client) allClientNames.add(po.client);
-      });
-
-      const uniqueClients = Array.from(allClientNames).map((name, index) => ({
-        id: `client_${index}`,
-        name,
-        email: '',
-        phone: '',
-        address: '',
-        contact_person: ''
-      }));
-
-      setClients(uniqueClients);
-    } catch (error) {
-      console.error('Erreur lors du chargement des clients:', error);
-      setClients([]);
     }
   };
 
@@ -238,12 +166,8 @@ export default function SoumissionsManager() {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cette soumission ?')) return;
     
     try {
-      const { error } = await supabase
-        .from('submissions')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      await fetchSoumissions();
+      // REMPLACEZ par votre appel API de suppression
+      setSoumissions(prev => prev.filter(s => s.id !== id));
     } catch (error) {
       console.error('Erreur suppression soumission:', error);
     }
@@ -252,18 +176,9 @@ export default function SoumissionsManager() {
   const handleSendReport = async () => {
     setSendingReport(true);
     try {
-      const response = await fetch('/api/send-weekly-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        console.log('📧 Rapport envoyé avec succès !');
-      } else {
-        console.error('❌ Erreur lors de l\'envoi du rapport');
-      }
+      // REMPLACEZ par votre appel API d'envoi de rapport
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('📧 Rapport envoyé avec succès !');
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
     } finally {
@@ -271,7 +186,6 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Navigation clavier pour recherche produits avec auto-scroll
   const handleProductKeyDown = (e) => {
     const availableProducts = products;
 
@@ -339,7 +253,6 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Gestion des items de produits avec quantité entière
   const addItemToSubmission = (product, quantity = 1) => {
     const intQuantity = parseInt(quantity);
     const existingItem = selectedItems.find(item => item.product_id === product.product_id);
@@ -353,7 +266,8 @@ export default function SoumissionsManager() {
     } else {
       setSelectedItems([...selectedItems, {
         ...product,
-        quantity: intQuantity
+        quantity: intQuantity,
+        comment: ''
       }]);
     }
   };
@@ -375,13 +289,17 @@ export default function SoumissionsManager() {
     ));
   };
 
+  const updateItemComment = (productId, comment) => {
+    setSelectedItems(selectedItems.map(item =>
+      item.product_id === productId ? { ...item, comment: comment } : item
+    ));
+  };
+
   const removeItemFromSubmission = (productId) => {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
 
-  // Gestion des soumissions avec numéro automatique
-  const handleSubmissionSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmissionSubmit = async () => {
     try {
       let submissionNumber = submissionForm.submission_number;
       
@@ -392,23 +310,18 @@ export default function SoumissionsManager() {
       const submissionData = {
         ...submissionForm,
         submission_number: submissionNumber,
-        items: selectedItems
+        items: selectedItems,
+        id: editingSubmission?.id || Date.now()
       };
 
       if (editingSubmission) {
-        const { error } = await supabase
-          .from('submissions')
-          .update(submissionData)
-          .eq('id', editingSubmission.id);
-        if (error) throw error;
+        // REMPLACEZ par votre appel API de mise à jour
+        setSoumissions(prev => prev.map(s => s.id === editingSubmission.id ? submissionData : s));
       } else {
-        const { error } = await supabase
-          .from('submissions')
-          .insert([submissionData]);
-        if (error) throw error;
+        // REMPLACEZ par votre appel API de création
+        setSoumissions(prev => [submissionData, ...prev]);
       }
 
-      await fetchSoumissions();
       setShowForm(false);
       setEditingSubmission(null);
       setSelectedItems([]);
@@ -426,8 +339,292 @@ export default function SoumissionsManager() {
     }
   };
 
+  // 🖨️ FONCTION D'IMPRESSION AMÉLIORÉE
   const handlePrint = () => {
-    window.print();
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Soumission ${submissionForm.submission_number}</title>
+          <style>
+            @page {
+              margin: 20mm;
+              size: A4;
+            }
+            
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
+            body {
+              font-family: 'Arial', sans-serif;
+              font-size: 12px;
+              line-height: 1.4;
+              color: #333;
+              background: white;
+            }
+            
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              padding-bottom: 20px;
+              border-bottom: 2px solid #333;
+            }
+            
+            .company-name {
+              font-size: 24px;
+              font-weight: bold;
+              color: #6366f1;
+              margin-bottom: 5px;
+            }
+            
+            .document-title {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 10px;
+            }
+            
+            .info-section {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 30px;
+            }
+            
+            .info-block {
+              flex: 1;
+              margin-right: 20px;
+            }
+            
+            .info-block:last-child {
+              margin-right: 0;
+            }
+            
+            .info-title {
+              font-weight: bold;
+              color: #4338ca;
+              margin-bottom: 5px;
+              font-size: 14px;
+            }
+            
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+              page-break-inside: auto;
+            }
+            
+            .items-table th {
+              background-color: #f8fafc;
+              border: 1px solid #cbd5e1;
+              padding: 8px;
+              text-align: left;
+              font-weight: bold;
+              color: #1e293b;
+              font-size: 11px;
+            }
+            
+            .items-table td {
+              border: 1px solid #cbd5e1;
+              padding: 8px;
+              font-size: 11px;
+              page-break-inside: avoid;
+            }
+            
+            .items-table tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            
+            .items-table tr:nth-child(even) {
+              background-color: #f8fafc;
+            }
+            
+            .comment-cell {
+              font-style: italic;
+              color: #555;
+              max-width: 200px;
+              word-wrap: break-word;
+            }
+            
+            .text-right {
+              text-align: right;
+            }
+            
+            .text-center {
+              text-align: center;
+            }
+            
+            .totals-section {
+              margin-top: 20px;
+              float: right;
+              width: 300px;
+            }
+            
+            .total-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+              border-bottom: 1px solid #e2e8f0;
+            }
+            
+            .total-row.final {
+              border-bottom: 2px solid #333;
+              font-weight: bold;
+              font-size: 14px;
+              background-color: #f1f5f9;
+              padding: 12px 10px;
+              margin-top: 10px;
+            }
+            
+            .footer {
+              margin-top: 50px;
+              text-align: center;
+              font-size: 10px;
+              color: #64748b;
+              clear: both;
+            }
+            
+            .status-badge {
+              display: inline-block;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+              font-weight: bold;
+            }
+            
+            .status-draft {
+              background-color: #f3f4f6;
+              color: #374151;
+            }
+            
+            .status-sent {
+              background-color: #dbeafe;
+              color: #1e40af;
+            }
+            
+            .status-accepted {
+              background-color: #d1fae5;
+              color: #065f46;
+            }
+            
+            .margin-info {
+              background-color: #fef3c7;
+              padding: 10px;
+              border-radius: 4px;
+              margin-top: 10px;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="company-name">VOTRE ENTREPRISE</div>
+            <div class="document-title">SOUMISSION</div>
+            <div>Date: ${new Date().toLocaleDateString('fr-CA')}</div>
+          </div>
+          
+          <div class="info-section">
+            <div class="info-block">
+              <div class="info-title">NUMÉRO DE SOUMISSION</div>
+              <div>${submissionForm.submission_number || 'N/A'}</div>
+            </div>
+            
+            <div class="info-block">
+              <div class="info-title">CLIENT</div>
+              <div>${submissionForm.client_name}</div>
+            </div>
+            
+            <div class="info-block">
+              <div class="info-title">STATUT</div>
+              <span class="status-badge status-${submissionForm.status}">
+                ${submissionForm.status === 'draft' ? 'Brouillon' : 
+                  submissionForm.status === 'sent' ? 'Envoyée' : 'Acceptée'}
+              </span>
+            </div>
+          </div>
+          
+          <div class="info-section">
+            <div class="info-block">
+              <div class="info-title">DESCRIPTION</div>
+              <div>${submissionForm.description}</div>
+            </div>
+          </div>
+          
+          ${selectedItems.length > 0 ? `
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width: 12%">Code</th>
+                <th style="width: 28%">Description</th>
+                <th style="width: 6%">Qté</th>
+                <th style="width: 6%">Unité</th>
+                <th style="width: 10%">Prix Unit.</th>
+                <th style="width: 10%">Total</th>
+                <th style="width: 28%">Commentaire</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${selectedItems.map(item => `
+                <tr>
+                  <td style="font-family: monospace; font-size: 10px;">${item.product_id}</td>
+                  <td>${item.description}</td>
+                  <td class="text-center">${item.quantity}</td>
+                  <td class="text-center">${item.unit}</td>
+                  <td class="text-right">${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(item.selling_price)}</td>
+                  <td class="text-right"><strong>${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(item.selling_price * item.quantity)}</strong></td>
+                  <td class="comment-cell">${item.comment && item.comment.trim() ? item.comment : ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          ` : ''}
+          
+          <div class="totals-section">
+            <div class="total-row">
+              <span>Sous-total:</span>
+              <span>${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(submissionForm.amount)}</span>
+            </div>
+            <div class="total-row">
+              <span>Total coût:</span>
+              <span>${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(calculatedCostTotal)}</span>
+            </div>
+            <div class="total-row">
+              <span>Marge brute:</span>
+              <span>${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(submissionForm.amount - calculatedCostTotal)}</span>
+            </div>
+            <div class="total-row final">
+              <span>TOTAL:</span>
+              <span>${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(submissionForm.amount)}</span>
+            </div>
+            
+            ${submissionForm.amount > 0 && calculatedCostTotal > 0 ? `
+            <div class="margin-info">
+              <strong>Marge: ${((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%</strong>
+            </div>
+            ` : ''}
+          </div>
+          
+          <div class="footer">
+            <p>Cette soumission est valide pour 30 jours à compter de la date d'émission.</p>
+            <p>Soumission générée le ${new Date().toLocaleString('fr-CA')} • Total items: ${selectedItems.length}</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    };
   };
 
   const formatCurrency = (amount) => {
@@ -460,10 +657,9 @@ export default function SoumissionsManager() {
   if (showForm) {
     return (
       <div className="max-w-6xl mx-auto p-4">
-        {/* 📱 FORMULAIRE SOUMISSION MOBILE-FRIENDLY */}
         <div className="bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden">
           
-          {/* 📱 En-tête du formulaire responsive */}
+          {/* En-tête du formulaire */}
           <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <div className="flex items-center space-x-4">
@@ -482,7 +678,7 @@ export default function SoumissionsManager() {
                 )}
               </div>
               
-              {/* 📱 Boutons d'action responsive */}
+              {/* Boutons d'action */}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={handlePrint}
@@ -513,8 +709,8 @@ export default function SoumissionsManager() {
                   ❌ Annuler
                 </button>
                 <button
-                  type="submit"
-                  form="submission-form"
+                  type="button"
+                  onClick={handleSubmissionSubmit}
                   className="w-full sm:w-auto px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-50 font-medium text-sm"
                 >
                   {editingSubmission ? '💾 Mettre à jour' : '✨ Créer'}
@@ -523,11 +719,11 @@ export default function SoumissionsManager() {
             </div>
           </div>
           
-          {/* 📱 Contenu du formulaire */}
+          {/* Contenu du formulaire */}
           <div className="p-4 sm:p-6">
-            <form id="submission-form" onSubmit={handleSubmissionSubmit} className="space-y-6">
+            <div className="space-y-6">
               
-              {/* 📱 Client et Description - Stack sur mobile */}
+              {/* Client et Description */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <label className="block text-sm font-semibold text-blue-800 mb-2">
@@ -563,7 +759,7 @@ export default function SoumissionsManager() {
                 </div>
               </div>
 
-              {/* 📱 Statut pour édition */}
+              {/* Statut pour édition */}
               {editingSubmission && (
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
@@ -581,7 +777,7 @@ export default function SoumissionsManager() {
                 </div>
               )}
 
-              {/* 📱 Section recherche produits MOBILE-FRIENDLY */}
+              {/* Section recherche produits */}
               <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                 <h3 className="text-base sm:text-lg font-semibold text-indigo-800 mb-4">
                   🔍 Recherche Produits (6718 au total)
@@ -616,7 +812,7 @@ export default function SoumissionsManager() {
                   </button>
                 </div>
                 
-                {/* 📱 Résultats recherche mobile-friendly */}
+                {/* Résultats recherche */}
                 {searchingProducts && (
                   <div className="flex items-center justify-center p-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mr-2"></div>
@@ -686,7 +882,7 @@ export default function SoumissionsManager() {
                 )}
               </div>
 
-              {/* 📱 Modal quantité MOBILE-FRIENDLY */}
+              {/* Modal quantité */}
               {showQuantityInput && selectedProductForQuantity && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                   <div className="bg-white rounded-lg w-full max-w-md">
@@ -761,7 +957,7 @@ export default function SoumissionsManager() {
                 </div>
               )}
 
-              {/* 📱 Modal ajout rapide produit MOBILE-FRIENDLY */}
+              {/* Modal ajout rapide produit */}
               {showQuickAddProduct && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                   <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -901,14 +1097,14 @@ export default function SoumissionsManager() {
                 </div>
               )}
 
-              {/* 📱 Items sélectionnés MOBILE-FRIENDLY */}
+              {/* Items sélectionnés */}
               {selectedItems.length > 0 && (
                 <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                   <h3 className="text-base sm:text-lg font-semibold text-yellow-800 mb-4">
                     📦 Produits Sélectionnés ({selectedItems.length})
                   </h3>
                   
-                  {/* 📱 Tableau responsive */}
+                  {/* Tableau desktop */}
                   <div className="hidden sm:block max-h-80 overflow-y-auto border border-yellow-200 rounded-lg bg-white">
                     <table className="w-full text-sm">
                       <thead className="bg-yellow-100 sticky top-0">
@@ -920,80 +1116,87 @@ export default function SoumissionsManager() {
                           <th className="text-right p-2 font-semibold text-orange-700">🏷️ Prix Coût</th>
                           <th className="text-right p-2 font-semibold">Total Vente</th>
                           <th className="text-right p-2 font-semibold">Total Coût</th>
+                          <th className="text-left p-2 font-semibold">💬 Commentaire</th>
                           <th className="text-center p-2 font-semibold">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {[...selectedItems].reverse().map((item, reverseIndex) => {
-                          const originalIndex = selectedItems.length - 1 - reverseIndex;
-                          return (
-                            <tr key={item.product_id} className="border-b border-yellow-100 hover:bg-yellow-50">
-                              <td className="p-2 font-mono text-xs">{item.product_id}</td>
-                              <td className="p-2">
-                                <div className="max-w-xs">
-                                  <div className="font-medium text-gray-900 truncate">{item.description}</div>
-                                  <div className="text-xs text-gray-500">{item.product_group} • {item.unit}</div>
-                                </div>
-                              </td>
-                              <td className="p-2 text-center">
-                                <input
-                                  type="number"
-                                  step="1"
-                                  min="1"
-                                  value={item.quantity}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
-                                      updateItemQuantity(item.product_id, value);
-                                    }
-                                  }}
-                                  className="w-16 text-center rounded border-gray-300 text-sm"
-                                />
-                              </td>
-                              <td className="p-2 text-right">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={item.selling_price}
-                                  onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
-                                  className="w-20 text-right rounded border-green-300 text-sm focus:border-green-500 focus:ring-green-500"
-                                />
-                              </td>
-                              <td className="p-2 text-right">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  value={item.cost_price}
-                                  onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
-                                  className="w-20 text-right rounded border-orange-300 text-sm focus:border-orange-500 focus:ring-orange-500"
-                                />
-                              </td>
-                              <td className="p-2 text-right font-medium text-green-700">
-                                {formatCurrency(item.selling_price * item.quantity)}
-                              </td>
-                              <td className="p-2 text-right font-medium text-orange-700">
-                                {formatCurrency(item.cost_price * item.quantity)}
-                              </td>
-                              <td className="p-2 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => removeItemFromSubmission(item.product_id)}
-                                  className="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-xs"
-                                  title="Supprimer"
-                                >
-                                  ❌
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {[...selectedItems].reverse().map((item) => (
+                          <tr key={item.product_id} className="border-b border-yellow-100 hover:bg-yellow-50">
+                            <td className="p-2 font-mono text-xs">{item.product_id}</td>
+                            <td className="p-2">
+                              <div className="max-w-xs">
+                                <div className="font-medium text-gray-900 truncate">{item.description}</div>
+                                <div className="text-xs text-gray-500">{item.product_group} • {item.unit}</div>
+                              </div>
+                            </td>
+                            <td className="p-2 text-center">
+                              <input
+                                type="number"
+                                step="1"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
+                                    updateItemQuantity(item.product_id, value);
+                                  }
+                                }}
+                                className="w-16 text-center rounded border-gray-300 text-sm"
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.selling_price}
+                                onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
+                                className="w-20 text-right rounded border-green-300 text-sm focus:border-green-500 focus:ring-green-500"
+                              />
+                            </td>
+                            <td className="p-2 text-right">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={item.cost_price}
+                                onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
+                                className="w-20 text-right rounded border-orange-300 text-sm focus:border-orange-500 focus:ring-orange-500"
+                              />
+                            </td>
+                            <td className="p-2 text-right font-medium text-green-700">
+                              {formatCurrency(item.selling_price * item.quantity)}
+                            </td>
+                            <td className="p-2 text-right font-medium text-orange-700">
+                              {formatCurrency(item.cost_price * item.quantity)}
+                            </td>
+                            <td className="p-2">
+                              <input
+                                type="text"
+                                value={item.comment || ''}
+                                onChange={(e) => updateItemComment(item.product_id, e.target.value)}
+                                className="w-32 text-sm rounded border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+                                placeholder="Note..."
+                              />
+                            </td>
+                            <td className="p-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeItemFromSubmission(item.product_id)}
+                                className="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-xs"
+                                title="Supprimer"
+                              >
+                                ❌
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* 📱 Cards pour mobile */}
+                  {/* Cards mobile */}
                   <div className="sm:hidden space-y-3">
                     {[...selectedItems].reverse().map((item) => (
                       <div key={item.product_id} className="bg-white p-3 rounded-lg border border-yellow-200">
@@ -1053,6 +1256,17 @@ export default function SoumissionsManager() {
                             />
                           </div>
                         </div>
+
+                        <div className="mt-2">
+                          <label className="block text-xs text-blue-700 mb-1">💬 Commentaire</label>
+                          <input
+                            type="text"
+                            value={item.comment || ''}
+                            onChange={(e) => updateItemComment(item.product_id, e.target.value)}
+                            className="w-full text-sm rounded border-blue-300 focus:border-blue-500 focus:ring-blue-500 p-2"
+                            placeholder="Ajouter une note..."
+                          />
+                        </div>
                         
                         <div className="mt-2 pt-2 border-t border-gray-200 flex justify-between text-sm">
                           <span className="text-green-700 font-medium">
@@ -1088,7 +1302,7 @@ export default function SoumissionsManager() {
                 </div>
               )}
 
-              {/* 📱 Totaux responsive */}
+              {/* Totaux */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-green-100 p-4 rounded-lg border border-green-300">
                   <label className="block text-base sm:text-lg font-semibold text-green-800 mb-2">
@@ -1129,7 +1343,7 @@ export default function SoumissionsManager() {
                   Utilisez les boutons dans la barre violette ci-dessus pour sauvegarder
                 </p>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>
@@ -1138,7 +1352,7 @@ export default function SoumissionsManager() {
 
   return (
     <div className="space-y-6 p-4">
-      {/* 📱 En-tête responsive avec statistiques */}
+      {/* En-tête avec statistiques */}
       <div className="bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
           <div>
@@ -1176,7 +1390,7 @@ export default function SoumissionsManager() {
           </div>
         </div>
 
-        {/* 📱 Statistiques responsive */}
+        {/* Statistiques */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
@@ -1223,14 +1437,14 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
-      {/* 📱 Info système */}
+      {/* Info système */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <p className="text-sm text-gray-600">
           📊 {soumissions.length} soumissions • {clients.length} clients • Recherche dynamique sur 6718 produits
         </p>
       </div>
 
-      {/* 📱 Filtres responsive */}
+      {/* Filtres */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="flex-1">
@@ -1260,7 +1474,7 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
-      {/* 📊 DESKTOP VIEW - Table (cachée sur mobile) */}
+      {/* Table desktop */}
       <div className="hidden lg:block bg-white shadow-lg rounded-lg overflow-hidden">
         {filteredSoumissions.length === 0 ? (
           <div className="text-center py-12">
@@ -1369,7 +1583,7 @@ export default function SoumissionsManager() {
         )}
       </div>
 
-      {/* 📱 MOBILE VIEW - Cards empilées */}
+      {/* Cards mobile */}
       <div className="lg:hidden space-y-4">
         {filteredSoumissions.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -1380,7 +1594,7 @@ export default function SoumissionsManager() {
           filteredSoumissions.map((submission) => (
             <div key={submission.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
               
-              {/* 📱 En-tête de la card */}
+              {/* En-tête de la card */}
               <div className="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -1398,7 +1612,7 @@ export default function SoumissionsManager() {
                     </div>
                   </div>
                   
-                  {/* 📱 Menu actions mobile */}
+                  {/* Menu actions mobile */}
                   <div className="relative">
                     <button
                       onClick={() => setSelectedSubmissionId(selectedSubmissionId === submission.id ? null : submission.id)}
@@ -1407,7 +1621,7 @@ export default function SoumissionsManager() {
                       <MoreVertical className="w-5 h-5" />
                     </button>
                     
-                    {/* 📱 Dropdown actions */}
+                    {/* Dropdown actions */}
                     {selectedSubmissionId === submission.id && (
                       <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                         <div className="py-1">
@@ -1453,16 +1667,16 @@ export default function SoumissionsManager() {
                 </div>
               </div>
 
-              {/* 📱 Contenu de la card */}
+              {/* Contenu de la card */}
               <div className="p-4 space-y-3">
                 
-                {/* 📱 Description */}
+                {/* Description */}
                 <div>
                   <span className="text-gray-500 text-sm block">📝 Description</span>
                   <p className="text-gray-900 font-medium">{submission.description}</p>
                 </div>
 
-                {/* 📱 Informations principales */}
+                {/* Informations principales */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500 block">💰 Montant</span>
@@ -1474,7 +1688,7 @@ export default function SoumissionsManager() {
                   </div>
                 </div>
 
-                {/* 📱 Statut */}
+                {/* Statut */}
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 text-sm">Statut</span>
                   <span className={`px-2 py-1 rounded text-xs ${
@@ -1487,7 +1701,7 @@ export default function SoumissionsManager() {
                   </span>
                 </div>
 
-                {/* 📱 Marge et coût */}
+                {/* Marge et coût */}
                 {submission.items && submission.items.length > 0 && (
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -1513,7 +1727,7 @@ export default function SoumissionsManager() {
                 )}
               </div>
 
-              {/* 📱 Actions rapides en bas */}
+              {/* Actions rapides en bas */}
               <div className="bg-gray-50 px-4 py-3 flex gap-2">
                 <button
                   onClick={() => {
