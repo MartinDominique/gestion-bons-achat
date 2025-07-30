@@ -257,20 +257,38 @@ export default function SoumissionsManager() {
   const handleSendReport = async () => {
     setSendingReport(true);
     try {
+      // Vérifier si l'API existe avant d'essayer
       const response = await fetch('/api/send-weekly-report', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          submissions: soumissions,
+          totalAmount: soumissions.reduce((sum, s) => sum + (s.amount || 0), 0),
+          date: new Date().toISOString()
+        })
       });
 
       if (response.ok) {
+        alert('📧 Rapport envoyé avec succès !');
         console.log('📧 Rapport envoyé avec succès !');
+      } else if (response.status === 405) {
+        // Method not allowed - API pas encore implémentée
+        alert('⚠️ Fonctionnalité d\'envoi de rapport en cours de développement.\n\nVous pouvez exporter les données manuellement pour le moment.');
+        console.log('⚠️ API d\'envoi de rapport pas encore implémentée');
       } else {
-        console.error('❌ Erreur lors de l\'envoi du rapport');
+        throw new Error(`Erreur HTTP: ${response.status}`);
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
+      
+      if (error.message.includes('fetch')) {
+        // Erreur de réseau ou API non disponible
+        alert('⚠️ Service d\'envoi de rapport temporairement indisponible.\n\nVeuillez réessayer plus tard ou exporter les données manuellement.');
+      } else {
+        alert('❌ Erreur lors de l\'envoi du rapport.\n\nVeuillez vérifier votre connexion et réessayer.');
+      }
     } finally {
       setSendingReport(false);
     }
@@ -577,28 +595,33 @@ export default function SoumissionsManager() {
                 <thead>
                   <tr>
                     <th style={{ width: '12%' }}>Code</th>
-                    <th style={{ width: '25%' }}>Description</th>
+                    <th style={{ width: '28%' }}>Description</th>
                     <th style={{ width: '7%' }}>Qté</th>
                     <th style={{ width: '7%' }}>Unité</th>
-                    <th style={{ width: '10%' }}>Prix Unit.</th>
-                    <th style={{ width: '10%' }}>Prix Coût</th>
-                    <th style={{ width: '10%' }}>Total Vente</th>
-                    <th style={{ width: '10%' }}>Total Coût</th>
-                    <th style={{ width: '9%' }}>Commentaire</th>
+                    <th style={{ width: '11%' }}>Prix Unit.</th>
+                    <th style={{ width: '11%' }}>Prix Coût</th>
+                    <th style={{ width: '12%' }}>Total Vente</th>
+                    <th style={{ width: '12%' }}>Total Coût</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedItems.map((item, index) => (
                     <tr key={item.product_id}>
                       <td>{item.product_id}</td>
-                      <td>{item.description}</td>
+                      <td>
+                        <div>{item.description}</div>
+                        {item.comment && (
+                          <div className="print-comment" style={{ marginTop: '4px', fontStyle: 'italic', fontSize: '9px', color: '#666' }}>
+                            💬 {item.comment}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ textAlign: 'center' }}>{item.quantity}</td>
                       <td style={{ textAlign: 'center' }}>{item.unit}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
-                      <td className="print-comment">{item.comment || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1395,16 +1418,17 @@ export default function SoumissionsManager() {
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold">📝 Gestion des Soumissions</h2>
             <p className="text-white/90 text-sm sm:text-base mt-1">
-              Créez et gérez vos soumissions client avec commentaires imprimables
+              Créez et gérez vos soumissions client avec commentaires intégrés
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleSendReport}
               disabled={sendingReport}
-              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm"
+              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm disabled:opacity-50"
+              title="Envoyer un rapport hebdomadaire (en développement)"
             >
-              📧 {sendingReport ? 'Envoi...' : 'Rapport'}
+              📧 {sendingReport ? 'Envoi en cours...' : 'Rapport Hebdo'}
             </button>
             <button
               onClick={async () => {
@@ -1474,10 +1498,9 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
-      {/* 📱 Info système - MODIFIÉE */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <p className="text-sm text-gray-600">
-          📊 {soumissions.length} soumissions • {clients.length} clients • Recherche dynamique sur 6718 produits • 💬 Commentaires imprimables
+          📊 {soumissions.length} soumissions • {clients.length} clients • Recherche dynamique sur 6718 produits • 💬 Commentaires intégrés à l'impression
         </p>
       </div>
 
