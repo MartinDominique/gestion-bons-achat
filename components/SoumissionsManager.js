@@ -494,6 +494,10 @@ export default function SoumissionsManager() {
       <>
         {/* 🆕 STYLES CSS POUR L'IMPRESSION OPTIMISÉE */}
         <style jsx>{`
+          .print-area {
+            display: none;
+          }
+          
           @media print {
             body * {
               visibility: hidden;
@@ -504,6 +508,7 @@ export default function SoumissionsManager() {
             }
             
             .print-area {
+              display: block !important;
               position: absolute;
               left: 0;
               top: 0;
@@ -548,12 +553,6 @@ export default function SoumissionsManager() {
               text-align: right;
             }
             
-            .print-signature {
-              margin-top: 50px;
-              display: flex;
-              justify-content: space-between;
-            }
-            
             .print-comment {
               font-style: italic;
               color: #666;
@@ -577,13 +576,15 @@ export default function SoumissionsManager() {
               <table className="print-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '15%' }}>Code</th>
-                    <th style={{ width: '30%' }}>Description</th>
-                    <th style={{ width: '8%' }}>Qté</th>
-                    <th style={{ width: '8%' }}>Unité</th>
-                    <th style={{ width: '12%' }}>Prix Unit.</th>
-                    <th style={{ width: '12%' }}>Total</th>
-                    <th style={{ width: '15%' }}>Commentaire</th>
+                    <th style={{ width: '12%' }}>Code</th>
+                    <th style={{ width: '25%' }}>Description</th>
+                    <th style={{ width: '7%' }}>Qté</th>
+                    <th style={{ width: '7%' }}>Unité</th>
+                    <th style={{ width: '10%' }}>Prix Unit.</th>
+                    <th style={{ width: '10%' }}>Prix Coût</th>
+                    <th style={{ width: '10%' }}>Total Vente</th>
+                    <th style={{ width: '10%' }}>Total Coût</th>
+                    <th style={{ width: '9%' }}>Commentaire</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -594,7 +595,9 @@ export default function SoumissionsManager() {
                       <td style={{ textAlign: 'center' }}>{item.quantity}</td>
                       <td style={{ textAlign: 'center' }}>{item.unit}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
+                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
                       <td className="print-comment">{item.comment || '-'}</td>
                     </tr>
                   ))}
@@ -603,20 +606,20 @@ export default function SoumissionsManager() {
             )}
 
             <div className="print-totals">
-              <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px' }}>
-                TOTAL: {formatCurrency(submissionForm.amount)}
+              <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
+                TOTAL VENTE: {formatCurrency(submissionForm.amount)}
               </p>
-            </div>
-
-            <div className="print-signature">
-              <div>
-                <p>_________________________</p>
-                <p>Signature Client</p>
-              </div>
-              <div>
-                <p>_________________________</p>
-                <p>Signature Fournisseur</p>
-              </div>
+              <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
+                TOTAL COÛT: {formatCurrency(calculatedCostTotal)}
+              </p>
+              <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px', color: '#2563eb' }}>
+                MARGE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}
+                {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
+                  <span style={{ fontSize: '12px', marginLeft: '10px' }}>
+                    ({((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%)
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 
