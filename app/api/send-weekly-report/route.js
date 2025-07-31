@@ -11,11 +11,7 @@ export async function GET() {
       console.error('❌ RESEND_API_KEY manquante !');
       return Response.json({ error: 'Configuration Resend manquante' }, { status: 500 });
     }
-    
-export async function POST(request) {
-  return await GET(); // Réutilise la logique GET
-}
-    
+
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       console.error('❌ Variables Supabase manquantes !');
       return Response.json({ error: 'Configuration Supabase manquante' }, { status: 500 });
@@ -36,48 +32,31 @@ export async function POST(request) {
     // =============== RÉCUPÉRER LES BONS D'ACHAT ===============
     const { data: purchaseOrders, error: poError } = await supabase
       .from('purchase_orders')
-      .select(`
-        *,
-        clients!client_id (name, company)
-      `)
-      .gte('date', startDate)
-      .order('date', { ascending: false });
+      .select('*')
+      .gte('created_at', startDate)
+      .order('created_at', { ascending: false });
 
     if (poError) {
       console.error('❌ Erreur Supabase purchase_orders:', poError);
-      // Essayer sans jointure
-      const { data: poSimple, error: poSimpleError } = await supabase
-        .from('purchase_orders')
-        .select('*')
-        .gte('date', startDate)
-        .order('date', { ascending: false });
-        
-      if (poSimpleError) {
-        console.error('❌ Erreur même en simple:', poSimpleError);
-        return Response.json({ error: 'Erreur base de données purchase_orders' }, { status: 500 });
-      }
-      
-      console.log(`📊 ${poSimple?.length || 0} bons d'achat trouvés (sans jointure)`);
-      // Utiliser les données simples
-      var finalPurchaseOrders = poSimple || [];
-    } else {
-      console.log(`📊 ${purchaseOrders?.length || 0} bons d'achat trouvés (avec jointure)`);
-      var finalPurchaseOrders = purchaseOrders || [];
+      return Response.json({ error: 'Erreur base de données purchase_orders' }, { status: 500 });
     }
 
+    console.log(`📊 ${purchaseOrders?.length || 0} bons d'achat trouvés`);
+    const finalPurchaseOrders = purchaseOrders || [];
+
     // =============== RÉCUPÉRER LES SOUMISSIONS ===============
-const { data: submissions, error: submissionsError } = await supabase
-  .from('submissions')
-  .select('*')
-  .gte('created_at', startDate)
-  .order('created_at', { ascending: false });
+    const { data: submissions, error: submissionsError } = await supabase
+      .from('submissions')
+      .select('*')
+      .gte('created_at', startDate)
+      .order('created_at', { ascending: false });
 
-if (submissionsError) {
-  console.error('❌ Erreur Supabase submissions:', submissionsError);
-  return Response.json({ error: 'Erreur base de données submissions' }, { status: 500 });
-}
+    if (submissionsError) {
+      console.error('❌ Erreur Supabase submissions:', submissionsError);
+      return Response.json({ error: 'Erreur base de données submissions' }, { status: 500 });
+    }
 
-console.log(`📊 ${submissions?.length || 0} soumissions trouvées`);
+    console.log(`📊 ${submissions?.length || 0} soumissions trouvées`);
 
     // =============== CALCULER LES STATISTIQUES ===============
     
@@ -90,14 +69,14 @@ console.log(`📊 ${submissions?.length || 0} soumissions trouvées`);
       montantTotal: finalPurchaseOrders.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0)
     };
 
-    // Stats soumissions
-const submissionStats = {
-  total: submissions.length,
-  draft: submissions.filter(s => s.status === 'draft').length,
-  sent: submissions.filter(s => s.status === 'sent').length,
-  accepted: submissions.filter(s => s.status === 'accepted').length,
-  montantTotal: submissions.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
-};
+    // Stats soumissions - CORRIGÉ
+    const submissionStats = {
+      total: submissions.length,
+      draft: submissions.filter(s => s.status === 'draft').length,
+      sent: submissions.filter(s => s.status === 'sent').length,
+      accepted: submissions.filter(s => s.status === 'accepted').length,
+      montantTotal: submissions.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
+    };
 
     // =============== CRÉER LE CONTENU EMAIL ===============
     const htmlContent = `
@@ -130,8 +109,8 @@ const submissionStats = {
                   </tr>
                   ${finalPurchaseOrders.slice(0, 5).map(po => `
                     <tr>
-                      <td style="padding: 4px; border: 1px solid #d1d5db;">${new Date(po.date || po.created_at).toLocaleDateString('fr-CA')}</td>
-                      <td style="padding: 4px; border: 1px solid #d1d5db;">${po.client_name || po.clients?.name || 'N/A'}</td>
+                      <td style="padding: 4px; border: 1px solid #d1d5db;">${new Date(po.created_at).toLocaleDateString('fr-CA')}</td>
+                      <td style="padding: 4px; border: 1px solid #d1d5db;">${po.client_name || 'N/A'}</td>
                       <td style="padding: 4px; border: 1px solid #d1d5db;">${parseFloat(po.amount || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</td>
                       <td style="padding: 4px; border: 1px solid #d1d5db;">
                         ${po.status === 'approuve' ? '✅' : po.status === 'refuse' ? '❌' : '⏳'}
@@ -147,34 +126,34 @@ const submissionStats = {
 
         <!-- SECTION SOUMISSIONS -->
         <div style="background-color: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #1e40af; margin-top: 0;">📄 Soumissions (${quoteStats.total})</h3>
+          <h3 style="color: #1e40af; margin-top: 0;">📄 Soumissions (${submissionStats.total})</h3>
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
             <div>
               <p><strong>📊 Résumé:</strong></p>
               <ul style="list-style: none; padding: 0;">
-                <li>📝 Brouillons: ${quoteStats.draft}</li>
-                <li>📤 Envoyées: ${quoteStats.sent}</li>
-                <li>✅ Acceptées: ${quoteStats.accepted}</li>
-                <li>💰 Montant total: ${quoteStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
+                <li>📝 Brouillons: ${submissionStats.draft}</li>
+                <li>📤 Envoyées: ${submissionStats.sent}</li>
+                <li>✅ Acceptées: ${submissionStats.accepted}</li>
+                <li>💰 Montant total: ${submissionStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
               </ul>
             </div>
             <div>
               <p><strong>📋 Détails:</strong></p>
-              ${quotes.length > 0 ? `
+              ${submissions.length > 0 ? `
                 <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
                   <tr style="background: #dbeafe;">
                     <th style="padding: 4px; border: 1px solid #93c5fd;">N° Soumission</th>
                     <th style="padding: 4px; border: 1px solid #93c5fd;">Client</th>
                     <th style="padding: 4px; border: 1px solid #93c5fd;">Total</th>
                   </tr>
-                  ${quotes.slice(0, 5).map(quote => `
+                  ${submissions.slice(0, 5).map(submission => `
                     <tr>
-                      <td style="padding: 4px; border: 1px solid #93c5fd;">${quote.id}</td>
-                      <td style="padding: 4px; border: 1px solid #93c5fd;">${quote.clients?.name || 'N/A'}</td>
-                      <td style="padding: 4px; border: 1px solid #93c5fd;">${parseFloat(quote.total || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</td>
+                      <td style="padding: 4px; border: 1px solid #93c5fd;">${submission.submission_number || submission.id}</td>
+                      <td style="padding: 4px; border: 1px solid #93c5fd;">${submission.client_name || 'N/A'}</td>
+                      <td style="padding: 4px; border: 1px solid #93c5fd;">${parseFloat(submission.amount || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</td>
                     </tr>
                   `).join('')}
-                  ${quotes.length > 5 ? `<tr><td colspan="3" style="padding: 4px; text-align: center; font-style: italic;">... et ${quotes.length - 5} autres</td></tr>` : ''}
+                  ${submissions.length > 5 ? `<tr><td colspan="3" style="padding: 4px; text-align: center; font-style: italic;">... et ${submissions.length - 5} autres</td></tr>` : ''}
                 </table>
               ` : '<p style="color: #6b7280; font-style: italic;">Aucune soumission cette semaine</p>'}
             </div>
@@ -188,17 +167,17 @@ const submissionStats = {
             <div>
               <p><strong>Activité:</strong></p>
               <ul style="list-style: none; padding: 0;">
-                <li>📋 Total documents: ${poStats.total + quoteStats.total}</li>
+                <li>📋 Total documents: ${poStats.total + submissionStats.total}</li>
                 <li>💰 Bons d'achat: ${poStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
-                <li>💰 Soumissions: ${quoteStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
+                <li>💰 Soumissions: ${submissionStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
               </ul>
             </div>
             <div>
               <p><strong>Chiffres clés:</strong></p>
               <ul style="list-style: none; padding: 0;">
                 <li>✅ Bons approuvés: ${poStats.approuve}</li>
-                <li>📤 Soumissions envoyées: ${quoteStats.sent}</li>
-                <li>💡 Conversion: ${quoteStats.total > 0 ? Math.round((poStats.approuve / quoteStats.total) * 100) : 0}%</li>
+                <li>📤 Soumissions envoyées: ${submissionStats.sent}</li>
+                <li>💡 Conversion: ${submissionStats.total > 0 ? Math.round((poStats.approuve / submissionStats.total) * 100) : 0}%</li>
               </ul>
             </div>
           </div>
@@ -219,7 +198,7 @@ const submissionStats = {
     const result = await resend.emails.send({
       from: 'onboarding@resend.dev',
       to: emailTo,
-      subject: `📊 Rapport Hebdomadaire Services TMT - ${poStats.total + quoteStats.total} documents (${(poStats.montantTotal + quoteStats.montantTotal).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })})`,
+      subject: `📊 Rapport Hebdomadaire Services TMT - ${poStats.total + submissionStats.total} documents (${(poStats.montantTotal + submissionStats.montantTotal).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })})`,
       html: htmlContent
     });
 
@@ -233,14 +212,27 @@ const submissionStats = {
     return Response.json({ 
       success: true, 
       purchaseOrdersCount: poStats.total,
-      quotesCount: quoteStats.total,
-      totalAmount: poStats.montantTotal + quoteStats.montantTotal,
+      submissionsCount: submissionStats.total,
+      totalAmount: poStats.montantTotal + submissionStats.montantTotal,
       emailId: result.data?.id,
-      message: `Rapport envoyé avec ${poStats.total} bon(s) d'achat et ${quoteStats.total} soumission(s)`
+      message: `Rapport envoyé avec ${poStats.total} bon(s) d'achat et ${submissionStats.total} soumission(s)`
     });
 
   } catch (error) {
     console.error('❌ Erreur complète:', error);
+    return Response.json({ 
+      error: error.message 
+    }, { status: 500 });
+  }
+}
+
+// Fonction POST pour les appels manuels
+export async function POST(request) {
+  try {
+    console.log('📧 Envoi manuel du rapport...');
+    return await GET();
+  } catch (error) {
+    console.error('❌ Erreur POST:', error);
     return Response.json({ 
       error: error.message 
     }, { status: 500 });
