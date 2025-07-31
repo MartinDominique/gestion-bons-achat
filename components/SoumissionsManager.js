@@ -81,7 +81,7 @@ export default function SoumissionsManager() {
     description: '',
     selling_price: '',
     cost_price: '',
-    unit: 'pcs',
+    unit: 'UN',
     product_group: 'Divers'
   });
 
@@ -960,13 +960,11 @@ export default function SoumissionsManager() {
                               onChange={(e) => setQuickProductForm({...quickProductForm, unit: e.target.value})}
                               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                             >
-                              <option value="pcs">pcs</option>
-                              <option value="m">m</option>
-                              <option value="m2">m²</option>
-                              <option value="kg">kg</option>
-                              <option value="litre">litre</option>
-                              <option value="heure">heure</option>
-                              <option value="lot">lot</option>
+                              <option value="Un">Un</option>
+                              <option value="M">m</option>
+                              <option value="PI">Pi</option>
+                              <option value="L">litre</option>
+                              <option value="H">heure</option>
                             </select>
                           </div>
                           <div className="sm:col-span-2">
@@ -1027,7 +1025,7 @@ export default function SoumissionsManager() {
                                 description: '',
                                 selling_price: '',
                                 cost_price: '',
-                                unit: 'pcs',
+                                unit: 'Un',
                                 product_group: 'Divers'
                               });
                             }}
@@ -1058,7 +1056,7 @@ export default function SoumissionsManager() {
                                   description: '',
                                   selling_price: '',
                                   cost_price: '',
-                                  unit: 'pcs',
+                                  unit: 'Un',
                                   product_group: 'Divers'
                                 });
                               }
