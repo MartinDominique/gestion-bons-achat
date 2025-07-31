@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search } from 'lucide-react';
+import { Building2, FileUp } from 'lucide-react';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -14,6 +15,9 @@ export default function PurchaseOrderManager() {
   const [sendingReport, setSendingReport] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [supplierDocuments, setSupplierDocuments] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [uploadingSupplierDocs, setUploadingSupplierDocs] = useState(false);
   
   // Form state avec TES vraies colonnes
   const [formData, setFormData] = useState({
@@ -32,6 +36,140 @@ export default function PurchaseOrderManager() {
     fetchPurchaseOrders();
     fetchClients();
     fetchSubmissions();
+    fetchSuppliers();
+    const fetchSuppliers = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('id, company_name')
+      .order('company_name', { ascending: true });
+
+    if (error) {
+      console.error('Erreur chargement fournisseurs:', error);
+    } else {
+      setSuppliers(data || []);
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des fournisseurs:', error);
+  }
+};
+
+const fetchSupplierDocuments = async (purchaseOrderId) => {
+  if (!purchaseOrderId) return;
+  
+  try {
+    const { data, error } = await supabase
+      .from('supplier_documents')
+      .select('*, suppliers(company_name)')
+      .eq('purchase_order_id', purchaseOrderId)
+      .order('uploaded_at', { ascending: false });
+
+    if (error) {
+      console.error('Erreur chargement documents fournisseurs:', error);
+    } else {
+      setSupplierDocuments(data || []);
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des documents fournisseurs:', error);
+  }
+};
+
+const handleSupplierDocumentUpload = async (e, supplierId) => {
+  const files = Array.from(e.target.files);
+  if (files.length === 0 || !editingPO) return;
+
+  setUploadingSupplierDocs(true);
+  const uploadedDocs = [];
+
+  for (const file of files) {
+    try {
+      const cleanFileName = file.name
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9._-]/g, '')
+        .substring(0, 100);
+
+      const fileName = `${Date.now()}_${cleanFileName}`;
+      const filePath = `supplier-documents/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('purchase-orders-pdfs')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('purchase-orders-pdfs')
+        .getPublicUrl(filePath);
+
+      // Enregistrer dans la table supplier_documents
+      const { error: dbError } = await supabase
+        .from('supplier_documents')
+        .insert({
+          purchase_order_id: editingPO.id,
+          supplier_id: supplierId,
+          document_type: 'invoice',
+          file_name: file.name,
+          file_path: data.path,
+          file_url: urlData.publicUrl,
+          file_size: file.size
+        });
+
+      if (dbError) throw dbError;
+
+      uploadedDocs.push({
+        file_name: file.name,
+        supplier_id: supplierId
+      });
+
+    } catch (error) {
+      console.error('Erreur upload document fournisseur:', error);
+      alert(`Erreur upload "${file.name}": ${error.message}`);
+    }
+  }
+
+  if (uploadedDocs.length > 0) {
+    await fetchSupplierDocuments(editingPO.id);
+    alert(`✅ ${uploadedDocs.length} document(s) fournisseur uploadé(s) avec succès`);
+  }
+
+  setUploadingSupplierDocs(false);
+  e.target.value = '';
+};
+
+const removeSupplierDocument = async (docId, filePath) => {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer ce document fournisseur ?')) return;
+
+  try {
+    // Supprimer du storage
+    if (filePath) {
+      const { error: storageError } = await supabase.storage
+        .from('purchase-orders-pdfs')
+        .remove([filePath]);
+      
+      if (storageError) {
+        console.error('Erreur suppression storage:', storageError);
+      }
+    }
+
+    // Supprimer de la BD
+    const { error: dbError } = await supabase
+      .from('supplier_documents')
+      .delete()
+      .eq('id', docId);
+
+    if (dbError) throw dbError;
+
+    await fetchSupplierDocuments(editingPO.id);
+    alert('✅ Document fournisseur supprimé');
+
+  } catch (error) {
+    console.error('Erreur suppression document:', error);
+    alert('Erreur lors de la suppression');
+  }
+};
     
     const handleBeforeUnload = () => {
       supabase.auth.signOut();
@@ -215,6 +353,7 @@ export default function PurchaseOrderManager() {
     files: po.files || []
   });
   setShowForm(true);
+    fetchSupplierDocuments(po.id);
 };
 
   const cleanupFilesForPO = async (files) => {
@@ -707,7 +846,114 @@ export default function PurchaseOrderManager() {
               {/* 📱 Section fichiers MOBILE-FRIENDLY */}
               <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                 <label className="block text-sm font-semibold text-indigo-800 mb-2">
-                  📎 Documents (PDF, XLS, DOC, etc.)
+                 {/* 📎 Documents d'Achat Fournisseurs - NOUVEAU BLOC */}
+{editingPO && (
+  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
+    <label className="block text-sm font-semibold text-orange-800 mb-2">
+      🏢 Documents d'Achat Fournisseurs
+    </label>
+    
+    {/* Upload par fournisseur */}
+    <div className="mb-4">
+      <p className="text-sm text-orange-600 mb-2">
+        Ajouter des documents (factures, bons de commande) par fournisseur :
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {suppliers.map((supplier) => (
+          <div key={supplier.id} className="flex items-center gap-2">
+            <label 
+              htmlFor={`supplier-doc-${supplier.id}`}
+              className="flex-1 px-3 py-2 bg-white border border-orange-300 rounded-lg hover:bg-orange-50 cursor-pointer text-sm"
+            >
+              <Building2 className="w-4 h-4 inline mr-2" />
+              {supplier.company_name}
+            </label>
+            <input
+              id={`supplier-doc-${supplier.id}`}
+              type="file"
+              multiple
+              accept=".pdf,.xls,.xlsx,.doc,.docx,.png,.jpg,.jpeg"
+              onChange={(e) => handleSupplierDocumentUpload(e, supplier.id)}
+              disabled={uploadingSupplierDocs}
+              className="hidden"
+            />
+          </div>
+        ))}
+      </div>
+      {uploadingSupplierDocs && (
+        <p className="text-sm text-orange-600 mt-2 flex items-center">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
+          📤 Upload en cours...
+        </p>
+      )}
+    </div>
+
+    {/* Liste des documents fournisseurs */}
+    {supplierDocuments.length > 0 && (
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-orange-700">
+          📁 Documents fournisseurs ({supplierDocuments.length})
+        </p>
+        <div className="space-y-2 max-h-60 overflow-y-auto">
+          {supplierDocuments.map((doc) => (
+            <div key={doc.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <span className="text-xl flex-shrink-0">🏢</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {doc.file_name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {doc.suppliers?.company_name || 'Fournisseur inconnu'} • 
+                      {formatFileSize(doc.file_size)} • 
+                      {new Date(doc.uploaded_at).toLocaleDateString('fr-CA')}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  {doc.file_url && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => window.open(doc.file_url, '_blank')}
+                        className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+                      >
+                        👁️ Voir
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadFile({url: doc.file_url, name: doc.file_name})}
+                        className="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded"
+                      >
+                        💾
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeSupplierDocument(doc.id, doc.file_path)}
+                    className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {supplierDocuments.length === 0 && (
+      <p className="text-sm text-orange-600 italic mt-2">
+        Aucun document fournisseur attaché pour l'instant
+      </p>
+    )}
+  </div>
+)}
+                 📎 Documents (PDF, XLS, DOC, etc.)
                 </label>
                 
                 {/* 📱 Zone d'upload mobile-friendly */}
