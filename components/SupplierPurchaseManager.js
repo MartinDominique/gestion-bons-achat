@@ -728,11 +728,11 @@ export default function SupplierPurchaseManager() {
                     </label>
                     <select
                       value={purchaseForm.supplier_id}
-                      onChange={(e) => {
+                      onChange={(event) => {
                         const supplier = suppliers.find(s => s.id === e.target.value);
                         setPurchaseForm({
                           ...purchaseForm, 
-                          supplier_id: e.target.value,
+                          supplier_id: event.target.value,
                           supplier_name: supplier?.company_name || ''
                         });
                       }}
@@ -754,8 +754,8 @@ export default function SupplierPurchaseManager() {
                     </label>
                     <select
                       value={purchaseForm.linked_po_id}
-                      onChange={(e) => {
-                        const po = purchaseOrders.find(p => p.id === e.target.value);
+                      onChange={(event) => {
+                        const po = purchaseOrders.find(p => p.id === event.target.value);
                         setPurchaseForm({
                           ...purchaseForm, 
                           linked_po_id: e.target.value,
@@ -783,7 +783,7 @@ export default function SupplierPurchaseManager() {
                     <div className="flex gap-2">
                       <select
                         value={purchaseForm.shipping_address_id}
-                        onChange={(e) => setPurchaseForm({...purchaseForm, shipping_address_id: e.target.value})}
+                        onChange={(event) => setPurchaseForm({...purchaseForm, shipping_address_id: event.target.value})}
                         className="block flex-1 rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
                         required
                       >
@@ -815,7 +815,7 @@ export default function SupplierPurchaseManager() {
                         <input
                           type="text"
                           value={purchaseForm.shipping_company}
-                          onChange={(e) => setPurchaseForm({...purchaseForm, shipping_company: e.target.value})}
+                          onChange={(event) => setPurchaseForm({...purchaseForm, shipping_company: event.target.value})}
                           className="block w-full rounded-lg border-orange-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                           placeholder="Ex: FedEx, UPS..."
                         />
@@ -827,7 +827,7 @@ export default function SupplierPurchaseManager() {
                         <input
                           type="text"
                           value={purchaseForm.shipping_account}
-                          onChange={(e) => setPurchaseForm({...purchaseForm, shipping_account: e.target.value})}
+                          onChange={(event) => setPurchaseForm({...purchaseForm, shipping_account: event.target.value})}
                           className="block w-full rounded-lg border-orange-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                           placeholder="N° compte..."
                         />
@@ -845,7 +845,7 @@ export default function SupplierPurchaseManager() {
                     <input
                       type="date"
                       value={purchaseForm.delivery_date}
-                      onChange={(e) => setPurchaseForm({...purchaseForm, delivery_date: e.target.value})}
+                      onChange={(event) => setPurchaseForm({...purchaseForm, delivery_date: event.target.value})}
                       className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
                     />
                   </div>
@@ -856,7 +856,7 @@ export default function SupplierPurchaseManager() {
                     </label>
                     <select
                       value={purchaseForm.status}
-                      onChange={(e) => setPurchaseForm({...purchaseForm, status: e.target.value})}
+                      onChange={(event) => setPurchaseForm({...purchaseForm, status: event.target.value})}
                       className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
                     >
                       <option value="draft">📝 Brouillon</option>
@@ -875,7 +875,7 @@ export default function SupplierPurchaseManager() {
                       step="0.01"
                       min="0"
                       value={purchaseForm.shipping_cost}
-                      onChange={(e) => setPurchaseForm({...purchaseForm, shipping_cost: e.target.value})}
+                      onChange={(event) => setPurchaseForm({...purchaseForm, shipping_cost: event.target.value})}
                       className="block w-full rounded-lg border-red-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base p-3"
                       placeholder="0.00"
                     />
@@ -895,8 +895,8 @@ export default function SupplierPurchaseManager() {
                       type="text"
                       placeholder="Rechercher un produit (min. 2 caractères)..."
                       value={productSearchTerm}
-                      onChange={(e) => {
-                        setProductSearchTerm(e.target.value);
+                      onChange={(event) => {
+                        setProductSearchTerm(event.target.value);
                         setFocusedProductIndex(-1);
                       }}
                       onKeyDown={handleProductKeyDown}
@@ -956,7 +956,7 @@ export default function SupplierPurchaseManager() {
                         step="1"
                         min="1"
                         value={tempQuantity}
-                        onChange={(e) => setTempQuantity(e.target.value)}
+                        onChange={(event) => setTempQuantity(event.target.value)}
                         onKeyDown={handleQuantityKeyDown}
                         className="block w-full rounded-lg border-gray-300 shadow-sm text-base p-3 mb-4"
                         autoFocus
@@ -1023,7 +1023,7 @@ export default function SupplierPurchaseManager() {
                                   step="1"
                                   min="1"
                                   value={item.quantity}
-                                  onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
+                                  onChange={(event) => updateItemQuantity(item.product_id, event.target.value)}
                                   className="w-16 text-center rounded border-gray-300"
                                 />
                               </td>
@@ -1033,7 +1033,7 @@ export default function SupplierPurchaseManager() {
                                   step="0.01"
                                   min="0"
                                   value={item.cost_price}
-                                  onChange={(e) => updateItemPrice(item.product_id, e.target.value)}
+                                  onChange={(event) => updateItemPrice(item.product_id, event.target.value)}
                                   className="w-20 text-right rounded border-gray-300"
                                 />
                               </td>
@@ -1064,7 +1064,7 @@ export default function SupplierPurchaseManager() {
                   </label>
                   <textarea
                     value={purchaseForm.notes}
-                    onChange={(e) => setPurchaseForm({...purchaseForm, notes: e.target.value})}
+                    onChange={(event) => setPurchaseForm({...purchaseForm, notes: event.target.value})}
                     className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 text-base p-3"
                     rows="3"
                     placeholder="Notes additionnelles..."
@@ -1191,7 +1191,7 @@ export default function SupplierPurchaseManager() {
                 type="text"
                 placeholder="🔍 Rechercher par numéro, fournisseur..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(event) => setSearchTerm(event.target.value)}
                 className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
               />
             </div>
@@ -1199,7 +1199,7 @@ export default function SupplierPurchaseManager() {
           <div className="w-full sm:w-auto">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(event) => setStatusFilter(event.target.value)}
               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
             >
               <option value="all">Tous les statuts</option>
@@ -1502,7 +1502,7 @@ export default function SupplierPurchaseManager() {
                 <input
                   type="text"
                   value={supplierForm.company_name}
-                  onChange={(e) => setSupplierForm({...supplierForm, company_name: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, company_name: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                   required
                 />
@@ -1515,7 +1515,7 @@ export default function SupplierPurchaseManager() {
                 <input
                   type="text"
                   value={supplierForm.contact_name}
-                  onChange={(e) => setSupplierForm({...supplierForm, contact_name: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, contact_name: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 />
               </div>
@@ -1527,7 +1527,7 @@ export default function SupplierPurchaseManager() {
                 <input
                   type="email"
                   value={supplierForm.email}
-                  onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, email: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 />
               </div>
@@ -1539,7 +1539,7 @@ export default function SupplierPurchaseManager() {
                 <input
                   type="tel"
                   value={supplierForm.phone}
-                  onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, phone: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 />
               </div>
@@ -1551,7 +1551,7 @@ export default function SupplierPurchaseManager() {
                 <input
                   type="text"
                   value={supplierForm.address}
-                  onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, address: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 />
               </div>
@@ -1563,7 +1563,7 @@ export default function SupplierPurchaseManager() {
                 <input
                   type="text"
                   value={supplierForm.city}
-                  onChange={(e) => setSupplierForm({...supplierForm, city: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, city: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 />
               </div>
@@ -1574,7 +1574,7 @@ export default function SupplierPurchaseManager() {
                 </label>
                 <select
                   value={supplierForm.province}
-                  onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, province: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 >
                   <option value="QC">Québec</option>
@@ -1600,7 +1600,7 @@ export default function SupplierPurchaseManager() {
                 <input
                   type="text"
                   value={supplierForm.postal_code}
-                  onChange={(e) => setSupplierForm({...supplierForm, postal_code: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, postal_code: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 />
               </div>
@@ -1611,7 +1611,7 @@ export default function SupplierPurchaseManager() {
                 </label>
                 <textarea
                   value={supplierForm.notes}
-                  onChange={(e) => setSupplierForm({...supplierForm, notes: e.target.value})}
+                  onChange={(event) => setSupplierForm({...supplierForm, notes: event.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                   rows="3"
                 />
@@ -1654,7 +1654,7 @@ export default function SupplierPurchaseManager() {
                   <input
                     type="text"
                     value={addressForm.name}
-                    onChange={(e) => setAddressForm({...addressForm, name: e.target.value})}
+                    onChange={(event) => setAddressForm({...addressForm, name: event.target.value})}
                     className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                     placeholder="Ex: Entrepôt principal, Bureau..."
                     required
@@ -1668,7 +1668,7 @@ export default function SupplierPurchaseManager() {
                   <input
                     type="text"
                     value={addressForm.address}
-                    onChange={(e) => setAddressForm({...addressForm, address: e.target.value})}
+                    onChange={(event) => setAddressForm({...addressForm, address: event.target.value})}
                     className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                     required
                   />
@@ -1682,7 +1682,7 @@ export default function SupplierPurchaseManager() {
                     <input
                       type="text"
                       value={addressForm.city}
-                      onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
+                      onChange={(event) => setAddressForm({...addressForm, city: event.target.value})}
                       className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                     />
                   </div>
@@ -1693,7 +1693,7 @@ export default function SupplierPurchaseManager() {
                     </label>
                     <select
                       value={addressForm.province}
-                      onChange={(e) => setAddressForm({...addressForm, province: e.target.value})}
+                      onChange={(event) => setAddressForm({...addressForm, province: event.target.value})}
                       className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                     >
                       <option value="QC">Québec</option>
@@ -1709,7 +1709,7 @@ export default function SupplierPurchaseManager() {
                     <input
                       type="text"
                       value={addressForm.postal_code}
-                      onChange={(e) => setAddressForm({...addressForm, postal_code: e.target.value})}
+                      onChange={(event) => setAddressForm({...addressForm, postal_code: event.target.value})}
                       className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                     />
                   </div>
@@ -1720,7 +1720,7 @@ export default function SupplierPurchaseManager() {
                     type="checkbox"
                     id="is_default"
                     checked={addressForm.is_default}
-                    onChange={(e) => setAddressForm({...addressForm, is_default: e.target.checked})}
+                    onChange={(event) => setAddressForm({...addressForm, is_default: event.target.checked})}
                     className="mr-2"
                   />
                   <label htmlFor="is_default" className="text-sm text-gray-700">
