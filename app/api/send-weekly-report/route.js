@@ -22,12 +22,21 @@ export async function GET() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     );
 
-    // Calculer la date de la semaine dernière (7 jours)
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const startDate = oneWeekAgo.toISOString().split('T')[0];
+    // 💡 Période personnalisable - changez le nombre de jours ici
+const periodInDays = 365; // 7 = semaine, 30 = mois, 90 = trimestre, 365 = année
 
-    console.log(`📅 Récupération des données depuis le ${startDate}`);
+const startPeriod = new Date();
+startPeriod.setDate(startPeriod.getDate() - periodInDays);
+const startDate = startPeriod.toISOString().split('T')[0];
+
+// Déterminer le nom de la période pour l'affichage
+let periodName = 'Personnalisé';
+if (periodInDays === 7) periodName = 'Hebdomadaire';
+else if (periodInDays === 30) periodName = 'Mensuel';
+else if (periodInDays === 90) periodName = 'Trimestriel';
+else if (periodInDays === 365) periodName = 'Annuel';
+
+console.log(`📅 Récupération des données depuis le ${startDate} (${periodInDays} jours - ${periodName})`);
 
     // =============== RÉCUPÉRER LES BONS D'ACHAT ===============
     const { data: purchaseOrders, error: poError } = await supabase
