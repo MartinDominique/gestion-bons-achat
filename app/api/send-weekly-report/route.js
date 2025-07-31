@@ -11,7 +11,11 @@ export async function GET() {
       console.error('❌ RESEND_API_KEY manquante !');
       return Response.json({ error: 'Configuration Resend manquante' }, { status: 500 });
     }
-
+    
+export async function POST(request) {
+  return await GET(); // Réutilise la logique GET
+}
+    
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       console.error('❌ Variables Supabase manquantes !');
       return Response.json({ error: 'Configuration Supabase manquante' }, { status: 500 });
