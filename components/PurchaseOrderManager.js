@@ -17,15 +17,16 @@ export default function PurchaseOrderManager() {
   
   // Form state avec TES vraies colonnes
   const [formData, setFormData] = useState({
-    client_name: '',
-    po_number: '',
-    submission_no: '',
-    date: new Date().toISOString().split('T')[0],
-    amount: '',
-    status: 'pending',
-    notes: '',
-    files: []
-  });
+  client_name: '',
+  po_number: '',
+  submission_no: '',
+  date: new Date().toISOString().split('T')[0],
+  amount: '',
+  status: 'pending',
+  notes: '',  // ← Devient la description principale
+  additionalNotes: '',  // ← Nouveau champ pour notes complémentaires
+  files: []
+});
 
   useEffect(() => {
     fetchPurchaseOrders();
@@ -126,9 +127,20 @@ export default function PurchaseOrderManager() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.client_name || !formData.po_number || !formData.amount) {
-      return;
-    }
+    const dataToSave = {
+  client_name: formData.client_name,
+  client: formData.client_name,
+  po_number: formData.po_number,
+  submission_no: formData.submission_no,
+  date: formData.date,
+  amount: parseFloat(formData.amount),
+  status: formData.status,
+  notes: formData.notes,  // ← Description principale
+  description: formData.notes,  // ← Alias pour compatibilité
+  additionalNotes: formData.additionalNotes,  // ← Notes complémentaires
+  vendor: formData.client_name,
+  files: formData.files
+};
 
     try {
       const dataToSave = {
@@ -190,19 +202,20 @@ export default function PurchaseOrderManager() {
   };
 
   const handleEdit = (po) => {
-    setEditingPO(po);
-    setFormData({
-      client_name: po.client_name || po.client || '',
-      po_number: po.po_number || '',
-      submission_no: po.submission_no || '',
-      date: po.date || new Date().toISOString().split('T')[0],
-      amount: po.amount || '',
-      status: po.status || 'pending',
-      notes: po.notes || po.description || '',
-      files: po.files || []
-    });
-    setShowForm(true);
-  };
+  setEditingPO(po);
+  setFormData({
+    client_name: po.client_name || po.client || '',
+    po_number: po.po_number || '',
+    submission_no: po.submission_no || '',
+    date: po.date || new Date().toISOString().split('T')[0],
+    amount: po.amount || '',
+    status: po.status || 'pending',
+    notes: po.notes || po.description || '',  // ← Description principale
+    additionalNotes: po.additionalNotes || '',  // ← Notes complémentaires
+    files: po.files || []
+  });
+  setShowForm(true);
+};
 
   const cleanupFilesForPO = async (files) => {
     if (!files || files.length === 0) return;
@@ -552,7 +565,7 @@ export default function PurchaseOrderManager() {
           <div className="p-4 sm:p-6">
             <form id="po-form" onSubmit={handleSubmit} className="space-y-6">
               
-              {/* 📱 Client et Statut - Stack sur mobile */}
+              {/* 📱 Client et Description - Stack sur mobile */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <label className="block text-sm font-semibold text-blue-800 mb-2">
@@ -573,33 +586,32 @@ export default function PurchaseOrderManager() {
                   </select>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    🏷️ Statut
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <label className="block text-sm font-semibold text-green-800 mb-2">
+                    📝 Description *
                   </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
-                  >
-                    <option value="pending">⏳ En attente</option>
-                    <option value="approved">✅ Approuvé</option>
-                    <option value="rejected">❌ Rejeté</option>
-                  </select>
+                  <input
+                    type="text"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+                    placeholder="Description du bon d'achat..."
+                    required
+                  />
                 </div>
               </div>
 
               {/* 📱 Numéro PO et Soumission */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <label className="block text-sm font-semibold text-green-800 mb-2">
+                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                  <label className="block text-sm font-semibold text-indigo-800 mb-2">
                     📄 No. Bon Achat Client *
                   </label>
                   <input
                     type="text"
                     value={formData.po_number}
                     onChange={(e) => setFormData({...formData, po_number: e.target.value})}
-                    className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+                    className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
                     placeholder="Ex: PO-2025-001"
                     required
                   />
@@ -633,8 +645,8 @@ export default function PurchaseOrderManager() {
                 </div>
               </div>
 
-              {/* 📱 Date et Montant */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* 📱 Date, Montant et Statut */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
                   <label className="block text-sm font-semibold text-pink-800 mb-2">
                     📅 Date
@@ -661,18 +673,33 @@ export default function PurchaseOrderManager() {
                     required
                   />
                 </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                    🏷️ Statut
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                  >
+                    <option value="pending">⏳ En attente</option>
+                    <option value="approved">✅ Approuvé</option>
+                    <option value="rejected">❌ Rejeté</option>
+                  </select>
+                </div>
               </div>
 
-              {/* 📱 Notes */}
+              {/* 📱 Notes complémentaires */}
               <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                 <label className="block text-sm font-semibold text-purple-800 mb-2">
-                  📝 Notes
+                  📝 Notes complémentaires (optionnel)
                 </label>
                 <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  value={formData.additionalNotes || ''}
+                  onChange={(e) => setFormData({...formData, additionalNotes: e.target.value})}
                   className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
-                  placeholder="Notes et commentaires..."
+                  placeholder="Notes additionnelles, instructions spéciales..."
                   rows="3"
                 />
               </div>
@@ -880,7 +907,7 @@ export default function PurchaseOrderManager() {
         </div>
       </div>
 
-      {/* 📊 DESKTOP VIEW - Table (cachée sur mobile) */}
+      {/* 📊 DESKTOP VIEW - Table compacte avec Client & Description */}
       <div className="hidden lg:block bg-white shadow-lg overflow-hidden rounded-lg border border-gray-200">
         {filteredPurchaseOrders.length === 0 ? (
           <div className="text-center py-12">
@@ -901,25 +928,25 @@ export default function PurchaseOrderManager() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Bon d'achat
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client & Description
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Montant
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Statut
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Fichiers
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                   Actions
                 </th>
               </tr>
@@ -927,58 +954,70 @@ export default function PurchaseOrderManager() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredPurchaseOrders.map((po) => (
                 <tr key={po.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <div className="text-sm space-y-1">
+                      <div className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-medium inline-block">
                         📄 {po.po_number || 'N/A'}
                       </div>
                       {po.submission_no && (
-                        <div className="text-sm text-blue-600">
+                        <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium inline-block ml-1">
                           📋 {po.submission_no}
                         </div>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{po.client_name || po.client || 'N/A'}</div>
+                  <td className="px-3 py-4">
+                    <div className="text-sm">
+                      <div className="font-medium text-gray-900">{po.client_name || po.client || 'N/A'}</div>
+                      <div className="text-gray-500 truncate max-w-xs" title={po.notes || po.description}>
+                        {po.notes || po.description || 'Aucune description'}
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
                     {formatDate(po.date || po.created_at)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                    {formatCurrency(po.amount)}
+                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                    <div className="text-sm font-medium text-green-600">
+                      {formatCurrency(po.amount)}
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={getStatusBadge(po.status)}>
-                      {getStatusEmoji(po.status)} {po.status === 'approved' ? 'Approuvé' : 
-                       po.status === 'pending' ? 'En attente' : 
-                       po.status === 'rejected' ? 'Rejeté' : (po.status || 'Inconnu')}
+                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      po.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                      po.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      po.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {po.status?.toLowerCase() === 'approved' ? '✅' :
+                       po.status?.toLowerCase() === 'pending' ? '⏳' :
+                       po.status?.toLowerCase() === 'rejected' ? '❌' : '❓'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
                     {po.files && po.files.length > 0 ? (
-                      <div className="flex items-center">
+                      <div className="flex items-center justify-center">
                         <FileText className="w-4 h-4 mr-1" />
-                        {po.files.length} fichier(s)
+                        {po.files.length}
                       </div>
                     ) : (
-                      <span className="text-gray-400">Aucun</span>
+                      <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
+                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                    <div className="flex justify-center space-x-1">
                       {po.status?.toLowerCase() === 'pending' && (
                         <>
                           <button
                             onClick={() => handleStatusChange(po.id, 'approved')}
-                            className="text-green-600 hover:text-green-900 p-1"
+                            className="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg transition-colors"
                             title="Approuver"
                           >
                             ✅
                           </button>
                           <button
                             onClick={() => handleStatusChange(po.id, 'rejected')}
-                            className="text-red-600 hover:text-red-900 p-1"
+                            className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
                             title="Rejeter"
                           >
                             ❌
@@ -987,14 +1026,14 @@ export default function PurchaseOrderManager() {
                       )}
                       <button
                         onClick={() => handleEdit(po)}
-                        className="text-blue-600 hover:text-blue-900 p-1"
+                        className="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition-colors"
                         title="Modifier"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(po.id)}
-                        className="text-red-600 hover:text-red-900 p-1"
+                        className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
                         title="Supprimer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1108,6 +1147,12 @@ export default function PurchaseOrderManager() {
               {/* 📱 Contenu de la card */}
               <div className="p-4 space-y-3">
                 
+                {/* 📱 Description */}
+                <div>
+                  <span className="text-gray-500 text-sm block">📝 Description</span>
+                  <p className="text-gray-900 font-medium">{po.notes || po.description || 'Aucune description'}</p>
+                </div>
+
                 {/* 📱 Informations principales */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -1131,18 +1176,23 @@ export default function PurchaseOrderManager() {
                 {/* 📱 Statut */}
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 text-sm">Statut</span>
-                  <span className={getStatusBadge(po.status)}>
-                    {po.status === 'approved' ? 'Approuvé' : 
-                     po.status === 'pending' ? 'En attente' : 
-                     po.status === 'rejected' ? 'Rejeté' : (po.status || 'Inconnu')}
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    po.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                    po.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    po.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {po.status?.toLowerCase() === 'approved' ? '✅ Approuvé' : 
+                     po.status?.toLowerCase() === 'pending' ? '⏳ En attente' : 
+                     po.status?.toLowerCase() === 'rejected' ? '❌ Rejeté' : (po.status || 'Inconnu')}
                   </span>
                 </div>
 
-                {/* 📱 Notes si présentes */}
-                {po.notes && (
+                {/* 📱 Notes additionnelles si présentes */}
+                {po.additionalNotes && (
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <span className="text-gray-500 text-sm block mb-1">📝 Notes</span>
-                    <p className="text-gray-700 text-sm">{po.notes}</p>
+                    <span className="text-gray-500 text-sm block mb-1">📝 Notes complémentaires</span>
+                    <p className="text-gray-700 text-sm">{po.additionalNotes}</p>
                   </div>
                 )}
 
