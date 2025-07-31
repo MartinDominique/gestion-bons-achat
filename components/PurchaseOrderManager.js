@@ -98,24 +98,26 @@ export default function PurchaseOrderManager() {
     }
   };
 
+  // 🔧 FONCTION RAPPORT CORRIGÉE - utilise GET au lieu de POST
   const handleSendReport = async () => {
     setSendingReport(true);
     try {
       const response = await fetch('/api/send-weekly-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        method: 'GET'  // ← CHANGÉ DE POST À GET
       });
 
       if (response.ok) {
-        // Rapport envoyé avec succès
+        const result = await response.json();
+        console.log('📧 Rapport envoyé avec succès !', result);
+        alert(`📧 Rapport envoyé avec succès !\n${result.message || 'Email envoyé'}`);
       } else {
-        const errorData = await response.text();
-        console.error('Erreur:', errorData);
+        const errorData = await response.json();
+        console.error('❌ Erreur lors de l\'envoi du rapport:', errorData);
+        alert(`❌ Erreur lors de l'envoi du rapport: ${errorData.error || 'Erreur inconnue'}`);
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
+      alert('❌ Erreur lors de l\'envoi du rapport');
     } finally {
       setSendingReport(false);
     }
