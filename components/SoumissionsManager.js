@@ -257,38 +257,23 @@ export default function SoumissionsManager() {
   const handleSendReport = async () => {
     setSendingReport(true);
     try {
-      // Vérifier si l'API existe avant d'essayer
+      // 🔧 Utilisation de GET pour déclencher le rapport automatique
       const response = await fetch('/api/send-weekly-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          submissions: soumissions,
-          totalAmount: soumissions.reduce((sum, s) => sum + (s.amount || 0), 0),
-          date: new Date().toISOString()
-        })
+        method: 'GET'
       });
 
       if (response.ok) {
-        alert('📧 Rapport envoyé avec succès !');
-        console.log('📧 Rapport envoyé avec succès !');
-      } else if (response.status === 405) {
-        // Method not allowed - API pas encore implémentée
-        alert('⚠️ Fonctionnalité d\'envoi de rapport en cours de développement.\n\nVous pouvez exporter les données manuellement pour le moment.');
-        console.log('⚠️ API d\'envoi de rapport pas encore implémentée');
+        const result = await response.json();
+        console.log('📧 Rapport envoyé avec succès !', result);
+        alert(`📧 Rapport envoyé avec succès !\n${result.message || 'Email envoyé'}`);
       } else {
-        throw new Error(`Erreur HTTP: ${response.status}`);
+        const errorData = await response.json();
+        console.error('❌ Erreur lors de l\'envoi du rapport:', errorData);
+        alert(`❌ Erreur lors de l'envoi du rapport: ${errorData.error || 'Erreur inconnue'}`);
       }
     } catch (error) {
       console.error('Erreur lors de l\'envoi:', error);
-      
-      if (error.message.includes('fetch')) {
-        // Erreur de réseau ou API non disponible
-        alert('⚠️ Service d\'envoi de rapport temporairement indisponible.\n\nVeuillez réessayer plus tard ou exporter les données manuellement.');
-      } else {
-        alert('❌ Erreur lors de l\'envoi du rapport.\n\nVeuillez vérifier votre connexion et réessayer.');
-      }
+      alert('❌ Erreur lors de l\'envoi du rapport');
     } finally {
       setSendingReport(false);
     }
@@ -559,6 +544,7 @@ export default function SoumissionsManager() {
               padding: 8px;
               text-align: left;
               font-size: 11px;
+              vertical-align: top;
             }
             
             .print-table th {
@@ -594,14 +580,14 @@ export default function SoumissionsManager() {
               <table className="print-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '12%' }}>Code</th>
-                    <th style={{ width: '28%' }}>Description</th>
-                    <th style={{ width: '7%' }}>Qté</th>
-                    <th style={{ width: '7%' }}>Unité</th>
-                    <th style={{ width: '11%' }}>Prix Unit.</th>
-                    <th style={{ width: '11%' }}>Prix Coût</th>
-                    <th style={{ width: '12%' }}>Total Vente</th>
-                    <th style={{ width: '12%' }}>Total Coût</th>
+                    <th style={{ width: '15%' }}>Code</th>
+                    <th style={{ width: '35%' }}>Description</th>
+                    <th style={{ width: '8%' }}>Qté</th>
+                    <th style={{ width: '8%' }}>Unité</th>
+                    <th style={{ width: '10%' }}>Prix Unit.</th>
+                    <th style={{ width: '8%' }}>Prix Coût</th>
+                    <th style={{ width: '8%' }}>Total Vente</th>
+                    <th style={{ width: '8%' }}>Total Coût</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -611,7 +597,7 @@ export default function SoumissionsManager() {
                       <td>
                         <div>{item.description}</div>
                         {item.comment && (
-                          <div className="print-comment" style={{ marginTop: '4px', fontStyle: 'italic', fontSize: '9px', color: '#666' }}>
+                          <div className="print-comment" style={{ marginTop: '3px', fontStyle: 'italic', fontSize: '9px' }}>
                             💬 {item.comment}
                           </div>
                         )}
@@ -1418,17 +1404,16 @@ export default function SoumissionsManager() {
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold">📝 Gestion des Soumissions</h2>
             <p className="text-white/90 text-sm sm:text-base mt-1">
-              Créez et gérez vos soumissions client avec commentaires intégrés
+              Créez et gérez vos soumissions client avec commentaires imprimables
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={handleSendReport}
               disabled={sendingReport}
-              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm disabled:opacity-50"
-              title="Envoyer un rapport hebdomadaire (en développement)"
+              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm"
             >
-              📧 {sendingReport ? 'Envoi en cours...' : 'Rapport Hebdo'}
+              📧 {sendingReport ? 'Envoi...' : 'Rapport'}
             </button>
             <button
               onClick={async () => {
@@ -1498,9 +1483,10 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
+      {/* 📱 Info système - MODIFIÉE */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <p className="text-sm text-gray-600">
-          📊 {soumissions.length} soumissions • {clients.length} clients • Recherche dynamique sur 6718 produits • 💬 Commentaires intégrés à l'impression
+          📊 {soumissions.length} soumissions • {clients.length} clients • Recherche dynamique sur 6718 produits • 💬 Commentaires imprimables
         </p>
       </div>
 
