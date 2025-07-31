@@ -4,7 +4,6 @@ import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart } from 'lucide-
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, FileText, LogOut, Users, Menu, X } from 'lucide-react';
 import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 
