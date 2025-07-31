@@ -1518,13 +1518,120 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
-      {/* 📊 DESKTOP VIEW - Table (cachée sur mobile) - MODIFIÉE pour montrer les commentaires */}
+      {/* 📊 DESKTOP VIEW - Table compacte sans scroll avec Actions visibles */}
       <div className="hidden lg:block bg-white shadow-lg rounded-lg overflow-hidden">
         {filteredSoumissions.length === 0 ? (
           <div className="text-center py-12">
             <span className="text-6xl mb-4 block">📝</span>
             <p className="text-gray-500 text-lg">Aucune soumission trouvée</p>
           </div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Soumission
+                </th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client & Description
+                </th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Montant
+                </th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Statut
+                </th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredSoumissions.map((submission) => (
+                <tr key={submission.id} className="hover:bg-gray-50">
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <div className="text-sm space-y-1">
+                      {submission.submission_number && (
+                        <div className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium inline-block">
+                          N°: {submission.submission_number}
+                        </div>
+                      )}
+                      {submission.items?.some(item => item.comment) && (
+                        <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium inline-block ml-1">
+                          💬
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4">
+                    <div className="text-sm">
+                      <div className="font-medium text-gray-900">{submission.client_name}</div>
+                      <div className="text-gray-500 truncate max-w-xs" title={submission.description}>
+                        {submission.description}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                    <div className="text-sm font-medium text-green-600">
+                      {formatCurrency(submission.amount)}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                      submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {submission.status === 'sent' ? '📤' :
+                       submission.status === 'draft' ? '📝' : '✅'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                    {formatDate(submission.created_at)}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                    <div className="flex justify-center space-x-1">
+                      <button
+                        onClick={() => {
+                          setEditingSubmission(submission);
+                          setSubmissionForm({
+                            client_name: submission.client_name,
+                            description: submission.description,
+                            amount: submission.amount,
+                            status: submission.status,
+                            items: submission.items || [],
+                            submission_number: submission.submission_number || ''
+                          });
+                          setSelectedItems(submission.items || []);
+                          const existingCostTotal = (submission.items || []).reduce((sum, item) => 
+                            sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
+                          );
+                          setCalculatedCostTotal(existingCostTotal);
+                          setShowForm(true);
+                        }}
+                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 p-2 rounded-lg transition-colors"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSubmission(submission.id)}
+                        className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>   
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
