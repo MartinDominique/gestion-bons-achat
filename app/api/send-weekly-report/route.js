@@ -62,21 +62,18 @@ export async function GET() {
     }
 
     // =============== RÉCUPÉRER LES SOUMISSIONS ===============
-    const { data: quotes, error: quotesError } = await supabase
-      .from('quotes')
-      .select(`
-        *,
-        clients (name, company)
-      `)
-      .gte('created_at', startDate)
-      .order('created_at', { ascending: false });
+const { data: submissions, error: submissionsError } = await supabase
+  .from('submissions')
+  .select('*')
+  .gte('created_at', startDate)
+  .order('created_at', { ascending: false });
 
-    if (quotesError) {
-      console.error('❌ Erreur Supabase quotes:', quotesError);
-      return Response.json({ error: 'Erreur base de données quotes' }, { status: 500 });
-    }
+if (submissionsError) {
+  console.error('❌ Erreur Supabase submissions:', submissionsError);
+  return Response.json({ error: 'Erreur base de données submissions' }, { status: 500 });
+}
 
-    console.log(`📊 ${quotes?.length || 0} soumissions trouvées`);
+console.log(`📊 ${submissions?.length || 0} soumissions trouvées`);
 
     // =============== CALCULER LES STATISTIQUES ===============
     
@@ -90,13 +87,13 @@ export async function GET() {
     };
 
     // Stats soumissions
-    const quoteStats = {
-      total: quotes.length,
-      draft: quotes.filter(q => q.status === 'draft').length,
-      sent: quotes.filter(q => q.status === 'sent').length,
-      accepted: quotes.filter(q => q.status === 'accepted').length,
-      montantTotal: quotes.reduce((sum, q) => sum + parseFloat(q.total || 0), 0)
-    };
+const submissionStats = {
+  total: submissions.length,
+  draft: submissions.filter(s => s.status === 'draft').length,
+  sent: submissions.filter(s => s.status === 'sent').length,
+  accepted: submissions.filter(s => s.status === 'accepted').length,
+  montantTotal: submissions.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
+};
 
     // =============== CRÉER LE CONTENU EMAIL ===============
     const htmlContent = `
