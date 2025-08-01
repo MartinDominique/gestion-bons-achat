@@ -80,13 +80,41 @@ export default function SupplierPurchaseManager() {
     is_default: false
   });
 
-  // Chargement initial
-  useEffect(() => {
-    fetchSupplierPurchases();
-    fetchSuppliers();
-    fetchPurchaseOrders();
-    fetchShippingAddresses();
-  }, []);
+  // Chargement initial avec vérification auth
+useEffect(() => {
+  const initializeData = async () => {
+    try {
+      // Vérifier la session d'authentification
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Erreur auth:', error);
+        setLoading(false);
+        return;
+      }
+      
+      if (!session) {
+        console.warn('⚠️ Aucune session utilisateur');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('✅ Session utilisateur valide');
+      
+      // Charger les données si l'auth est OK
+      await fetchSupplierPurchases();
+      await fetchSuppliers();
+      await fetchPurchaseOrders();
+      await fetchShippingAddresses();
+      
+    } catch (error) {
+      console.error('Erreur initialisation:', error);
+      setLoading(false);
+    }
+  };
+
+  initializeData();
+}, []);
 
   // Recherche produits avec debounce
   useEffect(() => {
