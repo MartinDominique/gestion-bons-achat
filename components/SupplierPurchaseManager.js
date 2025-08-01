@@ -1697,23 +1697,31 @@ export default function SupplierPurchaseManager() {
               <h2 className="text-2xl font-bold text-purple-600">📍 Gestion des Adresses de Livraison</h2>
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    setEditingAddress(null);
-                    setAddressForm({
-                      name: '',
-                      address: '',
-                      city: '',
-                      province: 'QC',
-                      postal_code: '',
-                      country: 'Canada',
-                      is_default: false
-                    });
-                    document.getElementById('address-form-modal').showModal();
-                  }}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                >
-                  ➕ Nouvelle Adresse
-                </button>
+  type="button"
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Réinitialiser le formulaire pour une nouvelle adresse
+    setEditingAddress(null);
+    setAddressForm({
+      name: '',
+      address: '',
+      city: '',
+      province: 'QC',
+      postal_code: '',
+      country: 'Canada',
+      is_default: false
+    });
+    
+    // Ouvrir directement le formulaire de création
+    setShowAddressFormModal(true);
+  }}
+  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex-shrink-0"
+  title="Nouvelle adresse"
+>
+  <Plus className="w-5 h-5" />
+</button>
                 <button
                   onClick={() => setShowAddressModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
