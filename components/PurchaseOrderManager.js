@@ -19,181 +19,40 @@ export default function PurchaseOrderManager() {
   const [suppliers, setSuppliers] = useState([]);
   const [uploadingSupplierDocs, setUploadingSupplierDocs] = useState(false);
   
-  // Form state avec TES vraies colonnes
   const [formData, setFormData] = useState({
-  client_name: '',
-  po_number: '',
-  submission_no: '',
-  date: new Date().toISOString().split('T')[0],
-  amount: '',
-  status: 'pending',
-  notes: '',  // ← Devient la description principale
-  additionalNotes: '',  // ← Nouveau champ pour notes complémentaires
-  files: []
-});
-  
-// 1️⃣ D'ABORD, définissez fetchSuppliers ICI (avant le useEffect)
-const fetchSuppliers = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('suppliers')
-      .select('id, company_name')
-      .order('company_name', { ascending: true });
-    
-    if (error) {
-      console.error('Erreur chargement fournisseurs:', error);
-    } else {
-      setSuppliers(data || []);
-    }
-  } catch (error) {
-    console.error('Erreur lors du chargement des fournisseurs:', error);
-  }
-};
-  
-  const fetchSupplierDocuments = async (purchaseOrderId) => {
-  if (!purchaseOrderId) return;
-  
-  try {
-    const { data, error } = await supabase
-      .from('supplier_documents')
-      .select('*, suppliers(company_name)')
-      .eq('purchase_order_id', purchaseOrderId)
-      .order('uploaded_at', { ascending: false });
+    client_name: '',
+    po_number: '',
+    submission_no: '',
+    date: new Date().toISOString().split('T')[0],
+    amount: '',
+    status: 'pending',
+    notes: '',
+    additionalNotes: '',
+    files: []
+  });
 
-    if (error) {
-      console.error('Erreur chargement documents fournisseurs:', error);
-    } else {
-      setSupplierDocuments(data || []);
-    }
-  } catch (error) {
-    console.error('Erreur lors du chargement des documents fournisseurs:', error);
-  }
-};
+  // ============ FONCTIONS AVANT useEffect ============
   
-  const handleSupplierDocumentUpload = async (e, supplierId) => {
-  const files = Array.from(e.target.files);
-  if (files.length === 0 || !editingPO) return;
-
-  setUploadingSupplierDocs(true);
-  const uploadedDocs = [];
-
-  for (const file of files) {
+  const fetchPurchaseOrders = async () => {
     try {
-      const cleanFileName = file.name
-        .replace(/\s+/g, '_')
-        .replace(/[^a-zA-Z0-9._-]/g, '')
-        .substring(0, 100);
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      const fileName = `${Date.now()}_${cleanFileName}`;
-      const filePath = `supplier-documents/${fileName}`;
-
-      const { data, error } = await supabase.storage
-        .from('purchase-orders-pdfs')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from('purchase-orders-pdfs')
-        .getPublicUrl(filePath);
-
-      // Enregistrer dans la table supplier_documents
-      const { error: dbError } = await supabase
-        .from('supplier_documents')
-        .insert({
-          purchase_order_id: editingPO.id,
-          supplier_id: supplierId,
-          document_type: 'invoice',
-          file_name: file.name,
-          file_path: data.path,
-          file_url: urlData.publicUrl,
-          file_size: file.size
-        });
-
-      if (dbError) throw dbError;
-
-      uploadedDocs.push({
-        file_name: file.name,
-        supplier_id: supplierId
-      });
-
-    } catch (error) {
-      console.error('Erreur upload document fournisseur:', error);
-      alert(`Erreur upload "${file.name}": ${error.message}`);
-    }
-  }
-
-  if (uploadedDocs.length > 0) {
-    await fetchSupplierDocuments(editingPO.id);
-    alert(`✅ ${uploadedDocs.length} document(s) fournisseur uploadé(s) avec succès`);
-  }
-
-  setUploadingSupplierDocs(false);
-  e.target.value = '';
-};
-  
-  const removeSupplierDocument = async (docId, filePath) => {
-  if (!confirm('Êtes-vous sûr de vouloir supprimer ce document fournisseur ?')) return;
-
-  try {
-    // Supprimer du storage
-    if (filePath) {
-      const { error: storageError } = await supabase.storage
-        .from('purchase-orders-pdfs')
-        .remove([filePath]);
-      
-      if (storageError) {
-        console.error('Erreur suppression storage:', storageError);
+      if (error) {
+        console.error('Erreur Supabase:', error);
+        throw error;
       }
+      console.log('Bons d\'achat chargés:', data?.length || 0);
+      setPurchaseOrders(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des bons d\'achat:', error);
+      console.error('Erreur lors du chargement des bons d\'achat:', error.message);
+    } finally {
+      setLoading(false);
     }
-
-    // Supprimer de la BD
-    const { error: dbError } = await supabase
-      .from('supplier_documents')
-      .delete()
-      .eq('id', docId);
-
-    if (dbError) throw dbError;
-
-    await fetchSupplierDocuments(editingPO.id);
-    alert('✅ Document fournisseur supprimé');
-
-  } catch (error) {
-    console.error('Erreur suppression document:', error);
-    alert('Erreur lors de la suppression');
-  }
-};
-  
-  useEffect(() => {
-  fetchPurchaseOrders();
-  fetchClients();
-  fetchSubmissions();
-  fetchSuppliers(); // ← Appelle la fonction définie plus haut
-    
-  const handleBeforeUnload = () => {
-    supabase.auth.signOut();
   };
-  
-  window.addEventListener('beforeunload', handleBeforeUnload);
-  
-  return () => {
-    window.removeEventListener('beforeunload', handleBeforeUnload);
-  };
-}, []);
-    
-    const handleBeforeUnload = () => {
-      supabase.auth.signOut();
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, []);
 
   const fetchClients = async () => {
     try {
@@ -229,33 +88,162 @@ const fetchSuppliers = async () => {
     }
   };
 
-  const fetchPurchaseOrders = async () => {
+  const fetchSuppliers = async () => {
     try {
       const { data, error } = await supabase
-        .from('purchase_orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from('suppliers')
+        .select('id, company_name')
+        .order('company_name', { ascending: true });
+      
+      if (error) {
+        console.error('Erreur chargement fournisseurs:', error);
+      } else {
+        setSuppliers(data || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des fournisseurs:', error);
+    }
+  };
+  
+  const fetchSupplierDocuments = async (purchaseOrderId) => {
+    if (!purchaseOrderId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('supplier_documents')
+        .select('*, suppliers(company_name)')
+        .eq('purchase_order_id', purchaseOrderId)
+        .order('uploaded_at', { ascending: false });
 
       if (error) {
-        console.error('Erreur Supabase:', error);
-        throw error;
+        console.error('Erreur chargement documents fournisseurs:', error);
+      } else {
+        setSupplierDocuments(data || []);
       }
-      console.log('Bons d\'achat chargés:', data?.length || 0);
-      setPurchaseOrders(data || []);
     } catch (error) {
-      console.error('Erreur lors du chargement des bons d\'achat:', error);
-      console.error('Erreur lors du chargement des bons d\'achat:', error.message);
-    } finally {
-      setLoading(false);
+      console.error('Erreur lors du chargement des documents fournisseurs:', error);
+    }
+  };
+  
+  const handleSupplierDocumentUpload = async (e, supplierId) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0 || !editingPO) return;
+
+    setUploadingSupplierDocs(true);
+    const uploadedDocs = [];
+
+    for (const file of files) {
+      try {
+        const cleanFileName = file.name
+          .replace(/\s+/g, '_')
+          .replace(/[^a-zA-Z0-9._-]/g, '')
+          .substring(0, 100);
+
+        const fileName = `${Date.now()}_${cleanFileName}`;
+        const filePath = `supplier-documents/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from('purchase-orders-pdfs')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (error) throw error;
+
+        const { data: urlData } = supabase.storage
+          .from('purchase-orders-pdfs')
+          .getPublicUrl(filePath);
+
+        const { error: dbError } = await supabase
+          .from('supplier_documents')
+          .insert({
+            purchase_order_id: editingPO.id,
+            supplier_id: supplierId,
+            document_type: 'invoice',
+            file_name: file.name,
+            file_path: data.path,
+            file_url: urlData.publicUrl,
+            file_size: file.size
+          });
+
+        if (dbError) throw dbError;
+
+        uploadedDocs.push({
+          file_name: file.name,
+          supplier_id: supplierId
+        });
+
+      } catch (error) {
+        console.error('Erreur upload document fournisseur:', error);
+        alert(`Erreur upload "${file.name}": ${error.message}`);
+      }
+    }
+
+    if (uploadedDocs.length > 0) {
+      await fetchSupplierDocuments(editingPO.id);
+      alert(`✅ ${uploadedDocs.length} document(s) fournisseur uploadé(s) avec succès`);
+    }
+
+    setUploadingSupplierDocs(false);
+    e.target.value = '';
+  };
+  
+  const removeSupplierDocument = async (docId, filePath) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce document fournisseur ?')) return;
+
+    try {
+      if (filePath) {
+        const { error: storageError } = await supabase.storage
+          .from('purchase-orders-pdfs')
+          .remove([filePath]);
+        
+        if (storageError) {
+          console.error('Erreur suppression storage:', storageError);
+        }
+      }
+
+      const { error: dbError } = await supabase
+        .from('supplier_documents')
+        .delete()
+        .eq('id', docId);
+
+      if (dbError) throw dbError;
+
+      await fetchSupplierDocuments(editingPO.id);
+      alert('✅ Document fournisseur supprimé');
+
+    } catch (error) {
+      console.error('Erreur suppression document:', error);
+      alert('Erreur lors de la suppression');
     }
   };
 
-  // 🔧 FONCTION RAPPORT CORRIGÉE - utilise GET au lieu de POST
+  // ============ useEffect CORRIGÉ ============
+  useEffect(() => {
+    fetchPurchaseOrders();
+    fetchClients();
+    fetchSubmissions();
+    fetchSuppliers();
+    
+    const handleBeforeUnload = () => {
+      supabase.auth.signOut();
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // ============ HANDLERS APRÈS useEffect ============
+
   const handleSendReport = async () => {
     setSendingReport(true);
     try {
       const response = await fetch('/api/send-weekly-report', {
-        method: 'GET'  // ← CHANGÉ DE POST À GET
+        method: 'GET'
       });
 
       if (response.ok) {
@@ -279,35 +267,21 @@ const fetchSuppliers = async () => {
     e.preventDefault();
     
     const dataToSave = {
-  client_name: formData.client_name,
-  client: formData.client_name,
-  po_number: formData.po_number,
-  submission_no: formData.submission_no,
-  date: formData.date,
-  amount: parseFloat(formData.amount),
-  status: formData.status,
-  notes: formData.notes,  // ← Description principale
-  description: formData.notes,  // ← Alias pour compatibilité
-  additionalNotes: formData.additionalNotes,  // ← Notes complémentaires
-  vendor: formData.client_name,
-  files: formData.files
-};
+      client_name: formData.client_name,
+      client: formData.client_name,
+      po_number: formData.po_number,
+      submission_no: formData.submission_no,
+      date: formData.date,
+      amount: parseFloat(formData.amount),
+      status: formData.status,
+      notes: formData.notes,
+      description: formData.notes,
+      additionalNotes: formData.additionalNotes,
+      vendor: formData.client_name,
+      files: formData.files
+    };
 
     try {
-      const dataToSave = {
-        client_name: formData.client_name,
-        client: formData.client_name,
-        po_number: formData.po_number,
-        submission_no: formData.submission_no,
-        date: formData.date,
-        amount: parseFloat(formData.amount),
-        status: formData.status,
-        notes: formData.notes,
-        description: formData.notes,
-        vendor: formData.client_name,
-        files: formData.files
-      };
-
       console.log('Données à sauvegarder:', dataToSave);
 
       if (editingPO) {
@@ -344,6 +318,7 @@ const fetchSuppliers = async () => {
         amount: '',
         status: 'pending',
         notes: '',
+        additionalNotes: '',
         files: []
       });
       
@@ -353,21 +328,21 @@ const fetchSuppliers = async () => {
   };
 
   const handleEdit = (po) => {
-  setEditingPO(po);
-  setFormData({
-    client_name: po.client_name || po.client || '',
-    po_number: po.po_number || '',
-    submission_no: po.submission_no || '',
-    date: po.date || new Date().toISOString().split('T')[0],
-    amount: po.amount || '',
-    status: po.status || 'pending',
-    notes: po.notes || po.description || '',  // ← Description principale
-    additionalNotes: po.additionalNotes || '',  // ← Notes complémentaires
-    files: po.files || []
-  });
-  setShowForm(true);
+    setEditingPO(po);
+    setFormData({
+      client_name: po.client_name || po.client || '',
+      po_number: po.po_number || '',
+      submission_no: po.submission_no || '',
+      date: po.date || new Date().toISOString().split('T')[0],
+      amount: po.amount || '',
+      status: po.status || 'pending',
+      notes: po.notes || po.description || '',
+      additionalNotes: po.additionalNotes || '',
+      files: po.files || []
+    });
+    setShowForm(true);
     fetchSupplierDocuments(po.id);
-};
+  };
 
   const cleanupFilesForPO = async (files) => {
     if (!files || files.length === 0) return;
@@ -665,10 +640,8 @@ const fetchSuppliers = async () => {
   if (showForm) {
     return (
       <div className="max-w-6xl mx-auto p-4">
-        {/* 📱 FORMULAIRE MOBILE-FRIENDLY */}
         <div className="bg-white rounded-xl shadow-lg border border-indigo-200 overflow-hidden">
           
-          {/* 📱 En-tête du formulaire responsive */}
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <div>
@@ -680,7 +653,6 @@ const fetchSuppliers = async () => {
                 </p>
               </div>
               
-              {/* 📱 Boutons d'action responsive */}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   type="button"
@@ -695,6 +667,7 @@ const fetchSuppliers = async () => {
                       amount: '',
                       status: 'pending',
                       notes: '',
+                      additionalNotes: '',
                       files: []
                     });
                   }}
@@ -713,11 +686,9 @@ const fetchSuppliers = async () => {
             </div>
           </div>
           
-          {/* 📱 Contenu du formulaire */}
           <div className="p-4 sm:p-6">
             <form id="po-form" onSubmit={handleSubmit} className="space-y-6">
               
-              {/* 📱 Client et Description - Stack sur mobile */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <label className="block text-sm font-semibold text-blue-800 mb-2">
@@ -753,7 +724,6 @@ const fetchSuppliers = async () => {
                 </div>
               </div>
 
-              {/* 📱 Numéro PO et Soumission */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                   <label className="block text-sm font-semibold text-indigo-800 mb-2">
@@ -797,7 +767,6 @@ const fetchSuppliers = async () => {
                 </div>
               </div>
 
-              {/* 📱 Date, Montant et Statut */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
                   <label className="block text-sm font-semibold text-pink-800 mb-2">
@@ -842,7 +811,6 @@ const fetchSuppliers = async () => {
                 </div>
               </div>
 
-              {/* 📱 Notes complémentaires */}
               <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                 <label className="block text-sm font-semibold text-purple-800 mb-2">
                   📝 Notes complémentaires (optionnel)
@@ -856,120 +824,116 @@ const fetchSuppliers = async () => {
                 />
               </div>
 
-              {/* 📱 Section fichiers MOBILE-FRIENDLY */}
+              {editingPO && (
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
+                  <label className="block text-sm font-semibold text-orange-800 mb-2">
+                    🏢 Documents d'Achat Fournisseurs
+                  </label>
+                  
+                  <div className="mb-4">
+                    <p className="text-sm text-orange-600 mb-2">
+                      Ajouter des documents (factures, bons de commande) par fournisseur :
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {suppliers.map((supplier) => (
+                        <div key={supplier.id} className="flex items-center gap-2">
+                          <label 
+                            htmlFor={`supplier-doc-${supplier.id}`}
+                            className="flex-1 px-3 py-2 bg-white border border-orange-300 rounded-lg hover:bg-orange-50 cursor-pointer text-sm"
+                          >
+                            <Building2 className="w-4 h-4 inline mr-2" />
+                            {supplier.company_name}
+                          </label>
+                          <input
+                            id={`supplier-doc-${supplier.id}`}
+                            type="file"
+                            multiple
+                            accept=".pdf,.xls,.xlsx,.doc,.docx,.png,.jpg,.jpeg"
+                            onChange={(e) => handleSupplierDocumentUpload(e, supplier.id)}
+                            disabled={uploadingSupplierDocs}
+                            className="hidden"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {uploadingSupplierDocs && (
+                      <p className="text-sm text-orange-600 mt-2 flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
+                        📤 Upload en cours...
+                      </p>
+                    )}
+                  </div>
+
+                  {supplierDocuments.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-orange-700">
+                        📁 Documents fournisseurs ({supplierDocuments.length})
+                      </p>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {supplierDocuments.map((doc) => (
+                          <div key={doc.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                <span className="text-xl flex-shrink-0">🏢</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {doc.file_name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {doc.suppliers?.company_name || 'Fournisseur inconnu'} • 
+                                    {formatFileSize(doc.file_size)} • 
+                                    {new Date(doc.uploaded_at).toLocaleDateString('fr-CA')}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-2">
+                                {doc.file_url && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => window.open(doc.file_url, '_blank')}
+                                      className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+                                    >
+                                      👁️ Voir
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => downloadFile({url: doc.file_url, name: doc.file_name})}
+                                      className="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded"
+                                    >
+                                      💾
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => removeSupplierDocument(doc.id, doc.file_path)}
+                                  className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {supplierDocuments.length === 0 && (
+                    <p className="text-sm text-orange-600 italic mt-2">
+                      Aucun document fournisseur attaché pour l'instant
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                 <label className="block text-sm font-semibold text-indigo-800 mb-2">
-                 {/* 📎 Documents d'Achat Fournisseurs - NOUVEAU BLOC */}
-{editingPO && (
-  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
-    <label className="block text-sm font-semibold text-orange-800 mb-2">
-      🏢 Documents d'Achat Fournisseurs
-    </label>
-    
-    {/* Upload par fournisseur */}
-    <div className="mb-4">
-      <p className="text-sm text-orange-600 mb-2">
-        Ajouter des documents (factures, bons de commande) par fournisseur :
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {suppliers.map((supplier) => (
-          <div key={supplier.id} className="flex items-center gap-2">
-            <label 
-              htmlFor={`supplier-doc-${supplier.id}`}
-              className="flex-1 px-3 py-2 bg-white border border-orange-300 rounded-lg hover:bg-orange-50 cursor-pointer text-sm"
-            >
-              <Building2 className="w-4 h-4 inline mr-2" />
-              {supplier.company_name}
-            </label>
-            <input
-              id={`supplier-doc-${supplier.id}`}
-              type="file"
-              multiple
-              accept=".pdf,.xls,.xlsx,.doc,.docx,.png,.jpg,.jpeg"
-              onChange={(e) => handleSupplierDocumentUpload(e, supplier.id)}
-              disabled={uploadingSupplierDocs}
-              className="hidden"
-            />
-          </div>
-        ))}
-      </div>
-      {uploadingSupplierDocs && (
-        <p className="text-sm text-orange-600 mt-2 flex items-center">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
-          📤 Upload en cours...
-        </p>
-      )}
-    </div>
-
-    {/* Liste des documents fournisseurs */}
-    {supplierDocuments.length > 0 && (
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-orange-700">
-          📁 Documents fournisseurs ({supplierDocuments.length})
-        </p>
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {supplierDocuments.map((doc) => (
-            <div key={doc.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  <span className="text-xl flex-shrink-0">🏢</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {doc.file_name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {doc.suppliers?.company_name || 'Fournisseur inconnu'} • 
-                      {formatFileSize(doc.file_size)} • 
-                      {new Date(doc.uploaded_at).toLocaleDateString('fr-CA')}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  {doc.file_url && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => window.open(doc.file_url, '_blank')}
-                        className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
-                      >
-                        👁️ Voir
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => downloadFile({url: doc.file_url, name: doc.file_name})}
-                        className="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded"
-                      >
-                        💾
-                      </button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeSupplierDocument(doc.id, doc.file_path)}
-                    className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {supplierDocuments.length === 0 && (
-      <p className="text-sm text-orange-600 italic mt-2">
-        Aucun document fournisseur attaché pour l'instant
-      </p>
-    )}
-  </div>
-)}
-                 📎 Documents (PDF, XLS, DOC, etc.)
+                  📎 Documents (PDF, XLS, DOC, etc.)
                 </label>
                 
-                {/* 📱 Zone d'upload mobile-friendly */}
                 <div className="mb-4">
                   <div className="flex flex-col sm:flex-row gap-3">
                     <input
@@ -989,7 +953,6 @@ const fetchSuppliers = async () => {
                   )}
                 </div>
 
-                {/* 📱 Liste des fichiers mobile-friendly */}
                 {formData.files && formData.files.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-indigo-700">
@@ -1011,7 +974,6 @@ const fetchSuppliers = async () => {
                               </div>
                             </div>
                             
-                            {/* 📱 Actions fichier responsive */}
                             <div className="flex flex-wrap gap-2 sm:flex-nowrap">
                               {file.url ? (
                                 <>
@@ -1062,7 +1024,6 @@ const fetchSuppliers = async () => {
 
   return (
     <div className="space-y-6 p-4">
-      {/* 📱 En-tête responsive avec statistiques */}
       <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
           <div>
@@ -1088,7 +1049,6 @@ const fetchSuppliers = async () => {
           </div>
         </div>
 
-        {/* 📱 Statistiques responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
@@ -1136,7 +1096,6 @@ const fetchSuppliers = async () => {
         </div>
       </div>
 
-      {/* 📱 Filtres et recherche responsive */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="flex-1">
@@ -1166,7 +1125,6 @@ const fetchSuppliers = async () => {
         </div>
       </div>
 
-      {/* 📊 DESKTOP VIEW - Table compacte avec Client & Description */}
       <div className="hidden lg:block bg-white shadow-lg overflow-hidden rounded-lg border border-gray-200">
         {filteredPurchaseOrders.length === 0 ? (
           <div className="text-center py-12">
@@ -1306,7 +1264,6 @@ const fetchSuppliers = async () => {
         )}
       </div>
 
-      {/* 📱 MOBILE VIEW - Cards empilées */}
       <div className="lg:hidden space-y-4">
         {filteredPurchaseOrders.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -1327,7 +1284,6 @@ const fetchSuppliers = async () => {
           filteredPurchaseOrders.map((po) => (
             <div key={po.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
               
-              {/* 📱 En-tête de la card */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -1340,7 +1296,6 @@ const fetchSuppliers = async () => {
                     </div>
                   </div>
                   
-                  {/* 📱 Menu actions mobile */}
                   <div className="relative">
                     <button
                       onClick={() => setSelectedOrderId(selectedOrderId === po.id ? null : po.id)}
@@ -1349,7 +1304,6 @@ const fetchSuppliers = async () => {
                       <MoreVertical className="w-5 h-5" />
                     </button>
                     
-                    {/* 📱 Dropdown actions */}
                     {selectedOrderId === po.id && (
                       <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                         <div className="py-1">
@@ -1403,16 +1357,13 @@ const fetchSuppliers = async () => {
                 </div>
               </div>
 
-              {/* 📱 Contenu de la card */}
               <div className="p-4 space-y-3">
                 
-                {/* 📱 Description */}
                 <div>
                   <span className="text-gray-500 text-sm block">📝 Description</span>
                   <p className="text-gray-900 font-medium">{po.notes || po.description || 'Aucune description'}</p>
                 </div>
 
-                {/* 📱 Informations principales */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500 block">📅 Date</span>
@@ -1424,7 +1375,6 @@ const fetchSuppliers = async () => {
                   </div>
                 </div>
 
-                {/* 📱 Soumission si présente */}
                 {po.submission_no && (
                   <div className="text-sm">
                     <span className="text-gray-500">📋 Soumission</span>
@@ -1432,7 +1382,6 @@ const fetchSuppliers = async () => {
                   </div>
                 )}
 
-                {/* 📱 Statut */}
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 text-sm">Statut</span>
                   <span className={`px-2 py-1 rounded text-xs ${
@@ -1447,7 +1396,6 @@ const fetchSuppliers = async () => {
                   </span>
                 </div>
 
-                {/* 📱 Notes additionnelles si présentes */}
                 {po.additionalNotes && (
                   <div className="bg-gray-50 rounded-lg p-3">
                     <span className="text-gray-500 text-sm block mb-1">📝 Notes complémentaires</span>
@@ -1455,7 +1403,6 @@ const fetchSuppliers = async () => {
                   </div>
                 )}
 
-                {/* 📱 Fichiers attachés */}
                 {po.files && po.files.length > 0 && (
                   <div className="border-t pt-3">
                     <span className="text-gray-500 text-sm block mb-2">📎 Fichiers ({po.files.length})</span>
@@ -1492,7 +1439,6 @@ const fetchSuppliers = async () => {
                 )}
               </div>
 
-              {/* 📱 Actions rapides en bas */}
               <div className="bg-gray-50 px-4 py-3 flex gap-2">
                 <button
                   onClick={() => handleEdit(po)}
@@ -1514,7 +1460,6 @@ const fetchSuppliers = async () => {
         )}
       </div>
 
-      {/* 📱 Note explicative */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-700">
           📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
