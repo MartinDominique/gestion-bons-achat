@@ -1700,27 +1700,24 @@ useEffect(() => {
     </div>
   );
 
-{/* 🧪 MODAL TEST - TEMPORAIRE */}
+{/* Modal Gestion Adresses - TEST */}
       {showAddressModal && (
-        <div 
-          className="fixed inset-0 bg-red-500 bg-opacity-90 flex items-center justify-center p-4"
-          style={{ zIndex: 9999 }}
-        >
-          <div className="bg-white rounded-lg w-full max-w-2xl border-4 border-black">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl">
             <div className="p-6">
               <h3 className="text-xl font-bold text-purple-600 mb-4">
-                🧪 TEST - MODAL VISIBLE ?
+                🧪 TEST MODAL ADRESSE
               </h3>
               
               <button
                 type="button"
                 onClick={() => {
-                  console.log('❌ Fermeture forcée modal');
+                  console.log('❌ Fermeture modal');
                   setShowAddressModal(false);
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg"
               >
-                ❌ FERMER TEST
+                ❌ FERMER
               </button>
             </div>
           </div>
