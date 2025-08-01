@@ -85,7 +85,6 @@ export default function SupplierPurchaseManager() {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        // Vérifier la session d'authentification
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -102,7 +101,6 @@ export default function SupplierPurchaseManager() {
         
         console.log('✅ Session utilisateur valide');
         
-        // Charger les données si l'auth est OK
         await fetchSupplierPurchases();
         await fetchSuppliers();
         await fetchPurchaseOrders();
@@ -319,7 +317,7 @@ export default function SupplierPurchaseManager() {
     }
   };
 
-  // Gestion des adresses - VERSION CORRIGÉE
+  // Gestion des adresses
   const handleAddressSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -350,9 +348,8 @@ export default function SupplierPurchaseManager() {
 
       await fetchShippingAddresses();
       
-      // Fermer les modals et réinitialiser
-      setShowAddressModal(false);
-      document.getElementById('address-form-modal')?.close();
+      // Fermer la modal et réinitialiser
+      setShowAddressFormModal(false);
       setEditingAddress(null);
       setAddressForm({
         name: '',
@@ -471,7 +468,7 @@ export default function SupplierPurchaseManager() {
       let purchaseNumber = purchaseForm.purchase_number;
       
       if (!editingPurchase) {
-        purchaseNumber = await generating();
+        purchaseNumber = await generatePurchaseNumber();
       }
 
       const purchaseData = {
@@ -630,48 +627,73 @@ export default function SupplierPurchaseManager() {
           }
         `}</style>
 
-        {/* ZONE D'IMPRESSION */}
+        {/* ZONE D'IMPRESSION - NOUVELLE MISE EN PAGE */}
         <div className="print-container hidden print:block">
+          {/* En-tête avec logo et informations du bon de commande */}
           <div className="flex justify-between items-start mb-8">
-            <div>
+            <div className="flex-shrink-0">
               <img src="/logo.png" alt="Logo" className="h-20 mb-4" />
-              <h1 className="text-2xl font-bold">BON DE COMMANDE</h1>
-              <p className="text-sm text-gray-600">N°: {purchaseForm.purchase_number}</p>
-              <p className="text-sm text-gray-600">Date: {formatDate(new Date())}</p>
             </div>
             
+            <div className="text-right">
+              <h1 className="text-2xl font-bold mb-2">BON DE COMMANDE</h1>
+              <div className="text-sm text-gray-600 space-y-1">
+                <p><strong>N° Achat:</strong> {purchaseForm.purchase_number}</p>
+                <p><strong>Date:</strong> {formatDate(new Date())}</p>
+                {purchaseForm.linked_po_number && (
+                  <p><strong>PO Client:</strong> {purchaseForm.linked_po_number}</p>
+                )}
+                {purchaseForm.delivery_date && (
+                  <p><strong>Livraison prévue:</strong> {formatDate(purchaseForm.delivery_date)}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Section Fournisseur et Livrer à côte à côte */}
+          <div className="grid grid-cols-2 gap-8 mb-6">
+            {/* Fournisseur à gauche */}
+            {selectedSupplier && (
+              <div>
+                <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">Fournisseur:</h3>
+                <div className="space-y-1">
+                  <p className="font-medium text-base">{selectedSupplier.company_name}</p>
+                  {selectedSupplier.contact_name && <p>Contact: {selectedSupplier.contact_name}</p>}
+                  <p>{selectedSupplier.address}</p>
+                  <p>{selectedSupplier.city}, {selectedSupplier.province} {selectedSupplier.postal_code}</p>
+                  <p>{selectedSupplier.country}</p>
+                  {selectedSupplier.email && <p>Email: {selectedSupplier.email}</p>}
+                  {selectedSupplier.phone && <p>Tél: {selectedSupplier.phone}</p>}
+                </div>
+              </div>
+            )}
+            
+            {/* Livrer à à droite */}
             {selectedAddress && (
-              <div className="text-right">
-                <h3 className="font-bold mb-2">Livrer à:</h3>
-                <p>{selectedAddress.name}</p>
-                <p>{selectedAddress.address}</p>
-                <p>{selectedAddress.city}, {selectedAddress.province} {selectedAddress.postal_code}</p>
-                <p>{selectedAddress.country}</p>
+              <div>
+                <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">Livrer à:</h3>
+                <div className="space-y-1">
+                  <p className="font-medium text-base">{selectedAddress.name}</p>
+                  <p>{selectedAddress.address}</p>
+                  <p>{selectedAddress.city}, {selectedAddress.province} {selectedAddress.postal_code}</p>
+                  <p>{selectedAddress.country}</p>
+                </div>
               </div>
             )}
           </div>
 
-          {selectedSupplier && (
-            <div className="mb-6">
-              <h3 className="font-bold mb-2">Fournisseur:</h3>
-              <p className="font-medium">{selectedSupplier.company_name}</p>
-              {selectedSupplier.contact_name && <p>Contact: {selectedSupplier.contact_name}</p>}
-              <p>{selectedSupplier.address}</p>
-              <p>{selectedSupplier.city}, {selectedSupplier.province} {selectedSupplier.postal_code}</p>
-              {selectedSupplier.email && <p>Email: {selectedSupplier.email}</p>}
-              {selectedSupplier.phone && <p>Tél: {selectedSupplier.phone}</p>}
+          {/* Informations de livraison */}
+          {(purchaseForm.shipping_company || purchaseForm.shipping_account) && (
+            <div className="mb-6 bg-gray-50 p-3 rounded">
+              <h3 className="font-bold mb-2">Méthode de livraison:</h3>
+              <div className="flex gap-6">
+                {purchaseForm.shipping_company && <p><strong>Transporteur:</strong> {purchaseForm.shipping_company}</p>}
+                {purchaseForm.shipping_account && <p><strong>N° de compte:</strong> {purchaseForm.shipping_account}</p>}
+              </div>
             </div>
           )}
 
-          {purchaseForm.shipping_company && (
-            <div className="mb-6">
-              <p><strong>Méthode de livraison:</strong> {purchaseForm.shipping_company}</p>
-              {purchaseForm.shipping_account && (
-                <p><strong>N° de compte:</strong> {purchaseForm.shipping_account}</p>
-              )}
-            </div>
-          )}
-
+          {/* Tableau des produits */}
           <table className="mb-6">
             <thead>
               <tr>
@@ -704,23 +726,42 @@ export default function SupplierPurchaseManager() {
                 <td colSpan="5" className="text-right font-medium">Taxes (14.975%):</td>
                 <td className="text-right">{formatCurrency(purchaseForm.taxes)}</td>
               </tr>
+              {purchaseForm.shipping_cost > 0 && (
+                <tr>
+                  <td colSpan="5" className="text-right font-medium">Frais de livraison:</td>
+                  <td className="text-right">{formatCurrency(purchaseForm.shipping_cost)}</td>
+                </tr>
+              )}
               <tr>
-                <td colSpan="5" className="text-right font-medium">Frais de livraison:</td>
-                <td className="text-right">{formatCurrency(purchaseForm.shipping_cost)}</td>
-              </tr>
-              <tr>
-                <td colSpan="5" className="text-right font-bold text-lg">TOTAL:</td>
-                <td className="text-right font-bold text-lg">{formatCurrency(purchaseForm.total_amount)}</td>
+                <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">TOTAL:</td>
+                <td className="text-right font-bold text-lg bg-gray-100">{formatCurrency(purchaseForm.total_amount)}</td>
               </tr>
             </tfoot>
           </table>
 
+          {/* Notes */}
           {purchaseForm.notes && (
-            <div className="mt-6">
+            <div className="mt-6 border-t pt-4">
               <h3 className="font-bold mb-2">Notes:</h3>
-              <p>{purchaseForm.notes}</p>
+              <p className="text-sm">{purchaseForm.notes}</p>
             </div>
           )}
+          
+          {/* Signature */}
+          <div className="mt-8 pt-4 border-t">
+            <div className="flex justify-between">
+              <div>
+                <p className="mb-2">Signature du fournisseur:</p>
+                <div className="border-b border-gray-400 w-48 h-8"></div>
+                <p className="text-xs text-gray-600 mt-1">Date: _______________</p>
+              </div>
+              <div>
+                <p className="mb-2">Signature du responsable:</p>
+                <div className="border-b border-gray-400 w-48 h-8"></div>
+                <p className="text-xs text-gray-600 mt-1">Date: _______________</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* FORMULAIRE */}
@@ -843,18 +884,44 @@ export default function SupplierPurchaseManager() {
                           </option>
                         ))}
                       </select>
+                      
+                      {/* BOUTON + CORRIGÉ - OUVRE DIRECTEMENT LE FORMULAIRE */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log('🔘 Clic bouton + adresse');
-                          setShowAddressModal(true);
+                          console.log('🔘 Bouton + cliqué - Ouverture directe formulaire adresse');
+                          
+                          // Réinitialiser le formulaire pour une nouvelle adresse
+                          setEditingAddress(null);
+                          setAddressForm({
+                            name: '',
+                            address: '',
+                            city: '',
+                            province: 'QC',
+                            postal_code: '',
+                            country: 'Canada',
+                            is_default: false
+                          });
+                          
+                          // Ouvrir directement le formulaire de création
+                          setShowAddressFormModal(true);
                         }}
                         className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex-shrink-0"
-                        title="Ajouter une adresse"
+                        title="Nouvelle adresse"
                       >
                         <Plus className="w-5 h-5" />
+                      </button>
+                      
+                      {/* Bouton pour gérer les adresses existantes */}
+                      <button
+                        type="button"
+                        onClick={() => setShowAddressModal(true)}
+                        className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex-shrink-0"
+                        title="Gérer les adresses"
+                      >
+                        <MapPin className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
@@ -1692,38 +1759,43 @@ export default function SupplierPurchaseManager() {
 
       {/* Modal Gestion Adresses */}
       {showAddressModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          style={{ zIndex: 50 }}
+          onClick={() => setShowAddressModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* En-tête */}
             <div className="flex justify-between items-center p-6 border-b bg-purple-50">
               <h2 className="text-2xl font-bold text-purple-600">📍 Gestion des Adresses de Livraison</h2>
               <div className="flex gap-3">
                 <button
-  type="button"
-  onClick={(e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Réinitialiser le formulaire pour une nouvelle adresse
-    setEditingAddress(null);
-    setAddressForm({
-      name: '',
-      address: '',
-      city: '',
-      province: 'QC',
-      postal_code: '',
-      country: 'Canada',
-      is_default: false
-    });
-    
-    // Ouvrir directement le formulaire de création
-    setShowAddressFormModal(true);
-  }}
-  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex-shrink-0"
-  title="Nouvelle adresse"
->
-  <Plus className="w-5 h-5" />
-</button>
+                  type="button"
+                  onClick={() => {
+                    console.log('➕ Nouvelle adresse depuis gestion');
+                    setEditingAddress(null);
+                    setAddressForm({
+                      name: '',
+                      address: '',
+                      city: '',
+                      province: 'QC',
+                      postal_code: '',
+                      country: 'Canada',
+                      is_default: false
+                    });
+                    // Fermer la modal de gestion et ouvrir le formulaire
+                    setShowAddressModal(false);
+                    setShowAddressFormModal(true);
+                  }}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  ➕ Nouvelle Adresse
+                </button>
                 <button
+                  type="button"
                   onClick={() => setShowAddressModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
@@ -1732,6 +1804,7 @@ export default function SupplierPurchaseManager() {
               </div>
             </div>
 
+            {/* Contenu */}
             <div className="flex-1 overflow-y-auto p-6">
               {shippingAddresses.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
@@ -1765,7 +1838,8 @@ export default function SupplierPurchaseManager() {
                             onClick={() => {
                               setEditingAddress(address);
                               setAddressForm(address);
-                              document.getElementById('address-form-modal').showModal();
+                              setShowAddressModal(false);
+                              setShowAddressFormModal(true);
                             }}
                             className="px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
                           >
@@ -1804,152 +1878,151 @@ export default function SupplierPurchaseManager() {
       )}
 
       {/* Modal Formulaire Adresse */}
-      <dialog id="address-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
-        <div className="bg-white rounded-lg w-full max-w-2xl p-6">
-          <h3 className="text-xl font-bold text-purple-600 mb-4">
-            {editingAddress ? '✏️ Modifier Adresse' : '➕ Nouvelle Adresse'}
-          </h3>
-          
-          <form onSubmit={handleAddressSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nom de l'adresse *
-                </label>
-                <input
-                  type="text"
-                  value={addressForm.name}
-                  onChange={(e) => setAddressForm({...addressForm, name: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                  placeholder="Ex: Bureau principal, Entrepôt..."
-                  required
-                />
-              </div>
-              
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Adresse complète *
-                </label>
-                <input
-                  type="text"
-                  value={addressForm.address}
-                  onChange={(e) => setAddressForm({...addressForm, address: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                  placeholder="123 Rue Principale, App. 456"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ville *
-                </label>
-                <input
-                  type="text"
-                  value={addressForm.city}
-                  onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Province *
-                </label>
-                <select
-                  value={addressForm.province}
-                  onChange={(e) => setAddressForm({...addressForm, province: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                  required
-                >
-                  <option value="QC">Québec</option>
-                  <option value="ON">Ontario</option>
-                  <option value="BC">Colombie-Britannique</option>
-                  <option value="AB">Alberta</option>
-                  <option value="MB">Manitoba</option>
-                  <option value="SK">Saskatchewan</option>
-                  <option value="NS">Nouvelle-Écosse</option>
-                  <option value="NB">Nouveau-Brunswick</option>
-                  <option value="NL">Terre-Neuve-et-Labrador</option>
-                  <option value="PE">Île-du-Prince-Édouard</option>
-                  <option value="NT">Territoires du Nord-Ouest</option>
-                  <option value="YT">Yukon</option>
-                  <option value="NU">Nunavut</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Code postal
-                </label>
-                <input
-                  type="text"
-                  value={addressForm.postal_code}
-                  onChange={(e) => setAddressForm({...addressForm, postal_code: e.target.value.toUpperCase()})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                  placeholder="H1A 1A1"
-                  pattern="[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d"
-                />
-              </div>
-                    
-              <button
-  type="button"
-  onClick={() => setShowAddressModal(true)}
-  className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex-shrink-0"
-  title="Gérer les adresses"
->
-  <MapPin className="w-5 h-5" />
-</button>
-    
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Pays
-                </label>
-                <select
-                  value={addressForm.country}
-                  onChange={(e) => setAddressForm({...addressForm, country: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                >
-                  <option value="Canada">Canada</option>
-                  <option value="États-Unis">États-Unis</option>
-                  <option value="Mexique">Mexique</option>
-                </select>
-              </div>
-              
-              <div className="md:col-span-2">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={addressForm.is_default}
-                    onChange={(e) => setAddressForm({...addressForm, is_default: e.target.checked})}
-                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                  />
-                  <span className="text-sm font-medium text-gray-700">
-                    ⭐ Définir comme adresse par défaut
-                  </span>
-                </label>
-              </div>
-            </div>
+      {showAddressFormModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+          style={{ zIndex: 60 }}
+        >
+          <div 
+            className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-purple-600 mb-4">
+              {editingAddress ? '✏️ Modifier Adresse' : '➕ Nouvelle Adresse'}
+            </h3>
             
-            <div className="flex gap-3 justify-end pt-4">
-              <button
-                type="button"
-                onClick={() => document.getElementById('address-form-modal').close()}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Annuler
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-              >
-                {editingAddress ? '💾 Mettre à jour' : '✨ Créer'}
-              </button>
-            </div>
-          </form>
+            <form onSubmit={handleAddressSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nom de l'adresse *
+                  </label>
+                  <input
+                    type="text"
+                    value={addressForm.name}
+                    onChange={(e) => setAddressForm({...addressForm, name: e.target.value})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                    placeholder="Ex: Bureau principal, Entrepôt..."
+                    required
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Adresse complète *
+                  </label>
+                  <input
+                    type="text"
+                    value={addressForm.address}
+                    onChange={(e) => setAddressForm({...addressForm, address: e.target.value})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                    placeholder="123 Rue Principale, App. 456"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ville *
+                  </label>
+                  <input
+                    type="text"
+                    value={addressForm.city}
+                    onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Province *
+                  </label>
+                  <select
+                    value={addressForm.province}
+                    onChange={(e) => setAddressForm({...addressForm, province: e.target.value})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                    required
+                  >
+                    <option value="QC">Québec</option>
+                    <option value="ON">Ontario</option>
+                    <option value="BC">Colombie-Britannique</option>
+                    <option value="AB">Alberta</option>
+                    <option value="MB">Manitoba</option>
+                    <option value="SK">Saskatchewan</option>
+                    <option value="NS">Nouvelle-Écosse</option>
+                    <option value="NB">Nouveau-Brunswick</option>
+                    <option value="NL">Terre-Neuve-et-Labrador</option>
+                    <option value="PE">Île-du-Prince-Édouard</option>
+                    <option value="NT">Territoires du Nord-Ouest</option>
+                    <option value="YT">Yukon</option>
+                    <option value="NU">Nunavut</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Code postal
+                  </label>
+                  <input
+                    type="text"
+                    value={addressForm.postal_code}
+                    onChange={(e) => setAddressForm({...addressForm, postal_code: e.target.value.toUpperCase()})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                    placeholder="H1A 1A1"
+                    pattern="[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pays
+                  </label>
+                  <select
+                    value={addressForm.country}
+                    onChange={(e) => setAddressForm({...addressForm, country: e.target.value})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                  >
+                    <option value="Canada">Canada</option>
+                    <option value="États-Unis">États-Unis</option>
+                    <option value="Mexique">Mexique</option>
+                  </select>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={addressForm.is_default}
+                      onChange={(e) => setAddressForm({...addressForm, is_default: e.target.checked})}
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      ⭐ Définir comme adresse par défaut
+                    </span>
+                  </label>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 justify-end pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddressFormModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  {editingAddress ? '💾 Mettre à jour' : '✨ Créer'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </dialog>
+      )}
     </div>
   );
 }
