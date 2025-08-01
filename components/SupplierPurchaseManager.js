@@ -796,13 +796,18 @@ export default function SupplierPurchaseManager() {
                         ))}
                       </select>
                       <button
-                        type="button"
-                        onClick={() => setShowAddressModal(true)}
-                        className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                        title="Ajouter une adresse"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </button>
+  type="button"
+  onClick={() => {
+    console.log('🔘 Clic bouton + adresse');
+    console.log('showAddressModal avant:', showAddressModal);
+    setShowAddressModal(true);
+    console.log('showAddressModal après:', true);
+  }}
+  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+  title="Ajouter une adresse"
+>
+  <Plus className="w-5 h-5" />
+</button>
                     </div>
                   </div>
 
