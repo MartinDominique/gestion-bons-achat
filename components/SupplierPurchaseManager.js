@@ -1699,25 +1699,33 @@ useEffect(() => {
 )}
     </div>
   );
-return (
-  <div className="space-y-6 p-4">
-    {/* ... tout votre contenu existant ... */}
-    
-    {/* 🧪 TEST SIMPLE - AJOUTEZ CECI JUSTE AVANT LA FIN */}
-    {showAddressModal && (
-      <div style={{
-        position: 'fixed',
-        top: '50px',
-        left: '50px',
-        background: 'red',
-        color: 'white',
-        padding: '20px',
-        zIndex: 9999
-      }}>
-        🔴 MODAL TEST VISIBLE - State: {showAddressModal.toString()}
-      </div>
-    )}
-    
-  </div>
-);
+{/* 🧪 MODAL TEST - TEMPORAIRE */}
+      {showAddressModal && (
+        <div 
+          className="fixed inset-0 bg-red-500 bg-opacity-90 flex items-center justify-center z-[9999] p-4"
+          style={{ zIndex: 9999 }}
+        >
+          {console.log('🖼️ MODAL ADRESSE RENDU - ROUGE VISIBLE')}
+          <div className="bg-white rounded-lg w-full max-w-2xl border-4 border-black">
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-purple-600 mb-4">
+                🧪 TEST - MODAL VISIBLE ?
+              </h3>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  console.log('❌ Fermeture forcée modal');
+                  setShowAddressModal(false);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg"
+              >
+                ❌ FERMER TEST
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
