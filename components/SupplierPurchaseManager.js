@@ -18,7 +18,7 @@ export default function SupplierPurchaseManager() {
   // États UI
   const [showForm, setShowForm] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
-  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showAddressFormModal, setShowAddressFormModal] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState(null);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [editingAddress, setEditingAddress] = useState(null);
