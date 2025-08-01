@@ -1703,7 +1703,7 @@ useEffect(() => {
 {/* 🧪 MODAL TEST - TEMPORAIRE */}
       {showAddressModal && (
         <div 
-          className="fixed inset-0 bg-red-500 bg-opacity-90 flex items-center justify-center z-[9999] p-4"
+          className="fixed inset-0 bg-red-500 bg-opacity-90 flex items-center justify-center p-4"
           style={{ zIndex: 9999 }}
         >
           <div className="bg-white rounded-lg w-full max-w-2xl border-4 border-black">
