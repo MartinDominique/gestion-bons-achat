@@ -1891,7 +1891,16 @@ export default function SupplierPurchaseManager() {
                   pattern="[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d"
                 />
               </div>
-              
+                    
+              <button
+  type="button"
+  onClick={() => setShowAddressModal(true)}
+  className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex-shrink-0"
+  title="Gérer les adresses"
+>
+  <MapPin className="w-5 h-5" />
+</button>
+    
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Pays
