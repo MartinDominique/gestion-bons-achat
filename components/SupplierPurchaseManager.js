@@ -1706,7 +1706,6 @@ useEffect(() => {
           className="fixed inset-0 bg-red-500 bg-opacity-90 flex items-center justify-center z-[9999] p-4"
           style={{ zIndex: 9999 }}
         >
-          {console.log('🖼️ MODAL ADRESSE RENDU - ROUGE VISIBLE')}
           <div className="bg-white rounded-lg w-full max-w-2xl border-4 border-black">
             <div className="p-6">
               <h3 className="text-xl font-bold text-purple-600 mb-4">
