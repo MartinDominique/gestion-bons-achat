@@ -31,7 +31,25 @@ export default function PurchaseOrderManager() {
   additionalNotes: '',  // ← Nouveau champ pour notes complémentaires
   files: []
 });
-
+  
+// 1️⃣ D'ABORD, définissez fetchSuppliers ICI (avant le useEffect)
+const fetchSuppliers = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('id, company_name')
+      .order('company_name', { ascending: true });
+    
+    if (error) {
+      console.error('Erreur chargement fournisseurs:', error);
+    } else {
+      setSuppliers(data || []);
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des fournisseurs:', error);
+  }
+};
+  
   useEffect(() => {
     fetchPurchaseOrders();
     fetchClients();
