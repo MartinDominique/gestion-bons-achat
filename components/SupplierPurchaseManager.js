@@ -318,40 +318,60 @@ useEffect(() => {
     }
   };
 
-  // Gestion des adresses
-  const handleAddressSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingAddress) {
-        const { error } = await supabase
-          .from('shipping_addresses')
-          .update(addressForm)
-          .eq('id', editingAddress.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('shipping_addresses')
-          .insert([addressForm]);
-        if (error) throw error;
-      }
+  // Remplacez la fonction handleAddressSubmit existante par cette version améliorée :
 
-      await fetchShippingAddresses();
-      setShowAddressModal(false);
-      setEditingAddress(null);
-      setAddressForm({
-        name: '',
-        address: '',
-        city: '',
-        province: 'QC',
-        postal_code: '',
-        country: 'Canada',
-        is_default: false
-      });
-    } catch (error) {
-      console.error('Erreur sauvegarde adresse:', error);
-      alert('Erreur lors de la sauvegarde de l\'adresse');
+const handleAddressSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    // Si on définit cette adresse comme par défaut, enlever le statut par défaut des autres
+    if (addressForm.is_default) {
+      const { error: updateError } = await supabase
+        .from('shipping_addresses')
+        .update({ is_default: false })
+        .neq('id', editingAddress?.id || 0);
+      
+      if (updateError) {
+        console.error('Erreur mise à jour adresses par défaut:', updateError);
+      }
     }
-  };
+
+    if (editingAddress) {
+      const { error } = await supabase
+        .from('shipping_addresses')
+        .update(addressForm)
+        .eq('id', editingAddress.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('shipping_addresses')
+        .insert([addressForm]);
+      if (error) throw error;
+    }
+
+    await fetchShippingAddresses();
+    
+    // Fermer les modals et réinitialiser
+    setShowAddressModal(false);
+    document.getElementById('address-form-modal')?.close();
+    setEditingAddress(null);
+    setAddressForm({
+      name: '',
+      address: '',
+      city: '',
+      province: 'QC',
+      postal_code: '',
+      country: 'Canada',
+      is_default: false
+    });
+    
+    // Message de succès
+    alert(editingAddress ? '✅ Adresse mise à jour avec succès!' : '✅ Adresse créée avec succès!');
+    
+  } catch (error) {
+    console.error('Erreur sauvegarde adresse:', error);
+    alert('❌ Erreur lors de la sauvegarde de l\'adresse: ' + error.message);
+  }
+};
 
   // Gestion des produits
   const handleProductKeyDown = (e) => {
@@ -823,19 +843,30 @@ useEffect(() => {
                           </option>
                         ))}
                       </select>
-                      <button
+                          
+  // Remplacez le bouton d'ajout d'adresse par cette version :
+<button
   type="button"
-  onClick={() => {
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
     console.log('🔘 Clic bouton + adresse');
     console.log('showAddressModal avant:', showAddressModal);
+    
+    // S'assurer que le state est bien mis à jour
     setShowAddressModal(true);
-    console.log('showAddressModal après:', true);
+    
+    // Déboguer après un petit délai
+    setTimeout(() => {
+      console.log('showAddressModal après timeout:', showAddressModal);
+    }, 100);
   }}
-  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex-shrink-0"
   title="Ajouter une adresse"
 >
   <Plus className="w-5 h-5" />
 </button>
+    
                     </div>
                   </div>
 
@@ -1670,29 +1701,248 @@ useEffect(() => {
         </div>
       </dialog>
 
-      {/* Modal Gestion Adresses - TEST */}
-      {showAddressModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl">
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-purple-600 mb-4">
-                🧪 TEST MODAL ADRESSE
-              </h3>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  console.log('❌ Fermeture modal');
-                  setShowAddressModal(false);
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg"
-              >
-                ❌ FERMER
-              </button>
-            </div>
-          </div>
+      // Remplacez la section "Modal Gestion Adresses - TEST" par ce code complet :
+
+{/* Modal Gestion Adresses */}
+{showAddressModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="flex justify-between items-center p-6 border-b bg-purple-50">
+        <h2 className="text-2xl font-bold text-purple-600">📍 Gestion des Adresses de Livraison</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setEditingAddress(null);
+              setAddressForm({
+                name: '',
+                address: '',
+                city: '',
+                province: 'QC',
+                postal_code: '',
+                country: 'Canada',
+                is_default: false
+              });
+              document.getElementById('address-form-modal').showModal();
+            }}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            ➕ Nouvelle Adresse
+          </button>
+          <button
+            onClick={() => setShowAddressModal(false)}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            ❌ Fermer
+          </button>
         </div>
-      )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6">
+        {shippingAddresses.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <MapPin className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <p>Aucune adresse de livraison enregistrée</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {shippingAddresses.map((address) => (
+              <div key={address.id} className="border rounded-lg p-4 hover:bg-gray-50 relative">
+                {address.is_default && (
+                  <div className="absolute top-2 right-2">
+                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                      ⭐ Par défaut
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <div className="flex-1 pr-4">
+                    <h3 className="font-semibold text-lg">{address.name}</h3>
+                    <div className="text-sm text-gray-600 mt-2 space-y-1">
+                      <p>📍 {address.address}</p>
+                      <p>🏙️ {address.city}, {address.province} {address.postal_code}</p>
+                      <p>🌍 {address.country}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 ml-4">
+                    <button
+                      onClick={() => {
+                        setEditingAddress(address);
+                        setAddressForm(address);
+                        document.getElementById('address-form-modal').showModal();
+                      }}
+                      className="px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                    >
+                      ✏️ Modifier
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cette adresse ?')) return;
+                        
+                        try {
+                          const { error } = await supabase
+                            .from('shipping_addresses')
+                            .delete()
+                            .eq('id', address.id);
+                          
+                          if (error) throw error;
+                          await fetchShippingAddresses();
+                        } catch (error) {
+                          console.error('Erreur suppression adresse:', error);
+                          alert('Erreur lors de la suppression');
+                        }
+                      }}
+                      className="px-3 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                    >
+                      🗑️ Supprimer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
-  );
-}
+  </div>
+)}
+
+{/* Modal Formulaire Adresse */}
+<dialog id="address-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
+  <div className="bg-white rounded-lg w-full max-w-2xl p-6">
+    <h3 className="text-xl font-bold text-purple-600 mb-4">
+      {editingAddress ? '✏️ Modifier Adresse' : '➕ Nouvelle Adresse'}
+    </h3>
+    
+    <form onSubmit={handleAddressSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Nom de l'adresse *
+          </label>
+          <input
+            type="text"
+            value={addressForm.name}
+            onChange={(e) => setAddressForm({...addressForm, name: e.target.value})}
+            className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            placeholder="Ex: Bureau principal, Entrepôt..."
+            required
+          />
+        </div>
+        
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Adresse complète *
+          </label>
+          <input
+            type="text"
+            value={addressForm.address}
+            onChange={(e) => setAddressForm({...addressForm, address: e.target.value})}
+            className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            placeholder="123 Rue Principale, App. 456"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Ville *
+          </label>
+          <input
+            type="text"
+            value={addressForm.city}
+            onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
+            className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Province *
+          </label>
+          <select
+            value={addressForm.province}
+            onChange={(e) => setAddressForm({...addressForm, province: e.target.value})}
+            className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            required
+          >
+            <option value="QC">Québec</option>
+            <option value="ON">Ontario</option>
+            <option value="BC">Colombie-Britannique</option>
+            <option value="AB">Alberta</option>
+            <option value="MB">Manitoba</option>
+            <option value="SK">Saskatchewan</option>
+            <option value="NS">Nouvelle-Écosse</option>
+            <option value="NB">Nouveau-Brunswick</option>
+            <option value="NL">Terre-Neuve-et-Labrador</option>
+            <option value="PE">Île-du-Prince-Édouard</option>
+            <option value="NT">Territoires du Nord-Ouest</option>
+            <option value="YT">Yukon</option>
+            <option value="NU">Nunavut</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Code postal
+          </label>
+          <input
+            type="text"
+            value={addressForm.postal_code}
+            onChange={(e) => setAddressForm({...addressForm, postal_code: e.target.value.toUpperCase()})}
+            className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            placeholder="H1A 1A1"
+            pattern="[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Pays
+          </label>
+          <select
+            value={addressForm.country}
+            onChange={(e) => setAddressForm({...addressForm, country: e.target.value})}
+            className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+          >
+            <option value="Canada">Canada</option>
+            <option value="États-Unis">États-Unis</option>
+            <option value="Mexique">Mexique</option>
+          </select>
+        </div>
+        
+        <div className="md:col-span-2">
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={addressForm.is_default}
+              onChange={(e) => setAddressForm({...addressForm, is_default: e.target.checked})}
+              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              ⭐ Définir comme adresse par défaut
+            </span>
+          </label>
+        </div>
+      </div>
+      
+      <div className="flex gap-3 justify-end pt-4">
+        <button
+          type="button"
+          onClick={() => document.getElementById('address-form-modal').close()}
+          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          Annuler
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+        >
+          {editingAddress ? '💾 Mettre à jour' : '✨ Créer'}
+        </button>
+      </div>
+    </form>
+  </div>
+</dialog>
