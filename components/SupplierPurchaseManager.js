@@ -1720,7 +1720,6 @@ useEffect(() => {
                 ❌ FERMER
               </button>
             </div>
-          </div>
         </div>
       )}
     </div>
