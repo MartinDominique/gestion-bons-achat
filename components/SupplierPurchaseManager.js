@@ -1699,4 +1699,25 @@ useEffect(() => {
 )}
     </div>
   );
+return (
+  <div className="space-y-6 p-4">
+    {/* ... tout votre contenu existant ... */}
+    
+    {/* 🧪 TEST SIMPLE - AJOUTEZ CECI JUSTE AVANT LA FIN */}
+    {showAddressModal && (
+      <div style={{
+        position: 'fixed',
+        top: '50px',
+        left: '50px',
+        background: 'red',
+        color: 'white',
+        padding: '20px',
+        zIndex: 9999
+      }}>
+        🔴 MODAL TEST VISIBLE - State: {showAddressModal.toString()}
+      </div>
+    )}
+    
+  </div>
+);
 }
