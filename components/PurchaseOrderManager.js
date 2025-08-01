@@ -50,29 +50,7 @@ const fetchSuppliers = async () => {
   }
 };
   
-  useEffect(() => {
-    fetchPurchaseOrders();
-    fetchClients();
-    fetchSubmissions();
-    fetchSuppliers();
-    const fetchSuppliers = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('suppliers')
-      .select('id, company_name')
-      .order('company_name', { ascending: true });
-
-    if (error) {
-      console.error('Erreur chargement fournisseurs:', error);
-    } else {
-      setSuppliers(data || []);
-    }
-  } catch (error) {
-    console.error('Erreur lors du chargement des fournisseurs:', error);
-  }
-};
-
-const fetchSupplierDocuments = async (purchaseOrderId) => {
+  const fetchSupplierDocuments = async (purchaseOrderId) => {
   if (!purchaseOrderId) return;
   
   try {
@@ -91,8 +69,8 @@ const fetchSupplierDocuments = async (purchaseOrderId) => {
     console.error('Erreur lors du chargement des documents fournisseurs:', error);
   }
 };
-
-const handleSupplierDocumentUpload = async (e, supplierId) => {
+  
+  const handleSupplierDocumentUpload = async (e, supplierId) => {
   const files = Array.from(e.target.files);
   if (files.length === 0 || !editingPO) return;
 
@@ -156,8 +134,8 @@ const handleSupplierDocumentUpload = async (e, supplierId) => {
   setUploadingSupplierDocs(false);
   e.target.value = '';
 };
-
-const removeSupplierDocument = async (docId, filePath) => {
+  
+  const removeSupplierDocument = async (docId, filePath) => {
   if (!confirm('Êtes-vous sûr de vouloir supprimer ce document fournisseur ?')) return;
 
   try {
@@ -188,6 +166,23 @@ const removeSupplierDocument = async (docId, filePath) => {
     alert('Erreur lors de la suppression');
   }
 };
+  
+  useEffect(() => {
+  fetchPurchaseOrders();
+  fetchClients();
+  fetchSubmissions();
+  fetchSuppliers(); // ← Appelle la fonction définie plus haut
+    
+  const handleBeforeUnload = () => {
+    supabase.auth.signOut();
+  };
+  
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+  };
+}, []);
     
     const handleBeforeUnload = () => {
       supabase.auth.signOut();
