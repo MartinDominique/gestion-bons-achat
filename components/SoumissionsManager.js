@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, Plus, Upload, X, ChevronDown, MessageSquare } from 'lucide-react';
+import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, Plus, Upload, X, ChevronDown, MessageSquare, DollarSign, Calculator } from 'lucide-react';
 
 export default function SoumissionsManager() {
   const [soumissions, setSoumissions] = useState([]);
@@ -33,6 +33,13 @@ export default function SoumissionsManager() {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [editingCommentItem, setEditingCommentItem] = useState(null);
   const [tempComment, setTempComment] = useState('');
+
+  // 🆕 NOUVEAUX ÉTATS POUR LE CALCULATEUR USD
+  const [showUsdCalculator, setShowUsdCalculator] = useState(false);
+  const [usdAmount, setUsdAmount] = useState('');
+  const [usdToCadRate, setUsdToCadRate] = useState(1.35);
+  const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
+  const [exchangeRateError, setExchangeRateError] = useState('');
 
   // Debounce pour la recherche produits
   useEffect(() => {
@@ -109,7 +116,54 @@ export default function SoumissionsManager() {
     fetchSoumissions();
     fetchProducts();
     fetchClients();
+    fetchExchangeRate(); // 🆕 Récupérer le taux de change au démarrage
   }, []);
+
+  // 🆕 FONCTION POUR RÉCUPÉRER LE TAUX DE CHANGE USD/CAD
+  const fetchExchangeRate = async () => {
+    setLoadingExchangeRate(true);
+    setExchangeRateError('');
+    
+    try {
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      
+      if (data && data.rates && data.rates.CAD) {
+        setUsdToCadRate(data.rates.CAD);
+      } else {
+        throw new Error('Taux CAD non trouvé');
+      }
+    } catch (error) {
+      console.error('Erreur récupération taux de change:', error);
+      setExchangeRateError('Erreur de connexion - Taux par défaut utilisé');
+      setUsdToCadRate(1.35); // Taux par défaut
+    } finally {
+      setLoadingExchangeRate(false);
+    }
+  };
+
+  // 🆕 FONCTIONS POUR LES BOUTONS DE PROFIT
+  const applyProfitMargin = (percentage) => {
+    const costPrice = parseFloat(quickProductForm.cost_price) || 0;
+    if (costPrice > 0) {
+      const sellingPrice = costPrice * (1 + percentage / 100);
+      setQuickProductForm(prev => ({
+        ...prev,
+        selling_price: sellingPrice.toFixed(2)
+      }));
+    }
+  };
+
+  // 🆕 FONCTION POUR UTILISER LE MONTANT USD CONVERTI
+  const useConvertedAmount = () => {
+    const convertedAmount = parseFloat(usdAmount) * usdToCadRate;
+    setQuickProductForm(prev => ({
+      ...prev,
+      cost_price: convertedAmount.toFixed(2)
+    }));
+    setShowUsdCalculator(false);
+    setUsdAmount('');
+  };
 
   // Fonction pour générer le numéro automatique
   const generateSubmissionNumber = async () => {
@@ -933,7 +987,7 @@ export default function SoumissionsManager() {
                   </div>
                 )}
 
-                {/* 📱 Modal ajout rapide produit MOBILE-FRIENDLY */}
+                {/* 📱 Modal ajout rapide produit MOBILE-FRIENDLY - MODIFIÉ avec calculateur USD et boutons profit */}
                 {showQuickAddProduct && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -978,21 +1032,110 @@ export default function SoumissionsManager() {
                               required
                             />
                           </div>
+                          
+                          {/* 🆕 PRIX COÛT AVEC CALCULATEUR USD */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Prix Coût *</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={quickProductForm.cost_price}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, cost_price: e.target.value})}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
-                              placeholder="0.00"
-                              required
-                            />
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Prix Coût CAD *</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={quickProductForm.cost_price}
+                                onChange={(e) => setQuickProductForm({...quickProductForm, cost_price: e.target.value})}
+                                className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                                placeholder="0.00"
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowUsdCalculator(!showUsdCalculator);
+                                  if (!showUsdCalculator) {
+                                    fetchExchangeRate();
+                                  }
+                                }}
+                                className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium flex items-center"
+                                title="Convertir USD → CAD"
+                              >
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                USD
+                              </button>
+                            </div>
+
+                            {/* 🆕 MINI-CALCULATEUR USD INLINE */}
+                            {showUsdCalculator && (
+                              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="text-sm font-medium text-blue-800 flex items-center">
+                                    <Calculator className="w-4 h-4 mr-1" />
+                                    Convertir USD → CAD
+                                  </h4>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowUsdCalculator(false)}
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-blue-700">Taux:</span>
+                                    <span className="font-medium">1 USD = {usdToCadRate.toFixed(4)} CAD</span>
+                                    {loadingExchangeRate && (
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={fetchExchangeRate}
+                                      className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded hover:bg-blue-300"
+                                      disabled={loadingExchangeRate}
+                                    >
+                                      🔄 Actualiser
+                                    </button>
+                                  </div>
+                                  
+                                  {exchangeRateError && (
+                                    <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                                      {exchangeRateError}
+                                    </div>
+                                  )}
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={usdAmount}
+                                      onChange={(e) => setUsdAmount(e.target.value)}
+                                      placeholder="Montant USD"
+                                      className="flex-1 rounded border-blue-300 text-sm p-2"
+                                    />
+                                    <span className="text-sm text-blue-700">USD</span>
+                                    <span className="text-sm">=</span>
+                                    <span className="font-medium text-green-700">
+                                      {usdAmount ? (parseFloat(usdAmount) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                                    </span>
+                                  </div>
+                                  
+                                  <button
+                                    type="button"
+                                    onClick={useConvertedAmount}
+                                    disabled={!usdAmount || parseFloat(usdAmount) <= 0}
+                                    className="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                  >
+                                    ✅ Utiliser {usdAmount ? (parseFloat(usdAmount) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
+
+                          {/* 🆕 PRIX VENTE AVEC BOUTONS DE PROFIT */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vente *</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vente CAD *</label>
                             <input
                               type="number"
                               step="0.01"
@@ -1003,6 +1146,36 @@ export default function SoumissionsManager() {
                               placeholder="0.00"
                               required
                             />
+                            
+                            {/* 🆕 BOUTONS DE PROFIT */}
+                            {quickProductForm.cost_price && parseFloat(quickProductForm.cost_price) > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-600 mb-2">Profit automatique:</p>
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => applyProfitMargin(15)}
+                                    className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                                  >
+                                    +15%
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => applyProfitMargin(20)}
+                                    className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
+                                  >
+                                    +20%
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => applyProfitMargin(25)}
+                                    className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
+                                  >
+                                    +25%
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                         
@@ -1028,6 +1201,8 @@ export default function SoumissionsManager() {
                                 unit: 'Un',
                                 product_group: 'Divers'
                               });
+                              setShowUsdCalculator(false);
+                              setUsdAmount('');
                             }}
                             className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                           >
@@ -1059,6 +1234,8 @@ export default function SoumissionsManager() {
                                   unit: 'Un',
                                   product_group: 'Divers'
                                 });
+                                setShowUsdCalculator(false);
+                                setUsdAmount('');
                               }
                             }}
                             className="w-full sm:flex-1 px-4 py-2 border border-transparent rounded-lg text-white bg-orange-600 hover:bg-orange-700"
@@ -1339,7 +1516,7 @@ export default function SoumissionsManager() {
                         </div>
                       </div>
                       <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded">
-                        💡 Utilisez ↑↓ pour naviguer, quantités entières uniquement, prix modifiables, 💬 pour commentaires
+                        💡 Utilisez ↑↓ pour naviguer, quantités entières, prix modifiables, 💬 commentaires, 💱 USD→CAD, +15/20/25% profit
                       </div>
                     </div>
                   </div>
@@ -1402,7 +1579,7 @@ export default function SoumissionsManager() {
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold">📝 Gestion des Soumissions</h2>
             <p className="text-white/90 text-sm sm:text-base mt-1">
-              Créez et gérez vos soumissions client avec commentaires imprimables
+              Créez et gérez vos soumissions avec calculateur USD→CAD et marges automatiques
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -1484,7 +1661,7 @@ export default function SoumissionsManager() {
       {/* 📱 Info système - MODIFIÉE */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <p className="text-sm text-gray-600">
-          📊 {soumissions.length} soumissions • {clients.length} clients • Recherche dynamique sur 6718 produits • 💬 Commentaires imprimables
+          📊 {soumissions.length} soumissions • {clients.length} clients • 6718 produits • 💬 Commentaires • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto
         </p>
       </div>
 
