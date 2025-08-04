@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, Plus, Upload, X, ChevronDown, MessageSquare, DollarSign, Calculator } from 'lucide-react';
+import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, Plus, Upload, X, ChevronDown, MessageSquare, DollarSign, Calculator, Printer, Users } from 'lucide-react';
 
 export default function SoumissionsManager() {
   const [soumissions, setSoumissions] = useState([]);
@@ -29,17 +29,22 @@ export default function SoumissionsManager() {
   const [showQuantityInput, setShowQuantityInput] = useState(false);
   const [selectedProductForQuantity, setSelectedProductForQuantity] = useState(null);
 
-  // 🆕 NOUVEAUX ÉTATS POUR LES COMMENTAIRES
+  // NOUVEAUX ÉTATS POUR LES COMMENTAIRES
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [editingCommentItem, setEditingCommentItem] = useState(null);
   const [tempComment, setTempComment] = useState('');
 
-  // 🆕 NOUVEAUX ÉTATS POUR LE CALCULATEUR USD
+  // NOUVEAUX ÉTATS POUR LE CALCULATEUR USD
   const [showUsdCalculator, setShowUsdCalculator] = useState(false);
   const [usdAmount, setUsdAmount] = useState('');
   const [usdToCadRate, setUsdToCadRate] = useState(1.35);
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
   const [exchangeRateError, setExchangeRateError] = useState('');
+
+  // 🆕 NOUVEAUX ÉTATS POUR LES AMÉLIORATIONS
+  const [uploadingInventory, setUploadingInventory] = useState(false);
+  const [uploadResults, setUploadResults] = useState(null);
+  const [printMode, setPrintMode] = useState('complete'); // 'complete' ou 'client'
 
   // Debounce pour la recherche produits
   useEffect(() => {
@@ -116,10 +121,56 @@ export default function SoumissionsManager() {
     fetchSoumissions();
     fetchProducts();
     fetchClients();
-    fetchExchangeRate(); // 🆕 Récupérer le taux de change au démarrage
+    fetchExchangeRate();
   }, []);
 
-  // 🆕 FONCTION POUR RÉCUPÉRER LE TAUX DE CHANGE USD/CAD
+  // 🆕 FONCTION POUR TÉLÉCHARGER L'INVENTAIRE
+  const handleInventoryUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setUploadingInventory(true);
+    setUploadResults(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('inventory', file);
+
+      const response = await fetch('/api/upload-inventory', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setUploadResults({
+          success: true,
+          message: result.message,
+          details: result.details
+        });
+        // Actualiser les produits après upload
+        await fetchProducts();
+      } else {
+        setUploadResults({
+          success: false,
+          message: result.error || 'Erreur lors du téléchargement'
+        });
+      }
+    } catch (error) {
+      console.error('Erreur upload inventaire:', error);
+      setUploadResults({
+        success: false,
+        message: 'Erreur de connexion lors du téléchargement'
+      });
+    } finally {
+      setUploadingInventory(false);
+      // Réinitialiser l'input file
+      event.target.value = '';
+    }
+  };
+
+  // FONCTION POUR RÉCUPÉRER LE TAUX DE CHANGE USD/CAD
   const fetchExchangeRate = async () => {
     setLoadingExchangeRate(true);
     setExchangeRateError('');
@@ -142,7 +193,7 @@ export default function SoumissionsManager() {
     }
   };
 
-  // 🆕 FONCTIONS POUR LES BOUTONS DE PROFIT
+  // FONCTIONS POUR LES BOUTONS DE PROFIT
   const applyProfitMargin = (percentage) => {
     const costPrice = parseFloat(quickProductForm.cost_price) || 0;
     if (costPrice > 0) {
@@ -154,7 +205,7 @@ export default function SoumissionsManager() {
     }
   };
 
-  // 🆕 FONCTION POUR UTILISER LE MONTANT USD CONVERTI
+  // FONCTION POUR UTILISER LE MONTANT USD CONVERTI
   const useConvertedAmount = () => {
     const convertedAmount = parseFloat(usdAmount) * usdToCadRate;
     setQuickProductForm(prev => ({
@@ -311,7 +362,6 @@ export default function SoumissionsManager() {
   const handleSendReport = async () => {
     setSendingReport(true);
     try {
-      // 🔧 Utilisation de GET pour déclencher le rapport automatique
       const response = await fetch('/api/send-weekly-report', {
         method: 'GET'
       });
@@ -380,11 +430,12 @@ export default function SoumissionsManager() {
     }, 100);
   };
 
+  // 🆕 MODIFIÉ - Quantités décimales autorisées
   const handleQuantityKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (selectedProductForQuantity && tempQuantity && parseInt(tempQuantity) > 0) {
-        addItemToSubmission(selectedProductForQuantity, parseInt(tempQuantity));
+      if (selectedProductForQuantity && tempQuantity && parseFloat(tempQuantity) > 0) {
+        addItemToSubmission(selectedProductForQuantity, parseFloat(tempQuantity));
         setShowQuantityInput(false);
         setSelectedProductForQuantity(null);
         setTempQuantity('1');
@@ -401,7 +452,7 @@ export default function SoumissionsManager() {
     }
   };
 
-  // 🆕 NOUVELLES FONCTIONS POUR LES COMMENTAIRES
+  // NOUVELLES FONCTIONS POUR LES COMMENTAIRES
   const openCommentModal = (item) => {
     setEditingCommentItem(item);
     setTempComment(item.comment || '');
@@ -427,33 +478,34 @@ export default function SoumissionsManager() {
     closeCommentModal();
   };
 
-  // Gestion des items de produits avec quantité entière - MODIFIÉ pour inclure les commentaires
+  // 🆕 MODIFIÉ - Quantités décimales (utilise parseFloat au lieu de parseInt)
   const addItemToSubmission = (product, quantity = 1) => {
-    const intQuantity = parseInt(quantity);
+    const floatQuantity = parseFloat(quantity);
     const existingItem = selectedItems.find(item => item.product_id === product.product_id);
     
     if (existingItem) {
       setSelectedItems(selectedItems.map(item => 
         item.product_id === product.product_id 
-          ? { ...item, quantity: item.quantity + intQuantity }
+          ? { ...item, quantity: item.quantity + floatQuantity }
           : item
       ));
     } else {
       setSelectedItems([...selectedItems, {
         ...product,
-        quantity: intQuantity,
-        comment: '' // 🆕 Ajout du champ commentaire
+        quantity: floatQuantity,
+        comment: ''
       }]);
     }
   };
 
+  // 🆕 MODIFIÉ - Quantités décimales
   const updateItemQuantity = (productId, quantity) => {
-    const intQuantity = parseInt(quantity);
-    if (intQuantity <= 0 || isNaN(intQuantity)) {
+    const floatQuantity = parseFloat(quantity);
+    if (floatQuantity <= 0 || isNaN(floatQuantity)) {
       setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
     } else {
       setSelectedItems(selectedItems.map(item =>
-        item.product_id === productId ? { ...item, quantity: intQuantity } : item
+        item.product_id === productId ? { ...item, quantity: floatQuantity } : item
       ));
     }
   };
@@ -515,8 +567,15 @@ export default function SoumissionsManager() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  // 🆕 FONCTIONS D'IMPRESSION COMPLÈTE ET CLIENT
+  const handlePrintComplete = () => {
+    setPrintMode('complete');
+    setTimeout(() => window.print(), 100);
+  };
+
+  const handlePrintClient = () => {
+    setPrintMode('client');
+    setTimeout(() => window.print(), 100);
   };
 
   const formatCurrency = (amount) => {
@@ -549,7 +608,7 @@ export default function SoumissionsManager() {
   if (showForm) {
     return (
       <>
-        {/* 🆕 STYLES CSS POUR L'IMPRESSION OPTIMISÉE */}
+        {/* 🆕 STYLES CSS POUR L'IMPRESSION OPTIMISÉE AVEC NOUVEAU LAYOUT */}
         <style jsx>{`
           .print-area {
             display: none;
@@ -579,11 +638,57 @@ export default function SoumissionsManager() {
               display: none !important;
             }
             
+            /* 🆕 NOUVEAU LAYOUT AVEC LOGO ET SECTIONS */
             .print-header {
-              text-align: center;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
               margin-bottom: 30px;
               border-bottom: 2px solid #333;
               padding-bottom: 20px;
+            }
+            
+            .company-section {
+              display: flex;
+              align-items: flex-start;
+              gap: 20px;
+            }
+            
+            .logo-section {
+              width: 120px;
+              height: 80px;
+              border: 2px solid #333;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: bold;
+              font-size: 14px;
+              text-align: center;
+            }
+            
+            .company-info {
+              font-size: 11px;
+              line-height: 1.4;
+            }
+            
+            .submission-info {
+              text-align: left;
+              font-size: 12px;
+              line-height: 1.4;
+            }
+            
+            .client-section {
+              text-align: center;
+              margin: 20px 0;
+              padding: 15px;
+              border: 1px solid #333;
+              background-color: #f8f8f8;
+            }
+            
+            .client-section h3 {
+              margin: 0 0 10px 0;
+              font-size: 14px;
+              font-weight: bold;
             }
             
             .print-table {
@@ -616,18 +721,54 @@ export default function SoumissionsManager() {
               color: #666;
               font-size: 10px;
             }
+            
+            /* 🆕 MASQUER LES COÛTS EN MODE CLIENT */
+            ${printMode === 'client' ? `
+              .cost-column {
+                display: none !important;
+              }
+              .cost-total {
+                display: none !important;
+              }
+              .margin-info {
+                display: none !important;
+              }
+            ` : ''}
           }
         `}</style>
 
         <div className="max-w-6xl mx-auto p-4">
-          {/* 🆕 ZONE D'IMPRESSION OPTIMISÉE */}
+          {/* 🆕 ZONE D'IMPRESSION OPTIMISÉE AVEC NOUVEAU LAYOUT */}
           <div className="print-area">
             <div className="print-header">
-              <h1 style={{ fontSize: '24px', marginBottom: '10px' }}>SOUMISSION</h1>
-              <p>N°: {submissionForm.submission_number}</p>
-              <p>Date: {new Date().toLocaleDateString('fr-CA')}</p>
-              <p>Client: {submissionForm.client_name}</p>
-              <p>Description: {submissionForm.description}</p>
+              {/* Section Entreprise avec Logo */}
+              <div className="company-section">
+                <div className="logo-section">
+                  VOTRE LOGO
+                </div>
+                <div className="company-info">
+                  <strong>VOTRE ENTREPRISE INC.</strong><br/>
+                  123 Rue Principale<br/>
+                  Saint-Georges, QC  G5Y 1A1<br/>
+                  Tél: (418) 123-4567<br/>
+                  Email: info@votreentreprise.com<br/>
+                  www.votreentreprise.com
+                </div>
+              </div>
+
+              {/* Section Soumission */}
+              <div className="submission-info">
+                <h2 style={{ fontSize: '18px', margin: '0 0 10px 0' }}>SOUMISSION</h2>
+                <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+                <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+              </div>
+            </div>
+
+            {/* Section Client Centrée */}
+            <div className="client-section">
+              <h3>INFORMATION CLIENT</h3>
+              <p><strong>{submissionForm.client_name}</strong></p>
+              <p>Projet: {submissionForm.description}</p>
             </div>
 
             {selectedItems.length > 0 && (
@@ -635,13 +776,13 @@ export default function SoumissionsManager() {
                 <thead>
                   <tr>
                     <th style={{ width: '15%' }}>Code</th>
-                    <th style={{ width: '35%' }}>Description</th>
+                    <th style={{ width: printMode === 'client' ? '50%' : '35%' }}>Description</th>
                     <th style={{ width: '8%' }}>Qté</th>
                     <th style={{ width: '8%' }}>Unité</th>
-                    <th style={{ width: '10%' }}>Prix Unit.</th>
-                    <th style={{ width: '8%' }}>Prix Coût</th>
-                    <th style={{ width: '8%' }}>Total Vente</th>
-                    <th style={{ width: '8%' }}>Total Coût</th>
+                    <th style={{ width: '12%' }}>Prix Unit.</th>
+                    {printMode === 'complete' && <th className="cost-column" style={{ width: '8%' }}>Prix Coût</th>}
+                    <th style={{ width: '12%' }}>Total Vente</th>
+                    {printMode === 'complete' && <th className="cost-column" style={{ width: '8%' }}>Total Coût</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -659,9 +800,9 @@ export default function SoumissionsManager() {
                       <td style={{ textAlign: 'center' }}>{item.quantity}</td>
                       <td style={{ textAlign: 'center' }}>{item.unit}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>
+                      {printMode === 'complete' && <td className="cost-column" style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>}
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
+                      {printMode === 'complete' && <td className="cost-column" style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>}
                     </tr>
                   ))}
                 </tbody>
@@ -669,27 +810,31 @@ export default function SoumissionsManager() {
             )}
 
             <div className="print-totals">
-              <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
-                TOTAL VENTE: {formatCurrency(submissionForm.amount)}
+              <p style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px' }}>
+                <strong>TOTAL: {formatCurrency(submissionForm.amount)}</strong>
               </p>
-              <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
-                TOTAL COÛT: {formatCurrency(calculatedCostTotal)}
-              </p>
-              <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px', color: '#2563eb' }}>
-                MARGE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}
-                {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
-                  <span style={{ fontSize: '12px', marginLeft: '10px' }}>
-                    ({((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%)
-                  </span>
-                )}
-              </p>
+              {printMode === 'complete' && (
+                <>
+                  <p className="cost-total" style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
+                    TOTAL COÛT: {formatCurrency(calculatedCostTotal)}
+                  </p>
+                  <p className="margin-info" style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px', color: '#2563eb' }}>
+                    MARGE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}
+                    {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
+                      <span style={{ fontSize: '12px', marginLeft: '10px' }}>
+                        ({((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%)
+                      </span>
+                    )}
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
-          {/* 📱 FORMULAIRE SOUMISSION MOBILE-FRIENDLY */}
+          {/* FORMULAIRE SOUMISSION MOBILE-FRIENDLY */}
           <div className="bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden">
             
-            {/* 📱 En-tête du formulaire responsive */}
+            {/* En-tête du formulaire responsive */}
             <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-4 sm:p-6 no-print">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div className="flex items-center space-x-4">
@@ -708,13 +853,21 @@ export default function SoumissionsManager() {
                   )}
                 </div>
                 
-                {/* 📱 Boutons d'action responsive */}
+                {/* 🆕 BOUTONS D'ACTION AVEC IMPRESSION CLIENT */}
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <button
-                    onClick={handlePrint}
-                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
+                    onClick={handlePrintComplete}
+                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium flex items-center justify-center"
                   >
-                    🖨️ Imprimer
+                    <Printer className="w-4 h-4 mr-2" />
+                    Impression Complète
+                  </button>
+                  <button
+                    onClick={handlePrintClient}
+                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium flex items-center justify-center"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Impression Client
                   </button>
                   <button
                     type="button"
@@ -749,11 +902,11 @@ export default function SoumissionsManager() {
               </div>
             </div>
             
-            {/* 📱 Contenu du formulaire */}
+            {/* Contenu du formulaire */}
             <div className="p-4 sm:p-6 no-print">
               <form id="submission-form" onSubmit={handleSubmissionSubmit} className="space-y-6">
                 
-                {/* 📱 Client et Description - Stack sur mobile */}
+                {/* Client et Description - Stack sur mobile */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <label className="block text-sm font-semibold text-blue-800 mb-2">
@@ -789,7 +942,7 @@ export default function SoumissionsManager() {
                   </div>
                 </div>
 
-                {/* 📱 Statut pour édition */}
+                {/* Statut pour édition */}
                 {editingSubmission && (
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
@@ -807,7 +960,7 @@ export default function SoumissionsManager() {
                   </div>
                 )}
 
-                {/* 📱 Section recherche produits MOBILE-FRIENDLY */}
+                {/* Section recherche produits MOBILE-FRIENDLY */}
                 <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                   <h3 className="text-base sm:text-lg font-semibold text-indigo-800 mb-4">
                     🔍 Recherche Produits (6718 au total)
@@ -842,7 +995,7 @@ export default function SoumissionsManager() {
                     </button>
                   </div>
                   
-                  {/* 📱 Résultats recherche mobile-friendly */}
+                  {/* Résultats recherche mobile-friendly */}
                   {searchingProducts && (
                     <div className="flex items-center justify-center p-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mr-2"></div>
@@ -912,7 +1065,7 @@ export default function SoumissionsManager() {
                   )}
                 </div>
 
-                {/* 📱 Modal quantité MOBILE-FRIENDLY */}
+                {/* 🆕 MODAL QUANTITÉ MODIFIÉE POUR DÉCIMALES */}
                 {showQuantityInput && selectedProductForQuantity && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg w-full max-w-md">
@@ -923,17 +1076,17 @@ export default function SoumissionsManager() {
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Quantité ({selectedProductForQuantity.unit})
+                              Quantité ({selectedProductForQuantity.unit}) - Décimales acceptées
                             </label>
                             <input
                               id="quantity-input"
                               type="number"
-                              step="1"
-                              min="1"
+                              step="0.1"
+                              min="0.1"
                               value={tempQuantity}
                               onChange={(e) => {
                                 const value = e.target.value;
-                                if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
+                                if (value === '' || parseFloat(value) > 0) {
                                   setTempQuantity(value);
                                 }
                               }}
@@ -941,15 +1094,18 @@ export default function SoumissionsManager() {
                               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
                               autoFocus
                             />
+                            <p className="text-xs text-gray-500 mt-1">
+                              💡 Vous pouvez entrer des décimales (ex: 1.5, 2.25, etc.)
+                            </p>
                           </div>
                           <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                             <p>Prix vente: {formatCurrency(selectedProductForQuantity.selling_price)} / {selectedProductForQuantity.unit}</p>
                             <p>Prix coût: {formatCurrency(selectedProductForQuantity.cost_price)} / {selectedProductForQuantity.unit}</p>
                             <p className="font-medium text-green-700 mt-2">
-                              Total vente: {formatCurrency(selectedProductForQuantity.selling_price * parseInt(tempQuantity || 0))}
+                              Total vente: {formatCurrency(selectedProductForQuantity.selling_price * parseFloat(tempQuantity || 0))}
                             </p>
                             <p className="font-medium text-orange-700">
-                              Total coût: {formatCurrency(selectedProductForQuantity.cost_price * parseInt(tempQuantity || 0))}
+                              Total coût: {formatCurrency(selectedProductForQuantity.cost_price * parseFloat(tempQuantity || 0))}
                             </p>
                           </div>
                           <div className="flex flex-col sm:flex-row gap-3">
@@ -967,8 +1123,8 @@ export default function SoumissionsManager() {
                             <button
                               type="button"
                               onClick={() => {
-                                if (tempQuantity && parseInt(tempQuantity) > 0) {
-                                  addItemToSubmission(selectedProductForQuantity, parseInt(tempQuantity));
+                                if (tempQuantity && parseFloat(tempQuantity) > 0) {
+                                  addItemToSubmission(selectedProductForQuantity, parseFloat(tempQuantity));
                                   setShowQuantityInput(false);
                                   setSelectedProductForQuantity(null);
                                   setTempQuantity('1');
@@ -987,7 +1143,7 @@ export default function SoumissionsManager() {
                   </div>
                 )}
 
-                {/* 📱 Modal ajout rapide produit MOBILE-FRIENDLY - MODIFIÉ avec calculateur USD et boutons profit */}
+                {/* Modal ajout rapide produit MOBILE-FRIENDLY - MODIFIÉ avec calculateur USD et boutons profit */}
                 {showQuickAddProduct && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1007,33 +1163,8 @@ export default function SoumissionsManager() {
                               required
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Unité</label>
-                            <select
-                              value={quickProductForm.unit}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, unit: e.target.value})}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
-                            >
-                              <option value="Un">Un</option>
-                              <option value="M">m</option>
-                              <option value="PI">Pi</option>
-                              <option value="L">litre</option>
-                              <option value="H">heure</option>
-                            </select>
-                          </div>
-                          <div className="sm:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-                            <input
-                              type="text"
-                              value={quickProductForm.description}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value})}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
-                              placeholder="Description du produit..."
-                              required
-                            />
-                          </div>
                           
-                          {/* 🆕 PRIX COÛT AVEC CALCULATEUR USD */}
+                          {/* PRIX COÛT AVEC CALCULATEUR USD */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Prix Coût CAD *</label>
                             <div className="flex gap-2">
@@ -1063,7 +1194,7 @@ export default function SoumissionsManager() {
                               </button>
                             </div>
 
-                            {/* 🆕 MINI-CALCULATEUR USD INLINE */}
+                            {/* MINI-CALCULATEUR USD INLINE */}
                             {showUsdCalculator && (
                               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                 <div className="flex items-center justify-between mb-2">
@@ -1133,7 +1264,7 @@ export default function SoumissionsManager() {
                             )}
                           </div>
 
-                          {/* 🆕 PRIX VENTE AVEC BOUTONS DE PROFIT */}
+                          {/* PRIX VENTE AVEC BOUTONS DE PROFIT */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vente CAD *</label>
                             <input
@@ -1147,7 +1278,7 @@ export default function SoumissionsManager() {
                               required
                             />
                             
-                            {/* 🆕 BOUTONS DE PROFIT */}
+                            {/* BOUTONS DE PROFIT */}
                             {quickProductForm.cost_price && parseFloat(quickProductForm.cost_price) > 0 && (
                               <div className="mt-2">
                                 <p className="text-xs text-gray-600 mb-2">Profit automatique:</p>
@@ -1248,7 +1379,7 @@ export default function SoumissionsManager() {
                   </div>
                 )}
 
-                {/* 🆕 MODAL POUR LES COMMENTAIRES */}
+                {/* MODAL POUR LES COMMENTAIRES */}
                 {showCommentModal && editingCommentItem && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg w-full max-w-md">
@@ -1294,14 +1425,14 @@ export default function SoumissionsManager() {
                   </div>
                 )}
 
-                {/* 📱 Items sélectionnés MOBILE-FRIENDLY - MODIFIÉ pour inclure les commentaires */}
+                {/* 🆕 MODIFIÉ - Items sélectionnés avec quantités décimales */}
                 {selectedItems.length > 0 && (
                   <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                     <h3 className="text-base sm:text-lg font-semibold text-yellow-800 mb-4">
                       📦 Produits Sélectionnés ({selectedItems.length})
                     </h3>
                     
-                    {/* 📱 Tableau responsive - MODIFIÉ */}
+                    {/* Tableau responsive - MODIFIÉ pour quantités décimales */}
                     <div className="hidden sm:block max-h-80 overflow-y-auto border border-yellow-200 rounded-lg bg-white">
                       <table className="w-full text-sm">
                         <thead className="bg-yellow-100 sticky top-0">
@@ -1327,7 +1458,6 @@ export default function SoumissionsManager() {
                                   <div className="max-w-xs">
                                     <div className="font-medium text-gray-900 truncate">{item.description}</div>
                                     <div className="text-xs text-gray-500">{item.product_group} • {item.unit}</div>
-                                    {/* 🆕 Affichage du commentaire */}
                                     {item.comment && (
                                       <div className="text-xs text-blue-600 italic mt-1 truncate">
                                         💬 {item.comment}
@@ -1338,12 +1468,12 @@ export default function SoumissionsManager() {
                                 <td className="p-2 text-center">
                                   <input
                                     type="number"
-                                    step="1"
-                                    min="1"
+                                    step="0.1"
+                                    min="0.1"
                                     value={item.quantity}
                                     onChange={(e) => {
                                       const value = e.target.value;
-                                      if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
+                                      if (value === '' || parseFloat(value) > 0) {
                                         updateItemQuantity(item.product_id, value);
                                       }
                                     }}
@@ -1376,7 +1506,6 @@ export default function SoumissionsManager() {
                                 <td className="p-2 text-right font-medium text-orange-700">
                                   {formatCurrency(item.cost_price * item.quantity)}
                                 </td>
-                                {/* 🆕 Bouton commentaire */}
                                 <td className="p-2 text-center">
                                   <button
                                     type="button"
@@ -1408,7 +1537,7 @@ export default function SoumissionsManager() {
                       </table>
                     </div>
 
-                    {/* 📱 Cards pour mobile - MODIFIÉES */}
+                    {/* Cards pour mobile - MODIFIÉES pour quantités décimales */}
                     <div className="sm:hidden space-y-3">
                       {[...selectedItems].reverse().map((item) => (
                         <div key={item.product_id} className="bg-white p-3 rounded-lg border border-yellow-200">
@@ -1417,13 +1546,11 @@ export default function SoumissionsManager() {
                               <h4 className="font-medium text-gray-900 text-sm">{item.product_id}</h4>
                               <p className="text-xs text-gray-600">{item.description}</p>
                               <p className="text-xs text-gray-500">{item.product_group} • {item.unit}</p>
-                              {/* 🆕 Affichage du commentaire sur mobile */}
                               {item.comment && (
                                 <p className="text-xs text-blue-600 italic mt-1">💬 {item.comment}</p>
                               )}
                             </div>
                             <div className="flex gap-1 ml-2">
-                              {/* 🆕 Bouton commentaire mobile */}
                               <button
                                 type="button"
                                 onClick={() => openCommentModal(item)}
@@ -1449,15 +1576,15 @@ export default function SoumissionsManager() {
                           
                           <div className="grid grid-cols-3 gap-2 text-sm">
                             <div>
-                              <label className="block text-xs text-gray-500 mb-1">Quantité</label>
+                              <label className="block text-xs text-gray-500 mb-1">Quantité (décimales OK)</label>
                               <input
                                 type="number"
-                                step="1"
-                                min="1"
+                                step="0.1"
+                                min="0.1"
                                 value={item.quantity}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  if (value === '' || (parseInt(value) > 0 && Number.isInteger(parseFloat(value)))) {
+                                  if (value === '' || parseFloat(value) > 0) {
                                     updateItemQuantity(item.product_id, value);
                                   }
                                 }}
@@ -1504,7 +1631,7 @@ export default function SoumissionsManager() {
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-yellow-700">
                           📊 {selectedItems.length} article(s) • 
-                          Total quantité: {selectedItems.reduce((sum, item) => sum + parseInt(item.quantity), 0)} unités
+                          Total quantité: {selectedItems.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(2)} unités
                         </span>
                         <div className="flex flex-col sm:flex-row sm:space-x-4">
                           <span className="text-green-700 font-medium">
@@ -1516,13 +1643,13 @@ export default function SoumissionsManager() {
                         </div>
                       </div>
                       <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded">
-                        💡 Utilisez ↑↓ pour naviguer, quantités entières, prix modifiables, 💬 commentaires, 💱 USD→CAD, +15/20/25% profit
+                        💡 Quantités décimales OK (ex: 1.5) • ↑↓ navigation • 💬 commentaires • 💱 USD→CAD • +15/20/25% profit
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* 📱 Totaux responsive */}
+                {/* Totaux responsive */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-green-100 p-4 rounded-lg border border-green-300">
                     <label className="block text-base sm:text-lg font-semibold text-green-800 mb-2">
@@ -1573,16 +1700,36 @@ export default function SoumissionsManager() {
 
   return (
     <div className="space-y-6 p-4">
-      {/* 📱 En-tête responsive avec statistiques */}
+      {/* En-tête responsive avec statistiques */}
       <div className="bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold">📝 Gestion des Soumissions</h2>
             <p className="text-white/90 text-sm sm:text-base mt-1">
-              Créez et gérez vos soumissions avec calculateur USD→CAD et marges automatiques
+              Créez et gérez vos soumissions avec quantités décimales, calculateur USD→CAD et impressions client
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            {/* 🆕 BOUTON UPLOAD INVENTAIRE RESTAURÉ */}
+            <div className="relative">
+              <input
+                type="file"
+                id="inventory-upload"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleInventoryUpload}
+                className="hidden"
+                disabled={uploadingInventory}
+              />
+              <label
+                htmlFor="inventory-upload"
+                className={`w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm cursor-pointer flex items-center justify-center ${
+                  uploadingInventory ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {uploadingInventory ? 'Upload...' : '📦 Inventaire'}
+              </label>
+            </div>
             <button
               onClick={handleSendReport}
               disabled={sendingReport}
@@ -1611,7 +1758,33 @@ export default function SoumissionsManager() {
           </div>
         </div>
 
-        {/* 📱 Statistiques responsive */}
+        {/* 🆕 RÉSULTATS UPLOAD INVENTAIRE */}
+        {uploadResults && (
+          <div className={`mb-4 p-3 rounded-lg ${
+            uploadResults.success 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {uploadResults.success ? '✅' : '❌'} {uploadResults.message}
+              </span>
+              <button
+                onClick={() => setUploadResults(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {uploadResults.details && (
+              <div className="text-xs mt-1 opacity-80">
+                {uploadResults.details}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Statistiques responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
@@ -1658,14 +1831,14 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
-      {/* 📱 Info système - MODIFIÉE */}
+      {/* Info système - MODIFIÉE avec quantités décimales */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <p className="text-sm text-gray-600">
-          📊 {soumissions.length} soumissions • {clients.length} clients • 6718 produits • 💬 Commentaires • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto
+          📊 {soumissions.length} soumissions • {clients.length} clients • 6718 produits • 💬 Commentaires • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto • 🔢 Quantités décimales
         </p>
       </div>
 
-      {/* 📱 Filtres responsive */}
+      {/* Filtres responsive */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="flex-1">
@@ -1695,7 +1868,7 @@ export default function SoumissionsManager() {
         </div>
       </div>
 
-      {/* 📊 DESKTOP VIEW - Table compacte sans scroll avec Actions visibles */}
+      {/* DESKTOP VIEW - Table compacte */}
       <div className="hidden lg:block bg-white shadow-lg rounded-lg overflow-hidden">
         {filteredSoumissions.length === 0 ? (
           <div className="text-center py-12">
@@ -1810,7 +1983,7 @@ export default function SoumissionsManager() {
         )}
       </div>
 
-      {/* 📱 MOBILE VIEW - Cards empilées - MODIFIÉES pour montrer les commentaires */}
+      {/* MOBILE VIEW - Cards empilées */}
       <div className="lg:hidden space-y-4">
         {filteredSoumissions.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -1821,7 +1994,7 @@ export default function SoumissionsManager() {
           filteredSoumissions.map((submission) => (
             <div key={submission.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
               
-              {/* 📱 En-tête de la card - MODIFIÉ */}
+              {/* En-tête de la card */}
               <div className="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -1837,7 +2010,6 @@ export default function SoumissionsManager() {
                         {submission.submission_number && (
                           <p className="text-sm text-purple-600">N°: {submission.submission_number}</p>
                         )}
-                        {/* 🆕 Badge commentaires mobile */}
                         {submission.items?.some(item => item.comment) && (
                           <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
                             💬 Commentaires
@@ -1847,7 +2019,7 @@ export default function SoumissionsManager() {
                     </div>
                   </div>
                   
-                  {/* 📱 Menu actions mobile */}
+                  {/* Menu actions mobile */}
                   <div className="relative">
                     <button
                       onClick={() => setSelectedSubmissionId(selectedSubmissionId === submission.id ? null : submission.id)}
@@ -1856,7 +2028,7 @@ export default function SoumissionsManager() {
                       <MoreVertical className="w-5 h-5" />
                     </button>
                     
-                    {/* 📱 Dropdown actions */}
+                    {/* Dropdown actions */}
                     {selectedSubmissionId === submission.id && (
                       <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                         <div className="py-1">
@@ -1902,16 +2074,16 @@ export default function SoumissionsManager() {
                 </div>
               </div>
 
-              {/* 📱 Contenu de la card */}
+              {/* Contenu de la card */}
               <div className="p-4 space-y-3">
                 
-                {/* 📱 Description */}
+                {/* Description */}
                 <div>
                   <span className="text-gray-500 text-sm block">📝 Description</span>
                   <p className="text-gray-900 font-medium">{submission.description}</p>
                 </div>
 
-                {/* 📱 Informations principales */}
+                {/* Informations principales */}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500 block">💰 Montant</span>
@@ -1923,7 +2095,7 @@ export default function SoumissionsManager() {
                   </div>
                 </div>
 
-                {/* 📱 Statut */}
+                {/* Statut */}
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 text-sm">Statut</span>
                   <span className={`px-2 py-1 rounded text-xs ${
@@ -1936,7 +2108,7 @@ export default function SoumissionsManager() {
                   </span>
                 </div>
 
-                {/* 📱 Marge et coût - MODIFIÉ pour inclure compteur commentaires */}
+                {/* Marge et coût */}
                 {submission.items && submission.items.length > 0 && (
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -1957,7 +2129,6 @@ export default function SoumissionsManager() {
                     </div>
                     <div className="mt-1 text-xs text-gray-600 flex justify-between">
                       <span>📦 {submission.items.length} item(s)</span>
-                      {/* 🆕 Compteur de commentaires */}
                       {submission.items.some(item => item.comment) && (
                         <span className="text-blue-600">💬 {submission.items.filter(item => item.comment).length} commentaire(s)</span>
                       )}
@@ -1966,7 +2137,7 @@ export default function SoumissionsManager() {
                 )}
               </div>
 
-              {/* 📱 Actions rapides en bas */}
+              {/* Actions rapides en bas */}
               <div className="bg-gray-50 px-4 py-3 flex gap-2">
                 <button
                   onClick={() => {
@@ -2004,3 +2175,28 @@ export default function SoumissionsManager() {
     </div>
   );
 }
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Unité</label>
+                            <select
+                              value={quickProductForm.unit}
+                              onChange={(e) => setQuickProductForm({...quickProductForm, unit: e.target.value})}
+                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                            >
+                              <option value="Un">Un</option>
+                              <option value="M">m</option>
+                              <option value="PI">Pi</option>
+                              <option value="L">litre</option>
+                              <option value="H">heure</option>
+                            </select>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                            <input
+                              type="text"
+                              value={quickProductForm.description}
+                              onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value})}
+                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                              placeholder="Description du produit..."
+                              required
+                            />
