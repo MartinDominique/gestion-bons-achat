@@ -711,11 +711,11 @@ export default function SoumissionsManager() {
                 <img src="/logo.png" alt="Logo" className="print-logo" />
               </div>
               <div className="print-company-info">
-                <strong>Votre Entreprise Inc.</strong><br />
-                123 Rue Principale<br />
-                Saint-Georges, QC G5Y 3B7<br />
-                Tél: (418) 555-1234<br />
-                info@votreentreprise.com
+                <strong>Services TMT Inc.</strong><br />
+                195, 42e Rue Nord<br />
+                Saint-Georges, QC G5Z 0V9<br />
+                Tél: (418) 225-3875<br />
+                info.servicestmt@gmail.com
               </div>
             </div>
 
@@ -794,11 +794,11 @@ export default function SoumissionsManager() {
                 <img src="/logo.png" alt="Logo" className="print-logo" />
               </div>
               <div className="print-company-info">
-                <strong>Votre Entreprise Inc.</strong><br />
-                123 Rue Principale<br />
-                Saint-Georges, QC G5Y 3B7<br />
-                Tél: (418) 555-1234<br />
-                info@votreentreprise.com
+                <strong>Services TMT Inc.</strong><br />
+                3195 42e Rue Nord<br />
+                Saint-Georges, QC G5Z 0V9<br />
+                Tél: (418) 225-3875<br />
+                info.servicestmt@gmail.com
               </div>
             </div>
 
