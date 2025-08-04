@@ -622,38 +622,54 @@ export default function SoumissionsManager() {
               display: none !important;
             }
             
-            /* Header de l'impression */
+            /* Header de l'impression - Format horizontal */
             .print-header {
               display: flex;
+              align-items: center;
               justify-content: space-between;
-              align-items: start;
               margin-bottom: 30px;
               padding-bottom: 20px;
               border-bottom: 2px solid #333;
             }
             
+            .print-logo-section {
+              flex: 0 0 auto;
+            }
+            
             .print-logo {
-              width: 150px;
+              width: 120px;
               height: auto;
             }
             
             .print-company-info {
-              text-align: right;
+              flex: 0 0 auto;
+              text-align: left;
               font-size: 11px;
               line-height: 1.4;
+              margin: 0 20px;
+            }
+            
+            .print-submission-header {
+              flex: 0 0 auto;
+              text-align: right;
+            }
+            
+            .print-submission-header h1 {
+              font-size: 20px;
+              margin: 0 0 5px 0;
+              font-weight: bold;
+            }
+            
+            .print-submission-header p {
+              margin: 2px 0;
+              font-size: 12px;
             }
             
             .print-client-info {
-              text-align: center;
               margin: 20px 0;
               padding: 15px;
               border: 1px solid #ddd;
               background-color: #f9f9f9;
-            }
-            
-            .print-submission-info {
-              margin: 20px 0;
-              font-size: 14px;
             }
             
             /* Table d'impression */
@@ -704,10 +720,10 @@ export default function SoumissionsManager() {
         `}</style>
 
         <div className="max-w-6xl mx-auto p-4">
-          {/* ZONE D'IMPRESSION RÉGULIÈRE */}
+          {/* ZONE D'IMPRESSION RÉGULIÈRE (avec tous les coûts) */}
           <div className="print-area print-area-regular">
             <div className="print-header">
-              <div>
+              <div className="print-logo-section">
                 <img src="/logo.png" alt="Logo" className="print-logo" />
               </div>
               <div className="print-company-info">
@@ -717,18 +733,16 @@ export default function SoumissionsManager() {
                 Tél: (418) 225-3875<br />
                 info.servicestmt@gmail.com
               </div>
+              <div className="print-submission-header">
+                <h1>SOUMISSION</h1>
+                <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+                <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+              </div>
             </div>
 
             <div className="print-client-info">
-              <strong>CLIENT:</strong><br />
-              {submissionForm.client_name}
-            </div>
-
-            <div className="print-submission-info">
-              <h1 style={{ fontSize: '24px', marginBottom: '10px' }}>SOUMISSION</h1>
-              <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-              <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-              <p><strong>Description:</strong> {submissionForm.description}</p>
+              <strong>CLIENT:</strong> {submissionForm.client_name}<br />
+              <strong>DESCRIPTION:</strong> {submissionForm.description}
             </div>
 
             {selectedItems.length > 0 && (
@@ -736,13 +750,13 @@ export default function SoumissionsManager() {
                 <thead>
                   <tr>
                     <th style={{ width: '15%' }}>Code</th>
-                    <th style={{ width: '35%' }}>Description</th>
+                    <th style={{ width: '30%' }}>Description</th>
                     <th style={{ width: '8%' }}>Qté</th>
                     <th style={{ width: '8%' }}>Unité</th>
                     <th style={{ width: '10%' }}>Prix Unit.</th>
-                    <th style={{ width: '8%' }} className="hide-for-client">Prix Coût</th>
-                    <th style={{ width: '8%' }}>Total Vente</th>
-                    <th style={{ width: '8%' }} className="hide-for-client">Total Coût</th>
+                    <th style={{ width: '8%' }}>Coût Unit.</th>
+                    <th style={{ width: '10%' }}>Total Vente</th>
+                    <th style={{ width: '10%' }}>Total Coût</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -760,9 +774,9 @@ export default function SoumissionsManager() {
                       <td style={{ textAlign: 'center' }}>{item.quantity}</td>
                       <td style={{ textAlign: 'center' }}>{item.unit}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
-                      <td style={{ textAlign: 'right' }} className="hide-for-client">{formatCurrency(item.cost_price)}</td>
+                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>
                       <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
-                      <td style={{ textAlign: 'right' }} className="hide-for-client">{formatCurrency(item.cost_price * item.quantity)}</td>
+                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -773,10 +787,10 @@ export default function SoumissionsManager() {
               <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
                 TOTAL VENTE: {formatCurrency(submissionForm.amount)}
               </p>
-              <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }} className="hide-for-client">
+              <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
                 TOTAL COÛT: {formatCurrency(calculatedCostTotal)}
               </p>
-              <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px', color: '#2563eb' }} className="hide-for-client">
+              <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px', color: '#2563eb' }}>
                 MARGE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}
                 {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
                   <span style={{ fontSize: '12px', marginLeft: '10px' }}>
@@ -787,31 +801,29 @@ export default function SoumissionsManager() {
             </div>
           </div>
 
-          {/* ZONE D'IMPRESSION CLIENT (sans coûts) */}
+          {/* ZONE D'IMPRESSION CLIENT (sans coûts, sans marge) */}
           <div className="print-area print-area-client" style={{ display: 'none' }}>
             <div className="print-header">
-              <div>
+              <div className="print-logo-section">
                 <img src="/logo.png" alt="Logo" className="print-logo" />
               </div>
               <div className="print-company-info">
                 <strong>Services TMT Inc.</strong><br />
-                3195 42e Rue Nord<br />
+                195, 42e Rue Nord<br />
                 Saint-Georges, QC G5Z 0V9<br />
                 Tél: (418) 225-3875<br />
                 info.servicestmt@gmail.com
               </div>
+              <div className="print-submission-header">
+                <h1>SOUMISSION</h1>
+                <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+                <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+              </div>
             </div>
 
             <div className="print-client-info">
-              <strong>CLIENT:</strong><br />
-              {submissionForm.client_name}
-            </div>
-
-            <div className="print-submission-info">
-              <h1 style={{ fontSize: '24px', marginBottom: '10px' }}>SOUMISSION</h1>
-              <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-              <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-              <p><strong>Description:</strong> {submissionForm.description}</p>
+              <strong>CLIENT:</strong> {submissionForm.client_name}<br />
+              <strong>DESCRIPTION:</strong> {submissionForm.description}
             </div>
 
             {selectedItems.length > 0 && (
