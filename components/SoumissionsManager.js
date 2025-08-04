@@ -987,17 +987,6 @@ export default function SoumissionsManager() {
                   </div>
                 </div>
 
-                {/* Continuez avec le reste du formulaire... */}
-                {/* Le reste du code continue ici - Section recherche produits, modals, etc. */}
-                
-              </form>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
                 {/* Statut pour édition */}
                 {editingSubmission && (
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -1777,6 +1766,7 @@ export default function SoumissionsManager() {
   }
 
   return (
+    // Le reste du code reste identique...
     <div className="space-y-6 p-4">
       {/* En-tête responsive avec statistiques */}
       <div className="bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
