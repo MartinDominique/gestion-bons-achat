@@ -728,7 +728,154 @@ export default function SoumissionsManager() {
           }
           `}
         </style>
+    
+        <div className="max-w-6xl mx-auto p-4">
+  {/* ZONE D'IMPRESSION RÉGULIÈRE (avec tous les coûts) */}
+  <div className="print-area" style={{ display: 'none' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #333' }}>
+      <div style={{ flex: '0 0 auto' }}>
+        <img src="/logo.png" alt="Logo" style={{ width: '180px', height: 'auto' }} />
+      </div>
+      <div style={{ flex: '0 0 auto', textAlign: 'left', fontSize: '11px', lineHeight: '1.4', margin: '0 20px' }}>
+        <strong>Services TMT Inc.</strong><br />
+        195, 42e Rue Nord<br />
+        Saint-Georges, QC G5Z 0V9<br />
+        Tél: (418) 225-3875<br />
+        info.servicestmt@gmail.com
+      </div>
+      <div style={{ flex: '0 0 auto', textAlign: 'right' }}>
+        <h1 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: 'bold' }}>SOUMISSION</h1>
+        <p style={{ margin: '2px 0', fontSize: '12px' }}><strong>N°:</strong> {submissionForm.submission_number}</p>
+        <p style={{ margin: '2px 0', fontSize: '12px' }}><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+      </div>
+    </div>
 
+    <div style={{ margin: '20px 0', padding: '15px', border: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
+      <strong>CLIENT:</strong> {submissionForm.client_name}<br />
+      <strong>DESCRIPTION:</strong> {submissionForm.description}
+    </div>
+
+    {selectedItems.length > 0 && (
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+        <thead>
+          <tr>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '15%' }}>Code</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '30%' }}>Description</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '8%' }}>Qté</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '8%' }}>Unité</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '10%' }}>Prix Unit.</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '8%' }}>Coût Unit.</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '10%' }}>Total Vente</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '10%' }}>Total Coût</th>
+          </tr>
+        </thead>
+        <tbody>
+          {selectedItems.map((item, index) => (
+            <tr key={item.product_id}>
+              <td style={{ border: '1px solid #333', padding: '8px', fontSize: '11px' }}>{item.product_id}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', fontSize: '11px' }}>
+                <div>{item.description}</div>
+                {item.comment && (
+                  <div style={{ marginTop: '3px', fontStyle: 'italic', fontSize: '9px', color: '#666' }}>
+                    💬 {item.comment}
+                  </div>
+                )}
+              </td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.unit}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price)}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.cost_price)}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+
+    <div style={{ marginTop: '30px', textAlign: 'right' }}>
+      <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
+        TOTAL VENTE: {formatCurrency(submissionForm.amount)}
+      </p>
+      <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
+        TOTAL COÛT: {formatCurrency(calculatedCostTotal)}
+      </p>
+      <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px', color: '#2563eb' }}>
+        MARGE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}
+        {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
+          <span style={{ fontSize: '12px', marginLeft: '10px' }}>
+            ({((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%)
+          </span>
+        )}
+      </p>
+    </div>
+  </div>
+
+  {/* ZONE D'IMPRESSION CLIENT (sans coûts, sans marge) */}
+  <div className="print-area-client" style={{ display: 'none' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #333' }}>
+      <div style={{ flex: '0 0 auto' }}>
+        <img src="/logo.png" alt="Logo" style={{ width: '180px', height: 'auto' }} />
+      </div>
+      <div style={{ flex: '0 0 auto', textAlign: 'left', fontSize: '11px', lineHeight: '1.4', margin: '0 20px' }}>
+        <strong>Services TMT Inc.</strong><br />
+        195, 42e Rue Nord<br />
+        Saint-Georges, QC G5Z 0V9<br />
+        Tél: (418) 225-3875<br />
+        info.servicestmt@gmail.com
+      </div>
+      <div style={{ flex: '0 0 auto', textAlign: 'right' }}>
+        <h1 style={{ fontSize: '20px', margin: '0 0 5px 0', fontWeight: 'bold' }}>SOUMISSION</h1>
+        <p style={{ margin: '2px 0', fontSize: '12px' }}><strong>N°:</strong> {submissionForm.submission_number}</p>
+        <p style={{ margin: '2px 0', fontSize: '12px' }}><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+      </div>
+    </div>
+
+    <div style={{ margin: '20px 0', padding: '15px', border: '1px solid #ddd', backgroundColor: '#f9f9f9' }}>
+      <strong>CLIENT:</strong> {submissionForm.client_name}<br />
+      <strong>DESCRIPTION:</strong> {submissionForm.description}
+    </div>
+
+    {selectedItems.length > 0 && (
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+        <thead>
+          <tr>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '20%' }}>Code</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '45%' }}>Description</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '10%' }}>Qté</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '10%' }}>Unité</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '15%' }}>Prix Unit.</th>
+            <th style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold', width: '15%' }}>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {selectedItems.map((item, index) => (
+            <tr key={item.product_id}>
+              <td style={{ border: '1px solid #333', padding: '8px', fontSize: '11px' }}>{item.product_id}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', fontSize: '11px' }}>
+                <div>{item.description}</div>
+                {item.comment && (
+                  <div style={{ marginTop: '3px', fontStyle: 'italic', fontSize: '9px', color: '#666' }}>
+                    💬 {item.comment}
+                  </div>
+                )}
+              </td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.unit}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price)}</td>
+              <td style={{ border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+
+    <div style={{ marginTop: '30px', textAlign: 'right' }}>
+      <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px' }}>
+        TOTAL: {formatCurrency(submissionForm.amount)}
+      </p>
+    </div>
+  </div>
         <div className="max-w-6xl mx-auto p-4">
           {/* ZONE D'IMPRESSION RÉGULIÈRE (avec tous les coûts) */}
           <div className="print-area">
