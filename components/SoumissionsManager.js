@@ -637,7 +637,7 @@ export default function SoumissionsManager() {
             }
             
             .print-logo {
-              width: 120px;
+              width: 180px;
               height: auto;
             }
             
@@ -713,7 +713,11 @@ export default function SoumissionsManager() {
               display: block !important;
             }
             
-            body.print-client .print-area-regular {
+            body.print-client .print-area {
+              display: none !important;
+            }
+            
+            body:not(.print-client) .print-area-client {
               display: none !important;
             }
           }
@@ -721,7 +725,7 @@ export default function SoumissionsManager() {
 
         <div className="max-w-6xl mx-auto p-4">
           {/* ZONE D'IMPRESSION RÉGULIÈRE (avec tous les coûts) */}
-          <div className="print-area print-area-regular">
+          <div className="print-area">
             <div className="print-header">
               <div className="print-logo-section">
                 <img src="/logo.png" alt="Logo" className="print-logo" />
@@ -802,7 +806,7 @@ export default function SoumissionsManager() {
           </div>
 
           {/* ZONE D'IMPRESSION CLIENT (sans coûts, sans marge) */}
-          <div className="print-area print-area-client" style={{ display: 'none' }}>
+          <div className="print-area-client">
             <div className="print-header">
               <div className="print-logo-section">
                 <img src="/logo.png" alt="Logo" className="print-logo" />
