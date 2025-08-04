@@ -592,140 +592,142 @@ export default function SoumissionsManager() {
   if (showForm) {
     return (
       <>
-      {/* STYLES CSS POUR L'IMPRESSION OPTIMISÉE */}
-<style jsx>{`
-  /* IMPORTANT: Cacher les zones d'impression par défaut */
-  .print-area,
-  .print-area-client {
-    display: none !important;
-  }
-  
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-    
-    /* Impression normale - avec coûts */
-    body:not(.print-client) .print-area,
-    body:not(.print-client) .print-area * {
-      visibility: visible;
-      display: block !important;
-    }
-    
-    /* Impression client - sans coûts */
-    body.print-client .print-area-client,
-    body.print-client .print-area-client * {
-      visibility: visible;
-      display: block !important;
-    }
-    
-    /* Masquer l'autre zone selon le mode */
-    body.print-client .print-area {
-      display: none !important;
-    }
-    
-    body:not(.print-client) .print-area-client {
-      display: none !important;
-    }
-    
-    .print-area,
-    .print-area-client {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      background: white;
-      padding: 20px;
-      font-size: 12px;
-    }
-    
-    .no-print {
-      display: none !important;
-    }
-    
-    /* Header de l'impression - Format horizontal */
-    .print-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 30px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #333;
-    }
-    
-    .print-logo-section {
-      flex: 0 0 auto;
-    }
-    
-    .print-logo {
-      width: 180px;
-      height: auto;
-    }
-    
-    .print-company-info {
-      flex: 0 0 auto;
-      text-align: left;
-      font-size: 11px;
-      line-height: 1.4;
-      margin: 0 20px;
-    }
-    
-    .print-submission-header {
-      flex: 0 0 auto;
-      text-align: right;
-    }
-    
-    .print-submission-header h1 {
-      font-size: 20px;
-      margin: 0 0 5px 0;
-      font-weight: bold;
-    }
-    
-    .print-submission-header p {
-      margin: 2px 0;
-      font-size: 12px;
-    }
-    
-    .print-client-info {
-      margin: 20px 0;
-      padding: 15px;
-      border: 1px solid #ddd;
-      background-color: #f9f9f9;
-    }
-    
-    /* Table d'impression */
-    .print-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    
-    .print-table th,
-    .print-table td {
-      border: 1px solid #333;
-      padding: 8px;
-      text-align: left;
-      font-size: 11px;
-      vertical-align: top;
-    }
-    
-    .print-table th {
-      background-color: #f0f0f0;
-      font-weight: bold;
-    }
-    
-    .print-totals {
-      margin-top: 30px;
-      text-align: right;
-    }
-    
-    .print-comment {
-      font-style: italic;
-      color: #666;
-      font-size: 10px;
-    }
-  }
-`}</style>
+        {/* STYLES CSS POUR L'IMPRESSION OPTIMISÉE */}
+        <style>
+          {`
+          /* IMPORTANT: Cacher les zones d'impression par défaut */
+          .print-area,
+          .print-area-client {
+            display: none !important;
+          }
+          
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            
+            /* Impression normale - avec coûts */
+            body:not(.print-client) .print-area,
+            body:not(.print-client) .print-area * {
+              visibility: visible;
+              display: block !important;
+            }
+            
+            /* Impression client - sans coûts */
+            body.print-client .print-area-client,
+            body.print-client .print-area-client * {
+              visibility: visible;
+              display: block !important;
+            }
+            
+            /* Masquer l'autre zone selon le mode */
+            body.print-client .print-area {
+              display: none !important;
+            }
+            
+            body:not(.print-client) .print-area-client {
+              display: none !important;
+            }
+            
+            .print-area,
+            .print-area-client {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              background: white;
+              padding: 20px;
+              font-size: 12px;
+            }
+            
+            .no-print {
+              display: none !important;
+            }
+            
+            /* Header de l'impression - Format horizontal */
+            .print-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 30px;
+              padding-bottom: 20px;
+              border-bottom: 2px solid #333;
+            }
+            
+            .print-logo-section {
+              flex: 0 0 auto;
+            }
+            
+            .print-logo {
+              width: 180px;
+              height: auto;
+            }
+            
+            .print-company-info {
+              flex: 0 0 auto;
+              text-align: left;
+              font-size: 11px;
+              line-height: 1.4;
+              margin: 0 20px;
+            }
+            
+            .print-submission-header {
+              flex: 0 0 auto;
+              text-align: right;
+            }
+            
+            .print-submission-header h1 {
+              font-size: 20px;
+              margin: 0 0 5px 0;
+              font-weight: bold;
+            }
+            
+            .print-submission-header p {
+              margin: 2px 0;
+              font-size: 12px;
+            }
+            
+            .print-client-info {
+              margin: 20px 0;
+              padding: 15px;
+              border: 1px solid #ddd;
+              background-color: #f9f9f9;
+            }
+            
+            /* Table d'impression */
+            .print-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            
+            .print-table th,
+            .print-table td {
+              border: 1px solid #333;
+              padding: 8px;
+              text-align: left;
+              font-size: 11px;
+              vertical-align: top;
+            }
+            
+            .print-table th {
+              background-color: #f0f0f0;
+              font-weight: bold;
+            }
+            
+            .print-totals {
+              margin-top: 30px;
+              text-align: right;
+            }
+            
+            .print-comment {
+              font-style: italic;
+              color: #666;
+              font-size: 10px;
+            }
+          }
+          `}
+        </style>
 
         <div className="max-w-6xl mx-auto p-4">
           {/* ZONE D'IMPRESSION RÉGULIÈRE (avec tous les coûts) */}
