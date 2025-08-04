@@ -591,6 +591,7 @@ export default function SoumissionsManager() {
 
   if (showForm) {
     return (
+      <>
       {/* STYLES CSS POUR L'IMPRESSION OPTIMISÉE */}
 <style jsx>{`
   /* IMPORTANT: Cacher les zones d'impression par défaut */
