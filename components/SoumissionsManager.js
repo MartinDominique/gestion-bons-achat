@@ -830,7 +830,7 @@ export default function SoumissionsManager() {
       ))}
     </tbody>
   </table>
-)}
+
 
             <div className="print-totals">
               <p style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
