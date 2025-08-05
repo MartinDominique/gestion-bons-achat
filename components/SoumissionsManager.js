@@ -827,14 +827,6 @@ export default function SoumissionsManager() {
     </div>
   </div>
 
-          </td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.unit}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price)}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.cost_price)}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
-        </tr>
       ))}
     </tbody>
   </table>
@@ -910,31 +902,40 @@ export default function SoumissionsManager() {
             <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
           </tr>
         ))}
-      </tbody>
-    </table>
+      <tbody>
+  {selectedItems.map((item, index) => (
+    <tr key={item.product_id}>
+      <td>{item.product_id}</td>
+      <td>
+        {item.description}
+        {item.comment && (
+          <div className="print-comment">💬 {item.comment}</div>
+        )}
+      </td>
+      <td style={{ textAlign: 'center' }}>{item.quantity}</td>
+      <td style={{ textAlign: 'center' }}>{item.unit}</td>
+      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
+      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>
+      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
+    </tr>
+  ))}
+</tbody>
+</table>
 
-    <div className="print-totals">
-      <p>TOTAL: {formatCurrency(submissionForm.amount)}</p>
-    </div>
-  </div>
-            )}
-          </td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.unit}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price)}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-)}
-
-            <div className="print-totals">
-              <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px' }}>
-                TOTAL: {formatCurrency(submissionForm.amount)}
-              </p>
-            </div>
-          </div>
+<div className="print-totals">
+  <p>TOTAL VENTE: {formatCurrency(submissionForm.amount)}</p>
+  <p>TOTAL COÛT: {formatCurrency(calculatedCostTotal)}</p>
+  <p style={{ color: '#2563eb' }}>
+    MARGE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}
+    {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
+      <span style={{ fontSize: '12px' }}>
+        {" "}({((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%)
+      </span>
+    )}
+  </p>
+</div>
+</div>
 
           {/* FORMULAIRE SOUMISSION MOBILE-FRIENDLY */}
           <div className="bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden">
