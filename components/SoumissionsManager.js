@@ -774,21 +774,23 @@ export default function SoumissionsManager() {
           {selectedItems.length > 0 && (
             <div className="print-area">
               <div className="print-header">
-                <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <img src="/logo-tmt.png" alt="Logo" style={{ width: '180px', marginRight: '20px' }} />
-                <div className="print-company-info">
-                  <strong>Services TMT Inc.</strong><br />
-                  195, 42e Rue Nord<br />
-                  Saint-Georges, QC G5Z 0V9<br />
-                  Tél: (418) 225-3875<br />
-                  info.servicestmt@gmail.com
-                </div>
-                <div className="print-submission-header">
-                  <h1>SOUMISSION</h1>
-                  <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-                  <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                </div>
-              </div>
+  <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+    <img src="/logo-tmt.png" alt="Logo" style={{ width: '180px', marginRight: '20px' }} />
+    <div className="print-company-info">
+      <strong>Services TMT Inc.</strong><br />
+      195, 42e Rue Nord<br />
+      Saint-Georges, QC G5Z 0V9<br />
+      Tél: (418) 225-3875<br />
+      info.servicestmt@gmail.com
+    </div>
+  </div>
+  <div className="print-submission-header">
+    <h1>SOUMISSION</h1>
+    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+  </div>
+</div>
+
 
               <div className="print-client-info">
                 <strong>CLIENT:</strong> {submissionForm.client_name}<br />
@@ -848,21 +850,23 @@ export default function SoumissionsManager() {
           {selectedItems.length > 0 && (
             <div className="print-area-client">
               <div className="print-header">
-              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-               <img src="/logo-tmt.png" alt="Logo" style={{ width: '180px', marginRight: '20px' }} />
-                <div className="print-company-info">
-                  <strong>Services TMT Inc.</strong><br />
-                  195, 42e Rue Nord<br />
-                  Saint-Georges, QC G5Z 0V9<br />
-                  Tél: (418) 225-3875<br />
-                  info.servicestmt@gmail.com
-                </div>
-                <div className="print-submission-header">
-                  <h1>SOUMISSION</h1>
-                  <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-                  <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                </div>
-              </div>
+  <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+    <img src="/logo-tmt.png" alt="Logo" style={{ width: '180px', marginRight: '20px' }} />
+    <div className="print-company-info">
+      <strong>Services TMT Inc.</strong><br />
+      195, 42e Rue Nord<br />
+      Saint-Georges, QC G5Z 0V9<br />
+      Tél: (418) 225-3875<br />
+      info.servicestmt@gmail.com
+    </div>
+  </div>
+  <div className="print-submission-header">
+    <h1>SOUMISSION</h1>
+    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+  </div>
+</div>
+
 
               <div className="print-client-info">
                 <strong>CLIENT:</strong> {submissionForm.client_name}<br />
