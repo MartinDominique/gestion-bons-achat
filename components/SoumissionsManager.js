@@ -593,232 +593,239 @@ export default function SoumissionsManager() {
     return (
       <>
         /* STYLES CSS POUR L'IMPRESSION OPTIMISÉE */
+/* CORRECTION POUR LE CSS D'IMPRESSION - Remplacez vos styles d'impression par ceci */
+
 <style>
-  {`
-  /* IMPORTANT: Cacher les zones d'impression par défaut */
-  .print-area,
-  .print-area-client {
-    display: none !important;
+{`
+/* IMPORTANT: CSS d'impression corrigé pour tableau horizontal */
+@media print {
+  @page {
+    size: letter;
+    margin: 0.5in;
   }
   
-  @media print {
-    @page {
-      size: letter;
-      margin: 0.5in;
-    }
-    
-    body * {
-      visibility: hidden;
-    }
-    
-    /* Impression normale - avec coûts */
-    body:not(.print-client) .print-area,
-    body:not(.print-client) .print-area * {
-      visibility: visible;
-      display: block !important;
-    }
-    
-    /* Impression client - sans coûts */
-    body.print-client .print-area-client,
-    body.print-client .print-area-client * {
-      visibility: visible;
-      display: block !important;
-    }
-    
-    /* Masquer l'autre zone selon le mode */
-    body.print-client .print-area {
-      display: none !important;
-    }
-    
-    body:not(.print-client) .print-area-client {
-      display: none !important;
-    }
-    
-    .print-area,
-    .print-area-client {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      background: white;
-      padding: 20px;
-      font-size: 12px;
-    }
-    
-    .no-print {
-      display: none !important;
-    }
-    
-    /* Header de l'impression - Format horizontal */
-    .print-header {
-      display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      margin-bottom: 30px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #333;
-    }
-    
-    .print-logo-section {
-      flex: 0 0 auto !important;
-    }
-    
-    .print-logo {
-      width: 180px;
-      height: auto;
-    }
-    
-    .print-company-info {
-      flex: 0 0 auto !important;
-      text-align: left !important;
-      font-size: 11px;
-      line-height: 1.4;
-      margin: 0 20px;
-    }
-    
-    .print-submission-header {
-      flex: 0 0 auto !important;
-      text-align: right !important;
-    }
-    
-    .print-submission-header h1 {
-      font-size: 20px;
-      margin: 0 0 5px 0;
-      font-weight: bold;
-    }
-    
-    .print-submission-header p {
-      margin: 2px 0;
-      font-size: 12px;
-    }
-    
-    .print-client-info {
-      margin: 20px 0;
-      padding: 15px;
-      border: 1px solid #ddd;
-      background-color: #f9f9f9;
-    }
-    
-    /* Table d'impression - CORRECTION */
-    .print-table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      margin-top: 20px;
-      table-layout: fixed !important;
-    }
-    
-    .print-table thead {
-      display: table-header-group !important;
-    }
-    
-    .print-table tbody {
-      display: table-row-group !important;
-    }
-    
-    .print-table tr {
-      display: table-row !important;
-      page-break-inside: avoid;
-    }
-    
-    .print-table th,
-    .print-table td {
-      display: table-cell !important;
-      border: 1px solid #333 !important;
-      padding: 8px !important;
-      text-align: left;
-      font-size: 11px;
-      vertical-align: top;
-    }
-    
-    .print-table th {
-      background-color: #f0f0f0;
-      font-weight: bold;
-    }
-    
-    .print-table td:nth-child(3),
-    .print-table td:nth-child(4),
-    .print-table th:nth-child(3),
-    .print-table th:nth-child(4) {
-      text-align: center !important;
-    }
-    
-    .print-table td:nth-child(5),
-    .print-table td:nth-child(6),
-    .print-table td:nth-child(7),
-    .print-table td:nth-child(8),
-    .print-table th:nth-child(5),
-    .print-table th:nth-child(6),
-    .print-table th:nth-child(7),
-    .print-table th:nth-child(8) {
-      text-align: right !important;
-    }
-    
-    .print-totals {
-      margin-top: 30px;
-      text-align: right;
-      page-break-inside: avoid;
-    }
-    
-    .print-comment {
-      font-style: italic;
-      color: #666;
-      font-size: 10px;
-      margin-top: 3px;
-    }
+  body * {
+    visibility: hidden;
   }
-  `}
+  
+  /* Version client - sans coûts */
+  body.print-client .print-area-client,
+  body.print-client .print-area-client * {
+    visibility: visible !important;
+  }
+  
+  /* Version complète - avec coûts */
+  body:not(.print-client) .print-area,
+  body:not(.print-client) .print-area * {
+    visibility: visible !important;
+  }
+  
+  .print-area,
+  .print-area-client {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    padding: 20px;
+    font-size: 12px;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Header professionnel */
+  .print-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #333;
+  }
+  
+  .print-company-info {
+    flex: 1;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  
+  .print-submission-header {
+    text-align: right;
+  }
+  
+  .print-submission-header h1 {
+    font-size: 20px;
+    margin: 0 0 5px 0;
+    font-weight: bold;
+  }
+  
+  /* Client info */
+  .print-client-info {
+    margin: 20px 0;
+    padding: 15px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+  }
+  
+  /* CORRECTION PRINCIPALE - Tableau horizontal */
+  .print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 20px 0 !important;
+    table-layout: fixed !important;
+    display: table !important; /* Force l'affichage en tableau */
+  }
+  
+  .print-table thead {
+    display: table-header-group !important;
+  }
+  
+  .print-table tbody {
+    display: table-row-group !important;
+  }
+  
+  .print-table tr {
+    display: table-row !important;
+    page-break-inside: avoid;
+  }
+  
+  .print-table th,
+  .print-table td {
+    display: table-cell !important; /* CRUCIAL - Force l'affichage en cellule */
+    border: 1px solid #333 !important;
+    padding: 8px !important;
+    text-align: left !important;
+    font-size: 10px !important;
+    vertical-align: top !important;
+    word-wrap: break-word !important;
+  }
+  
+  .print-table th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold !important;
+    text-align: center !important;
+  }
+  
+  /* Largeurs des colonnes pour version COMPLÈTE */
+  .print-table.complete th:nth-child(1),
+  .print-table.complete td:nth-child(1) { width: 12% !important; } /* Code */
+  
+  .print-table.complete th:nth-child(2),
+  .print-table.complete td:nth-child(2) { width: 28% !important; } /* Description */
+  
+  .print-table.complete th:nth-child(3),
+  .print-table.complete td:nth-child(3) { width: 8% !important; text-align: center !important; } /* Qté */
+  
+  .print-table.complete th:nth-child(4),
+  .print-table.complete td:nth-child(4) { width: 8% !important; text-align: center !important; } /* Unité */
+  
+  .print-table.complete th:nth-child(5),
+  .print-table.complete td:nth-child(5) { width: 12% !important; text-align: right !important; } /* Prix Unit */
+  
+  .print-table.complete th:nth-child(6),
+  .print-table.complete td:nth-child(6) { width: 12% !important; text-align: right !important; } /* Coût Unit */
+  
+  .print-table.complete th:nth-child(7),
+  .print-table.complete td:nth-child(7) { width: 10% !important; text-align: right !important; } /* Total Vente */
+  
+  .print-table.complete th:nth-child(8),
+  .print-table.complete td:nth-child(8) { width: 10% !important; text-align: right !important; } /* Total Coût */
+  
+  /* Largeurs des colonnes pour version CLIENT */
+  .print-table.client th:nth-child(1),
+  .print-table.client td:nth-child(1) { width: 15% !important; } /* Code */
+  
+  .print-table.client th:nth-child(2),
+  .print-table.client td:nth-child(2) { width: 45% !important; } /* Description */
+  
+  .print-table.client th:nth-child(3),
+  .print-table.client td:nth-child(3) { width: 10% !important; text-align: center !important; } /* Qté */
+  
+  .print-table.client th:nth-child(4),
+  .print-table.client td:nth-child(4) { width: 10% !important; text-align: center !important; } /* Unité */
+  
+  .print-table.client th:nth-child(5),
+  .print-table.client td:nth-child(5) { width: 10% !important; text-align: right !important; } /* Prix Unit */
+  
+  .print-table.client th:nth-child(6),
+  .print-table.client td:nth-child(6) { width: 10% !important; text-align: right !important; } /* Total */
+  
+  /* Totaux */
+  .print-totals {
+    margin-top: 30px;
+    text-align: right;
+    page-break-inside: avoid;
+  }
+  
+  .print-totals p {
+    font-size: 14px;
+    font-weight: bold;
+    margin: 8px 0;
+  }
+  
+  /* Commentaires */
+  .print-comment {
+    font-style: italic;
+    color: #666;
+    font-size: 9px;
+    margin-top: 3px;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}
+`}
 </style>
 
         <div className="max-w-6xl mx-auto p-4">
-          {/* ZONE D'IMPRESSION RÉGULIÈRE (avec tous les coûts) */}
-          <div className="print-area">
-            <div className="print-header">
-              <div className="print-logo-section">
-                <img src="/logo.png" alt="Logo" className="print-logo" />
-              </div>
-              <div className="print-company-info">
-                <strong>Services TMT Inc.</strong><br />
-                195, 42e Rue Nord<br />
-                Saint-Georges, QC G5Z 0V9<br />
-                Tél: (418) 225-3875<br />
-                info.servicestmt@gmail.com
-              </div>
-              <div className="print-submission-header">
-                <h1>SOUMISSION</h1>
-                <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-                <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-              </div>
-            </div>
+          {/* TABLE COMPLÈTE - Avec coûts */}
+    <table className="print-table complete">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Description</th>
+          <th>Qté</th>
+          <th>Unité</th>
+          <th>Prix Unit.</th>
+          <th>Coût Unit.</th>
+          <th>Total Vente</th>
+          <th>Total Coût</th>
+        </tr>
+      </thead>
+      <tbody>
+        {selectedItems.map((item, index) => (
+          <tr key={item.product_id}>
+            <td>{item.product_id}</td>
+            <td>
+              {item.description}
+              {item.comment && (
+                <div className="print-comment">💬 {item.comment}</div>
+              )}
+            </td>
+            <td style={{ textAlign: 'center' }}>{item.quantity}</td>
+            <td style={{ textAlign: 'center' }}>{item.unit}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
 
-            <div className="print-client-info">
-              <strong>CLIENT:</strong> {submissionForm.client_name}<br />
-              <strong>DESCRIPTION:</strong> {submissionForm.description}
-            </div>
-
-            {selectedItems.length > 0 && (
-  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px', tableLayout: 'fixed' }}>
-    <thead>
-      <tr style={{ display: 'table-row' }}>
-        <th style={{ display: 'table-cell', width: '15%', border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Code</th>
-        <th style={{ display: 'table-cell', width: '30%', border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Description</th>
-        <th style={{ display: 'table-cell', width: '8%', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Qté</th>
-        <th style={{ display: 'table-cell', width: '8%', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Unité</th>
-        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Prix Unit.</th>
-        <th style={{ display: 'table-cell', width: '8%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Coût Unit.</th>
-        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Total Vente</th>
-        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Total Coût</th>
-      </tr>
-    </thead>
-    <tbody>
-      {selectedItems.map((item, index) => (
-        <tr key={item.product_id} style={{ display: 'table-row' }}>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', fontSize: '11px' }}>{item.product_id}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', fontSize: '11px' }}>
-            <div>{item.description}</div>
-            {item.comment && (
-              <div style={{ marginTop: '3px', fontStyle: 'italic', fontSize: '9px', color: '#666' }}>
-                💬 {item.comment}
-              </div>
+    <div className="print-totals">
+      <p>TOTAL VENTE: {formatCurrency(submissionForm.amount)}</p>
+      <p>TOTAL COÛT: {formatCurrency(calculatedCostTotal)}</p>
+      <p style={{ color: '#2563eb' }}>
+        MARGE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}
+        {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
+          <span style={{ fontSize: '12px' }}>
+            {" "}({((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%)
+          </span>
+        )}
+      </p>
+    </div>
+  </div>
             )}
           </td>
           <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
@@ -851,53 +858,65 @@ export default function SoumissionsManager() {
             </div>
           </div>
 
-          {/* ZONE D'IMPRESSION CLIENT (sans coûts, sans marge) */}
-          <div className="print-area-client">
-            <div className="print-header">
-              <div className="print-logo-section">
-                <img src="/logo.png" alt="Logo" className="print-logo" />
-              </div>
-              <div className="print-company-info">
-                <strong>Services TMT Inc.</strong><br />
-                195, 42e Rue Nord<br />
-                Saint-Georges, QC G5Z 0V9<br />
-                Tél: (418) 225-3875<br />
-                info.servicestmt@gmail.com
-              </div>
-              <div className="print-submission-header">
-                <h1>SOUMISSION</h1>
-                <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-                <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-              </div>
-            </div>
+          {/* TABLE HTML CORRIGÉE - Version Client */}
+{selectedItems.length > 0 && (
+  <div className="print-area-client">
+    {/* Header reste identique */}
+    <div className="print-header">
+      <div className="print-company-info">
+        <strong>Services TMT Inc.</strong><br />
+        195, 42e Rue Nord<br />
+        Saint-Georges, QC G5Z 0V9<br />
+        Tél: (418) 225-3875<br />
+        info.servicestmt@gmail.com
+      </div>
+      <div className="print-submission-header">
+        <h1>SOUMISSION</h1>
+        <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+        <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+      </div>
+    </div>
 
-            <div className="print-client-info">
-              <strong>CLIENT:</strong> {submissionForm.client_name}<br />
-              <strong>DESCRIPTION:</strong> {submissionForm.description}
-            </div>
+    <div className="print-client-info">
+      <strong>CLIENT:</strong> {submissionForm.client_name}<br />
+      <strong>DESCRIPTION:</strong> {submissionForm.description}
+    </div>
 
-            {selectedItems.length > 0 && (
-  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px', tableLayout: 'fixed' }}>
-    <thead>
-      <tr style={{ display: 'table-row' }}>
-        <th style={{ display: 'table-cell', width: '20%', border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Code</th>
-        <th style={{ display: 'table-cell', width: '45%', border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Description</th>
-        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Qté</th>
-        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Unité</th>
-        <th style={{ display: 'table-cell', width: '15%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Prix Unit.</th>
-        <th style={{ display: 'table-cell', width: '15%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      {selectedItems.map((item, index) => (
-        <tr key={item.product_id} style={{ display: 'table-row' }}>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', fontSize: '11px' }}>{item.product_id}</td>
-          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', fontSize: '11px' }}>
-            <div>{item.description}</div>
-            {item.comment && (
-              <div style={{ marginTop: '3px', fontStyle: 'italic', fontSize: '9px', color: '#666' }}>
-                💬 {item.comment}
-              </div>
+    {/* TABLE CORRIGÉE - Horizontale */}
+    <table className="print-table client">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Description</th>
+          <th>Qté</th>
+          <th>Unité</th>
+          <th>Prix Unit.</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {selectedItems.map((item, index) => (
+          <tr key={item.product_id}>
+            <td>{item.product_id}</td>
+            <td>
+              {item.description}
+              {item.comment && (
+                <div className="print-comment">💬 {item.comment}</div>
+              )}
+            </td>
+            <td style={{ textAlign: 'center' }}>{item.quantity}</td>
+            <td style={{ textAlign: 'center' }}>{item.unit}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
+            <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+
+    <div className="print-totals">
+      <p>TOTAL: {formatCurrency(submissionForm.amount)}</p>
+    </div>
+  </div>
             )}
           </td>
           <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
