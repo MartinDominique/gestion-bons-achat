@@ -796,41 +796,42 @@ export default function SoumissionsManager() {
             </div>
 
             {selectedItems.length > 0 && (
-              <table className="print-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '15%' }}>Code</th>
-                    <th style={{ width: '30%' }}>Description</th>
-                    <th style={{ width: '8%' }}>Qté</th>
-                    <th style={{ width: '8%' }}>Unité</th>
-                    <th style={{ width: '10%' }}>Prix Unit.</th>
-                    <th style={{ width: '8%' }}>Coût Unit.</th>
-                    <th style={{ width: '10%' }}>Total Vente</th>
-                    <th style={{ width: '10%' }}>Total Coût</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedItems.map((item, index) => (
-                    <tr key={item.product_id}>
-                      <td>{item.product_id}</td>
-                      <td>
-                        <div>{item.description}</div>
-                        {item.comment && (
-                          <div className="print-comment">
-                            💬 {item.comment}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'center' }}>{item.unit}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px', tableLayout: 'fixed' }}>
+    <thead>
+      <tr style={{ display: 'table-row' }}>
+        <th style={{ display: 'table-cell', width: '15%', border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Code</th>
+        <th style={{ display: 'table-cell', width: '30%', border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Description</th>
+        <th style={{ display: 'table-cell', width: '8%', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Qté</th>
+        <th style={{ display: 'table-cell', width: '8%', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Unité</th>
+        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Prix Unit.</th>
+        <th style={{ display: 'table-cell', width: '8%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Coût Unit.</th>
+        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Total Vente</th>
+        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Total Coût</th>
+      </tr>
+    </thead>
+    <tbody>
+      {selectedItems.map((item, index) => (
+        <tr key={item.product_id} style={{ display: 'table-row' }}>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', fontSize: '11px' }}>{item.product_id}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', fontSize: '11px' }}>
+            <div>{item.description}</div>
+            {item.comment && (
+              <div style={{ marginTop: '3px', fontStyle: 'italic', fontSize: '9px', color: '#666' }}>
+                💬 {item.comment}
+              </div>
+            )}
+          </td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.unit}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price)}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.cost_price)}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+)}
             )}
 
             <div className="print-totals">
@@ -877,38 +878,38 @@ export default function SoumissionsManager() {
             </div>
 
             {selectedItems.length > 0 && (
-              <table className="print-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '20%' }}>Code</th>
-                    <th style={{ width: '45%' }}>Description</th>
-                    <th style={{ width: '10%' }}>Qté</th>
-                    <th style={{ width: '10%' }}>Unité</th>
-                    <th style={{ width: '15%' }}>Prix Unit.</th>
-                    <th style={{ width: '15%' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedItems.map((item, index) => (
-                    <tr key={item.product_id}>
-                      <td>{item.product_id}</td>
-                      <td>
-                        <div>{item.description}</div>
-                        {item.comment && (
-                          <div className="print-comment">
-                            💬 {item.comment}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'center' }}>{item.unit}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px', tableLayout: 'fixed' }}>
+    <thead>
+      <tr style={{ display: 'table-row' }}>
+        <th style={{ display: 'table-cell', width: '20%', border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Code</th>
+        <th style={{ display: 'table-cell', width: '45%', border: '1px solid #333', padding: '8px', textAlign: 'left', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Description</th>
+        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Qté</th>
+        <th style={{ display: 'table-cell', width: '10%', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Unité</th>
+        <th style={{ display: 'table-cell', width: '15%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Prix Unit.</th>
+        <th style={{ display: 'table-cell', width: '15%', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px', backgroundColor: '#f0f0f0', fontWeight: 'bold' }}>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {selectedItems.map((item, index) => (
+        <tr key={item.product_id} style={{ display: 'table-row' }}>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', fontSize: '11px' }}>{item.product_id}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', fontSize: '11px' }}>
+            <div>{item.description}</div>
+            {item.comment && (
+              <div style={{ marginTop: '3px', fontStyle: 'italic', fontSize: '9px', color: '#666' }}>
+                💬 {item.comment}
+              </div>
             )}
+          </td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.unit}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price)}</td>
+          <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'right', fontSize: '11px' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+)}
 
             <div className="print-totals">
               <p style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '20px' }}>
