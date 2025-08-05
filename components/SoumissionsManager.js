@@ -826,7 +826,7 @@ export default function SoumissionsManager() {
       </p>
     </div>
   </div>
-            )}
+
           </td>
           <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.quantity}</td>
           <td style={{ display: 'table-cell', border: '1px solid #333', padding: '8px', textAlign: 'center', fontSize: '11px' }}>{item.unit}</td>
