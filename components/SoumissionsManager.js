@@ -774,6 +774,8 @@ export default function SoumissionsManager() {
           {selectedItems.length > 0 && (
             <div className="print-area">
               <div className="print-header">
+                <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                <img src="/logo-tmt.png" alt="Logo" style={{ width: '180px', marginRight: '20px' }} />
                 <div className="print-company-info">
                   <strong>Services TMT Inc.</strong><br />
                   195, 42e Rue Nord<br />
@@ -846,6 +848,8 @@ export default function SoumissionsManager() {
           {selectedItems.length > 0 && (
             <div className="print-area-client">
               <div className="print-header">
+              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+               <img src="/logo-tmt.png" alt="Logo" style={{ width: '180px', marginRight: '20px' }} />
                 <div className="print-company-info">
                   <strong>Services TMT Inc.</strong><br />
                   195, 42e Rue Nord<br />
