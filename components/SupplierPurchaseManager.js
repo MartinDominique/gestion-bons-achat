@@ -204,7 +204,7 @@ export default function SupplierPurchaseManager() {
           console.log(`🔗 Enrichissement PO pour achat ${purchase.purchase_number}:`, purchase.purchase_orders.po_number);
           return {
             ...purchase,
-            linked_po_number: purchase.purchase_orders.po_number,
+            linked_po_number: purchase.purchase_orders.po_number,  
             linked_client_name: purchase.purchase_orders.client_name
           };
         }
@@ -294,12 +294,12 @@ export default function SupplierPurchaseManager() {
         const po = allPOs.find(p => p.id === purchase.linked_po_id);
         if (po && (!purchase.linked_po_number || purchase.linked_po_number === '')) {
           const { error: updateError } = await supabase
-            .from('supplier_purchases')
-            .update({
-              linked_po_number: po.po_number,
-              linked_client_name: po.client_name
-            })
-            .eq('id', purchase.id);
+  .from('supplier_purchases')
+  .update({
+    linked_po_number: po.po_number
+    // linked_client_name supprimé car la colonne n'existe pas
+  })
+  .eq('id', purchase.id);
             
           if (updateError) {
             console.error(`❌ Erreur correction achat ${purchase.purchase_number}:`, updateError);
@@ -960,7 +960,6 @@ export default function SupplierPurchaseManager() {
                           ...purchaseForm, 
                           linked_po_id: selectedPoId,
                           linked_po_number: po?.po_number || '',
-                          linked_client_name: po?.client_name || ''
                         });
                       }}
                       className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
