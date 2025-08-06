@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search } from 'lucide-react';
-import { Building2, FileUp } from 'lucide-react';
+import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search, Plus, Minus } from 'lucide-react';
+import { Building2, FileUp, ShoppingCart } from 'lucide-react';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -15,9 +15,12 @@ export default function PurchaseOrderManager() {
   const [sendingReport, setSendingReport] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [supplierDocuments, setSupplierDocuments] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [uploadingSupplierDocs, setUploadingSupplierDocs] = useState(false);
+  
+  // NOUVEAU: États pour les achats fournisseurs
+  const [supplierPurchases, setSupplierPurchases] = useState([]);
+  const [linkedPurchases, setLinkedPurchases] = useState([]);
+  const [availablePurchases, setAvailablePurchases] = useState([]);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
   
   const [formData, setFormData] = useState({
     client_name: '',
@@ -88,134 +91,113 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  const fetchSuppliers = async () => {
+  // NOUVEAU: Récupérer tous les achats fournisseurs
+  const fetchSupplierPurchases = async () => {
     try {
       const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, company_name')
-        .order('company_name', { ascending: true });
+        .from('supplier_purchases')
+        .select('*')
+        .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Erreur chargement fournisseurs:', error);
+        console.error('Erreur chargement achats fournisseurs:', error);
       } else {
-        setSuppliers(data || []);
+        setSupplierPurchases(data || []);
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des fournisseurs:', error);
+      console.error('Erreur lors du chargement des achats fournisseurs:', error);
     }
   };
-  
-  const fetchSupplierDocuments = async (purchaseOrderId) => {
-    if (!purchaseOrderId) return;
+
+  // NOUVEAU: Récupérer les achats fournisseurs liés à un PO spécifique
+  const fetchLinkedPurchases = async (purchaseOrderId) => {
+    if (!purchaseOrderId) {
+      setLinkedPurchases([]);
+      setAvailablePurchases([]);
+      return;
+    }
     
+    setLoadingPurchases(true);
     try {
-      const { data, error } = await supabase
-        .from('supplier_documents')
-        .select('*, suppliers(company_name)')
-        .eq('purchase_order_id', purchaseOrderId)
-        .order('uploaded_at', { ascending: false });
+      // Récupérer les achats liés
+      const { data: linked, error: linkedError } = await supabase
+        .from('supplier_purchases')
+        .select('*')
+        .eq('linked_po_id', purchaseOrderId);
 
-      if (error) {
-        console.error('Erreur chargement documents fournisseurs:', error);
+      if (linkedError) {
+        console.error('Erreur récupération achats liés:', linkedError);
       } else {
-        setSupplierDocuments(data || []);
+        setLinkedPurchases(linked || []);
       }
+
+      // Récupérer les achats disponibles (non liés à ce PO)
+      const { data: available, error: availableError } = await supabase
+        .from('supplier_purchases')
+        .select('*')
+        .or(`linked_po_id.is.null,linked_po_id.neq.${purchaseOrderId}`)
+        .order('created_at', { ascending: false });
+
+      if (availableError) {
+        console.error('Erreur récupération achats disponibles:', availableError);
+      } else {
+        setAvailablePurchases(available || []);
+      }
+
     } catch (error) {
-      console.error('Erreur lors du chargement des documents fournisseurs:', error);
+      console.error('Erreur lors du chargement des achats fournisseurs:', error);
+    } finally {
+      setLoadingPurchases(false);
     }
   };
-  
-  const handleSupplierDocumentUpload = async (e, supplierId) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0 || !editingPO) return;
 
-    setUploadingSupplierDocs(true);
-    const uploadedDocs = [];
-
-    for (const file of files) {
-      try {
-        const cleanFileName = file.name
-          .replace(/\s+/g, '_')
-          .replace(/[^a-zA-Z0-9._-]/g, '')
-          .substring(0, 100);
-
-        const fileName = `${Date.now()}_${cleanFileName}`;
-        const filePath = `supplier-documents/${fileName}`;
-
-        const { data, error } = await supabase.storage
-          .from('purchase-orders-pdfs')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (error) throw error;
-
-        const { data: urlData } = supabase.storage
-          .from('purchase-orders-pdfs')
-          .getPublicUrl(filePath);
-
-        const { error: dbError } = await supabase
-          .from('supplier_documents')
-          .insert({
-            purchase_order_id: editingPO.id,
-            supplier_id: supplierId,
-            document_type: 'invoice',
-            file_name: file.name,
-            file_path: data.path,
-            file_url: urlData.publicUrl,
-            file_size: file.size
-          });
-
-        if (dbError) throw dbError;
-
-        uploadedDocs.push({
-          file_name: file.name,
-          supplier_id: supplierId
-        });
-
-      } catch (error) {
-        console.error('Erreur upload document fournisseur:', error);
-        alert(`Erreur upload "${file.name}": ${error.message}`);
-      }
-    }
-
-    if (uploadedDocs.length > 0) {
-      await fetchSupplierDocuments(editingPO.id);
-      alert(`✅ ${uploadedDocs.length} document(s) fournisseur uploadé(s) avec succès`);
-    }
-
-    setUploadingSupplierDocs(false);
-    e.target.value = '';
-  };
-  
-  const removeSupplierDocument = async (docId, filePath) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce document fournisseur ?')) return;
+  // NOUVEAU: Lier un achat fournisseur au PO
+  const linkSupplierPurchase = async (supplierPurchaseId) => {
+    if (!editingPO) return;
 
     try {
-      if (filePath) {
-        const { error: storageError } = await supabase.storage
-          .from('purchase-orders-pdfs')
-          .remove([filePath]);
-        
-        if (storageError) {
-          console.error('Erreur suppression storage:', storageError);
-        }
-      }
+      const { error } = await supabase
+        .from('supplier_purchases')
+        .update({ 
+          linked_po_id: editingPO.id,
+          linked_po_number: editingPO.po_number
+        })
+        .eq('id', supplierPurchaseId);
 
-      const { error: dbError } = await supabase
-        .from('supplier_documents')
-        .delete()
-        .eq('id', docId);
+      if (error) throw error;
 
-      if (dbError) throw dbError;
-
-      await fetchSupplierDocuments(editingPO.id);
-      alert('✅ Document fournisseur supprimé');
+      // Recharger les données
+      await fetchLinkedPurchases(editingPO.id);
+      alert('✅ Achat fournisseur lié avec succès !');
 
     } catch (error) {
-      console.error('Erreur suppression document:', error);
-      alert('Erreur lors de la suppression');
+      console.error('Erreur liaison achat fournisseur:', error);
+      alert('❌ Erreur lors de la liaison: ' + error.message);
+    }
+  };
+
+  // NOUVEAU: Délier un achat fournisseur du PO
+  const unlinkSupplierPurchase = async (supplierPurchaseId) => {
+    if (!confirm('🔗 Êtes-vous sûr de vouloir délier cet achat fournisseur ?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('supplier_purchases')
+        .update({ 
+          linked_po_id: null,
+          linked_po_number: null
+        })
+        .eq('id', supplierPurchaseId);
+
+      if (error) throw error;
+
+      // Recharger les données
+      await fetchLinkedPurchases(editingPO.id);
+      alert('✅ Achat fournisseur délié avec succès !');
+
+    } catch (error) {
+      console.error('Erreur déliage achat fournisseur:', error);
+      alert('❌ Erreur lors du déliage: ' + error.message);
     }
   };
 
@@ -224,7 +206,7 @@ export default function PurchaseOrderManager() {
     fetchPurchaseOrders();
     fetchClients();
     fetchSubmissions();
-    fetchSuppliers();
+    fetchSupplierPurchases(); // NOUVEAU
     
     const handleBeforeUnload = () => {
       supabase.auth.signOut();
@@ -341,7 +323,9 @@ export default function PurchaseOrderManager() {
       files: po.files || []
     });
     setShowForm(true);
-    fetchSupplierDocuments(po.id);
+    
+    // NOUVEAU: Charger les achats fournisseurs liés
+    fetchLinkedPurchases(po.id);
   };
 
   const cleanupFilesForPO = async (files) => {
@@ -384,6 +368,19 @@ export default function PurchaseOrderManager() {
         console.error('❌ Erreur récupération bon d\'achat:', fetchError);
       }
 
+      // NOUVEAU: Délier tous les achats fournisseurs avant suppression
+      const { error: unlinkError } = await supabase
+        .from('supplier_purchases')
+        .update({ 
+          linked_po_id: null,
+          linked_po_number: null 
+        })
+        .eq('linked_po_id', id);
+
+      if (unlinkError) {
+        console.error('❌ Erreur déliage achats fournisseurs:', unlinkError);
+      }
+
       const { error: deleteError } = await supabase
         .from('purchase_orders')
         .delete()
@@ -396,6 +393,7 @@ export default function PurchaseOrderManager() {
       }
 
       await fetchPurchaseOrders();
+      await fetchSupplierPurchases(); // Recharger pour mettre à jour les liens
       console.log('✅ Bon d\'achat et fichiers supprimés avec succès');
 
     } catch (error) {
@@ -659,6 +657,8 @@ export default function PurchaseOrderManager() {
                   onClick={() => {
                     setShowForm(false);
                     setEditingPO(null);
+                    setLinkedPurchases([]);
+                    setAvailablePurchases([]);
                     setFormData({
                       client_name: '',
                       po_number: '',
@@ -824,107 +824,107 @@ export default function PurchaseOrderManager() {
                 />
               </div>
 
+              {/* NOUVELLE SECTION: Achats Fournisseurs Liés */}
               {editingPO && (
                 <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
                   <label className="block text-sm font-semibold text-orange-800 mb-2">
-                    🏢 Documents d'Achat Fournisseurs
+                    🛒 Achats Fournisseurs Liés
                   </label>
                   
-                  <div className="mb-4">
-                    <p className="text-sm text-orange-600 mb-2">
-                      Ajouter des documents (factures, bons de commande) par fournisseur :
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {suppliers.map((supplier) => (
-                        <div key={supplier.id} className="flex items-center gap-2">
-                          <label 
-                            htmlFor={`supplier-doc-${supplier.id}`}
-                            className="flex-1 px-3 py-2 bg-white border border-orange-300 rounded-lg hover:bg-orange-50 cursor-pointer text-sm"
-                          >
-                            <Building2 className="w-4 h-4 inline mr-2" />
-                            {supplier.company_name}
-                          </label>
-                          <input
-                            id={`supplier-doc-${supplier.id}`}
-                            type="file"
-                            multiple
-                            accept=".pdf,.xls,.xlsx,.doc,.docx,.png,.jpg,.jpeg"
-                            onChange={(e) => handleSupplierDocumentUpload(e, supplier.id)}
-                            disabled={uploadingSupplierDocs}
-                            className="hidden"
-                          />
-                        </div>
-                      ))}
+                  {loadingPurchases ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-2"></div>
+                      <span className="text-orange-600">Chargement des achats fournisseurs...</span>
                     </div>
-                    {uploadingSupplierDocs && (
-                      <p className="text-sm text-orange-600 mt-2 flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
-                        📤 Upload en cours...
-                      </p>
-                    )}
-                  </div>
-
-                  {supplierDocuments.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-orange-700">
-                        📁 Documents fournisseurs ({supplierDocuments.length})
-                      </p>
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {supplierDocuments.map((doc) => (
-                          <div key={doc.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                <span className="text-xl flex-shrink-0">🏢</span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900 truncate">
-                                    {doc.file_name}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {doc.suppliers?.company_name || 'Fournisseur inconnu'} • 
-                                    {formatFileSize(doc.file_size)} • 
-                                    {new Date(doc.uploaded_at).toLocaleDateString('fr-CA')}
-                                  </p>
+                  ) : (
+                    <>
+                      {/* Achats fournisseurs déjà liés */}
+                      {linkedPurchases.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-sm font-medium text-orange-700 mb-3">
+                            🔗 Achats fournisseurs liés ({linkedPurchases.length})
+                          </p>
+                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {linkedPurchases.map((purchase) => (
+                              <div key={purchase.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                    <span className="text-xl flex-shrink-0">🛒</span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {purchase.purchase_number}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
+                                        {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  <button
+                                    type="button"
+                                    onClick={() => unlinkSupplierPurchase(purchase.id)}
+                                    className="px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                                    title="Délier cet achat"
+                                  >
+                                    <Minus className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </div>
-                              
-                              <div className="flex gap-2">
-                                {doc.file_url && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => window.open(doc.file_url, '_blank')}
-                                      className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
-                                    >
-                                      👁️ Voir
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => downloadFile({url: doc.file_url, name: doc.file_name})}
-                                      className="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded"
-                                    >
-                                      💾
-                                    </button>
-                                  </>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => removeSupplierDocument(doc.id, doc.file_path)}
-                                  className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
-                                >
-                                  🗑️
-                                </button>
-                              </div>
-                            </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                        </div>
+                      )}
 
-                  {supplierDocuments.length === 0 && (
-                    <p className="text-sm text-orange-600 italic mt-2">
-                      Aucun document fournisseur attaché pour l'instant
-                    </p>
+                      {/* Achats fournisseurs disponibles */}
+                      {availablePurchases.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-orange-700 mb-3">
+                            ➕ Achats fournisseurs disponibles ({availablePurchases.length})
+                          </p>
+                          <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {availablePurchases.slice(0, 10).map((purchase) => (
+                              <div key={purchase.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                    <span className="text-xl flex-shrink-0">🛒</span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {purchase.purchase_number}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
+                                        {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  
+                                  <button
+                                    type="button"
+                                    onClick={() => linkSupplierPurchase(purchase.id)}
+                                    className="px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded"
+                                    title="Lier cet achat"
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            {availablePurchases.length > 10 && (
+                              <p className="text-xs text-orange-600 text-center py-2">
+                                ... et {availablePurchases.length - 10} autres achats disponibles
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {linkedPurchases.length === 0 && availablePurchases.length === 0 && (
+                        <p className="text-sm text-orange-600 italic text-center py-4">
+                          Aucun achat fournisseur disponible pour l'instant
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               )}
