@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { 
   MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, 
   Plus, Upload, X, ChevronDown, ShoppingCart, Building2, Truck,
-  MapPin, Calendar, Package, DollarSign, Printer
+  MapPin, Calendar, Package, DollarSign, Printer, Wrench
 } from 'lucide-react';
 
 export default function SupplierPurchaseManager() {
@@ -35,6 +35,9 @@ export default function SupplierPurchaseManager() {
   const [showQuantityInput, setShowQuantityInput] = useState(false);
   const [selectedProductForQuantity, setSelectedProductForQuantity] = useState(null);
   const [tempQuantity, setTempQuantity] = useState('1');
+  
+  // État pour la correction
+  const [isFixingPOs, setIsFixingPOs] = useState(false);
   
   // Formulaire principal
   const [purchaseForm, setPurchaseForm] = useState({
@@ -181,16 +184,34 @@ export default function SupplierPurchaseManager() {
     }
   };
 
-  // Fonctions de récupération des données
+  // FONCTION CORRIGÉE - fetchSupplierPurchases avec jointure
   const fetchSupplierPurchases = async () => {
     try {
       const { data, error } = await supabase
         .from('supplier_purchases')
-        .select('*')
+        .select(`
+          *,
+          purchase_orders!linked_po_id(po_number, client_name)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSupplierPurchases(data || []);
+      
+      // Enrichir les données avec les informations du PO si elles manquent
+      const enrichedData = (data || []).map(purchase => {
+        // Si linked_po_number est vide mais qu'on a un linked_po_id ET des données de PO
+        if (!purchase.linked_po_number && purchase.linked_po_id && purchase.purchase_orders) {
+          console.log(`🔗 Enrichissement PO pour achat ${purchase.purchase_number}:`, purchase.purchase_orders.po_number);
+          return {
+            ...purchase,
+            linked_po_number: purchase.purchase_orders.po_number,
+            linked_client_name: purchase.purchase_orders.client_name
+          };
+        }
+        return purchase;
+      });
+      
+      setSupplierPurchases(enrichedData);
     } catch (error) {
       console.error('Erreur chargement achats:', error);
     } finally {
@@ -238,6 +259,90 @@ export default function SupplierPurchaseManager() {
     } catch (error) {
       console.error('Erreur chargement adresses:', error);
     }
+  };
+
+  // NOUVELLE FONCTION - Correction des achats existants
+  const fixExistingPurchases = async () => {
+    if (isFixingPOs) return; // Éviter les clics multiples
+    
+    try {
+      setIsFixingPOs(true);
+      console.log('🔧 Correction des achats existants...');
+      
+      // Récupérer tous les achats qui ont un linked_po_id mais pas de linked_po_number
+      const { data: purchasesToFix, error: fetchError } = await supabase
+        .from('supplier_purchases')
+        .select('id, purchase_number, linked_po_id, linked_po_number')
+        .not('linked_po_id', 'is', null)
+        .or('linked_po_number.is.null,linked_po_number.eq.');
+      
+      if (fetchError) throw fetchError;
+      
+      console.log(`📋 ${purchasesToFix.length} achats à vérifier`);
+      
+      // Récupérer tous les POs
+      const { data: allPOs, error: poError } = await supabase
+        .from('purchase_orders')
+        .select('id, po_number, client_name');
+        
+      if (poError) throw poError;
+      
+      let fixedCount = 0;
+      
+      // Corriger chaque achat
+      for (const purchase of purchasesToFix) {
+        const po = allPOs.find(p => p.id === purchase.linked_po_id);
+        if (po && (!purchase.linked_po_number || purchase.linked_po_number === '')) {
+          const { error: updateError } = await supabase
+            .from('supplier_purchases')
+            .update({
+              linked_po_number: po.po_number,
+              linked_client_name: po.client_name
+            })
+            .eq('id', purchase.id);
+            
+          if (updateError) {
+            console.error(`❌ Erreur correction achat ${purchase.purchase_number}:`, updateError);
+          } else {
+            console.log(`✅ Achat ${purchase.purchase_number} corrigé avec PO ${po.po_number}`);
+            fixedCount++;
+          }
+        }
+      }
+      
+      console.log(`🎉 Correction terminée! ${fixedCount} achats corrigés.`);
+      alert(`✅ Correction terminée!\n${fixedCount} achat(s) corrigé(s).`);
+      
+      // Recharger les données
+      await fetchSupplierPurchases();
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de la correction:', error);
+      alert('❌ Erreur lors de la correction: ' + error.message);
+    } finally {
+      setIsFixingPOs(false);
+    }
+  };
+
+  // FONCTION UTILITAIRE pour récupérer le PO Number
+  const getPONumber = (purchase) => {
+    // Priorité 1: linked_po_number sauvegardé
+    if (purchase.linked_po_number) {
+      return purchase.linked_po_number;
+    }
+    
+    // Priorité 2: chercher dans la liste des POs chargés
+    if (purchase.linked_po_id) {
+      const po = purchaseOrders.find(p => p.id === purchase.linked_po_id);
+      return po?.po_number || '';
+    }
+    
+    // Priorité 3: données enrichies de la jointure
+    if (purchase.purchase_orders?.po_number) {
+      return purchase.purchase_orders.po_number;
+    }
+    
+    return '';
   };
 
   // Recherche produits
@@ -463,65 +568,41 @@ export default function SupplierPurchaseManager() {
 
   // Sauvegarde achat
   const handlePurchaseSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    let purchaseNumber = purchaseForm.purchase_number;
-    
-    if (!editingPurchase) {
-      purchaseNumber = await generatePurchaseNumber();
-    }
-
-    // CORRECTION - Gérer les types UUID et integer correctement
-    const purchaseData = {
-      supplier_id: purchaseForm.supplier_id || null, // UUID - ne pas parser
-      supplier_name: purchaseForm.supplier_name || null,
-      linked_po_id: purchaseForm.linked_po_id || null, // UUID - ne pas parser
-      linked_po_number: purchaseForm.linked_po_number || null,
-      shipping_address_id: purchaseForm.shipping_address_id || null, // UUID - ne pas parser
-      shipping_company: purchaseForm.shipping_company || null,
-      shipping_account: purchaseForm.shipping_account || null,
-      delivery_date: purchaseForm.delivery_date || null,
-      items: selectedItems,
-      subtotal: parseFloat(purchaseForm.subtotal) || 0,
-      taxes: parseFloat(purchaseForm.taxes) || 0,
-      shipping_cost: parseFloat(purchaseForm.shipping_cost) || 0,
-      total_amount: parseFloat(purchaseForm.total_amount) || 0,
-      status: purchaseForm.status || 'draft',
-      notes: purchaseForm.notes || null,
-      purchase_number: purchaseNumber
-    };
-
-    // Nettoyer les champs vides - IMPORTANT pour éviter les chaînes vides
-    Object.keys(purchaseData).forEach(key => {
-      if (purchaseData[key] === '' || purchaseData[key] === undefined) {
-        purchaseData[key] = null;
+    e.preventDefault();
+    try {
+      let purchaseNumber = purchaseForm.purchase_number;
+      
+      if (!editingPurchase) {
+        purchaseNumber = await generatePurchaseNumber();
       }
-    });
 
-    console.log('📤 Données à sauvegarder:', purchaseData); // Pour debug
+      const purchaseData = {
+        ...purchaseForm,
+        purchase_number: purchaseNumber,
+        items: selectedItems
+      };
 
-    if (editingPurchase) {
-      const { error } = await supabase
-        .from('supplier_purchases')
-        .update(purchaseData)
-        .eq('id', editingPurchase.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from('supplier_purchases')
-        .insert([purchaseData]);
-      if (error) throw error;
+      if (editingPurchase) {
+        const { error } = await supabase
+          .from('supplier_purchases')
+          .update(purchaseData)
+          .eq('id', editingPurchase.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('supplier_purchases')
+          .insert([purchaseData]);
+        if (error) throw error;
+      }
+
+      await fetchSupplierPurchases();
+      resetForm();
+    } catch (error) {
+      console.error('Erreur sauvegarde achat:', error);
+      alert('Erreur lors de la sauvegarde');
     }
+  };
 
-    await fetchSupplierPurchases();
-    resetForm();
-    alert('✅ Achat sauvegardé avec succès!');
-  } catch (error) {
-    console.error('❌ Erreur sauvegarde achat:', error);
-    alert(`❌ Erreur lors de la sauvegarde: ${error.message}`);
-  }
-};
-  
   const handleDeletePurchase = async (id) => {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cet achat ?')) return;
     
@@ -583,7 +664,8 @@ export default function SupplierPurchaseManager() {
     const matchesSearch = 
       purchase.purchase_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       purchase.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      purchase.linked_po_number?.toLowerCase().includes(searchTerm.toLowerCase());
+      purchase.linked_po_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getPONumber(purchase)?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || purchase.status === statusFilter;
     
@@ -865,14 +947,20 @@ export default function SupplierPurchaseManager() {
                     <label className="block text-sm font-semibold text-green-800 mb-2">
                       📋 Bon d'achat client lié
                     </label>
+                    {/* CORRECTION: Gestion améliorée du PO */}
                     <select
                       value={purchaseForm.linked_po_id}
                       onChange={(e) => {
-                        const po = purchaseOrders.find(p => p.id === e.target.value);
+                        const selectedPoId = e.target.value;
+                        const po = purchaseOrders.find(p => p.id === selectedPoId);
+                        
+                        console.log('PO sélectionné:', po);
+                        
                         setPurchaseForm({
                           ...purchaseForm, 
-                          linked_po_id: e.target.value,
-                          linked_po_number: po?.po_number || ''
+                          linked_po_id: selectedPoId,
+                          linked_po_number: po?.po_number || '',
+                          linked_client_name: po?.client_name || ''
                         });
                       }}
                       className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
@@ -1255,6 +1343,29 @@ export default function SupplierPurchaseManager() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            {/* NOUVEAU BOUTON DE CORRECTION */}
+            <button
+              onClick={fixExistingPurchases}
+              disabled={isFixingPOs}
+              className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium ${
+                isFixingPOs 
+                  ? 'bg-yellow-400 text-yellow-800 cursor-not-allowed' 
+                  : 'bg-yellow-600 text-white hover:bg-yellow-700'
+              }`}
+              title="Corriger les PO manquants dans les achats existants"
+            >
+              {isFixingPOs ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-800 inline mr-2"></div>
+                  Correction...
+                </>
+              ) : (
+                <>
+                  <Wrench className="w-4 h-4 inline mr-2" />
+                  🔧 Corriger POs
+                </>
+              )}
+            </button>
             <button
               onClick={() => setShowSupplierModal(true)}
               className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20"
@@ -1377,70 +1488,74 @@ export default function SupplierPurchaseManager() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredPurchases.map((purchase) => (
-                <tr key={purchase.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
-                      {purchase.purchase_number}
-                    </span>
-                  </td>
-                  <td className="px-3 py-4">
-                    <div className="text-sm font-medium text-gray-900">{purchase.supplier_name}</div>
-                  </td>
-                  <td className="px-3 py-4 text-center">
-                    {purchase.linked_po_number ? (
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                        {purchase.linked_po_number}
+              {filteredPurchases.map((purchase) => {
+                const poNumber = getPONumber(purchase);
+                return (
+                  <tr key={purchase.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-4 whitespace-nowrap">
+                      <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
+                        {purchase.purchase_number}
                       </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-4 text-center text-sm text-gray-500">
-                    {formatDate(purchase.delivery_date)}
-                  </td>
-                  <td className="px-3 py-4 text-center">
-                    <span className="text-sm font-medium text-green-600">
-                      {formatCurrency(purchase.total_amount)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-4 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
-                      purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                      purchase.status === 'received' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {purchase.status === 'ordered' ? '📤 Commandé' :
-                       purchase.status === 'draft' ? '📝 Brouillon' :
-                       purchase.status === 'received' ? '✅ Reçu' : '❌ Annulé'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-4 text-center">
-                    <div className="flex justify-center space-x-1">
-                      <button
-                        onClick={() => {
-                          setEditingPurchase(purchase);
-                          setPurchaseForm(purchase);
-                          setSelectedItems(purchase.items || []);
-                          setShowForm(true);
-                        }}
-                        className="bg-orange-100 text-orange-700 hover:bg-orange-200 p-2 rounded-lg"
-                        title="Modifier"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePurchase(purchase.id)}
-                        className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-3 py-4">
+                      <div className="text-sm font-medium text-gray-900">{purchase.supplier_name}</div>
+                    </td>
+                    {/* CELLULE CORRIGÉE - PO CLIENT LIÉ */}
+                    <td className="px-3 py-4 text-center">
+                      {poNumber ? (
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                          {poNumber}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-4 text-center text-sm text-gray-500">
+                      {formatDate(purchase.delivery_date)}
+                    </td>
+                    <td className="px-3 py-4 text-center">
+                      <span className="text-sm font-medium text-green-600">
+                        {formatCurrency(purchase.total_amount)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-4 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
+                        purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                        purchase.status === 'received' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {purchase.status === 'ordered' ? '📤 Commandé' :
+                         purchase.status === 'draft' ? '📝 Brouillon' :
+                         purchase.status === 'received' ? '✅ Reçu' : '❌ Annulé'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-4 text-center">
+                      <div className="flex justify-center space-x-1">
+                        <button
+                          onClick={() => {
+                            setEditingPurchase(purchase);
+                            setPurchaseForm(purchase);
+                            setSelectedItems(purchase.items || []);
+                            setShowForm(true);
+                          }}
+                          className="bg-orange-100 text-orange-700 hover:bg-orange-200 p-2 rounded-lg"
+                          title="Modifier"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePurchase(purchase.id)}
+                          className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -1454,91 +1569,95 @@ export default function SupplierPurchaseManager() {
             <p className="text-gray-500">Aucun achat fournisseur trouvé</p>
           </div>
         ) : (
-          filteredPurchases.map((purchase) => (
-            <div key={purchase.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-orange-50 to-red-50 px-4 py-3 border-b">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{purchase.purchase_number}</h3>
-                    <p className="text-sm text-gray-600">{purchase.supplier_name}</p>
-                  </div>
-                  <div className="relative">
-                    <button
-                      onClick={() => setSelectedPurchaseId(selectedPurchaseId === purchase.id ? null : purchase.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                    
-                    {selectedPurchaseId === purchase.id && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border z-10">
-                        <div className="py-1">
-                          <button
-                            onClick={() => {
-                              setEditingPurchase(purchase);
-                              setPurchaseForm(purchase);
-                              setSelectedItems(purchase.items || []);
-                              setShowForm(true);
-                              setSelectedPurchaseId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                          >
-                            <Edit className="w-4 h-4 inline mr-2" />
-                            Modifier
-                          </button>
-                          <hr />
-                          <button
-                            onClick={() => {
-                              handleDeletePurchase(purchase.id);
-                              setSelectedPurchaseId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4 inline mr-2" />
-                            Supprimer
-                          </button>
+          filteredPurchases.map((purchase) => {
+            const poNumber = getPONumber(purchase);
+            return (
+              <div key={purchase.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-50 to-red-50 px-4 py-3 border-b">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{purchase.purchase_number}</h3>
+                      <p className="text-sm text-gray-600">{purchase.supplier_name}</p>
+                    </div>
+                    <div className="relative">
+                      <button
+                        onClick={() => setSelectedPurchaseId(selectedPurchaseId === purchase.id ? null : purchase.id)}
+                        className="p-2 text-gray-400 hover:text-gray-600"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                      
+                      {selectedPurchaseId === purchase.id && (
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border z-10">
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                setEditingPurchase(purchase);
+                                setPurchaseForm(purchase);
+                                setSelectedItems(purchase.items || []);
+                                setShowForm(true);
+                                setSelectedPurchaseId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                            >
+                              <Edit className="w-4 h-4 inline mr-2" />
+                              Modifier
+                            </button>
+                            <hr />
+                            <button
+                              onClick={() => {
+                                handleDeletePurchase(purchase.id);
+                                setSelectedPurchaseId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4 inline mr-2" />
+                              Supprimer
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-3">
-                {purchase.linked_po_number && (
-                  <div>
-                    <span className="text-gray-500 text-sm">PO Client lié</span>
-                    <p className="font-medium">{purchase.linked_po_number}</p>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-500 block">Date livraison</span>
-                    <span className="font-medium">{formatDate(purchase.delivery_date)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Montant</span>
-                    <span className="font-bold text-green-600">{formatCurrency(purchase.total_amount)}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500 text-sm">Statut</span>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
-                    purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                    purchase.status === 'received' ? 'bg-green-100 text-green-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {purchase.status === 'ordered' ? '📤 Commandé' :
-                     purchase.status === 'draft' ? '📝 Brouillon' :
-                     purchase.status === 'received' ? '✅ Reçu' : '❌ Annulé'}
-                  </span>
+                <div className="p-4 space-y-3">
+                  {/* PO CLIENT LIÉ CORRIGÉ EN MOBILE AUSSI */}
+                  {poNumber && (
+                    <div>
+                      <span className="text-gray-500 text-sm">PO Client lié</span>
+                      <p className="font-medium">{poNumber}</p>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500 block">Date livraison</span>
+                      <span className="font-medium">{formatDate(purchase.delivery_date)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Montant</span>
+                      <span className="font-bold text-green-600">{formatCurrency(purchase.total_amount)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 text-sm">Statut</span>
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
+                      purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                      purchase.status === 'received' ? 'bg-green-100 text-green-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {purchase.status === 'ordered' ? '📤 Commandé' :
+                       purchase.status === 'draft' ? '📝 Brouillon' :
+                       purchase.status === 'received' ? '✅ Reçu' : '❌ Annulé'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
