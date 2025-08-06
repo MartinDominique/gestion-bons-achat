@@ -463,40 +463,62 @@ export default function SupplierPurchaseManager() {
 
   // Sauvegarde achat
   const handlePurchaseSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      let purchaseNumber = purchaseForm.purchase_number;
-      
-      if (!editingPurchase) {
-        purchaseNumber = await generatePurchaseNumber();
-      }
-
-      const purchaseData = {
-        ...purchaseForm,
-        purchase_number: purchaseNumber,
-        items: selectedItems
-      };
-
-      if (editingPurchase) {
-        const { error } = await supabase
-          .from('supplier_purchases')
-          .update(purchaseData)
-          .eq('id', editingPurchase.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('supplier_purchases')
-          .insert([purchaseData]);
-        if (error) throw error;
-      }
-
-      await fetchSupplierPurchases();
-      resetForm();
-    } catch (error) {
-      console.error('Erreur sauvegarde achat:', error);
-      alert('Erreur lors de la sauvegarde');
+  e.preventDefault();
+  try {
+    let purchaseNumber = purchaseForm.purchase_number;
+    
+    if (!editingPurchase) {
+      purchaseNumber = await generatePurchaseNumber();
     }
-  };
+
+    // CORRECTION ICI - Nettoyer les données avant l'envoi
+    const purchaseData = {
+      supplier_id: purchaseForm.supplier_id || null,
+      supplier_name: purchaseForm.supplier_name,
+      linked_po_id: purchaseForm.linked_po_id ? parseInt(purchaseForm.linked_po_id) : null, // ✅ Convertit en null si vide
+      linked_po_number: purchaseForm.linked_po_number || null,
+      shipping_address_id: purchaseForm.shipping_address_id ? parseInt(purchaseForm.shipping_address_id) : null, // ✅ Convertit en null si vide
+      shipping_company: purchaseForm.shipping_company || null,
+      shipping_account: purchaseForm.shipping_account || null,
+      delivery_date: purchaseForm.delivery_date || null,
+      items: selectedItems,
+      subtotal: parseFloat(purchaseForm.subtotal) || 0,
+      taxes: parseFloat(purchaseForm.taxes) || 0,
+      shipping_cost: parseFloat(purchaseForm.shipping_cost) || 0,
+      total_amount: parseFloat(purchaseForm.total_amount) || 0,
+      status: purchaseForm.status || 'draft',
+      notes: purchaseForm.notes || null,
+      purchase_number: purchaseNumber
+    };
+
+    // Nettoyer les champs vides
+    Object.keys(purchaseData).forEach(key => {
+      if (purchaseData[key] === '' || purchaseData[key] === undefined) {
+        purchaseData[key] = null;
+      }
+    });
+
+    if (editingPurchase) {
+      const { error } = await supabase
+        .from('supplier_purchases')
+        .update(purchaseData)
+        .eq('id', editingPurchase.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('supplier_purchases')
+        .insert([purchaseData]);
+      if (error) throw error;
+    }
+
+    await fetchSupplierPurchases();
+    resetForm();
+    alert('✅ Achat sauvegardé avec succès!');
+  } catch (error) {
+    console.error('Erreur sauvegarde achat:', error);
+    alert(`❌ Erreur lors de la sauvegarde: ${error.message}`);
+  }
+};
 
   const handleDeletePurchase = async (id) => {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cet achat ?')) return;
