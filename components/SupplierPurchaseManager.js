@@ -471,13 +471,13 @@ export default function SupplierPurchaseManager() {
       purchaseNumber = await generatePurchaseNumber();
     }
 
-    // CORRECTION ICI - Nettoyer les données avant l'envoi
+    // CORRECTION - Gérer les types UUID et integer correctement
     const purchaseData = {
-      supplier_id: purchaseForm.supplier_id || null,
-      supplier_name: purchaseForm.supplier_name,
-      linked_po_id: purchaseForm.linked_po_id ? parseInt(purchaseForm.linked_po_id) : null, // ✅ Convertit en null si vide
+      supplier_id: purchaseForm.supplier_id || null, // UUID - ne pas parser
+      supplier_name: purchaseForm.supplier_name || null,
+      linked_po_id: purchaseForm.linked_po_id || null, // UUID - ne pas parser
       linked_po_number: purchaseForm.linked_po_number || null,
-      shipping_address_id: purchaseForm.shipping_address_id ? parseInt(purchaseForm.shipping_address_id) : null, // ✅ Convertit en null si vide
+      shipping_address_id: purchaseForm.shipping_address_id || null, // UUID - ne pas parser
       shipping_company: purchaseForm.shipping_company || null,
       shipping_account: purchaseForm.shipping_account || null,
       delivery_date: purchaseForm.delivery_date || null,
@@ -491,12 +491,14 @@ export default function SupplierPurchaseManager() {
       purchase_number: purchaseNumber
     };
 
-    // Nettoyer les champs vides
+    // Nettoyer les champs vides - IMPORTANT pour éviter les chaînes vides
     Object.keys(purchaseData).forEach(key => {
       if (purchaseData[key] === '' || purchaseData[key] === undefined) {
         purchaseData[key] = null;
       }
     });
+
+    console.log('📤 Données à sauvegarder:', purchaseData); // Pour debug
 
     if (editingPurchase) {
       const { error } = await supabase
@@ -515,11 +517,11 @@ export default function SupplierPurchaseManager() {
     resetForm();
     alert('✅ Achat sauvegardé avec succès!');
   } catch (error) {
-    console.error('Erreur sauvegarde achat:', error);
+    console.error('❌ Erreur sauvegarde achat:', error);
     alert(`❌ Erreur lors de la sauvegarde: ${error.message}`);
   }
 };
-
+  
   const handleDeletePurchase = async (id) => {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cet achat ?')) return;
     
