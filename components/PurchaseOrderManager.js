@@ -858,6 +858,11 @@ export default function PurchaseOrderManager() {
                                         {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
                                         {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
                                       </p>
+                                       {purchase.notes && (
+                                       <p className="text-xs text-blue-600 mt-1 italic">
+                                       📝 Note: {purchase.notes}
+                                      </p>
+                                     )}
                                     </div>
                                   </div>
                                   
@@ -896,6 +901,11 @@ export default function PurchaseOrderManager() {
                                         {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
                                         {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
                                       </p>
+                                      {purchase.notes && (
+                                      <p className="text-xs text-green-600 mt-1 italic">
+                                      📝 Note: {purchase.notes}
+                                    </p>
+                                      )}
                                     </div>
                                   </div>
                                   
