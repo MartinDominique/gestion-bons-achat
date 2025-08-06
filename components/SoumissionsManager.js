@@ -177,7 +177,7 @@ export default function SoumissionsManager() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/upload-inventory', {
+      const response = await fetch('/api/import-inventory', {
         method: 'POST',
         body: formData
       });
