@@ -568,40 +568,57 @@ export default function SupplierPurchaseManager() {
 
   // Sauvegarde achat
   const handlePurchaseSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      let purchaseNumber = purchaseForm.purchase_number;
-      
-      if (!editingPurchase) {
-        purchaseNumber = await generatePurchaseNumber();
-      }
-
-      const purchaseData = {
-        ...purchaseForm,
-        purchase_number: purchaseNumber,
-        items: selectedItems
-      };
-
-      if (editingPurchase) {
-        const { error } = await supabase
-          .from('supplier_purchases')
-          .update(purchaseData)
-          .eq('id', editingPurchase.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('supplier_purchases')
-          .insert([purchaseData]);
-        if (error) throw error;
-      }
-
-      await fetchSupplierPurchases();
-      resetForm();
-    } catch (error) {
-      console.error('Erreur sauvegarde achat:', error);
-      alert('Erreur lors de la sauvegarde');
+  e.preventDefault();
+  try {
+    let purchaseNumber = purchaseForm.purchase_number;
+    
+    if (!editingPurchase) {
+      purchaseNumber = await generatePurchaseNumber();
     }
-  };
+
+    // CORRECTION: Filtrer les données pour ne garder que les colonnes de la table
+    const purchaseData = {
+      supplier_id: purchaseForm.supplier_id,
+      supplier_name: purchaseForm.supplier_name,
+      linked_po_id: purchaseForm.linked_po_id,
+      linked_po_number: purchaseForm.linked_po_number,
+      shipping_address_id: purchaseForm.shipping_address_id,
+      shipping_company: purchaseForm.shipping_company,
+      shipping_account: purchaseForm.shipping_account,
+      delivery_date: purchaseForm.delivery_date,
+      items: selectedItems,
+      subtotal: purchaseForm.subtotal,
+      taxes: purchaseForm.taxes,
+      shipping_cost: parseFloat(purchaseForm.shipping_cost || 0),
+      total_amount: purchaseForm.total_amount,
+      status: purchaseForm.status,
+      notes: purchaseForm.notes,
+      purchase_number: purchaseNumber
+    };
+
+    if (editingPurchase) {
+      const { error } = await supabase
+        .from('supplier_purchases')
+        .update(purchaseData)
+        .eq('id', editingPurchase.id);
+      if (error) throw error;
+      console.log('✅ Achat mis à jour avec succès');
+    } else {
+      const { error } = await supabase
+        .from('supplier_purchases')
+        .insert([purchaseData]);
+      if (error) throw error;
+      console.log('✅ Achat créé avec succès');
+    }
+
+    await fetchSupplierPurchases();
+    resetForm();
+    alert(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat créé avec succès!');
+  } catch (error) {
+    console.error('Erreur sauvegarde achat:', error);
+    alert('❌ Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+  }
+};
 
   const handleDeletePurchase = async (id) => {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cet achat ?')) return;
