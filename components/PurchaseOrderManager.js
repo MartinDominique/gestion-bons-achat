@@ -865,10 +865,8 @@ export default function PurchaseOrderManager() {
                                 printWindow.document.write(printContent);
                                 printWindow.document.close();
                                 
-                                // Attendre que le contenu soit chargé puis déclencher l'impression
-                                setTimeout(() => {
-                                  printWindow.print();
-                                }, 500);
+                                // SUPPRIMÉ: Déclencher automatiquement l'impression
+                                // L'utilisateur peut cliquer sur Print dans la fenêtre s'il le souhaite
 
                               } catch (error) {
                                 console.error('Erreur récupération soumission:', error);
