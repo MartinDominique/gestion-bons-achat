@@ -744,18 +744,42 @@ export default function PurchaseOrderManager() {
                     📋 No. Soumission
                   </label>
                   <div className="space-y-2">
-                    <select
-                      value={formData.submission_no}
-                      onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
-                      className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
-                    >
-                      <option value="">Sélectionner ou entrer manuellement...</option>
-                      {submissions.map((submission) => (
-                        <option key={submission.id} value={submission.submission_number}>
-                          {submission.submission_number} - {submission.client_name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2">
+                      <select
+                        value={formData.submission_no}
+                        onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
+                        className="block flex-1 rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
+                      >
+                        <option value="">Sélectionner ou entrer manuellement...</option>
+                        {submissions.map((submission) => (
+                          <option key={submission.id} value={submission.submission_number}>
+                            {submission.submission_number} - {submission.client_name}
+                          </option>
+                        ))}
+                      </select>
+                      
+                      {/* NOUVEAU: Bouton Visualiser Soumission */}
+                      {formData.submission_no && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const selectedSubmission = submissions.find(s => s.submission_number === formData.submission_no);
+                            if (selectedSubmission) {
+                              // Ouvrir la soumission dans un nouvel onglet avec mode impression
+                              const submissionUrl = `/soumissions/${selectedSubmission.id}?print=true`;
+                              window.open(submissionUrl, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+                            } else {
+                              alert('⚠️ Soumission non trouvée dans le système');
+                            }
+                          }}
+                          className="px-3 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 flex-shrink-0 text-sm font-medium"
+                          title="Visualiser la soumission"
+                        >
+                          👁️ Visualiser
+                        </button>
+                      )}
+                    </div>
+                    
                     <input
                       type="text"
                       value={formData.submission_no}
@@ -858,11 +882,6 @@ export default function PurchaseOrderManager() {
                                         {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
                                         {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
                                       </p>
-                                       {purchase.notes && (
-                                       <p className="text-xs text-blue-600 mt-1 italic">
-                                       📝 Note: {purchase.notes}
-                                      </p>
-                                     )}
                                     </div>
                                   </div>
                                   
@@ -902,9 +921,9 @@ export default function PurchaseOrderManager() {
                                         {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
                                       </p>
                                       {purchase.notes && (
-                                      <p className="text-xs text-green-600 mt-1 italic">
-                                      📝 Note: {purchase.notes}
-                                    </p>
+                                        <p className="text-xs text-green-600 mt-1 italic">
+                                          📝 Note: {purchase.notes}
+                                        </p>
                                       )}
                                     </div>
                                   </div>
