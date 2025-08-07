@@ -132,11 +132,12 @@ export default function PurchaseOrderManager() {
       }
 
       // Récupérer les achats disponibles (non liés à ce PO)
-      const { data: available, error: availableError } = await supabase
-        .from('supplier_purchases')
-        .select('*')
-        .or(`linked_po_id.is.null,linked_po_id.neq.${purchaseOrderId}`)
-        .order('created_at', { ascending: false });
+      // NOUVELLE VERSION (corrigée)
+const { data: available, error: availableError } = await supabase
+  .from('supplier_purchases')
+  .select('*')
+  .is('linked_po_id', null)  // Seulement les achats NON LIÉS
+  .order('created_at', { ascending: false });
 
       if (availableError) {
         console.error('Erreur récupération achats disponibles:', availableError);
