@@ -580,7 +580,7 @@ export default function SupplierPurchaseManager() {
     const purchaseData = {
       supplier_id: purchaseForm.supplier_id,
       supplier_name: purchaseForm.supplier_name,
-      linked_po_id: purchaseForm.linked_po_id,
+      linked_po_id: purchaseForm.linked_po_id || null,
       linked_po_number: purchaseForm.linked_po_number,
       shipping_address_id: purchaseForm.shipping_address_id,
       shipping_company: purchaseForm.shipping_company,
