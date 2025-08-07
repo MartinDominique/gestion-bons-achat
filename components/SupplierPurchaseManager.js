@@ -585,7 +585,11 @@ export default function SupplierPurchaseManager() {
       shipping_address_id: purchaseForm.shipping_address_id,
       shipping_company: purchaseForm.shipping_company,
       shipping_account: purchaseForm.shipping_account,
-      delivery_date: purchaseForm.delivery_date,
+      delivery_date: purchaseForm.delivery_date || (() => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().split('T')[0];
+})(),
       items: selectedItems,
       subtotal: purchaseForm.subtotal,
       taxes: purchaseForm.taxes,
