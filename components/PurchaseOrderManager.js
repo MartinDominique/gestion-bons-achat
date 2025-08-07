@@ -776,10 +776,10 @@ export default function PurchaseOrderManager() {
                                 if (error) throw error;
 
                                 // Calculer les totaux à partir des items
-                                const totalVente = submissionDetails.items?.reduce((sum, item) => 
-                                  sum + ((item.unit_price || 0) * (item.quantity || 0)), 0) || 0;
-                                const totalCost = submissionDetails.items?.reduce((sum, item) => 
-                                  sum + ((item.cost_price || 0) * (item.quantity || 0)), 0) || 0;
+                                  const totalVente = submissionDetails.items?.reduce((sum, item) => 
+                                    sum + ((item.selling_price || item.sale_price || item.unit_price || 0) * (item.quantity || 0)), 0) || 0;
+                                  const totalCost = submissionDetails.items?.reduce((sum, item) => 
+                                    sum + ((item.cost_price || item.unit_cost || 0) * (item.quantity || 0)), 0) || 0;
                                 // Créer une nouvelle fenêtre avec le contenu de la soumission formaté pour l'impression
                                 const printWindow = window.open('', '_blank', 'width=800,height=600');
                                 
@@ -840,10 +840,10 @@ export default function PurchaseOrderManager() {
                                               <td>${item.description || ''}</td>
                                               <td>${item.quantity || 0}</td>
                                               <td>${item.unit || ''}</td>
-                                              <td>${formatCurrency(item.unit_price || 0)}</td>
-                                              <td>${formatCurrency(item.cost_price || 0)}</td>
-                                              <td>${formatCurrency((item.unit_price || 0) * (item.quantity || 0))}</td>
-                                              <td>${formatCurrency((item.cost_price || 0) * (item.quantity || 0))}</td>
+                                              <td>${formatCurrency(item.selling_price || item.sale_price || item.unit_price || 0)}</td>
+                                              <td>${formatCurrency(item.cost_price || item.unit_cost || 0)}</td>
+                                              <td>${formatCurrency((item.selling_price || item.sale_price || item.unit_price || 0) * (item.quantity || 0))}</td>
+                                              <td>${formatCurrency((item.cost_price || item.unit_cost || 0) * (item.quantity || 0))}</td>
                                             </tr>
                                           `).join('')}
                                         </tbody>
