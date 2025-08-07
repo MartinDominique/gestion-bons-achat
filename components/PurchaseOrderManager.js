@@ -152,83 +152,153 @@ const { data: available, error: availableError } = await supabase
     }
   };
 
-  // NOUVEAU: Visualiser un achat fournisseur
-  const visualizeSupplierPurchase = async (purchase) => {
-    try {
-      const { data: purchaseDetails, error } = await supabase
-        .from('supplier_purchases')
-        .select('*')
-        .eq('id', purchase.id)
-        .single();
+  // FONCTION CORRIGÉE - visualizeSupplierPurchase avec détail des articles
+const visualizeSupplierPurchase = async (purchase) => {
+  try {
+    const { data: purchaseDetails, error } = await supabase
+      .from('supplier_purchases')
+      .select('*')
+      .eq('id', purchase.id)
+      .single();
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const printWindow = window.open('', '_blank', 'width=800,height=600');
-      
-      const printContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Achat Fournisseur ${purchaseDetails.purchase_number}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
-            .supplier-info, .purchase-info { width: 48%; }
-            .po-link { background-color: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; }
-            @media print { body { margin: 0; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>ACHAT FOURNISSEUR</h1>
-            <h2>N°: ${purchaseDetails.purchase_number || 'N/A'}</h2>
-            <p>Date: ${formatDate(purchaseDetails.delivery_date || purchaseDetails.created_at)}</p>
-          </div>
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Achat Fournisseur ${purchaseDetails.purchase_number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .supplier-info, .purchase-info { width: 48%; }
+          .po-link { background-color: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; }
           
-          <div class="info-section">
-            <div class="supplier-info">
-              <h3>FOURNISSEUR:</h3>
-              <p><strong>${purchaseDetails.supplier_name || 'N/A'}</strong></p>
-              ${purchaseDetails.supplier_contact ? `<p>Contact: ${purchaseDetails.supplier_contact}</p>` : ''}
-            </div>
-            <div class="purchase-info">
-              <p><strong>Date création:</strong> ${formatDate(purchaseDetails.created_at)}</p>
-              ${purchaseDetails.delivery_date ? `<p><strong>Date livraison:</strong> ${formatDate(purchaseDetails.delivery_date)}</p>` : ''}
-              <p><strong>Statut:</strong> ${purchaseDetails.status || 'En cours'}</p>
-            </div>
+          /* NOUVEAU: Styles pour le tableau des articles */
+          .items-section { margin: 20px 0; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+          th { background-color: #f0f0f0; font-weight: bold; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .total-row { background-color: #f9f9f9; font-weight: bold; }
+          
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>ACHAT FOURNISSEUR</h1>
+          <h2>N°: ${purchaseDetails.purchase_number || 'N/A'}</h2>
+          <p>Date: ${formatDate(purchaseDetails.delivery_date || purchaseDetails.created_at)}</p>
+        </div>
+        
+        <div class="info-section">
+          <div class="supplier-info">
+            <h3>FOURNISSEUR:</h3>
+            <p><strong>${purchaseDetails.supplier_name || 'N/A'}</strong></p>
+            ${purchaseDetails.supplier_contact ? `<p>Contact: ${purchaseDetails.supplier_contact}</p>` : ''}
           </div>
-
-          ${purchaseDetails.linked_po_id ? `
-            <div class="po-link">
-              <h3>🔗 LIEN AVEC BON D'ACHAT CLIENT:</h3>
-              <p><strong>N° Bon d'achat:</strong> ${purchaseDetails.linked_po_number || 'N/A'}</p>
-              <p><em>Cet achat fournisseur est lié au bon d'achat client ci-dessus</em></p>
-            </div>
-          ` : ''}
-
-          <div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border-radius: 5px;">
-            <h3>MONTANT TOTAL: ${formatCurrency(purchaseDetails.total_amount || 0)}</h3>
+          <div class="purchase-info">
+            <p><strong>Date création:</strong> ${formatDate(purchaseDetails.created_at)}</p>
+            ${purchaseDetails.delivery_date ? `<p><strong>Date livraison:</strong> ${formatDate(purchaseDetails.delivery_date)}</p>` : ''}
+            <p><strong>Statut:</strong> ${purchaseDetails.status || 'En cours'}</p>
           </div>
+        </div>
 
-          ${purchaseDetails.notes ? `
-            <div style="margin-top: 30px;">
-              <h3>Notes:</h3>
-              <p>${purchaseDetails.notes}</p>
-            </div>
-          ` : ''}
-        </body>
-        </html>
-      `;
+        ${purchaseDetails.linked_po_id ? `
+          <div class="po-link">
+            <h3>🔗 LIEN AVEC BON D'ACHAT CLIENT:</h3>
+            <p><strong>N° Bon d'achat:</strong> ${purchaseDetails.linked_po_number || 'N/A'}</p>
+            <p><em>Cet achat fournisseur est lié au bon d'achat client ci-dessus</em></p>
+          </div>
+        ` : ''}
 
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      
-    } catch (error) {
-      console.error('Erreur récupération achat fournisseur:', error);
-      alert('❌ Erreur lors de la récupération de l\'achat fournisseur');
-    }
-  };
+        <!-- NOUVEAU: Section des articles -->
+        ${purchaseDetails.items && purchaseDetails.items.length > 0 ? `
+          <div class="items-section">
+            <h3>DÉTAIL DES ARTICLES:</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th class="text-center">Qté</th>
+                  <th class="text-center">Unité</th>
+                  <th class="text-right">Prix Unit.</th>
+                  <th class="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${purchaseDetails.items.map(item => `
+                  <tr>
+                    <td>${item.product_id || item.code || ''}</td>
+                    <td>${item.description || ''}</td>
+                    <td class="text-center">${item.quantity || 0}</td>
+                    <td class="text-center">${item.unit || ''}</td>
+                    <td class="text-right">${formatCurrency(item.cost_price || 0)}</td>
+                    <td class="text-right">${formatCurrency((item.cost_price || 0) * (item.quantity || 0))}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td colspan="5"><strong>Sous-total:</strong></td>
+                  <td class="text-right"><strong>${formatCurrency(purchaseDetails.subtotal || 0)}</strong></td>
+                </tr>
+                ${purchaseDetails.taxes && purchaseDetails.taxes > 0 ? `
+                  <tr class="total-row">
+                    <td colspan="5"><strong>Taxes (14.975%):</strong></td>
+                    <td class="text-right"><strong>${formatCurrency(purchaseDetails.taxes)}</strong></td>
+                  </tr>
+                ` : ''}
+                ${purchaseDetails.shipping_cost && purchaseDetails.shipping_cost > 0 ? `
+                  <tr class="total-row">
+                    <td colspan="5"><strong>Frais de livraison:</strong></td>
+                    <td class="text-right"><strong>${formatCurrency(purchaseDetails.shipping_cost)}</strong></td>
+                  </tr>
+                ` : ''}
+                <tr class="total-row" style="background-color: #e8f5e8;">
+                  <td colspan="5"><strong>TOTAL GÉNÉRAL:</strong></td>
+                  <td class="text-right"><strong>${formatCurrency(purchaseDetails.total_amount || 0)}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        ` : `
+          <div class="items-section">
+            <h3>DÉTAIL DES ARTICLES:</h3>
+            <p style="text-align: center; color: #666; font-style: italic; padding: 20px;">
+              Aucun article détaillé pour cet achat fournisseur
+            </p>
+          </div>
+        `}
+
+        <div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border-radius: 5px;">
+          <h3>MONTANT TOTAL: ${formatCurrency(purchaseDetails.total_amount || 0)}</h3>
+        </div>
+
+        ${purchaseDetails.notes ? `
+          <div style="margin-top: 30px;">
+            <h3>Notes:</h3>
+            <p>${purchaseDetails.notes}</p>
+          </div>
+        ` : ''}
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+  } catch (error) {
+    console.error('Erreur récupération achat fournisseur:', error);
+    alert('❌ Erreur lors de la récupération de l\'achat fournisseur');
+  }
+};;
 
   // NOUVEAU: Lier un achat fournisseur au PO
   const linkSupplierPurchase = async (supplierPurchaseId) => {
