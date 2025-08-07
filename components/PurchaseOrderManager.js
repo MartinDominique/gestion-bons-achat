@@ -151,6 +151,87 @@ export default function PurchaseOrderManager() {
     }
   };
 
+  };
+
+// ✅ AJOUTER ICI - Juste après la fermeture de fetchLinkedPurchases
+const visualizeSupplierPurchase = async (purchase) => {
+  try {
+    const { data: purchaseDetails, error } = await supabase
+      .from('supplier_purchases')
+      .select('*')
+      .eq('id', purchase.id)
+      .single();
+
+    if (error) throw error;
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Achat Fournisseur ${purchaseDetails.purchase_number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .supplier-info, .purchase-info { width: 48%; }
+          .po-link { background-color: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>ACHAT FOURNISSEUR</h1>
+          <h2>N°: ${purchaseDetails.purchase_number || 'N/A'}</h2>
+          <p>Date: ${formatDate(purchaseDetails.delivery_date || purchaseDetails.created_at)}</p>
+        </div>
+        
+        <div class="info-section">
+          <div class="supplier-info">
+            <h3>FOURNISSEUR:</h3>
+            <p><strong>${purchaseDetails.supplier_name || 'N/A'}</strong></p>
+            ${purchaseDetails.supplier_contact ? `<p>Contact: ${purchaseDetails.supplier_contact}</p>` : ''}
+          </div>
+          <div class="purchase-info">
+            <p><strong>Date création:</strong> ${formatDate(purchaseDetails.created_at)}</p>
+            ${purchaseDetails.delivery_date ? `<p><strong>Date livraison:</strong> ${formatDate(purchaseDetails.delivery_date)}</p>` : ''}
+            <p><strong>Statut:</strong> ${purchaseDetails.status || 'En cours'}</p>
+          </div>
+        </div>
+
+        ${purchaseDetails.linked_po_id ? `
+          <div class="po-link">
+            <h3>🔗 LIEN AVEC BON D'ACHAT CLIENT:</h3>
+            <p><strong>N° Bon d'achat:</strong> ${purchaseDetails.linked_po_number || 'N/A'}</p>
+            <p><em>Cet achat fournisseur est lié au bon d'achat client ci-dessus</em></p>
+          </div>
+        ` : ''}
+
+        <div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border-radius: 5px;">
+          <h3>MONTANT TOTAL: ${formatCurrency(purchaseDetails.total_amount || 0)}</h3>
+        </div>
+
+        ${purchaseDetails.notes ? `
+          <div style="margin-top: 30px;">
+            <h3>Notes:</h3>
+            <p>${purchaseDetails.notes}</p>
+          </div>
+        ` : ''}
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+  } catch (error) {
+    console.error('Erreur récupération achat fournisseur:', error);
+    alert('❌ Erreur lors de la récupération de l\'achat fournisseur');
+  }
+};
+
+// NOUVEAU: Lier un achat fournisseur au PO (cette fonction vient après)
   // NOUVEAU: Lier un achat fournisseur au PO
   const linkSupplierPurchase = async (supplierPurchaseId) => {
     if (!editingPO) return;
@@ -996,13 +1077,22 @@ export default function PurchaseOrderManager() {
                                   
                                   <button
                                     type="button"
+                                    onClick={() => visualizeSupplierPurchase(purchase)}
+                                    className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+                                    title="Visualiser cet achat fournisseur"
+                                    >
+                                      👁️ Voir
+                                    </button>
+
+                                    <button
+                                    type="button"
                                     onClick={() => unlinkSupplierPurchase(purchase.id)}
                                     className="px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
                                     title="Délier cet achat"
-                                  >
-                                    <Minus className="w-4 h-4" />
-                                  </button>
-                                </div>
+                                    >
+                                      <Minus className="w-4 h-4" />
+                                      </button>
+                                  </div>
                               </div>
                             ))}
                           </div>
@@ -1038,14 +1128,23 @@ export default function PurchaseOrderManager() {
                                   </div>
                                   
                                   <button
-                                    type="button"
-                                    onClick={() => linkSupplierPurchase(purchase.id)}
-                                    className="px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded"
-                                    title="Lier cet achat"
-                                  >
-                                    <Plus className="w-4 h-4" />
-                                  </button>
-                                </div>
+  type="button"
+  onClick={() => visualizeSupplierPurchase(purchase)}
+  className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+  title="Visualiser cet achat fournisseur"
+>
+  👁️ Voir
+</button>
+
+<button
+  type="button"
+  onClick={() => linkSupplierPurchase(purchase.id)}
+  className="px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded"
+  title="Lier cet achat"
+>
+  <Plus className="w-4 h-4" />
+</button>
+</div>
                               </div>
                             ))}
                             {availablePurchases.length > 10 && (
