@@ -775,6 +775,11 @@ export default function PurchaseOrderManager() {
 
                                 if (error) throw error;
 
+                                // Calculer les totaux à partir des items
+                                const totalVente = submissionDetails.items?.reduce((sum, item) => 
+                                  sum + ((item.unit_price || 0) * (item.quantity || 0)), 0) || 0;
+                                const totalCost = submissionDetails.items?.reduce((sum, item) => 
+                                  sum + ((item.cost_price || 0) * (item.quantity || 0)), 0) || 0;
                                 // Créer une nouvelle fenêtre avec le contenu de la soumission formaté pour l'impression
                                 const printWindow = window.open('', '_blank', 'width=800,height=600');
                                 
@@ -845,8 +850,8 @@ export default function PurchaseOrderManager() {
                                         <tfoot>
                                           <tr class="total-row">
                                             <td colspan="6"><strong>TOTAL SOUMISSION:</strong></td>
-                                            <td><strong>${formatCurrency(submissionDetails.total_amount || 0)}</strong></td>
-                                            <td><strong>${formatCurrency(submissionDetails.total_cost || 0)}</strong></td>
+                                            <td><strong>${formatCurrency(totalVente)}</strong></td>
+                                            <td><strong>${formatCurrency(totalCost)}</strong></td>
                                           </tr>
                                         </tfoot>
                                       </table>
