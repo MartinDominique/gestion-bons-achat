@@ -762,12 +762,118 @@ export default function PurchaseOrderManager() {
                       {formData.submission_no && (
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             const selectedSubmission = submissions.find(s => s.submission_number === formData.submission_no);
                             if (selectedSubmission) {
-                              // Ouvrir la soumission dans un nouvel onglet avec mode impression
-                              const submissionUrl = `/soumissions/${selectedSubmission.id}?print=true`;
-                              window.open(submissionUrl, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+                              try {
+                                // Récupérer les détails complets de la soumission depuis Supabase
+                                const { data: submissionDetails, error } = await supabase
+                                  .from('submissions')
+                                  .select('*')
+                                  .eq('id', selectedSubmission.id)
+                                  .single();
+
+                                if (error) throw error;
+
+                                // Créer une nouvelle fenêtre avec le contenu de la soumission formaté pour l'impression
+                                const printWindow = window.open('', '_blank', 'width=800,height=600');
+                                
+                                const printContent = `
+                                  <!DOCTYPE html>
+                                  <html>
+                                  <head>
+                                    <title>Soumission ${submissionDetails.submission_number}</title>
+                                    <style>
+                                      body { font-family: Arial, sans-serif; margin: 20px; }
+                                      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                                      .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                                      .client-info, .submission-info { width: 48%; }
+                                      table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                                      th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                                      th { background-color: #f0f0f0; }
+                                      .total-row { font-weight: bold; background-color: #f9f9f9; }
+                                      @media print { body { margin: 0; } }
+                                    </style>
+                                  </head>
+                                  <body>
+                                    <div class="header">
+                                      <h1>SOUMISSION</h1>
+                                      <h2>N°: ${submissionDetails.submission_number}</h2>
+                                      <p>Date: ${formatDate(submissionDetails.created_at)}</p>
+                                    </div>
+                                    
+                                    <div class="info-section">
+                                      <div class="client-info">
+                                        <h3>CLIENT:</h3>
+                                        <p><strong>${submissionDetails.client_name || 'N/A'}</strong></p>
+                                        <p>DESCRIPTION: ${submissionDetails.description || 'N/A'}</p>
+                                      </div>
+                                      <div class="submission-info">
+                                        <p><strong>Date:</strong> ${formatDate(submissionDetails.created_at)}</p>
+                                        <p><strong>Statut:</strong> ${submissionDetails.status || 'N/A'}</p>
+                                      </div>
+                                    </div>
+
+                                    ${submissionDetails.items && submissionDetails.items.length > 0 ? `
+                                      <table>
+                                        <thead>
+                                          <tr>
+                                            <th>Code</th>
+                                            <th>Description</th>
+                                            <th>Qté</th>
+                                            <th>Unité</th>
+                                            <th>Prix Unit.</th>
+                                            <th>Coût Unit.</th>
+                                            <th>Total Vente</th>
+                                            <th>Total Coût</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          ${submissionDetails.items.map(item => `
+                                            <tr>
+                                              <td>${item.code || ''}</td>
+                                              <td>${item.description || ''}</td>
+                                              <td>${item.quantity || 0}</td>
+                                              <td>${item.unit || ''}</td>
+                                              <td>${formatCurrency(item.unit_price || 0)}</td>
+                                              <td>${formatCurrency(item.cost_price || 0)}</td>
+                                              <td>${formatCurrency((item.unit_price || 0) * (item.quantity || 0))}</td>
+                                              <td>${formatCurrency((item.cost_price || 0) * (item.quantity || 0))}</td>
+                                            </tr>
+                                          `).join('')}
+                                        </tbody>
+                                        <tfoot>
+                                          <tr class="total-row">
+                                            <td colspan="6"><strong>TOTAL SOUMISSION:</strong></td>
+                                            <td><strong>${formatCurrency(submissionDetails.total_amount || 0)}</strong></td>
+                                            <td><strong>${formatCurrency(submissionDetails.total_cost || 0)}</strong></td>
+                                          </tr>
+                                        </tfoot>
+                                      </table>
+                                    ` : '<p>Aucun item dans cette soumission</p>'}
+
+                                    ${submissionDetails.notes ? `
+                                      <div style="margin-top: 30px;">
+                                        <h3>Notes:</h3>
+                                        <p>${submissionDetails.notes}</p>
+                                      </div>
+                                    ` : ''}
+                                  </body>
+                                  </html>
+                                `;
+
+                                printWindow.document.write(printContent);
+                                printWindow.document.close();
+                                
+                                // Attendre que le contenu soit chargé puis déclencher l'impression
+                                setTimeout(() => {
+                                  printWindow.print();
+                                }, 500);
+
+                              } catch (error) {
+                                console.error('Erreur récupération soumission:', error);
+                                alert('❌ Erreur lors de la récupération de la soumission');
+                              }
                             } else {
                               alert('⚠️ Soumission non trouvée dans le système');
                             }
