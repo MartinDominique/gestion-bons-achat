@@ -1079,15 +1079,6 @@ const { data: available, error: availableError } = await supabase
                                     >
                                       👁️ Voir
                                     </button>
-                                    
-                                    <button
-                                      type="button"
-                                      onClick={() => unlinkSupplierPurchase(purchase.id)}
-                                      className="px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded"
-                                      title="Délier cet achat"
-                                    >
-                                      <Minus className="w-4 h-4" />
-                                    </button>
                                   </div>
                                 </div>
                               </div>
@@ -1102,24 +1093,7 @@ const { data: available, error: availableError } = await supabase
                           <p className="text-sm font-medium text-orange-700 mb-3">
                             ➕ Achats fournisseurs disponibles ({availablePurchases.length})
                           </p>
-                          <div className="space-y-2 max-h-60 overflow-y-auto">
-                            {availablePurchases.slice(0, 10).map((purchase) => (
-                              <div key={purchase.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                    <span className="text-xl flex-shrink-0">🛒</span>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-gray-900">
-                                        {purchase.purchase_number}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
-                                        {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
-                                      </p>
-                                      {purchase.notes && (
-                                        <p className="text-xs text-green-600 mt-1 italic">
-                                          📝 Note: {purchase.notes}
-                                        </p>
+                          
                                       )}
                                     </div>
                                   </div>
@@ -1132,15 +1106,6 @@ const { data: available, error: availableError } = await supabase
                                       title="Visualiser cet achat fournisseur"
                                     >
                                       👁️ Voir
-                                    </button>
-                                    
-                                    <button
-                                      type="button"
-                                      onClick={() => linkSupplierPurchase(purchase.id)}
-                                      className="px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded"
-                                      title="Lier cet achat"
-                                    >
-                                      <Plus className="w-4 h-4" />
                                     </button>
                                   </div>
                                 </div>
