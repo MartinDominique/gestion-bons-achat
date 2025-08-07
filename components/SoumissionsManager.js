@@ -405,13 +405,17 @@ export default function SoumissionsManager() {
   };
 
   const selectProductForQuantity = (product) => {
-    setSelectedProductForQuantity(product);
-    setShowQuantityInput(true);
-    setTempQuantity('1');
-    setTimeout(() => {
-      document.getElementById('quantity-input')?.focus();
-    }, 100);
-  };
+  setSelectedProductForQuantity(product);
+  setShowQuantityInput(true);
+  setTempQuantity('1');
+  setTimeout(() => {
+    const input = document.getElementById('quantity-input');
+    if (input) {
+      input.focus();
+      input.select(); // ✅ AJOUT: Sélectionne le texte "1"
+    }
+  }, 100);
+};
 
   const handleQuantityKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -459,7 +463,89 @@ export default function SoumissionsManager() {
     }
     closeCommentModal();
   };
+  // ✅ NOUVELLE FONCTION - Ajouter avant addItemToSubmission
+const addNonInventoryProduct = async () => {
+  if (quickProductForm.product_id && quickProductForm.description && 
+      quickProductForm.selling_price && quickProductForm.cost_price) {
+    
+    try {
+      const productData = {
+        product_id: quickProductForm.product_id,
+        description: quickProductForm.description,
+        selling_price: parseFloat(quickProductForm.selling_price),
+        cost_price: parseFloat(quickProductForm.cost_price),
+        unit: quickProductForm.unit,
+        product_group: quickProductForm.product_group || 'Non-Inventaire',
+        stock_qty: 0,
+        is_non_inventory: true
+      };
 
+      const { data: existingProduct, error: checkError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('product_id', quickProductForm.product_id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      let productResult;
+      if (existingProduct) {
+        const { data, error } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('product_id', quickProductForm.product_id)
+          .select();
+        productResult = data;
+        if (error) throw error;
+        console.log('✅ Produit non-inventaire mis à jour:', data[0]);
+      } else {
+        const { data, error } = await supabase
+          .from('products')
+          .insert([productData])
+          .select();
+        productResult = data;
+        if (error) throw error;
+        console.log('✅ Nouveau produit non-inventaire créé:', data[0]);
+      }
+
+      if (productResult && productResult.length > 0) {
+        const savedProduct = productResult[0];
+        addItemToSubmission(savedProduct, 1);
+        alert('✅ Produit non-inventaire sauvegardé et ajouté à la soumission !');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde produit non-inventaire:', error);
+      
+      const tempProduct = {
+        product_id: quickProductForm.product_id,
+        description: quickProductForm.description,
+        selling_price: parseFloat(quickProductForm.selling_price),
+        cost_price: parseFloat(quickProductForm.cost_price),
+        unit: quickProductForm.unit,
+        product_group: quickProductForm.product_group || 'Non-Inventaire',
+        stock_qty: 0
+      };
+      
+      addItemToSubmission(tempProduct, 1);
+      alert('⚠️ Produit ajouté temporairement (erreur sauvegarde): ' + error.message);
+    }
+    
+    setShowQuickAddProduct(false);
+    setQuickProductForm({
+      product_id: '',
+      description: '',
+      selling_price: '',
+      cost_price: '',
+      unit: 'Un',
+      product_group: 'Non-Inventaire'
+    });
+    setShowUsdCalculator(false);
+    setUsdAmount('');
+  }
+};
   // Gestion des items de produits avec quantité décimale
   const addItemToSubmission = (product, quantity = 1) => {
     const floatQuantity = parseFloat(quantity);
@@ -1155,21 +1241,22 @@ export default function SoumissionsManager() {
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Quantité ({selectedProductForQuantity.unit})
                             </label>
-                            <input
-                              id="quantity-input"
-                              type="number"
-                              step="0.1"
-                              min="0.1"
-                              value={tempQuantity}
-                              onChange={(e) => {
-                                const value = e.target.value;
+                                  <input
+                                    id="quantity-input"
+                                     type="number"
+                                      step="0.1"
+                                      min="0.1"
+                                      value={tempQuantity}
+                                      onChange={(e) => {
+                                    const value = e.target.value;
                                 if (value === '' || parseFloat(value) >= 0) {
-                                  setTempQuantity(value);
-                                }
-                              }}
+                                setTempQuantity(value);
+                                    }
+                                }}
                               onKeyDown={handleQuantityKeyDown}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
-                              autoFocus
+                            onFocus={(e) => e.target.select()} // ✅ AJOUT: Sélectionne au focus
+                                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+                            autoFocus
                             />
                           </div>
                           <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
@@ -1439,38 +1526,11 @@ export default function SoumissionsManager() {
                             Annuler
                           </button>
                           <button
-                            type="button"
-                            onClick={() => {
-                              if (quickProductForm.product_id && quickProductForm.description && 
-                                  quickProductForm.selling_price && quickProductForm.cost_price) {
-                                const tempProduct = {
-                                  product_id: quickProductForm.product_id,
-                                  description: quickProductForm.description,
-                                  selling_price: parseFloat(quickProductForm.selling_price),
-                                  cost_price: parseFloat(quickProductForm.cost_price),
-                                  unit: quickProductForm.unit,
-                                  product_group: quickProductForm.product_group,
-                                  stock_qty: 0
-                                };
-                                
-                                addItemToSubmission(tempProduct, 1);
-                                
-                                setShowQuickAddProduct(false);
-                                setQuickProductForm({
-                                  product_id: '',
-                                  description: '',
-                                  selling_price: '',
-                                  cost_price: '',
-                                  unit: 'Un',
-                                  product_group: 'Divers'
-                                });
-                                setShowUsdCalculator(false);
-                                setUsdAmount('');
-                              }
-                            }}
+                          type="button"
+                          onClick={addNonInventoryProduct}
                             className="w-full sm:flex-1 px-4 py-2 border border-transparent rounded-lg text-white bg-orange-600 hover:bg-orange-700"
-                          >
-                            ✅ Ajouter à la soumission
+                            >
+                        ✅ Sauvegarder et Ajouter
                           </button>
                         </div>
                       </div>
