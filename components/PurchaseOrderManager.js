@@ -136,7 +136,7 @@ export default function PurchaseOrderManager() {
 const { data: available, error: availableError } = await supabase
   .from('supplier_purchases')
   .select('*')
-  .is('linked_po_id', null)  // Seulement les achats NON LIÉS
+  .or(`linked_po_id.is.null,linked_po_id.neq.${purchaseOrderId}`)
   .order('created_at', { ascending: false });
 
       if (availableError) {
