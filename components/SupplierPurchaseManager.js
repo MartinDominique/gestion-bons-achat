@@ -617,7 +617,8 @@ export default function SupplierPurchaseManager() {
 
     await fetchSupplierPurchases();
     resetForm();
-    alert(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat créé avec succès!');
+    // Supprimé - pas d'alerte popup
+console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat créé avec succès!');
   } catch (error) {
     console.error('Erreur sauvegarde achat:', error);
     alert('❌ Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
