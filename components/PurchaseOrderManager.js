@@ -1034,58 +1034,66 @@ const { data: available, error: availableError } = await supabase
               </div>
 
               {/* NOUVELLE SECTION: Achats Fournisseurs Liés */}
-              {editingPO && (
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
-                  <label className="block text-sm font-semibold text-orange-800 mb-2">
-                    🛒 Achats Fournisseurs Liés
-                  </label>
-                  
-                  {loadingPurchases ? (
-                    <div className="flex items-center justify-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-2"></div>
-                      <span className="text-orange-600">Chargement des achats fournisseurs...</span>
+{editingPO && (
+  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
+    <label className="block text-sm font-semibold text-orange-800 mb-2">
+      🛒 Achats Fournisseurs Liés
+    </label>
+    
+    {loadingPurchases ? (
+      <div className="flex items-center justify-center py-4">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-2"></div>
+        <span className="text-orange-600">Chargement des achats fournisseurs...</span>
+      </div>
+    ) : (
+      <>
+        {/* Achats fournisseurs déjà liés */}
+        {linkedPurchases.length > 0 ? (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-orange-700 mb-3">
+              🔗 Achats fournisseurs liés à ce bon d'achat ({linkedPurchases.length})
+            </p>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {linkedPurchases.map((purchase) => (
+                <div key={purchase.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <span className="text-xl flex-shrink-0">🛒</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {purchase.purchase_number}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
+                          {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
+                        </p>
+                      </div>
                     </div>
-                  ) : (
-                    <>
-                      {/* Achats fournisseurs déjà liés */}
-                      {linkedPurchases.length > 0 && (
-                        <div className="mb-4">
-                          <p className="text-sm font-medium text-orange-700 mb-3">
-                            🔗 Achats fournisseurs liés ({linkedPurchases.length})
-                          </p>
-                          <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {linkedPurchases.map((purchase) => (
-                              <div key={purchase.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                    <span className="text-xl flex-shrink-0">🛒</span>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-gray-900">
-                                        {purchase.purchase_number}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
-                                        {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex space-x-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => visualizeSupplierPurchase(purchase)}
-                                      className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
-                                      title="Visualiser cet achat fournisseur"
-                                    >
-                                      👁️ Voir
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                    
+                    <div className="flex space-x-1">
+                      <button
+                        type="button"
+                        onClick={() => visualizeSupplierPurchase(purchase)}
+                        className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+                        title="Visualiser cet achat fournisseur"
+                      >
+                        👁️ Voir
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-orange-600 italic text-center py-4">
+            Aucun achat fournisseur lié à ce bon d'achat
+          </p>
+        )}
+      </>
+    )}
+  </div>
+)}
 
                       {/* Achats fournisseurs disponibles */}
                       {availablePurchases.length > 0 && (
