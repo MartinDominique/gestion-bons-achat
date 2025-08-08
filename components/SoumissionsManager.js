@@ -605,44 +605,6 @@ export default function SoumissionsManager() {
     alert('❌ Veuillez remplir tous les champs obligatoires');
   }
 };
-      
-      addItemToSubmission(tempProduct, 1);
-      alert('⚠️ Produit ajouté temporairement');
-    }
-    
-    setShowQuickAddProduct(false);
-    setQuickProductForm({
-      product_id: '',
-      description: '',
-      selling_price: '',
-      cost_price: '',
-      unit: 'Un',
-      product_group: 'Non-Inventaire'
-    });
-    setShowUsdCalculator(false);
-    setUsdAmount('');
-  } else {
-    alert('❌ Veuillez remplir tous les champs obligatoires');
-  }
-};
-      
-      addItemToSubmission(tempProduct, 1);
-      alert('⚠️ Produit ajouté temporairement (erreur sauvegarde): ' + error.message);
-    }
-    
-    setShowQuickAddProduct(false);
-    setQuickProductForm({
-      product_id: '',
-      description: '',
-      selling_price: '',
-      cost_price: '',
-      unit: 'Un',
-      product_group: 'Non-Inventaire'
-    });
-    setShowUsdCalculator(false);
-    setUsdAmount('');
-  }
-};
   // Gestion des items de produits avec quantité décimale
   const addItemToSubmission = (product, quantity = 1) => {
     const floatQuantity = parseFloat(quantity);
