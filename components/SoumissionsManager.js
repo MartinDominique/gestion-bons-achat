@@ -515,8 +515,7 @@ export default function SoumissionsManager() {
     closeCommentModal();
   };
   
-  // ✅ NOUVELLE FONCTION - Ajouter avant addItemToSubmission
-const addNonInventoryProduct = async () => {
+  const addNonInventoryProduct = async () => {
   if (quickProductForm.product_id && quickProductForm.description && 
       quickProductForm.selling_price && quickProductForm.cost_price) {
     
@@ -586,6 +585,26 @@ const addNonInventoryProduct = async () => {
         stock_qty: 0,
         is_non_inventory: true
       };
+      
+      addItemToSubmission(tempProduct, 1);
+      alert('⚠️ Produit ajouté temporairement');
+    }
+    
+    setShowQuickAddProduct(false);
+    setQuickProductForm({
+      product_id: '',
+      description: '',
+      selling_price: '',
+      cost_price: '',
+      unit: 'Un',
+      product_group: 'Non-Inventaire'
+    });
+    setShowUsdCalculator(false);
+    setUsdAmount('');
+  } else {
+    alert('❌ Veuillez remplir tous les champs obligatoires');
+  }
+};
       
       addItemToSubmission(tempProduct, 1);
       alert('⚠️ Produit ajouté temporairement');
