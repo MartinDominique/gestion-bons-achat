@@ -985,7 +985,7 @@ const visualizeSupplierPurchase = async (purchase) => {
                                         <tbody>
                                           ${submissionDetails.items.map(item => `
                                             <tr>
-                                              <td>${item.code || ''}</td>
+                                              <td>${item.product_id || item.code || item.item_code || item.product_code || ''}</td>
                                               <td>${item.description || ''}</td>
                                               <td>${item.quantity || 0}</td>
                                               <td>${item.unit || ''}</td>
