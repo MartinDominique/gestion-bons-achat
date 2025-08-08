@@ -47,7 +47,7 @@ export default function SoumissionsManager() {
     const timeoutId = setTimeout(() => {
       if (productSearchTerm.length >= 2) {
         setSearchingProducts(true);
-        searchProducts(productSearchTerm).finally(() => {
+        searchProductsWithNonInventory(productSearchTerm).finally(() => {
           setSearchingProducts(false);
         });
       } else {
@@ -283,6 +283,57 @@ export default function SoumissionsManager() {
     }
   };
 
+  const searchProductsWithNonInventory = async (searchTerm) => {
+  if (!searchTerm || searchTerm.length < 2) {
+    setProducts([]);
+    return;
+  }
+
+  try {
+    console.log('🔍 Recherche combinée pour:', searchTerm);
+    
+    const [inventoryProducts, nonInventoryItems] = await Promise.all([
+      supabase
+        .from('products')
+        .select('*')
+        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%,product_group.ilike.%${searchTerm}%`)
+        .order('description', { ascending: true })
+        .limit(30),
+      
+      supabase
+        .from('non_inventory_items')
+        .select('*')
+        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%,product_group.ilike.%${searchTerm}%`)
+        .order('description', { ascending: true })
+        .limit(20)
+    ]);
+
+    console.log('📦 Inventaire trouvé:', inventoryProducts.data?.length || 0);
+    console.log('🏷️ Non-inventaire trouvé:', nonInventoryItems.data?.length || 0);
+
+    const allProducts = [
+      ...(inventoryProducts.data || []),
+      ...(nonInventoryItems.data || []).map(item => ({
+        ...item,
+        is_non_inventory: true,
+        stock_qty: item.stock_qty || 0,
+        selling_price: item.selling_price || 0,
+        cost_price: item.cost_price || 0,
+        unit: item.unit || 'Un',
+        product_group: item.product_group || 'Non-Inventaire'
+      }))
+    ];
+
+    allProducts.sort((a, b) => a.description.localeCompare(b.description));
+    console.log('📋 Total combiné:', allProducts.length);
+    setProducts(allProducts);
+
+  } catch (error) {
+    console.error('❌ Erreur recherche combinée:', error);
+    setProducts([]);
+  }
+};
+  
   const fetchClients = async () => {
     try {
       const { data: clientsData, error: clientsError } = await supabase
@@ -463,13 +514,69 @@ export default function SoumissionsManager() {
     }
     closeCommentModal();
   };
+  
   // ✅ NOUVELLE FONCTION - Ajouter avant addItemToSubmission
 const addNonInventoryProduct = async () => {
   if (quickProductForm.product_id && quickProductForm.description && 
       quickProductForm.selling_price && quickProductForm.cost_price) {
     
     try {
-      const productData = {
+      const nonInventoryData = {
+        product_id: quickProductForm.product_id,
+        description: quickProductForm.description,
+        selling_price: parseFloat(quickProductForm.selling_price),
+        cost_price: parseFloat(quickProductForm.cost_price),
+        unit: quickProductForm.unit,
+        product_group: quickProductForm.product_group || 'Non-Inventaire'
+      };
+
+      console.log('💾 Sauvegarde dans non_inventory_items:', nonInventoryData);
+
+      const { data: existingItem, error: checkError } = await supabase
+        .from('non_inventory_items')
+        .select('*')
+        .eq('product_id', quickProductForm.product_id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      let result;
+      if (existingItem) {
+        const { data, error } = await supabase
+          .from('non_inventory_items')
+          .update(nonInventoryData)
+          .eq('product_id', quickProductForm.product_id)
+          .select();
+        result = data;
+        if (error) throw error;
+        console.log('✅ Produit non-inventaire mis à jour:', data[0]);
+      } else {
+        const { data, error } = await supabase
+          .from('non_inventory_items')
+          .insert([nonInventoryData])
+          .select();
+        result = data;
+        if (error) throw error;
+        console.log('✅ Nouveau produit non-inventaire créé:', data[0]);
+      }
+
+      if (result && result.length > 0) {
+        const savedItem = {
+          ...result[0],
+          is_non_inventory: true,
+          stock_qty: 0
+        };
+        addItemToSubmission(savedItem, 1);
+        alert('✅ Produit non-inventaire sauvegardé !');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde:', error);
+      alert(`❌ Erreur sauvegarde: ${error.message}`);
+      
+      const tempProduct = {
         product_id: quickProductForm.product_id,
         description: quickProductForm.description,
         selling_price: parseFloat(quickProductForm.selling_price),
@@ -479,55 +586,26 @@ const addNonInventoryProduct = async () => {
         stock_qty: 0,
         is_non_inventory: true
       };
-
-      const { data: existingProduct, error: checkError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('product_id', quickProductForm.product_id)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-
-      let productResult;
-      if (existingProduct) {
-        const { data, error } = await supabase
-          .from('products')
-          .update(productData)
-          .eq('product_id', quickProductForm.product_id)
-          .select();
-        productResult = data;
-        if (error) throw error;
-        console.log('✅ Produit non-inventaire mis à jour:', data[0]);
-      } else {
-        const { data, error } = await supabase
-          .from('products')
-          .insert([productData])
-          .select();
-        productResult = data;
-        if (error) throw error;
-        console.log('✅ Nouveau produit non-inventaire créé:', data[0]);
-      }
-
-      if (productResult && productResult.length > 0) {
-        const savedProduct = productResult[0];
-        addItemToSubmission(savedProduct, 1);
-        alert('✅ Produit non-inventaire sauvegardé et ajouté à la soumission !');
-      }
       
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde produit non-inventaire:', error);
-      
-      const tempProduct = {
-        product_id: quickProductForm.product_id,
-        description: quickProductForm.description,
-        selling_price: parseFloat(quickProductForm.selling_price),
-        cost_price: parseFloat(quickProductForm.cost_price),
-        unit: quickProductForm.unit,
-        product_group: quickProductForm.product_group || 'Non-Inventaire',
-        stock_qty: 0
-      };
+      addItemToSubmission(tempProduct, 1);
+      alert('⚠️ Produit ajouté temporairement');
+    }
+    
+    setShowQuickAddProduct(false);
+    setQuickProductForm({
+      product_id: '',
+      description: '',
+      selling_price: '',
+      cost_price: '',
+      unit: 'Un',
+      product_group: 'Non-Inventaire'
+    });
+    setShowUsdCalculator(false);
+    setUsdAmount('');
+  } else {
+    alert('❌ Veuillez remplir tous les champs obligatoires');
+  }
+};
       
       addItemToSubmission(tempProduct, 1);
       alert('⚠️ Produit ajouté temporairement (erreur sauvegarde): ' + error.message);
@@ -1197,7 +1275,12 @@ const addNonInventoryProduct = async () => {
                               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                                 <div className="flex-1">
                                   <h4 className="font-medium text-gray-900 text-sm">
-                                    {product.product_id} - {product.description}
+                                  {product.product_id} - {product.description}
+                                  {product.is_non_inventory && (
+                                  <span className="ml-2 bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
+                                  🏷️ Service
+                                  </span>
+                                  )}
                                   </h4>
                                   <div className="text-xs text-gray-500 space-y-1 sm:space-y-0 sm:space-x-4 sm:flex">
                                     <span>📦 Groupe: {product.product_group}</span>
