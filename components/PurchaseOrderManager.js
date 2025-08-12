@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Upload, Search, Plus, X, ChevronDown, Calendar, Building, Hash, DollarSign, FileSpreadsheet, Package, Truck, Printer, CheckCircle } from 'lucide-react';
+import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search, Plus, Minus, Package, Truck, Printer, CheckCircle } from 'lucide-react';
 import { Building2, FileUp, ShoppingCart } from 'lucide-react';
 
 export default function PurchaseOrderManager() {
@@ -1336,7 +1336,7 @@ export default function PurchaseOrderManager() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
+          <div className="flex"></div>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         <p className="ml-4 text-indigo-600 font-medium">Chargement des bons d'achat...</p>
       </div>
@@ -1827,6 +1827,7 @@ export default function PurchaseOrderManager() {
             </p>
           </div>
           <div className="flex
+      {showDeliveryModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             {/* Header du Modal */}
