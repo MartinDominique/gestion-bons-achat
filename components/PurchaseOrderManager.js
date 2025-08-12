@@ -1408,7 +1408,7 @@ export default function PurchaseOrderManager() {
               Gérez vos bons d'achat et commandes clients
             </p>
           </div>
-          <div className="flex
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             {/* Header du Modal */}
