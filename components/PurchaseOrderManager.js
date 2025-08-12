@@ -266,7 +266,10 @@ export default function PurchaseOrderManager() {
 
   // 🆕 NOUVEAU: Créer un bon de livraison
   const createDeliverySlip = async () => {
-    if (!selectedPOForDelivery || deliveryFormData.items.length === 0) {
+    // Filtrer seulement les items sélectionnés
+    const selectedItems = deliveryFormData.items.filter(item => item.selected && item.quantity_to_deliver > 0);
+    
+    if (selectedItems.length === 0) {
       alert('⚠️ Veuillez sélectionner au moins un article à livrer');
       return;
     }
@@ -292,15 +295,13 @@ export default function PurchaseOrderManager() {
 
       if (slipError) throw slipError;
 
-      // Créer les items du bon de livraison
-      const deliveryItems = deliveryFormData.items
-        .filter(item => item.quantity_to_deliver > 0)
-        .map(item => ({
-          delivery_slip_id: deliverySlip.id,
-          client_po_item_id: item.id,
-          quantity_delivered: item.quantity_to_deliver,
-          notes: item.notes || ''
-        }));
+      // Créer les items du bon de livraison (seulement les sélectionnés)
+      const deliveryItems = selectedItems.map(item => ({
+        delivery_slip_id: deliverySlip.id,
+        client_po_item_id: item.id,
+        quantity_delivered: item.quantity_to_deliver,
+        notes: item.notes || ''
+      }));
 
       if (deliveryItems.length > 0) {
         const { error: itemsError } = await supabase
@@ -329,8 +330,8 @@ export default function PurchaseOrderManager() {
       // Recharger les livraisons
       await fetchDeliverySlips(selectedPOForDelivery.id);
       
-      // Imprimer le bon de livraison
-      printDeliverySlip(deliverySlip, deliveryFormData.items);
+      // Imprimer le bon de livraison (avec seulement les items sélectionnés)
+      printDeliverySlip(deliverySlip, selectedItems);
       
     } catch (error) {
       console.error('Erreur création bon de livraison:', error);
@@ -339,10 +340,11 @@ export default function PurchaseOrderManager() {
   };
 
   // 🆕 NOUVEAU: Imprimer un bon de livraison
-  const printDeliverySlip = (deliverySlip, items) => {
+  const printDeliverySlip = (deliverySlip, selectedItems) => {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     
-    const itemsToDeliver = items.filter(item => item.quantity_to_deliver > 0);
+    // Utiliser seulement les items sélectionnés pour l'impression
+    const itemsToDeliver = selectedItems.filter(item => item.selected && item.quantity_to_deliver > 0);
     
     const printContent = `
       <!DOCTYPE html>
@@ -607,7 +609,7 @@ export default function PurchaseOrderManager() {
                 <td class="text-center">${item.quantity || 0}</td>
                 <td class="text-center"><strong>${item.quantity_to_deliver || 0}</strong></td>
                 <td class="text-center">${item.unit || ''}</td>
-                <td class="text-center">${(item.quantity || 0) - (item.delivered_quantity || 0) - (item.quantity_to_deliver || 0)}</td>
+                <td class="text-center">${Math.max(0, (item.quantity || 0) - (item.delivered_quantity || 0) - (item.quantity_to_deliver || 0))}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -909,11 +911,12 @@ export default function PurchaseOrderManager() {
   // 🆕 NOUVEAU: useEffect pour préparer les items de livraison
   useEffect(() => {
     if (poItems.length > 0 && showDeliveryModal) {
-      // Préparer les items pour la livraison
+      // Préparer les items pour la livraison avec le flag selected
       setDeliveryFormData(prev => ({
         ...prev,
         items: poItems.map(item => ({
           ...item,
+          selected: false,  // Par défaut non sélectionné
           quantity_to_deliver: 0,
           notes: ''
         }))
@@ -1343,19 +1346,69 @@ export default function PurchaseOrderManager() {
   // [FORMULAIRE EXISTANT RESTE IDENTIQUE - JE CONTINUE AVEC LA PARTIE PRINCIPALE]
 
   if (showForm) {
-    // [TOUT LE FORMULAIRE EXISTANT RESTE IDENTIQUE]
     return (
       <div className="max-w-6xl mx-auto p-4">
-        {/* FORMULAIRE EXISTANT NON MODIFIÉ */}
-        {/* ... tout le code du formulaire existant ... */}
-      </div>
-    );
-  }
+        <div className="bg-white rounded-xl shadow-lg border border-indigo-200 overflow-hidden">
+          
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold">
+                  {editingPO ? '✏️ Modifier le Bon d\'Achat' : '➕ Nouveau Bon d\'Achat'}
+                </h2>
+                <p className="text-indigo-100 text-sm mt-1">
+                  {editingPO ? 'Modifiez les informations' : 'Créez un nouveau bon d\'achat'}
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingPO(null);
+                    setLinkedPurchases([]);
+                    setAvailablePurchases([]);
+                    setFormData({
+                      client_name: '',
+                      po_number: '',
+                      submission_no: '',
+                      date: new Date().toISOString().split('T')[0],
+                      amount: '',
+                      status: 'pending',
+                      notes: '',
+                      additionalNotes: '',
+                      files: [],
+                      items: []
+                    });
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-sm font-medium"
+                >
+                  ❌ Annuler
+                </button>
+                <button
+                  type="submit"
+                  form="po-form"
+                  className="w-full sm:w-auto px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-100 text-sm font-medium"
+                >
+                  {editingPO ? '💾 Mettre à jour' : '✨ Créer'}
+                </button>
+              </div>
+            </div>
+          </div
 
   return (
     <div className="space-y-6 p-4">
-      {/* 🆕 NOUVEAU: Modal de Livraison */}
-      {showDeliveryModal && (
+      {/* HEADER PRINCIPAL - TOUJOURS VISIBLE */}
+      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
+            <p className="text-white/90 text-sm sm:text-base mt-1">
+              Gérez vos bons d'achat et commandes clients
+            </p>
+          </div>
+          <div className="flex
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             {/* Header du Modal */}
