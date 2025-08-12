@@ -1392,8 +1392,7 @@ export default function PurchaseOrderManager() {
                 </button>
               </div>
             </div>
-          </div>
-          
+          </div>          
           <div className="p-4 sm:p-6">
             <form id="po-form" onSubmit={handleSubmit} className="space-y-6">
               
