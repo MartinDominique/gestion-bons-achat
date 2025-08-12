@@ -1,6 +1,7 @@
 'use client';
 
 import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart } from 'lucide-react';
+//
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -11,6 +12,7 @@ const pages = [
   { id: 'bons-achat', name: "Bons d'achat", icon: Package },
   { id: 'soumissions', name: 'Soumissions', icon: FileText },
   { id: 'achat-materiels', name: 'Achat Matériels', icon: ShoppingCart }
+  { id: 'client-po', name: 'Bons d\'Achat Client', icon: Package } 
 ];
 
 export default function Navigation() {
