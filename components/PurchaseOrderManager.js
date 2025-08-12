@@ -16,13 +16,13 @@ export default function PurchaseOrderManager() {
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   
-  // NOUVEAU: États pour les achats fournisseurs
+  // États pour les achats fournisseurs
   const [supplierPurchases, setSupplierPurchases] = useState([]);
   const [linkedPurchases, setLinkedPurchases] = useState([]);
   const [availablePurchases, setAvailablePurchases] = useState([]);
   const [loadingPurchases, setLoadingPurchases] = useState(false);
   
-  // 🆕 NOUVEAU: États pour les LIVRAISONS
+  // États pour les LIVRAISONS
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [selectedPOForDelivery, setSelectedPOForDelivery] = useState(null);
   const [deliverySlips, setDeliverySlips] = useState([]);
@@ -47,11 +47,10 @@ export default function PurchaseOrderManager() {
     notes: '',
     additionalNotes: '',
     files: [],
-    // 🆕 NOUVEAU: Champs pour les articles
     items: []
   });
 
-  // ============ FONCTIONS AVANT useEffect ============
+  // ============ FONCTIONS ============
   
   const fetchPurchaseOrders = async () => {
     try {
@@ -68,7 +67,6 @@ export default function PurchaseOrderManager() {
       setPurchaseOrders(data || []);
     } catch (error) {
       console.error('Erreur lors du chargement des bons d\'achat:', error);
-      console.error('Erreur lors du chargement des bons d\'achat:', error.message);
     } finally {
       setLoading(false);
     }
@@ -108,7 +106,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // NOUVEAU: Récupérer tous les achats fournisseurs
   const fetchSupplierPurchases = async () => {
     try {
       const { data, error } = await supabase
@@ -126,7 +123,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // NOUVEAU: Récupérer les achats fournisseurs liés à un PO spécifique
   const fetchLinkedPurchases = async (purchaseOrderId) => {
     if (!purchaseOrderId) {
       setLinkedPurchases([]);
@@ -136,7 +132,6 @@ export default function PurchaseOrderManager() {
     
     setLoadingPurchases(true);
     try {
-      // Récupérer les achats liés
       const { data: linked, error: linkedError } = await supabase
         .from('supplier_purchases')
         .select('*')
@@ -148,7 +143,6 @@ export default function PurchaseOrderManager() {
         setLinkedPurchases(linked || []);
       }
 
-      // Récupérer les achats disponibles (non liés à ce PO)
       const { data: available, error: availableError } = await supabase
         .from('supplier_purchases')
         .select('*')
@@ -168,7 +162,7 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // 🆕 NOUVEAU: Récupérer les bons de livraison d'un PO
+  // Récupérer les bons de livraison d'un PO
   const fetchDeliverySlips = async (purchaseOrderId) => {
     if (!purchaseOrderId) return;
     
@@ -195,12 +189,11 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // 🆕 NOUVEAU: Récupérer les articles d'un bon d'achat (depuis items JSON ou nouvelle table)
+  // Récupérer les articles d'un bon d'achat
   const fetchPOItems = async (purchaseOrderId) => {
     if (!purchaseOrderId) return;
     
     try {
-      // D'abord essayer de récupérer depuis la table purchase_orders (items JSON)
       const { data: poData, error: poError } = await supabase
         .from('purchase_orders')
         .select('*')
@@ -208,7 +201,6 @@ export default function PurchaseOrderManager() {
         .single();
 
       if (!poError && poData) {
-        // Si on a des items dans le JSON
         if (poData.items && Array.isArray(poData.items)) {
           setPOItems(poData.items.map((item, index) => ({
             ...item,
@@ -216,7 +208,6 @@ export default function PurchaseOrderManager() {
             delivered_quantity: item.delivered_quantity || 0
           })));
         } else {
-          // Sinon créer des items factices basés sur la description
           setPOItems([{
             id: 1,
             product_id: 'GENERAL',
@@ -234,7 +225,7 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // 🆕 NOUVEAU: Générer un numéro de bon de livraison
+  // Générer un numéro de bon de livraison
   const generateDeliveryNumber = async () => {
     const now = new Date();
     const year = now.getFullYear().toString().slice(-2);
@@ -264,9 +255,8 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // 🆕 NOUVEAU: Créer un bon de livraison
+  // Créer un bon de livraison
   const createDeliverySlip = async () => {
-    // Filtrer seulement les items sélectionnés
     const selectedItems = deliveryFormData.items.filter(item => item.selected && item.quantity_to_deliver > 0);
     
     if (selectedItems.length === 0) {
@@ -277,7 +267,6 @@ export default function PurchaseOrderManager() {
     try {
       const deliveryNumber = await generateDeliveryNumber();
       
-      // Créer le bon de livraison
       const { data: deliverySlip, error: slipError } = await supabase
         .from('delivery_slips')
         .insert([{
@@ -295,7 +284,6 @@ export default function PurchaseOrderManager() {
 
       if (slipError) throw slipError;
 
-      // Créer les items du bon de livraison (seulement les sélectionnés)
       const deliveryItems = selectedItems.map(item => ({
         delivery_slip_id: deliverySlip.id,
         client_po_item_id: item.id,
@@ -311,12 +299,8 @@ export default function PurchaseOrderManager() {
         if (itemsError) throw itemsError;
       }
 
-      // Mettre à jour les quantités livrées dans le PO
-      // (Si vous utilisez une table client_po_items, mettez à jour ici)
-
       alert('✅ Bon de livraison créé avec succès !');
       
-      // Réinitialiser et fermer
       setShowDeliveryModal(false);
       setDeliveryFormData({
         delivery_date: new Date().toISOString().split('T')[0],
@@ -327,10 +311,7 @@ export default function PurchaseOrderManager() {
         items: []
       });
       
-      // Recharger les livraisons
       await fetchDeliverySlips(selectedPOForDelivery.id);
-      
-      // Imprimer le bon de livraison (avec seulement les items sélectionnés)
       printDeliverySlip(deliverySlip, selectedItems);
       
     } catch (error) {
@@ -339,11 +320,10 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // 🆕 NOUVEAU: Imprimer un bon de livraison
+  // Imprimer un bon de livraison
   const printDeliverySlip = (deliverySlip, selectedItems) => {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     
-    // Utiliser seulement les items sélectionnés pour l'impression
     const itemsToDeliver = selectedItems.filter(item => item.selected && item.quantity_to_deliver > 0);
     
     const printContent = `
@@ -360,7 +340,6 @@ export default function PurchaseOrderManager() {
             font-size: 12pt;
           }
           
-          /* Header */
           .header {
             display: flex;
             justify-content: space-between;
@@ -410,7 +389,6 @@ export default function PurchaseOrderManager() {
             margin-top: 5px;
           }
           
-          /* Info Sections */
           .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -443,7 +421,6 @@ export default function PurchaseOrderManager() {
             color: #333;
           }
           
-          /* Transport Info */
           .transport-info {
             background: #e3f2fd;
             border: 1px solid #2563eb;
@@ -452,7 +429,6 @@ export default function PurchaseOrderManager() {
             margin: 20px 0;
           }
           
-          /* Table */
           table {
             width: 100%;
             border-collapse: collapse;
@@ -481,7 +457,6 @@ export default function PurchaseOrderManager() {
           .text-center { text-align: center; }
           .text-right { text-align: right; }
           
-          /* Footer */
           .signature-section {
             margin-top: 50px;
             display: grid;
@@ -520,7 +495,6 @@ export default function PurchaseOrderManager() {
             text-align: center;
           }
           
-          /* Special Instructions */
           .special-instructions {
             background: #fff3cd;
             border: 1px solid #ffc107;
@@ -542,7 +516,6 @@ export default function PurchaseOrderManager() {
         </style>
       </head>
       <body>
-        <!-- Header avec logo et infos -->
         <div class="header">
           <div class="company-info">
             <div class="company-name">SERVICES TMT INC.</div>
@@ -560,7 +533,6 @@ export default function PurchaseOrderManager() {
           </div>
         </div>
 
-        <!-- Informations client et livraison -->
         <div class="info-grid">
           <div class="info-box">
             <h3>Livraison À:</h3>
@@ -580,7 +552,6 @@ export default function PurchaseOrderManager() {
           </div>
         </div>
 
-        <!-- Information de transport -->
         ${(deliveryFormData.transport_company || deliveryFormData.transport_number) ? `
         <div class="transport-info">
           <h3 style="margin: 0 0 10px 0; font-size: 12pt;">🚚 INFORMATION DE TRANSPORT</h3>
@@ -589,7 +560,6 @@ export default function PurchaseOrderManager() {
         </div>
         ` : ''}
 
-        <!-- Tableau des articles -->
         <table>
           <thead>
             <tr>
@@ -615,7 +585,6 @@ export default function PurchaseOrderManager() {
           </tbody>
         </table>
 
-        <!-- Instructions spéciales -->
         ${deliveryFormData.special_instructions ? `
         <div class="special-instructions">
           <h4>⚠️ INSTRUCTIONS SPÉCIALES:</h4>
@@ -623,7 +592,6 @@ export default function PurchaseOrderManager() {
         </div>
         ` : ''}
 
-        <!-- Section signatures -->
         <div class="signature-section">
           <div class="signature-box">
             <div class="signature-label">SIGNATURE CLIENT:</div>
@@ -640,7 +608,6 @@ export default function PurchaseOrderManager() {
           </div>
         </div>
 
-        <!-- Note de bas de page -->
         <div class="footer-note">
           <strong>IMPORTANT:</strong> La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
           Veuillez vérifier la marchandise à la réception. Toute réclamation doit être faite dans les 48 heures.
@@ -654,19 +621,15 @@ export default function PurchaseOrderManager() {
     printWindow.print();
   };
 
-  // 🆕 NOUVEAU: Ouvrir le modal de livraison
+  // Ouvrir le modal de livraison
   const openDeliveryModal = async (po) => {
     setSelectedPOForDelivery(po);
     setShowDeliveryModal(true);
-    
-    // Charger les articles du PO
     await fetchPOItems(po.id);
-    
-    // Charger les livraisons existantes
     await fetchDeliverySlips(po.id);
   };
 
-  // 🆕 NOUVEAU: Calculer le statut de livraison
+  // Calculer le statut de livraison
   const getDeliveryStatus = (po) => {
     if (!po.items || po.items.length === 0) return 'non_applicable';
     
@@ -678,7 +641,7 @@ export default function PurchaseOrderManager() {
     return 'complet';
   };
 
-  // 🆕 NOUVEAU: Badge de statut de livraison
+  // Badge de statut de livraison
   const getDeliveryBadge = (status) => {
     switch (status) {
       case 'complet':
@@ -692,7 +655,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // FONCTION CORRIGÉE - visualizeSupplierPurchase avec détail des articles
   const visualizeSupplierPurchase = async (purchase) => {
     try {
       const { data: purchaseDetails, error } = await supabase
@@ -716,8 +678,6 @@ export default function PurchaseOrderManager() {
             .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
             .supplier-info, .purchase-info { width: 48%; }
             .po-link { background-color: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; }
-            
-            /* NOUVEAU: Styles pour le tableau des articles */
             .items-section { margin: 20px 0; }
             table { width: 100%; border-collapse: collapse; margin: 20px 0; }
             th, td { border: 1px solid #000; padding: 8px; text-align: left; }
@@ -725,7 +685,6 @@ export default function PurchaseOrderManager() {
             .text-right { text-align: right; }
             .text-center { text-align: center; }
             .total-row { background-color: #f9f9f9; font-weight: bold; }
-            
             @media print { body { margin: 0; } }
           </style>
         </head>
@@ -757,7 +716,6 @@ export default function PurchaseOrderManager() {
             </div>
           ` : ''}
 
-          <!-- NOUVEAU: Section des articles -->
           ${purchaseDetails.items && purchaseDetails.items.length > 0 ? `
             <div class="items-section">
               <h3>DÉTAIL DES ARTICLES:</h3>
@@ -840,7 +798,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // NOUVEAU: Lier un achat fournisseur au PO
   const linkSupplierPurchase = async (supplierPurchaseId) => {
     if (!editingPO) return;
 
@@ -855,7 +812,6 @@ export default function PurchaseOrderManager() {
 
       if (error) throw error;
 
-      // Recharger les données
       await fetchLinkedPurchases(editingPO.id);
       alert('✅ Achat fournisseur lié avec succès !');
 
@@ -865,7 +821,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // NOUVEAU: Délier un achat fournisseur du PO
   const unlinkSupplierPurchase = async (supplierPurchaseId) => {
     if (!confirm('🔗 Êtes-vous sûr de vouloir délier cet achat fournisseur ?')) return;
 
@@ -880,7 +835,6 @@ export default function PurchaseOrderManager() {
 
       if (error) throw error;
 
-      // Recharger les données
       await fetchLinkedPurchases(editingPO.id);
       alert('✅ Achat fournisseur délié avec succès !');
 
@@ -890,12 +844,12 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // ============ useEffect CORRIGÉ ============
+  // ============ useEffect ============
   useEffect(() => {
     fetchPurchaseOrders();
     fetchClients();
     fetchSubmissions();
-    fetchSupplierPurchases(); // NOUVEAU
+    fetchSupplierPurchases();
     
     const handleBeforeUnload = () => {
       supabase.auth.signOut();
@@ -908,15 +862,13 @@ export default function PurchaseOrderManager() {
     };
   }, []);
 
-  // 🆕 NOUVEAU: useEffect pour préparer les items de livraison
   useEffect(() => {
     if (poItems.length > 0 && showDeliveryModal) {
-      // Préparer les items pour la livraison avec le flag selected
       setDeliveryFormData(prev => ({
         ...prev,
         items: poItems.map(item => ({
           ...item,
-          selected: false,  // Par défaut non sélectionné
+          selected: false,
           quantity_to_deliver: 0,
           notes: ''
         }))
@@ -924,7 +876,7 @@ export default function PurchaseOrderManager() {
     }
   }, [poItems, showDeliveryModal]);
 
-  // ============ HANDLERS APRÈS useEffect ============
+  // ============ HANDLERS ============
 
   const handleSendReport = async () => {
     setSendingReport(true);
@@ -966,7 +918,7 @@ export default function PurchaseOrderManager() {
       additionalNotes: formData.additionalNotes,
       vendor: formData.client_name,
       files: formData.files,
-      items: formData.items // 🆕 NOUVEAU: Sauvegarder les items
+      items: formData.items
     };
 
     try {
@@ -1028,11 +980,9 @@ export default function PurchaseOrderManager() {
       notes: po.notes || po.description || '',
       additionalNotes: po.additionalNotes || '',
       files: po.files || [],
-      items: po.items || [] // 🆕 NOUVEAU: Charger les items
+      items: po.items || []
     });
     setShowForm(true);
-    
-    // NOUVEAU: Charger les achats fournisseurs liés
     fetchLinkedPurchases(po.id);
   };
 
@@ -1076,7 +1026,6 @@ export default function PurchaseOrderManager() {
         console.error('❌ Erreur récupération bon d\'achat:', fetchError);
       }
 
-      // NOUVEAU: Délier tous les achats fournisseurs avant suppression
       const { error: unlinkError } = await supabase
         .from('supplier_purchases')
         .update({ 
@@ -1101,7 +1050,7 @@ export default function PurchaseOrderManager() {
       }
 
       await fetchPurchaseOrders();
-      await fetchSupplierPurchases(); // Recharger pour mettre à jour les liens
+      await fetchSupplierPurchases();
       console.log('✅ Bon d\'achat et fichiers supprimés avec succès');
 
     } catch (error) {
@@ -1336,14 +1285,12 @@ export default function PurchaseOrderManager() {
 
   if (loading) {
     return (
-          <div className="flex"></div>
+      <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
         <p className="ml-4 text-indigo-600 font-medium">Chargement des bons d'achat...</p>
       </div>
     );
   }
-
-  // [FORMULAIRE EXISTANT RESTE IDENTIQUE - JE CONTINUE AVEC LA PARTIE PRINCIPALE]
 
   if (showForm) {
     return (
@@ -1817,16 +1764,7 @@ export default function PurchaseOrderManager() {
 
   return (
     <div className="space-y-6 p-4">
-      {/* HEADER PRINCIPAL - TOUJOURS VISIBLE */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
-            <p className="text-white/90 text-sm sm:text-base mt-1">
-              Gérez vos bons d'achat et commandes clients
-            </p>
-          </div>
-          <div className="flex
+      {/* Modal de Livraison AMÉLIORÉ avec Checkboxes */}
       {showDeliveryModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -1938,7 +1876,7 @@ export default function PurchaseOrderManager() {
                 />
               </div>
 
-              {/* Articles à livrer */}
+              {/* Articles à livrer AVEC CHECKBOXES */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">📦 Articles à livrer</h3>
                 
@@ -1962,6 +1900,20 @@ export default function PurchaseOrderManager() {
                   <table className="w-full">
                     <thead className="bg-gray-200">
                       <tr>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">
+                          <input
+                            type="checkbox"
+                            onChange={(e) => {
+                              const newItems = deliveryFormData.items.map(item => ({
+                                ...item,
+                                selected: e.target.checked && (item.quantity - item.delivered_quantity) > 0,
+                                quantity_to_deliver: e.target.checked ? (item.quantity - item.delivered_quantity) : 0
+                              }));
+                              setDeliveryFormData({...deliveryFormData, items: newItems});
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                        </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Article</th>
                         <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Qté Totale</th>
                         <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Déjà Livré</th>
@@ -1974,6 +1926,23 @@ export default function PurchaseOrderManager() {
                         const remaining = (item.quantity || 0) - (item.delivered_quantity || 0);
                         return (
                           <tr key={index} className={remaining <= 0 ? 'bg-green-50' : ''}>
+                            <td className="px-4 py-3 text-center">
+                              {remaining > 0 ? (
+                                <input
+                                  type="checkbox"
+                                  checked={item.selected || false}
+                                  onChange={(e) => {
+                                    const newItems = [...deliveryFormData.items];
+                                    newItems[index].selected = e.target.checked;
+                                    newItems[index].quantity_to_deliver = e.target.checked ? remaining : 0;
+                                    setDeliveryFormData({...deliveryFormData, items: newItems});
+                                  }}
+                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              )}
+                            </td>
                             <td className="px-4 py-3">
                               <div className="text-sm font-medium text-gray-900">{item.product_id || 'N/A'}</div>
                               <div className="text-xs text-gray-500">{item.description}</div>
@@ -1999,13 +1968,16 @@ export default function PurchaseOrderManager() {
                                   value={item.quantity_to_deliver || 0}
                                   onChange={(e) => {
                                     const newItems = [...deliveryFormData.items];
-                                    newItems[index].quantity_to_deliver = Math.min(
+                                    const newValue = Math.min(
                                       parseFloat(e.target.value) || 0,
                                       remaining
                                     );
+                                    newItems[index].quantity_to_deliver = newValue;
+                                    newItems[index].selected = newValue > 0;
                                     setDeliveryFormData({...deliveryFormData, items: newItems});
                                   }}
-                                  className="w-20 p-1 border border-gray-300 rounded text-center"
+                                  disabled={!item.selected}
+                                  className="w-20 p-1 border border-gray-300 rounded text-center disabled:bg-gray-100"
                                 />
                               ) : (
                                 <span className="text-green-600 text-sm">✅ Complet</span>
@@ -2024,7 +1996,7 @@ export default function PurchaseOrderManager() {
             <div className="bg-gray-50 px-6 py-4 border-t">
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-600">
-                  {deliveryFormData.items.filter(i => i.quantity_to_deliver > 0).length} article(s) sélectionné(s)
+                  {deliveryFormData.items.filter(i => i.selected && i.quantity_to_deliver > 0).length} article(s) sélectionné(s)
                 </div>
                 <div className="flex gap-3">
                   <button
@@ -2038,7 +2010,7 @@ export default function PurchaseOrderManager() {
                   </button>
                   <button
                     onClick={createDeliverySlip}
-                    disabled={!deliveryFormData.items.some(i => i.quantity_to_deliver > 0)}
+                    disabled={!deliveryFormData.items.some(i => i.selected && i.quantity_to_deliver > 0)}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     <Printer className="w-4 h-4" />
@@ -2051,21 +2023,125 @@ export default function PurchaseOrderManager() {
         </div>
       )}
 
-      {/* HEADER EXISTANT */}
+      {/* HEADER PRINCIPAL - TOUJOURS VISIBLE */}
       <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
-        {/* ... header existant ... */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
+            <p className="text-white/90 text-sm sm:text-base mt-1">
+              Gérez vos bons d'achat et commandes clients
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <button
+              onClick={handleSendReport}
+              disabled={sendingReport}
+              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm"
+            >
+              📧 {sendingReport ? 'Envoi...' : 'Rapport'}
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="w-full sm:w-auto px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-100 text-sm font-medium"
+            >
+              ➕ Nouveau Bon d'Achat
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">📊</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Total</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{purchaseOrders.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">✅</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Approuvés</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">
+                  {purchaseOrders.filter(po => po.status?.toLowerCase() === 'approved').length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">⏳</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">En Attente</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">
+                  {purchaseOrders.filter(po => po.status?.toLowerCase() === 'pending').length}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">💰</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Montant Total</p>
+                <p className="text-lg sm:text-2xl font-bold text-white">{formatCurrency(totalAmount)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* BARRE DE RECHERCHE EXISTANTE */}
+      {/* BARRE DE RECHERCHE - TOUJOURS VISIBLE */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200">
-        {/* ... barre de recherche existante ... */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="🔍 Rechercher par numéro PO, client, soumission..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+              />
+            </div>
+          </div>
+          <div className="w-full sm:w-auto">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="pending">⏳ En attente</option>
+              <option value="approved">✅ Approuvé</option>
+              <option value="rejected">❌ Rejeté</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* TABLEAU DESKTOP MODIFIÉ */}
       <div className="hidden lg:block bg-white shadow-lg overflow-hidden rounded-lg border border-gray-200">
         {filteredPurchaseOrders.length === 0 ? (
           <div className="text-center py-12">
-            {/* ... message vide existant ... */}
+            <span className="text-6xl mb-4 block">📋</span>
+            <p className="text-gray-500 text-lg">
+              {purchaseOrders.length === 0 ? 'Aucun bon d\'achat créé' : 'Aucun bon d\'achat trouvé avec ces filtres'}
+            </p>
+            {purchaseOrders.length === 0 && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+              >
+                ➕ Créer le premier bon d'achat
+              </button>
+            )}
           </div>
         ) : (
           <table className="w-full">
@@ -2086,7 +2162,6 @@ export default function PurchaseOrderManager() {
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Statut
                 </th>
-                {/* 🆕 NOUVELLE COLONNE */}
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Livraison
                 </th>
@@ -2101,7 +2176,6 @@ export default function PurchaseOrderManager() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredPurchaseOrders.map((po) => (
                 <tr key={po.id} className="hover:bg-gray-50 transition-colors">
-                  {/* ... colonnes existantes ... */}
                   <td className="px-3 py-4 whitespace-nowrap">
                     <div className="text-sm space-y-1">
                       <div className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-medium inline-block">
@@ -2142,7 +2216,6 @@ export default function PurchaseOrderManager() {
                        po.status?.toLowerCase() === 'rejected' ? '❌' : '❓'}
                     </span>
                   </td>
-                  {/* 🆕 NOUVELLE COLONNE LIVRAISON */}
                   <td className="px-3 py-4 whitespace-nowrap text-center">
                     {getDeliveryBadge(getDeliveryStatus(po))}
                   </td>
@@ -2158,7 +2231,6 @@ export default function PurchaseOrderManager() {
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-center">
                     <div className="flex justify-center space-x-1">
-                      {/* 🆕 NOUVEAU BOUTON LIVRAISON */}
                       {po.status?.toLowerCase() === 'approved' && (
                         <button
                           onClick={() => openDeliveryModal(po)}
@@ -2213,12 +2285,178 @@ export default function PurchaseOrderManager() {
       <div className="lg:hidden space-y-4">
         {filteredPurchaseOrders.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            {/* ... message vide existant ... */}
+            <span className="text-6xl mb-4 block">📋</span>
+            <p className="text-gray-500 text-lg mb-4">
+              {purchaseOrders.length === 0 ? 'Aucun bon d\'achat créé' : 'Aucun bon d\'achat trouvé'}
+            </p>
+            {purchaseOrders.length === 0 && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+              >
+                ➕ Créer le premier bon d'achat
+              </button>
+            )}
           </div>
         ) : (
           filteredPurchaseOrders.map((po) => (
             <div key={po.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-              {/* ... carte existante avec ajout du bouton livraison ... */}
+              
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">{getStatusEmoji(po.status)}</span>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-base">
+                        📄 {po.po_number || 'N/A'}
+                      </h3>
+                      <p className="text-sm text-gray-600">{po.client_name || po.client || 'N/A'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="relative">
+                    <button
+                      onClick={() => setSelectedOrderId(selectedOrderId === po.id ? null : po.id)}
+                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-white/50"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                    
+                    {selectedOrderId === po.id && (
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              handleEdit(po);
+                              setSelectedOrderId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Modifier
+                          </button>
+                          {po.status?.toLowerCase() === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  handleStatusChange(po.id, 'approved');
+                                  setSelectedOrderId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center"
+                              >
+                                ✅ Approuver
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleStatusChange(po.id, 'rejected');
+                                  setSelectedOrderId(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center"
+                              >
+                                ❌ Rejeter
+                              </button>
+                            </>
+                          )}
+                          <hr className="my-1" />
+                          <button
+                            onClick={() => {
+                              handleDelete(po.id);
+                              setSelectedOrderId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 space-y-3">
+                
+                <div>
+                  <span className="text-gray-500 text-sm block">📝 Description</span>
+                  <p className="text-gray-900 font-medium">{po.notes || po.description || 'Aucune description'}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500 block">📅 Date</span>
+                    <span className="font-medium text-gray-900">{formatDate(po.date || po.created_at)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">💰 Montant</span>
+                    <span className="font-bold text-green-600 text-base">{formatCurrency(po.amount)}</span>
+                  </div>
+                </div>
+
+                {po.submission_no && (
+                  <div className="text-sm">
+                    <span className="text-gray-500">📋 Soumission</span>
+                    <span className="ml-2 text-blue-600 font-medium">{po.submission_no}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 text-sm">Statut</span>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    po.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                    po.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    po.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {po.status?.toLowerCase() === 'approved' ? '✅ Approuvé' : 
+                     po.status?.toLowerCase() === 'pending' ? '⏳ En attente' : 
+                     po.status?.toLowerCase() === 'rejected' ? '❌ Rejeté' : (po.status || 'Inconnu')}
+                  </span>
+                </div>
+
+                {po.additionalNotes && (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <span className="text-gray-500 text-sm block mb-1">📝 Notes complémentaires</span>
+                    <p className="text-gray-700 text-sm">{po.additionalNotes}</p>
+                  </div>
+                )}
+
+                {po.files && po.files.length > 0 && (
+                  <div className="border-t pt-3">
+                    <span className="text-gray-500 text-sm block mb-2">📎 Fichiers ({po.files.length})</span>
+                    <div className="space-y-2">
+                      {po.files.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-2">
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
+                            <span className="text-lg">{getFileIcon(file.type)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-blue-800 truncate">{file.name}</p>
+                              <p className="text-xs text-blue-600">{formatFileSize(file.size)}</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => openFile(file)}
+                              className="p-1 text-blue-600 hover:bg-blue-200 rounded"
+                              title="Ouvrir"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => downloadFile(file)}
+                              className="p-1 text-green-600 hover:bg-green-200 rounded"
+                              title="Télécharger"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="bg-gray-50 px-4 py-3 flex gap-2">
                 <button
                   onClick={() => handleEdit(po)}
