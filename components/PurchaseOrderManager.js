@@ -1453,9 +1453,18 @@ export default function PurchaseOrderManager() {
                   <div className="space-y-2">
                     <div className="flex gap-2">
                       <select
-                        value={formData.submission_no}
-                        onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
-                        className="block flex-1 rounded-lg border-import { useState, useEffect } from 'react';
+  value={formData.submission_no}
+  onChange={(e) => setFormData({ ...formData, submission_no: e.target.value })}
+  className="block flex-1 rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
+>
+  <option value="">Sélectionner une soumission…</option>
+  {submissions.map((s) => (
+    <option key={s.id} value={s.submission_number}>
+      {s.submission_number} — {s.client_name}
+    </option>
+  ))}
+</select>
+
 import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search, Plus, Minus, Package, Truck, Printer, CheckCircle } from 'lucide-react';
 import { Building2, FileUp, ShoppingCart } from 'lucide-react';
