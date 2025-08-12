@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 const pages = [
   { id: 'bons-achat', name: "Bons d'achat", icon: Package },
   { id: 'soumissions', name: 'Soumissions', icon: FileText },
-  { id: 'achat-materiels', name: 'Achat Matériels', icon: ShoppingCart }
+  { id: 'achat-materiels', name: 'Achat Matériels', icon: ShoppingCart },
   { id: 'client-po', name: 'Bons d\'Achat Client', icon: Package } 
 ];
 
