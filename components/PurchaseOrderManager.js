@@ -162,191 +162,7 @@ export default function PurchaseOrderManager() {
     }
   };
 
-        // 2. Fonction fetchDeliverySlips - CORRIGÉE
-const fetchDeliverySlips = async (purchaseOrderId) => {
-  if (!purchaseOrderId) return;
-  
-  setLoadingDeliveries(true);
-  try {
-    const { data, error } = await supabase
-      .from('delivery_slips')
-      .select(`
-        *,
-        delivery_slip_items (*)
-      `)
-      .eq('purchase_order_id', purchaseOrderId)  // ← ICI: purchase_order_id
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Erreur récupération bons de livraison:', error);
-    } else {
-      setDeliverySlips(data || []);
-    }
-  } catch (error) {
-    console.error('Erreur lors du chargement des livraisons:', error);
-  } finally {
-    setLoadingDeliveries(false);
-  }
-};
-
-  // Récupérer les articles d'un bon d'achat
-  const fetchPOItems = async (purchaseOrderId) => {
-    if (!purchaseOrderId) return;
-    
-    try {
-      const { data: poData, error: poError } = await supabase
-        .from('purchase_orders')
-        .select('*')
-        .eq('id', purchaseOrderId)
-        .single();
-
-      if (!poError && poData) {
-        if (poData.items && Array.isArray(poData.items)) {
-          setPOItems(poData.items.map((item, index) => ({
-            ...item,
-            id: index,
-            delivered_quantity: item.delivered_quantity || 0
-          })));
-        } else {
-          setPOItems([{
-            id: 1,
-            product_id: 'GENERAL',
-            description: poData.notes || poData.description || 'Articles divers',
-            quantity: 1,
-            unit: 'LOT',
-            selling_price: poData.amount || 0,
-            cost_price: 0,
-            delivered_quantity: 0
-          }]);
-        }
-      }
-    } catch (error) {
-      console.error('Erreur récupération articles PO:', error);
-    }
-  };
-
-  // Générer un numéro de bon de livraison
-  const generateDeliveryNumber = async () => {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `BL-${year}${month}`;
-    
-    try {
-      const { data, error } = await supabase
-        .from('delivery_slips')
-        .select('delivery_number')
-        .like('delivery_number', `${prefix}%`)
-        .order('delivery_number', { ascending: false })
-        .limit(1);
-
-      if (error) throw error;
-
-      let nextNumber = '001';
-      if (data && data.length > 0) {
-        const lastNumber = parseInt(data[0].delivery_number.split('-').pop());
-        nextNumber = (lastNumber + 1).toString().padStart(3, '0');
-      }
-
-      return `${prefix}-${nextNumber}`;
-    } catch (error) {
-      console.error('Erreur génération numéro BL:', error);
-      return `${prefix}-${Date.now().toString().slice(-3)}`;
-    }
-  };
-
-// 1. Fonction createDeliverySlip - CORRIGÉE
-const createDeliverySlip = async () => {
-  const selectedItems = deliveryFormData.items.filter(item => item.selected && item.quantity_to_deliver > 0);
-  
-  if (selectedItems.length === 0) {
-    alert('⚠️ Veuillez sélectionner au moins un article à livrer');
-    return;
-  }
-
-  try {
-    const deliveryNumber = await generateDeliveryNumber();
-    
-    // UTILISER purchase_order_id et non client_po_id
-    const { data: deliverySlip, error: slipError } = await supabase
-      .from('delivery_slips')
-      .insert([{
-        purchase_order_id: selectedPOForDelivery.id,  // ← ICI: purchase_order_id
-        delivery_number: deliveryNumber,
-        delivery_date: deliveryFormData.delivery_date,
-        transport_company: deliveryFormData.transport_company,
-        transport_number: deliveryFormData.transport_number,
-        delivery_contact: deliveryFormData.delivery_contact,
-        special_instructions: deliveryFormData.special_instructions,
-        status: 'completed'
-      }])
-      .select()
-      .single();
-
-    if (slipError) throw slipError;
-
-    const deliveryItems = selectedItems.map(item => ({
-      delivery_slip_id: deliverySlip.id,
-      client_po_item_id: item.id,
-      quantity_delivered: item.quantity_to_deliver,
-      notes: item.notes || ''
-    }));
-
-    if (deliveryItems.length > 0) {
-      const { error: itemsError } = await supabase
-        .from('delivery_slip_items')
-        .insert(deliveryItems);
-
-      if (itemsError) {
-        console.warn('Avertissement items:', itemsError);
-      }
-    }
-
-    // Mettre à jour les quantités livrées dans les items du bon d'achat
-    const updatedItems = poItems.map(item => {
-      const deliveredItem = selectedItems.find(si => si.id === item.id);
-      if (deliveredItem) {
-        return {
-          ...item,
-          delivered_quantity: (item.delivered_quantity || 0) + deliveredItem.quantity_to_deliver
-        };
-      }
-      return item;
-    });
-
-    // Sauvegarder les items mis à jour
-    const { error: updateError } = await supabase
-      .from('purchase_orders')
-      .update({ items: updatedItems })
-      .eq('id', selectedPOForDelivery.id);
-
-    if (updateError) {
-      console.error('Erreur mise à jour quantités:', updateError);
-    }
-
-    alert('✅ Bon de livraison créé avec succès !');
-    
-    setShowDeliveryModal(false);
-    setDeliveryFormData({
-      delivery_date: new Date().toISOString().split('T')[0],
-      transport_company: '',
-      transport_number: '',
-      delivery_contact: '',
-      special_instructions: '',
-      items: []
-    });
-    
-    await fetchDeliverySlips(selectedPOForDelivery.id);
-    await fetchPOItems(selectedPOForDelivery.id);
-    printDeliverySlip(deliverySlip, selectedItems);
-    
-  } catch (error) {
-    console.error('Erreur création bon de livraison:', error);
-    alert('❌ Erreur lors de la création du bon de livraison');
-  }
-};
-
-// Récupérer les bons de livraison d'un PO
+  // Récupérer les bons de livraison d'un PO
   const fetchDeliverySlips = async (purchaseOrderId) => {
     if (!purchaseOrderId) return;
     
@@ -358,7 +174,7 @@ const createDeliverySlip = async () => {
           *,
           delivery_slip_items (*)
         `)
-        .eq('purchase_order_id', purchaseOrderId)  // Utiliser purchase_order_id
+        .eq('purchase_order_id', purchaseOrderId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -451,11 +267,10 @@ const createDeliverySlip = async () => {
     try {
       const deliveryNumber = await generateDeliveryNumber();
       
-      // UTILISER purchase_order_id et non client_po_id
       const { data: deliverySlip, error: slipError } = await supabase
         .from('delivery_slips')
         .insert([{
-          purchase_order_id: selectedPOForDelivery.id,  // ICI: purchase_order_id
+          purchase_order_id: selectedPOForDelivery.id,
           delivery_number: deliveryNumber,
           delivery_date: deliveryFormData.delivery_date,
           transport_company: deliveryFormData.transport_company,
@@ -486,7 +301,6 @@ const createDeliverySlip = async () => {
         }
       }
 
-      // Mettre à jour les quantités livrées dans les items du bon d'achat
       const updatedItems = poItems.map(item => {
         const deliveredItem = selectedItems.find(si => si.id === item.id);
         if (deliveredItem) {
@@ -498,7 +312,6 @@ const createDeliverySlip = async () => {
         return item;
       });
 
-      // Sauvegarder les items mis à jour
       const { error: updateError } = await supabase
         .from('purchase_orders')
         .update({ items: updatedItems })
@@ -549,7 +362,6 @@ const createDeliverySlip = async () => {
             padding: 20px;
             font-size: 12pt;
           }
-          
           .header {
             display: flex;
             justify-content: space-between;
@@ -558,61 +370,49 @@ const createDeliverySlip = async () => {
             padding-bottom: 20px;
             margin-bottom: 20px;
           }
-          
-          .company-info {
-            flex: 1;
-          }
-          
+          .company-info { flex: 1; }
           .company-name {
             font-size: 24pt;
             font-weight: bold;
             color: #2563eb;
             margin-bottom: 5px;
           }
-          
           .company-details {
             font-size: 10pt;
             color: #666;
             line-height: 1.4;
           }
-          
           .document-title {
             flex: 1;
             text-align: right;
           }
-          
           .doc-type {
             font-size: 20pt;
             font-weight: bold;
             margin-bottom: 10px;
           }
-          
           .doc-number {
             font-size: 14pt;
             color: #2563eb;
             font-weight: bold;
           }
-          
           .doc-date {
             font-size: 11pt;
             color: #666;
             margin-top: 5px;
           }
-          
           .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30px;
             margin: 30px 0;
           }
-          
           .info-box {
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 15px;
             background: #f9f9f9;
           }
-          
           .info-box h3 {
             margin: 0 0 10px 0;
             font-size: 12pt;
@@ -621,16 +421,11 @@ const createDeliverySlip = async () => {
             border-bottom: 1px solid #ddd;
             padding-bottom: 5px;
           }
-          
           .info-box p {
             margin: 5px 0;
             font-size: 11pt;
           }
-          
-          .info-box strong {
-            color: #333;
-          }
-          
+          .info-box strong { color: #333; }
           .transport-info {
             background: #e3f2fd;
             border: 1px solid #2563eb;
@@ -638,13 +433,11 @@ const createDeliverySlip = async () => {
             padding: 15px;
             margin: 20px 0;
           }
-          
           table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
           }
-          
           th {
             background: #2563eb;
             color: white;
@@ -653,49 +446,38 @@ const createDeliverySlip = async () => {
             font-size: 11pt;
             font-weight: bold;
           }
-          
           td {
             border: 1px solid #ddd;
             padding: 8px;
             font-size: 11pt;
           }
-          
-          tbody tr:nth-child(even) {
-            background: #f9f9f9;
-          }
-          
+          tbody tr:nth-child(even) { background: #f9f9f9; }
           .text-center { text-align: center; }
           .text-right { text-align: right; }
-          
           .signature-section {
             margin-top: 50px;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 50px;
           }
-          
           .signature-box {
             border-top: 2px solid #333;
             padding-top: 10px;
           }
-          
           .signature-label {
             font-size: 10pt;
             color: #666;
             margin-bottom: 5px;
           }
-          
           .signature-name {
             font-size: 11pt;
             font-weight: bold;
             margin-bottom: 3px;
           }
-          
           .signature-date {
             font-size: 10pt;
             color: #666;
           }
-          
           .footer-note {
             margin-top: 30px;
             padding-top: 20px;
@@ -704,7 +486,6 @@ const createDeliverySlip = async () => {
             color: #666;
             text-align: center;
           }
-          
           .special-instructions {
             background: #fff3cd;
             border: 1px solid #ffc107;
@@ -712,13 +493,11 @@ const createDeliverySlip = async () => {
             padding: 15px;
             margin: 20px 0;
           }
-          
           .special-instructions h4 {
             margin: 0 0 10px 0;
             color: #856404;
             font-size: 11pt;
           }
-          
           @media print {
             body { margin: 0; }
             .info-box { break-inside: avoid; }
