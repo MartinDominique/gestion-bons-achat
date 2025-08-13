@@ -26,9 +26,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   // Fonction pour charger les articles depuis la soumission
   const loadPOItems = async () => {
     try {
-      console.log('Recherche soumission:', clientPO.submission_no);
+      console.log('Recherche soumission:', clientPO.submission_number);
       
-      if (!clientPO.submission_no) {
+      if (!clientPO.submission_number) {
         console.log('Pas de numéro de soumission');
         return;
       }
@@ -37,7 +37,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       const { data: submission, error: subError } = await supabase
         .from('submissions')
         .select('*')
-        .eq('submission_no', clientPO.submission_no)
+        .eq('submission_number', clientPO.submission_number)
         .single();
       
       if (subError) {
@@ -87,7 +87,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       <div className="bg-white rounded-xl max-w-5xl w-full">
         <div className="p-6">
           <h2 className="text-2xl font-bold mb-4">🚚 Créer un Bon de Livraison</h2>
-          <p>BA Client: {clientPO?.ba_number || clientPO?.po_number || clientPO?.submission_no} • {clientPO?.client_name || clientPO?.client}</p>
+          <p>BA Client: {clientPO?.ba_number || clientPO?.po_number || clientPO?.submission_number} • {clientPO?.client_name || clientPO?.client}</p>
           <p className="text-sm text-gray-600 mt-2">ID: {clientPO?.id} - Articles: {formData.items.length}</p>
           
           <div className="mt-6 flex gap-3">
