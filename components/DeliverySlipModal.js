@@ -157,7 +157,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
   };
   
-  // Générer le PDF professionnel - FONCTION DÉPLACÉE ICI
+  // Générer le PDF professionnel
   const generatePDF = async (deliverySlip, selectedItems) => {
     console.log('Génération PDF professionnel pour:', deliverySlip);
     
@@ -176,6 +176,22 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     }
     
     const printWindow = window.open('', '_blank');
+    
+    // Calculer les articles restants (Back Order)
+    const allItems = formData.items;
+    const backOrderItems = allItems
+      .map(item => {
+        // Trouver si cet article est livré dans cette livraison
+        const deliveredItem = selectedItems.find(si => si.product_id === item.product_id);
+        const quantityBeingDelivered = deliveredItem ? deliveredItem.quantity_to_deliver : 0;
+        const remainingAfterDelivery = item.remaining_quantity - quantityBeingDelivered;
+        
+        return {
+          ...item,
+          remaining_after_delivery: remainingAfterDelivery
+        };
+      })
+      .filter(item => item.remaining_after_delivery > 0);
     
     const html = `
       <!DOCTYPE html>
@@ -430,7 +446,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </div>
         ` : ''}
 
-        <!-- ARTICLES LIVRÉS -->
         <div class="delivered-section">
           <div class="section-title">ARTICLES LIVRÉS</div>
           <table>
@@ -444,64 +459,50 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
               </tr>
             </thead>
             <tbody>
-              ${items.map(item => `
+              ${selectedItems.map(item => `
                 <tr>
                   <td><strong>${item.product_id}</strong></td>
                   <td>${item.description}</td>
                   <td style="text-align: center;"><strong>${item.quantity_to_deliver}</strong></td>
                   <td style="text-align: center;">${item.unit || 'UN'}</td>
-                  <td style="text-align: right;">${(item.price || 0).toFixed(2)}</td>
+                  <td style="text-align: right;">$${(item.price || 0).toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-        </div>`;
-        
-        // BACK ORDER (Articles restants)
-        const backOrderSection = (() => {
-          // Calculer les articles restants (Back Order)
-          const backOrderItems = formData.items
-            .map(item => ({
-              ...item,
-              remaining_after_delivery: item.remaining_quantity - (items.find(i => i.product_id === item.product_id)?.quantity_to_deliver || 0)
-            }))
-            .filter(item => item.remaining_after_delivery > 0);
-          
-          if (backOrderItems.length === 0) return '';
-          
-          return `
-            <div class="backorder-section">
-              <div class="backorder-note">
-                <strong>Note:</strong> Les articles ci-dessous restent en Back Order (BO) et seront livrés ultérieurement.
-              </div>
-              <div class="section-title">BACK ORDER (Articles restants)</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width: 18%;">Code</th>
-                    <th style="width: 42%;">Description</th>
-                    <th style="width: 12%; text-align: center;">Qté BO</th>
-                    <th style="width: 10%; text-align: center;">Unité</th>
-                    <th style="width: 18%; text-align: right;">Prix Unit.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${backOrderItems.map(item => `
-                    <tr>
-                      <td><strong>${item.product_id}</strong></td>
-                      <td>${item.description}</td>
-                      <td style="text-align: center; color: #dc2626;"><strong>${item.remaining_after_delivery}</strong></td>
-                      <td style="text-align: center;">${item.unit || 'UN'}</td>
-                      <td style="text-align: right;">${(item.price || 0).toFixed(2)}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          `;
-        })()}
+        </div>
 
-        <!-- Footer avec signature -->
+        ${backOrderItems.length > 0 ? `
+          <div class="backorder-section">
+            <div class="backorder-note">
+              <strong>Note:</strong> Les articles ci-dessous restent en Back Order (BO) et seront livrés ultérieurement.
+            </div>
+            <div class="section-title">BACK ORDER (Articles restants)</div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 18%;">Code</th>
+                  <th style="width: 42%;">Description</th>
+                  <th style="width: 12%; text-align: center;">Qté BO</th>
+                  <th style="width: 10%; text-align: center;">Unité</th>
+                  <th style="width: 18%; text-align: right;">Prix Unit.</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${backOrderItems.map(item => `
+                  <tr>
+                    <td><strong>${item.product_id}</strong></td>
+                    <td>${item.description}</td>
+                    <td style="text-align: center; color: #dc2626;"><strong>${item.remaining_after_delivery}</strong></td>
+                    <td style="text-align: center;">${item.unit || 'UN'}</td>
+                    <td style="text-align: right;">$${(item.price || 0).toFixed(2)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
         <div class="page-footer">
           <div class="signature-box">
             <div class="signature-line"></div>
@@ -512,7 +513,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </div>
         </div>
 
-        <!-- Texte légal en bas de page -->
         <div class="legal-text">
           La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
           Toute réclamation doit être faite dans les 48 heures suivant la réception.
@@ -530,7 +530,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     };
   };
   
-  // Fonction pour soumettre et sauvegarder - CORRIGÉE
+  // Fonction pour soumettre et sauvegarder
   const handleSubmit = async () => {
     const selectedItems = formData.items.filter(
       item => item.selected && item.quantity_to_deliver > 0
@@ -571,7 +571,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       
       console.log('Bon de livraison créé:', deliverySlip);
       
-      // 3. Créer les lignes de livraison - SYNTAXE CORRIGÉE
+      // 3. Créer les lignes de livraison
       const deliveryItems = selectedItems.map(item => ({
         delivery_slip_id: deliverySlip.id,
         client_po_item_id: item.id,
