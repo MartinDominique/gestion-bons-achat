@@ -9,7 +9,7 @@ import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 
 const pages = [
-  { id: 'bons-achat', name: "Bons d'achat", icon: Package },
+  { id: 'bons-achat', name: "Bons d'achat Clients", icon: Package },
   { id: 'soumissions', name: 'Soumissions', icon: FileText },
   { id: 'achat-materiels', name: 'Achat Matériels', icon: ShoppingCart }
 ];
