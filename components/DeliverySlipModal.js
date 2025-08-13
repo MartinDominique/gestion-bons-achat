@@ -171,18 +171,20 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       const deliveryNumber = await generateDeliveryNumber();
       
       // 2. Créer le bon de livraison
-      const { data: deliverySlip, error: slipError } = await supabase
-        .from('delivery_slips')
-        .insert({
-          client_po_id: clientPO.id,
-          delivery_number: deliveryNumber,
-          delivery_date: formData.delivery_date,
-          transport_number: formData.tracking_number,
-          delivery_contact: formData.delivery_contact,
-          special_instructions: formData.special_instructions
-        })
-        .select()
-        .single();
+  const { data: deliverySlip, error: slipError } = await supabase
+    .from('delivery_slips')
+    .insert({
+      purchase_order_id: clientPO.id,  // ✅ BON NOM!
+      delivery_number: deliveryNumber,
+      delivery_date: formData.delivery_date,
+      transport_number: formData.tracking_number,
+      transport_company: formData.transport_company || 'Purolator',
+      delivery_contact: formData.delivery_contact,
+      special_instructions: formData.special_instructions,
+      status: 'pending'
+    })
+    .select()
+    .single();
       
       if (slipError) {
         console.error('Erreur création bon:', slipError);
