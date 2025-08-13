@@ -23,28 +23,58 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     }
   }, [isOpen, clientPO]);
 
-  // Fonction pour charger les articles
+  // Fonction pour charger les articles depuis la soumission
   const loadPOItems = async () => {
     try {
-      const { data: items, error } = await supabase
-        .from('client_po_items')
+      console.log('Recherche soumission:', clientPO.submission_no);
+      
+      if (!clientPO.submission_no) {
+        console.log('Pas de numéro de soumission');
+        return;
+      }
+      
+      // 1. Chercher la soumission
+      const { data: submission, error: subError } = await supabase
+        .from('submissions')
         .select('*')
-        .eq('client_po_id', clientPO.id);
-
-      if (error) throw error;
-
-      // Préparer les articles pour la sélection
+        .eq('submission_no', clientPO.submission_no)
+        .single();
+      
+      if (subError) {
+        console.error('Erreur recherche soumission:', subError);
+        return;
+      }
+      
+      console.log('Soumission trouvée:', submission);
+      
+      // 2. Chercher les articles de la soumission (dans quote_items)
+      const { data: items, error: itemsError } = await supabase
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', submission.id);
+      
+      if (itemsError) {
+        console.error('Erreur chargement articles:', itemsError);
+        return;
+      }
+      
+      console.log('Articles trouvés:', items);
+      
+      // 3. Préparer les articles pour la sélection
       const itemsWithSelection = items.map(item => ({
         ...item,
         selected: false,
         quantity_to_deliver: 0,
-        remaining_quantity: item.quantity - (item.delivered_quantity || 0)
+        remaining_quantity: item.quantity || 0,
+        delivered_quantity: 0,
+        description: item.name || item.description || 'Article'
       }));
-
+      
       setFormData(prev => ({ ...prev, items: itemsWithSelection }));
-      console.log('Articles chargés:', itemsWithSelection);
+      console.log('Articles préparés:', itemsWithSelection);
+      
     } catch (error) {
-      console.error('Erreur chargement articles:', error);
+      console.error('Erreur générale:', error);
     }
   };
 
