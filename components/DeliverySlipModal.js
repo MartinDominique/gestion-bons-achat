@@ -194,34 +194,36 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       
       console.log('Bon de livraison créé:', deliverySlip);
       
-      // 3. Créer les lignes de livraison
-      const deliveryItems = selectedItems.map(item => ({
-        // 3.5 Sauvegarder les quantités livrées dans une note temporaire
-      const deliveryInfo = {
-        date: new Date().toISOString(),
-        bl_number: deliveryNumber,
-        items: selectedItems.map(i => ({
-          product_id: i.product_id,
-          description: i.description,
-          quantity_delivered: i.quantity_to_deliver
-        }))
-      };
-      
-      // Mettre à jour les notes du BA avec l'info de livraison
-      const updatedNotes = `${clientPO.notes || ''}\n\n[LIVRAISON ${deliveryNumber}] - ${new Date().toLocaleDateString()}\n${selectedItems.map(i => `- ${i.description}: ${i.quantity_to_deliver} ${i.unit}`).join('\n')}`;
-      
-      await supabase
-        .from('purchase_orders')
-        .update({ 
-          notes: updatedNotes,
-          additionalNotes: JSON.stringify(deliveryInfo)
-        })
-        .eq('id', clientPO.id);
-        delivery_slip_id: deliverySlip.id,
-        client_po_item_id: item.id, // On utilisera ceci temporairement
-        quantity_delivered: item.quantity_to_deliver,
-        notes: `${item.product_id} - ${item.description}`
-      }));
+      // 3.5 Sauvegarder les quantités livrées dans une note temporaire (déclaré AVANT le map)
+const deliveryInfo = {
+  date: new Date().toISOString(),
+  bl_number: deliveryNumber,
+  items: selectedItems.map(i => ({
+    product_id: i.product_id,
+    description: i.description,
+    quantity_delivered: i.quantity_to_deliver
+  }))
+};
+
+// Mettre à jour les notes du BA avec l'info de livraison
+const updatedNotes = `${clientPO.notes || ''}\n\n[LIVRAISON ${deliveryNumber}] - ${new Date().toLocaleDateString()}\n${selectedItems.map(i => `- ${i.description}: ${i.quantity_to_deliver} ${i.unit}`).join('\n')}`;
+
+await supabase
+  .from('purchase_orders')
+  .update({ 
+    notes: updatedNotes,
+    additionalNotes: JSON.stringify(deliveryInfo)
+  })
+  .eq('id', clientPO.id);
+
+// 3. Créer les lignes de livraison
+const deliveryItems = selectedItems.map(item => ({
+  delivery_slip_id: deliverySlip.id,
+  client_po_item_id: item.id, // On utilisera ceci temporairement
+  quantity_delivered: item.quantity_to_deliver,
+  notes: `${item.product_id} - ${item.description}`
+}));
+
       
       const { error: itemsError } = await supabase
         .from('delivery_slip_items')
