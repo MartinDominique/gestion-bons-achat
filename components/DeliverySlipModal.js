@@ -158,8 +158,22 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   };
   
   // Générer le PDF professionnel - FONCTION DÉPLACÉE ICI
-  const generatePDF = (deliverySlip, items) => {
+  const generatePDF = async (deliverySlip, selectedItems) => {
     console.log('Génération PDF professionnel pour:', deliverySlip);
+    
+    // Récupérer les informations du BO associé
+    let purchaseOrderInfo = '';
+    if (clientPO.purchase_order_number) {
+      const { data: poData } = await supabase
+        .from('purchase_orders')
+        .select('po_number, supplier_name, order_date')
+        .eq('po_number', clientPO.purchase_order_number)
+        .single();
+      
+      if (poData) {
+        purchaseOrderInfo = `BO #${poData.po_number} - ${poData.supplier_name}`;
+      }
+    }
     
     const printWindow = window.open('', '_blank');
     
@@ -170,140 +184,208 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         <meta charset="UTF-8">
         <title>Bon de Livraison ${deliverySlip.delivery_number}</title>
         <style>
-          @page { size: letter; margin: 0.5in; }
+          @page { 
+            size: letter; 
+            margin: 0.5in;
+            @bottom-center {
+              content: "La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet. Toute réclamation doit être faite dans les 48 heures suivant la réception.";
+              font-size: 10px;
+              color: #666;
+            }
+          }
           body { 
             font-family: Arial, sans-serif; 
             margin: 0; 
             padding: 20px;
             color: #333;
+            min-height: calc(100vh - 80px);
+            position: relative;
           }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: start;
-            border-bottom: 3px solid #2563eb;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            border-bottom: 2px solid #1a365d;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
           }
           .logo-section {
-            flex: 1;
+            display: flex;
+            align-items: start;
+            gap: 20px;
           }
-          .logo {
-            font-size: 28px;
-            font-weight: bold;
-            color: #2563eb;
-            margin-bottom: 10px;
+          .logo-container {
+            width: 80px;
+            height: 80px;
+          }
+          .logo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
           }
           .company-info {
             font-size: 12px;
-            color: #666;
+            color: #1a365d;
             line-height: 1.4;
+            font-weight: 500;
+          }
+          .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a365d;
+            margin-bottom: 5px;
           }
           .doc-info {
             text-align: right;
-            flex: 1;
           }
           .doc-title {
             font-size: 24px;
             font-weight: bold;
-            color: #1e40af;
-            margin-bottom: 10px;
+            color: #1a365d;
+            margin-bottom: 8px;
           }
           .doc-number {
-            font-size: 18px;
-            color: #333;
+            font-size: 16px;
+            color: #1a365d;
+            font-weight: bold;
             margin-bottom: 5px;
+          }
+          .doc-details {
+            font-size: 12px;
+            color: #4a5568;
+            line-height: 1.3;
           }
           .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30px;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
           }
           .info-box {
-            background: #f8f9fa;
+            border: 1px solid #e2e8f0;
             padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #2563eb;
+            border-radius: 5px;
           }
           .info-title {
             font-weight: bold;
-            color: #1e40af;
-            margin-bottom: 10px;
+            color: #1a365d;
+            margin-bottom: 8px;
             font-size: 14px;
-            text-transform: uppercase;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
           }
           .info-content {
-            font-size: 13px;
-            line-height: 1.5;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #4a5568;
+          }
+          .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a365d;
+            margin: 25px 0 15px 0;
+            border-bottom: 1px solid #1a365d;
+            padding-bottom: 5px;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            border: 1px solid #1a365d;
           }
           th {
-            background: #2563eb;
+            background: #1a365d;
             color: white;
-            padding: 12px;
+            padding: 10px 8px;
             text-align: left;
-            font-size: 13px;
-            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: bold;
           }
           td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 13px;
+            padding: 8px;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            font-size: 11px;
           }
-          tr:hover {
-            background: #f9fafb;
+          tr:last-child td {
+            border-bottom: none;
           }
-          .footer {
-            margin-top: 50px;
-            padding-top: 20px;
-            border-top: 2px solid #e5e7eb;
+          td:last-child {
+            border-right: none;
           }
-          .signature-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 50px;
-            margin-bottom: 30px;
+          .delivered-section {
+            margin-bottom: 25px;
+          }
+          .backorder-section {
+            margin-bottom: 25px;
+          }
+          .backorder-note {
+            background: #fef3c7;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #f59e0b;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #92400e;
+          }
+          .page-footer {
+            position: fixed;
+            bottom: 20px;
+            left: 50px;
+            right: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
           }
           .signature-box {
-            padding-top: 60px;
-            border-top: 2px solid #333;
             text-align: center;
+          }
+          .signature-line {
+            border-top: 2px solid #1a365d;
+            width: 200px;
+            margin: 40px auto 8px auto;
+          }
+          .signature-text {
             font-size: 12px;
-          }
-          .notes-section {
-            background: #fef3c7;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-          }
-          .notes-title {
             font-weight: bold;
-            color: #92400e;
-            margin-bottom: 5px;
+            color: #1a365d;
           }
           .legal-text {
-            font-size: 10px;
+            position: fixed;
+            bottom: 5px;
+            left: 0;
+            right: 0;
+            font-size: 9px;
             color: #666;
             text-align: center;
-            margin-top: 20px;
             font-style: italic;
+            background: white;
+            padding: 5px 0;
           }
           @media print {
             body { margin: 0; }
             .no-print { display: none; }
+            .page-footer { 
+              position: fixed;
+              bottom: 60px;
+            }
+            .legal-text {
+              position: fixed;
+              bottom: 10px;
+            }
           }
         </style>
       </head>
       <body>
         <div class="header">
           <div class="logo-section">
-            <div class="logo">SERVICES TMT INC.</div>
+            <div class="logo-container">
+              <img src="public/logo.png" alt="Services TMT" onerror="this.style.display='none'">
+            </div>
             <div class="company-info">
+              <div class="company-name">SERVICES TMT INC.</div>
               195, 42e Rue Nord<br>
               Saint-Georges, QC G5Z 0V9<br>
               Tél: (418) 225-3875<br>
@@ -312,10 +394,12 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </div>
           <div class="doc-info">
             <div class="doc-title">BON DE LIVRAISON</div>
-            <div class="doc-number">${deliverySlip.delivery_number}</div>
-            <div style="font-size: 13px; color: #666;">
+            <div class="doc-number">N° Livraison: ${deliverySlip.delivery_number}</div>
+            <div class="doc-details">
               Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
-              BA Client: #${clientPO.po_number}
+              BA Client: ${clientPO.po_number}<br>
+              ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
+              ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
             </div>
           </div>
         </div>
@@ -340,55 +424,98 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         </div>
 
         ${formData.special_instructions ? `
-          <div class="notes-section">
-            <div class="notes-title">Instructions spéciales:</div>
-            <div>${formData.special_instructions}</div>
+          <div style="background: #fef3c7; padding: 10px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+            <div style="font-weight: bold; color: #92400e; margin-bottom: 5px;">Instructions spéciales:</div>
+            <div style="font-size: 12px; color: #92400e;">${formData.special_instructions}</div>
           </div>
         ` : ''}
 
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 20%;">N° ARTICLE</th>
-              <th style="width: 40%;">DESCRIPTION</th>
-              <th style="width: 15%; text-align: center;">QTÉ COMMANDÉE</th>
-              <th style="width: 15%; text-align: center;">QTÉ LIVRÉE</th>
-              <th style="width: 10%; text-align: center;">UNITÉ</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(item => `
+        <!-- ARTICLES LIVRÉS -->
+        <div class="delivered-section">
+          <div class="section-title">ARTICLES LIVRÉS</div>
+          <table>
+            <thead>
               <tr>
-                <td><strong>${item.product_id}</strong></td>
-                <td>${item.description}</td>
-                <td style="text-align: center;">${item.quantity}</td>
-                <td style="text-align: center;"><strong>${item.quantity_to_deliver}</strong></td>
-                <td style="text-align: center;">${item.unit || 'unité'}</td>
+                <th style="width: 18%;">Code</th>
+                <th style="width: 42%;">Description</th>
+                <th style="width: 12%; text-align: center;">Qté</th>
+                <th style="width: 10%; text-align: center;">Unité</th>
+                <th style="width: 18%; text-align: right;">Prix Unit.</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          <div class="signature-grid">
-            <div class="signature-box">
-              <div>SIGNATURE CLIENT</div>
-              <div style="margin-top: 5px; font-size: 11px; color: #666;">
-                Date: _____________________
-              </div>
-            </div>
-            <div class="signature-box">
-              <div>SIGNATURE LIVREUR</div>
-              <div style="margin-top: 5px; font-size: 11px; color: #666;">
-                Date: _____________________
-              </div>
-            </div>
-          </div>
+            </thead>
+            <tbody>
+              ${items.map(item => `
+                <tr>
+                  <td><strong>${item.product_id}</strong></td>
+                  <td>${item.description}</td>
+                  <td style="text-align: center;"><strong>${item.quantity_to_deliver}</strong></td>
+                  <td style="text-align: center;">${item.unit || 'UN'}</td>
+                  <td style="text-align: right;">${(item.price || 0).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+        
+        <!-- BACK ORDER (Articles restants) -->
+        ${(() => {
+          // Calculer les articles restants (Back Order)
+          const backOrderItems = formData.items
+            .map(item => ({
+              ...item,
+              remaining_after_delivery: item.remaining_quantity - (items.find(i => i.product_id === item.product_id)?.quantity_to_deliver || 0)
+            }))
+            .filter(item => item.remaining_after_delivery > 0);
           
-          <div class="legal-text">
-            La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
-            Toute réclamation doit être faite dans les 48 heures suivant la réception.
+          if (backOrderItems.length === 0) return '';
+          
+          return `
+            <div class="backorder-section">
+              <div class="backorder-note">
+                <strong>Note:</strong> Les articles ci-dessous restent en Back Order (BO) et seront livrés ultérieurement.
+              </div>
+              <div class="section-title">BACK ORDER (Articles restants)</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 18%;">Code</th>
+                    <th style="width: 42%;">Description</th>
+                    <th style="width: 12%; text-align: center;">Qté BO</th>
+                    <th style="width: 10%; text-align: center;">Unité</th>
+                    <th style="width: 18%; text-align: right;">Prix Unit.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${backOrderItems.map(item => `
+                    <tr>
+                      <td><strong>${item.product_id}</strong></td>
+                      <td>${item.description}</td>
+                      <td style="text-align: center; color: #dc2626;"><strong>${item.remaining_after_delivery}</strong></td>
+                      <td style="text-align: center;">${item.unit || 'UN'}</td>
+                      <td style="text-align: right;">${(item.price || 0).toFixed(2)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        })()}
+
+        <!-- Footer avec signature -->
+        <div class="page-footer">
+          <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-text">SIGNATURE CLIENT</div>
           </div>
+          <div style="text-align: center; font-size: 12px; color: #4a5568;">
+            Date de réception: ___________________
+          </div>
+        </div>
+
+        <!-- Texte légal en bas de page -->
+        <div class="legal-text">
+          La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
+          Toute réclamation doit être faite dans les 48 heures suivant la réception.
         </div>
       </body>
       </html>
@@ -493,7 +620,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       alert(`✅ Bon de livraison ${deliveryNumber} créé avec succès!`);
       
       // 7. Générer le PDF
-      generatePDF(deliverySlip, selectedItems);
+      await generatePDF(deliverySlip, selectedItems);
       
       // 8. Rafraîchir et fermer
       if (onRefresh) onRefresh();
@@ -620,6 +747,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
                       <th className="px-4 py-3 text-left">Sél.</th>
                       <th className="px-4 py-3 text-left">Article</th>
                       <th className="px-4 py-3 text-center">Qté Totale</th>
+                      <th className="px-4 py-3 text-center">Déjà Livrée</th>
                       <th className="px-4 py-3 text-center">Restant</th>
                       <th className="px-4 py-3 text-center">À Livrer</th>
                     </tr>
@@ -645,7 +773,14 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
                           {item.quantity} {item.unit}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {item.remaining_quantity}
+                          <span className="text-blue-600 font-medium">
+                            {item.delivered_quantity}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={item.remaining_quantity === 0 ? 'text-green-600 font-bold' : ''}>
+                            {item.remaining_quantity}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <input
