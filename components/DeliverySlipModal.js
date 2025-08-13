@@ -8,8 +8,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   
   // État pour le formulaire
   const [formData, setFormData] = useState({
-  // État pour le formulaire
-  const [formData, setFormData] = useState({
     delivery_date: new Date().toISOString().split('T')[0],
     transport_company: '',
     tracking_number: '',
