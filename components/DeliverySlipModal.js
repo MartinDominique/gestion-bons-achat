@@ -49,21 +49,45 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       const items = submission.items || [];
       
       console.log('Articles trouvés dans la soumission:', items);
+
+      // 3. Récupérer les quantités déjà livrées pour ce BA
+      const { data: deliveredItems } = await supabase
+        .from('delivery_slip_items')
+        .select(`
+          quantity_delivered,
+          notes,
+          delivery_slips!inner(purchase_order_id)
+        `)
+        .eq('delivery_slips.purchase_order_id', clientPO.id);
+
+      console.log('Quantités déjà livrées:', deliveredItems);
       
-      // 3. Préparer les articles pour la sélection
+      // 4. Préparer les articles pour la sélection avec quantités restantes
       if (items && items.length > 0) {
-        const itemsWithSelection = items.map((item, index) => ({
-          id: index + 1,
-          product_id: item.product_id || item.code || `ITEM-${index + 1}`,
-          description: item.name || item.description || 'Article',
-          quantity: parseFloat(item.quantity) || 0,
-          unit: item.unit || 'unité',
-          price: parseFloat(item.price) || 0,
-          selected: false,
-          quantity_to_deliver: 0,
-          remaining_quantity: parseFloat(item.quantity) || 0,
-          delivered_quantity: 0
-        }));
+        const itemsWithSelection = items.map((item, index) => {
+          const productId = item.product_id || item.code || `ITEM-${index + 1}`;
+          
+          // Calculer la quantité déjà livrée pour cet article
+          const alreadyDelivered = deliveredItems
+            ?.filter(d => d.notes && d.notes.includes(productId))
+            ?.reduce((sum, d) => sum + (parseFloat(d.quantity_delivered) || 0), 0) || 0;
+          
+          const totalQuantity = parseFloat(item.quantity) || 0;
+          const remainingQuantity = Math.max(0, totalQuantity - alreadyDelivered);
+
+          return {
+            id: index + 1,
+            product_id: productId,
+            description: item.name || item.description || 'Article',
+            quantity: totalQuantity,
+            unit: item.unit || 'unité',
+            price: parseFloat(item.price) || 0,
+            selected: false,
+            quantity_to_deliver: 0,
+            remaining_quantity: remainingQuantity,
+            delivered_quantity: alreadyDelivered
+          };
+        });
         
         setFormData(prev => ({ ...prev, items: itemsWithSelection }));
         console.log(`✅ ${items.length} articles chargés!`, itemsWithSelection);
