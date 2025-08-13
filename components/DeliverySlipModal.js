@@ -12,6 +12,38 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     items: []
   });
 
+  // Charger les articles quand le modal s'ouvre
+  useEffect(() => {
+    if (isOpen && clientPO) {
+      loadPOItems();
+    }
+  }, [isOpen, clientPO]);
+
+  // Fonction pour charger les articles
+  const loadPOItems = async () => {
+    try {
+      const { data: items, error } = await supabase
+        .from('client_po_items')
+        .select('*')
+        .eq('client_po_id', clientPO.id);
+
+      if (error) throw error;
+
+      // Préparer les articles pour la sélection
+      const itemsWithSelection = items.map(item => ({
+        ...item,
+        selected: false,
+        quantity_to_deliver: 0,
+        remaining_quantity: item.quantity - (item.delivered_quantity || 0)
+      }));
+
+      setFormData(prev => ({ ...prev, items: itemsWithSelection }));
+      console.log('Articles chargés:', itemsWithSelection);
+    } catch (error) {
+      console.error('Erreur chargement articles:', error);
+    }
+  };
+
   // Si le modal n'est pas ouvert, ne rien afficher
   if (!isOpen) return null;
 
