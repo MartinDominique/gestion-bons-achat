@@ -467,16 +467,23 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
                   }
                 });
                 
-                return allArticles.map(item => `
-                  <tr style="${item.isDelivered ? 'background-color: #f0fdf4;' : 'background-color: #fef2f2;'}">
-                    <td><strong>${item.product_id}</strong></td>
-                    <td>${item.description}</td>
-                    <td style="text-align: center;">${item.unit || 'UN'}</td>
-                    <td style="text-align: center;">${item.originalQuantity}</td>
-                    <td style="text-align: center;"><strong style="color: ${item.quantity_to_deliver > 0 ? '#059669' : '#666'};">${item.quantity_to_deliver}</strong></td>
-                    <td style="text-align: center; color: ${item.qtyEnSouffrance > 0 ? '#dc2626' : '#666'};">${item.qtyEnSouffrance}</td>
-                  </tr>
-                `).join('');
+                return allArticles.map(item => {
+                  const deliveryInfo = item.isDelivered ? `[LIVRAISON ${deliverySlip.delivery_number}] - ${new Date().toLocaleDateString('fr-CA')}` : '';
+                  
+                  return `
+                    <tr style="${item.isDelivered ? 'background-color: #f0fdf4;' : 'background-color: #fef2f2;'}">
+                      <td><strong>${item.product_id}</strong></td>
+                      <td>
+                        ${item.description}
+                        ${deliveryInfo ? `<br><small style="color: #059669; font-style: italic;">${deliveryInfo}</small>` : ''}
+                      </td>
+                      <td style="text-align: center;">${item.unit || 'UN'}</td>
+                      <td style="text-align: center;">${item.originalQuantity}</td>
+                      <td style="text-align: center;"><strong style="color: ${item.quantity_to_deliver > 0 ? '#059669' : '#666'};">${item.quantity_to_deliver}</strong></td>
+                      <td style="text-align: center; color: ${item.qtyEnSouffrance > 0 ? '#dc2626' : '#666'};">${item.qtyEnSouffrance}</td>
+                    </tr>
+                  `;
+                }).join('');
               })()}
             </tbody>
           </table>
@@ -507,12 +514,16 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </div>
         ` : ''}
 
-        ${clientPO.notes ? `
-          <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
-            <div style="font-weight: bold; color: #0369a1; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
-            <div style="font-size: 12px; color: #0369a1; line-height: 1.4; white-space: pre-line;">${clientPO.notes}</div>
-          </div>
-        ` : ''}
+        ${(() => {
+          // Extraire seulement la note originale du BA (avant les [LIVRAISON...])
+          const originalNotes = clientPO.notes ? clientPO.notes.split('[LIVRAISON')[0].trim() : '';
+          return originalNotes ? `
+            <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+              <div style="font-weight: bold; color: #0369a1; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
+              <div style="font-size: 12px; color: #0369a1; line-height: 1.4; white-space: pre-line;">${originalNotes}</div>
+            </div>
+          ` : '';
+        })()}
 
         <div class="legal-text">
           La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
@@ -588,7 +599,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         console.error('Erreur création items:', itemsError);
       }
       
-      // 4. Sauvegarder les quantités livrées dans une note temporaire
+      // 4. Sauvegarder les informations de livraison
       const deliveryInfo = {
         date: new Date().toISOString(),
         bl_number: deliveryNumber,
@@ -599,31 +610,31 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         }))
       };
       
-      // 5. Mettre à jour les notes du BA avec l'info de livraison
-      const updatedNotes = `${clientPO.notes || ''}\n\n[LIVRAISON ${deliveryNumber}] - ${new Date().toLocaleDateString()}\n${selectedItems.map(i => `- ${i.description}: ${i.quantity_to_deliver} ${i.unit}`).join('\n')}`;
-      
-      // 6. Mettre à jour le statut du BA
+      // 5. Mettre à jour seulement le statut du BA (sans modifier les notes)
       const allFullyDelivered = formData.items.every(
         item => item.quantity_to_deliver >= item.quantity
       );
       
       const newStatus = allFullyDelivered ? 'delivered' : 'partially_delivered';
       
+      // Garder les notes originales sans y ajouter l'historique des livraisons
+      const originalNotes = clientPO.notes ? clientPO.notes.split('[LIVRAISON')[0].trim() : '';
+      
       await supabase
         .from('purchase_orders')
         .update({ 
           status: newStatus,
-          notes: updatedNotes,
+          notes: originalNotes, // Garder seulement la note originale
           additionalNotes: JSON.stringify(deliveryInfo)
         })
         .eq('id', clientPO.id);
       
       alert(`✅ Bon de livraison ${deliveryNumber} créé avec succès!`);
       
-      // 7. Générer le PDF
+      // 6. Générer le PDF
       await generatePDF(deliverySlip, selectedItems);
       
-      // 8. Rafraîchir et fermer
+      // 7. Rafraîchir et fermer
       if (onRefresh) onRefresh();
       onClose();
       
