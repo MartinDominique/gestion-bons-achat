@@ -203,11 +203,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           @page { 
             size: letter; 
             margin: 0.5in;
-            @bottom-center {
-              content: "La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet. Toute réclamation doit être faite dans les 48 heures suivant la réception.";
-              font-size: 10px;
-              color: #666;
-            }
           }
           body { 
             font-family: Arial, sans-serif; 
@@ -231,8 +226,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             gap: 20px;
           }
           .logo-container {
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
           }
           .logo-container img {
             width: 100%;
@@ -345,15 +340,12 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             color: #92400e;
           }
           .page-footer {
-            position: fixed;
-            bottom: 20px;
-            left: 50px;
-            right: 50px;
+            margin-top: 40px;
+            padding-top: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-top: 1px solid #e2e8f0;
-            padding-top: 15px;
           }
           .signature-box {
             text-align: center;
@@ -369,28 +361,18 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             color: #1a365d;
           }
           .legal-text {
-            position: fixed;
-            bottom: 5px;
-            left: 0;
-            right: 0;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
             font-size: 9px;
             color: #666;
             text-align: center;
             font-style: italic;
-            background: white;
-            padding: 5px 0;
+            line-height: 1.3;
           }
           @media print {
             body { margin: 0; }
             .no-print { display: none; }
-            .page-footer { 
-              position: fixed;
-              bottom: 60px;
-            }
-            .legal-text {
-              position: fixed;
-              bottom: 10px;
-            }
           }
         </style>
       </head>
@@ -439,15 +421,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </div>
         </div>
 
-        ${formData.special_instructions ? `
-          <div style="background: #fef3c7; padding: 10px; border-radius: 5px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-            <div style="font-weight: bold; color: #92400e; margin-bottom: 5px;">Instructions spéciales:</div>
-            <div style="font-size: 12px; color: #92400e;">${formData.special_instructions}</div>
-          </div>
-        ` : ''}
-
         <div class="delivered-section">
-          <div class="section-title">ARTICLES LIVRÉS</div>
+          <div class="section-title">ARTICLES</div>
           <table>
             <thead>
               <tr>
@@ -460,70 +435,58 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
               </tr>
             </thead>
             <tbody>
-              ${selectedItems.map(item => {
-                // Trouver l'item original pour avoir la quantité commandée et en souffrance
-                const originalItem = formData.items.find(i => i.product_id === item.product_id);
-                const qtyEnSouffrance = originalItem ? originalItem.remaining_quantity - item.quantity_to_deliver : 0;
+              ${(() => {
+                // Créer une liste combinée : articles livrés + articles en BO
+                const allArticles = [];
                 
-                return `
-                  <tr>
+                // Ajouter les articles livrés
+                selectedItems.forEach(item => {
+                  const originalItem = formData.items.find(i => i.product_id === item.product_id);
+                  const qtyEnSouffrance = originalItem ? originalItem.remaining_quantity - item.quantity_to_deliver : 0;
+                  
+                  allArticles.push({
+                    ...item,
+                    originalQuantity: originalItem ? originalItem.quantity : item.quantity,
+                    qtyEnSouffrance: Math.max(0, qtyEnSouffrance),
+                    isDelivered: true
+                  });
+                });
+                
+                // Ajouter les articles en Back Order (non livrés dans cette livraison)
+                backOrderItems.forEach(item => {
+                  // Vérifier si cet article n'est pas déjà dans les articles livrés
+                  const alreadyInDelivered = allArticles.find(a => a.product_id === item.product_id);
+                  if (!alreadyInDelivered) {
+                    allArticles.push({
+                      ...item,
+                      originalQuantity: item.quantity,
+                      quantity_to_deliver: 0,
+                      qtyEnSouffrance: item.remaining_after_delivery,
+                      isDelivered: false
+                    });
+                  }
+                });
+                
+                return allArticles.map(item => `
+                  <tr style="${item.isDelivered ? 'background-color: #f0fdf4;' : 'background-color: #fef2f2;'}">
                     <td><strong>${item.product_id}</strong></td>
                     <td>${item.description}</td>
                     <td style="text-align: center;">${item.unit || 'UN'}</td>
-                    <td style="text-align: center;">${originalItem ? originalItem.quantity : item.quantity}</td>
-                    <td style="text-align: center;"><strong style="color: #059669;">${item.quantity_to_deliver}</strong></td>
-                    <td style="text-align: center; color: #dc2626;">${Math.max(0, qtyEnSouffrance)}</td>
+                    <td style="text-align: center;">${item.originalQuantity}</td>
+                    <td style="text-align: center;"><strong style="color: ${item.quantity_to_deliver > 0 ? '#059669' : '#666'};">${item.quantity_to_deliver}</strong></td>
+                    <td style="text-align: center; color: ${item.qtyEnSouffrance > 0 ? '#dc2626' : '#666'};">${item.qtyEnSouffrance}</td>
                   </tr>
-                `;
-              }).join('')}
+                `).join('');
+              })()}
             </tbody>
           </table>
         </div>
 
         ${backOrderItems.length > 0 ? `
-          <div class="backorder-section">
-            <div class="backorder-note">
-              <strong>Note:</strong> Les articles ci-dessous restent en Back Order (BO) et seront livrés ultérieurement.
+          <div style="background: #fef3c7; padding: 10px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #f59e0b;">
+            <div style="font-size: 12px; color: #92400e;">
+              <strong>Note:</strong> Les articles avec fond rouge restent en Back Order et seront livrés ultérieurement.
             </div>
-            <div class="section-title">BACK ORDER (Articles restants)</div>
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 15%;">Code</th>
-                  <th style="width: 35%;">Description</th>
-                  <th style="width: 8%; text-align: center;">Unité</th>
-                  <th style="width: 12%; text-align: center;">Qté Commandée</th>
-                  <th style="width: 12%; text-align: center;">Qté Livrée</th>
-                  <th style="width: 18%; text-align: center;">Qté BO</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${backOrderItems.map(item => `
-                  <tr>
-                    <td><strong>${item.product_id}</strong></td>
-                    <td>${item.description}</td>
-                    <td style="text-align: center;">${item.unit || 'UN'}</td>
-                    <td style="text-align: center;">${item.quantity}</td>
-                    <td style="text-align: center;">${item.delivered_quantity || 0}</td>
-                    <td style="text-align: center; color: #dc2626;"><strong>${item.remaining_after_delivery}</strong></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        ` : ''}
-
-        ${formData.special_instructions ? `
-          <div style="background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-            <div style="font-weight: bold; color: #92400e; margin-bottom: 8px; font-size: 14px;">INSTRUCTIONS SPÉCIALES:</div>
-            <div style="font-size: 12px; color: #92400e; line-height: 1.4;">${formData.special_instructions}</div>
-          </div>
-        ` : ''}
-
-        ${clientPO.notes ? `
-          <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
-            <div style="font-weight: bold; color: #0369a1; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
-            <div style="font-size: 12px; color: #0369a1; line-height: 1.4; white-space: pre-line;">${clientPO.notes}</div>
           </div>
         ` : ''}
 
@@ -536,6 +499,20 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             Date de réception: ___________________
           </div>
         </div>
+
+        ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+          <div style="background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <div style="font-weight: bold; color: #92400e; margin-bottom: 8px; font-size: 14px;">INSTRUCTIONS SPÉCIALES:</div>
+            <div style="font-size: 12px; color: #92400e; line-height: 1.4;">${formData.special_instructions}</div>
+          </div>
+        ` : ''}
+
+        ${clientPO.notes ? `
+          <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+            <div style="font-weight: bold; color: #0369a1; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
+            <div style="font-size: 12px; color: #0369a1; line-height: 1.4; white-space: pre-line;">${clientPO.notes}</div>
+          </div>
+        ` : ''}
 
         <div class="legal-text">
           La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
