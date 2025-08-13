@@ -23,7 +23,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     }
   }, [isOpen, clientPO]);
 
-  // Fonction pour charger les articles depuis la soumission
+// Fonction pour charger les articles depuis la soumission
   const loadPOItems = async () => {
     try {
       console.log('Recherche soumission:', clientPO.submission_no);
@@ -33,11 +33,11 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         return;
       }
       
-      // 1. Chercher la soumission (avec submission_number, pas submission_no!)
+      // 1. Chercher la soumission
       const { data: submission, error: subError } = await supabase
         .from('submissions')
         .select('*')
-        .eq('submission_number', clientPO.submission_no)  // 👈 submission_number!
+        .eq('submission_number', clientPO.submission_no)
         .single();
       
       if (subError) {
@@ -47,32 +47,28 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       
       console.log('Soumission trouvée:', submission);
       
-      // 2. Chercher les articles de la soumission
-      const { data: items, error: itemsError } = await supabase
-        .from('quote_items')
-        .select('*')
-        .eq('quote_id', submission.id);
+      // 2. Les articles sont directement dans submission.items!
+      const items = submission.items || [];
       
-      if (itemsError) {
-        console.error('Erreur chargement articles:', itemsError);
-        return;
-      }
-      
-      console.log('Articles trouvés:', items);
+      console.log('Articles trouvés dans la soumission:', items);
       
       // 3. Préparer les articles pour la sélection
       if (items && items.length > 0) {
-        const itemsWithSelection = items.map(item => ({
-          ...item,
+        const itemsWithSelection = items.map((item, index) => ({
+          id: index + 1,  // Générer un ID temporaire
+          product_id: item.product_id || item.code || `ITEM-${index + 1}`,
+          description: item.name || item.description || 'Article',
+          quantity: parseFloat(item.quantity) || 0,
+          unit: item.unit || 'unité',
+          price: parseFloat(item.price) || 0,
           selected: false,
           quantity_to_deliver: 0,
-          remaining_quantity: item.quantity || 0,
-          delivered_quantity: 0,
-          description: item.name || item.description || 'Article'
+          remaining_quantity: parseFloat(item.quantity) || 0,
+          delivered_quantity: 0
         }));
         
         setFormData(prev => ({ ...prev, items: itemsWithSelection }));
-        console.log(`✅ ${items.length} articles chargés!`);
+        console.log(`✅ ${items.length} articles chargés!`, itemsWithSelection);
       }
       
     } catch (error) {
