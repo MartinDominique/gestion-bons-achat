@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search, Plus, Minus, Package, Truck, Printer, CheckCircle } from 'lucide-react';
 import { Building2, FileUp, ShoppingCart } from 'lucide-react';
+import DeliverySlipModal from './DeliverySlipModal';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -2480,6 +2481,25 @@ export default function PurchaseOrderManager() {
           📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
         </p>
       </div>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-700">
+          📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
+        </p>
+      </div>
+      
+      {/* 👇 AJOUTEZ CES LIGNES ICI */}
+      <DeliverySlipModal
+        isOpen={showDeliveryModal}
+        onClose={() => {
+          setShowDeliveryModal(false);
+          setSelectedPOForDelivery(null);
+        }}
+        clientPO={selectedPOForDelivery}
+        onRefresh={() => {
+          fetchPurchaseOrders();
+          setShowDeliveryModal(false);
+        }}
+      />      
     </div>
   );
 }
