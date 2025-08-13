@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
-  
-  // 👇 AJOUTEZ CETTE LIGNE POUR DÉBUGGER
   console.log('ClientPO reçu:', clientPO);
   
   // État pour le formulaire
@@ -23,7 +21,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     }
   }, [isOpen, clientPO]);
 
-// Fonction pour charger les articles depuis la soumission
+  // Fonction pour charger les articles depuis la soumission
   const loadPOItems = async () => {
     try {
       console.log('Recherche soumission:', clientPO.submission_no);
@@ -55,7 +53,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       // 3. Préparer les articles pour la sélection
       if (items && items.length > 0) {
         const itemsWithSelection = items.map((item, index) => ({
-          id: index + 1,  // Générer un ID temporaire
+          id: index + 1,
           product_id: item.product_id || item.code || `ITEM-${index + 1}`,
           description: item.name || item.description || 'Article',
           quantity: parseFloat(item.quantity) || 0,
@@ -75,8 +73,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       console.error('Erreur générale:', error);
     }
   };
-
-   };  // Fin de loadPOItems
 
   // Fonction pour sélectionner/désélectionner un article
   const handleItemSelect = (itemId) => {
@@ -314,5 +310,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       </div>
     </div>
   );
+};
 
 export default DeliverySlipModal;
