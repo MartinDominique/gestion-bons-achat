@@ -111,8 +111,50 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     }));
   };
 
-  // Fonction pour soumettre
-  const handleSubmit = () => {
+  // Générer le numéro de bon de livraison
+  const generateDeliveryNumber = async () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `BL-${year}${month}`;
+    
+    const { data } = await supabase
+      .from('delivery_slips')
+      .select('delivery_number')
+      .like('delivery_number', `${prefix}%`)
+      .order('delivery_number', { ascending: false })
+      .limit(1);
+    
+    if (!data || data.length === 0) {
+      return `${prefix}-001`;
+    }
+    
+    const lastNum = parseInt(data[0].delivery_number.split('-')[2]) || 0;
+    return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
+  };
+  
+  // Générer le PDF (temporaire - juste ouvrir une fenêtre)
+  const generatePDF = (deliverySlip, items) => {
+    console.log('Génération PDF pour:', deliverySlip);
+    // On va implémenter le vrai PDF après
+    const content = `
+      BON DE LIVRAISON ${deliverySlip.delivery_number}
+      Date: ${formData.delivery_date}
+      Client: ${clientPO.client_name}
+      BA: ${clientPO.po_number}
+      
+      Articles livrés:
+      ${items.map(i => `- ${i.description}: ${i.quantity_to_deliver} ${i.unit}`).join('\n')}
+    `;
+    
+    // Ouvrir dans une nouvelle fenêtre pour impression
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<pre>${content}</pre>`);
+    printWindow.document.write('<script>window.print();</script>');
+  };
+  
+  // Fonction pour soumettre et sauvegarder
+  const handleSubmit = async () => {
     const selectedItems = formData.items.filter(
       item => item.selected && item.quantity_to_deliver > 0
     );
@@ -122,13 +164,78 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       return;
     }
     
-    console.log("Livraison partielle:", {
-      ...formData,
-      items: selectedItems
-    });
-    
-    alert(`Bon de livraison créé avec ${selectedItems.length} article(s)`);
-    onClose();
+    try {
+      console.log("Création du bon de livraison...");
+      
+      // 1. Générer le numéro de bon de livraison
+      const deliveryNumber = await generateDeliveryNumber();
+      
+      // 2. Créer le bon de livraison
+      const { data: deliverySlip, error: slipError } = await supabase
+        .from('delivery_slips')
+        .insert({
+          client_po_id: clientPO.id,
+          delivery_number: deliveryNumber,
+          delivery_date: formData.delivery_date,
+          transport_number: formData.tracking_number,
+          delivery_contact: formData.delivery_contact,
+          special_instructions: formData.special_instructions
+        })
+        .select()
+        .single();
+      
+      if (slipError) {
+        console.error('Erreur création bon:', slipError);
+        alert('Erreur lors de la création du bon de livraison');
+        return;
+      }
+      
+      console.log('Bon de livraison créé:', deliverySlip);
+      
+      // 3. Créer les lignes de livraison
+      const deliveryItems = selectedItems.map(item => ({
+        delivery_slip_id: deliverySlip.id,
+        client_po_item_id: item.id, // On utilisera ceci temporairement
+        quantity_delivered: item.quantity_to_deliver,
+        notes: `${item.product_id} - ${item.description}`
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from('delivery_slip_items')
+        .insert(deliveryItems);
+      
+      if (itemsError) {
+        console.error('Erreur création items:', itemsError);
+      }
+      
+      // 4. Mettre à jour le statut du BA
+      const allFullyDelivered = formData.items.every(
+        item => item.quantity_to_deliver >= item.quantity
+      );
+      
+      const newStatus = allFullyDelivered ? 'delivered' : 'partially_delivered';
+      
+      await supabase
+        .from('purchase_orders')
+        .update({ 
+          status: newStatus,
+          notes: `${clientPO.notes || ''}\n[${new Date().toLocaleDateString()}] Bon de livraison ${deliveryNumber} créé`
+        })
+        .eq('id', clientPO.id);
+      
+      alert(`✅ Bon de livraison ${deliveryNumber} créé avec succès!`);
+      
+      // 5. Générer le PDF (on va ajouter ça après)
+      generatePDF(deliverySlip, selectedItems);
+      
+      // Fermer et rafraîchir
+      onRefresh();
+      onClose();
+      
+    } catch (error) {
+      console.error('Erreur générale:', error);
+      alert('Erreur lors de la création du bon de livraison');
+    }
   };
 
   // Si le modal n'est pas ouvert, ne rien afficher
