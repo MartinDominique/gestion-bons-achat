@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-
 const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   // État pour le formulaire
   const [formData, setFormData] = useState({
