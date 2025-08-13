@@ -76,6 +76,65 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     }
   };
 
+   };  // Fin de loadPOItems
+
+  // Fonction pour sélectionner/désélectionner un article
+  const handleItemSelect = (itemId) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map(item => 
+        item.id === itemId 
+          ? { 
+              ...item, 
+              selected: !item.selected,
+              quantity_to_deliver: !item.selected ? item.remaining_quantity : 0
+            }
+          : item
+      )
+    }));
+  };
+
+  // Fonction pour changer la quantité
+  const handleQuantityChange = (itemId, newQuantity) => {
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.map(item => {
+        if (item.id === itemId) {
+          const qty = Math.min(
+            Math.max(0, parseFloat(newQuantity) || 0), 
+            item.remaining_quantity
+          );
+          return {
+            ...item,
+            quantity_to_deliver: qty,
+            selected: qty > 0
+          };
+        }
+        return item;
+      })
+    }));
+  };
+
+  // Fonction pour soumettre
+  const handleSubmit = () => {
+    const selectedItems = formData.items.filter(
+      item => item.selected && item.quantity_to_deliver > 0
+    );
+    
+    if (selectedItems.length === 0) {
+      alert("Veuillez sélectionner au moins un article à livrer");
+      return;
+    }
+    
+    console.log("Livraison partielle:", {
+      ...formData,
+      items: selectedItems
+    });
+    
+    alert(`Bon de livraison créé avec ${selectedItems.length} article(s)`);
+    onClose();
+  };
+
   // Si le modal n'est pas ouvert, ne rien afficher
   if (!isOpen) return null;
 
