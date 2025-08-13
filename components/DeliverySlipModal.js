@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
+  
+  // 👇 AJOUTEZ CETTE LIGNE POUR DÉBUGGER
+  console.log('ClientPO reçu:', clientPO);
+  
+  // État pour le formulaire
+  const [formData, setFormData] = useState({
   // État pour le formulaire
   const [formData, setFormData] = useState({
     delivery_date: new Date().toISOString().split('T')[0],
@@ -53,7 +59,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       <div className="bg-white rounded-xl max-w-5xl w-full">
         <div className="p-6">
           <h2 className="text-2xl font-bold mb-4">🚚 Créer un Bon de Livraison</h2>
-          <p>BA Client: {clientPO?.ba_number} • {clientPO?.client_name}</p>
+          <p>BA Client: {clientPO?.ba_number || clientPO?.po_number || clientPO?.submission_no} • {clientPO?.client_name || clientPO?.client}</p>
+          <p className="text-sm text-gray-600 mt-2">ID: {clientPO?.id} - Articles: {formData.items.length}</p>
           
           <div className="mt-6 flex gap-3">
             <button 
