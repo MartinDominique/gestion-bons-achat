@@ -26,18 +26,18 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   // Fonction pour charger les articles depuis la soumission
   const loadPOItems = async () => {
     try {
-      console.log('Recherche soumission:', clientPO.submission_number);
+      console.log('Recherche soumission:', clientPO.submission_no);
       
-      if (!clientPO.submission_number) {
+      if (!clientPO.submission_no) {
         console.log('Pas de numéro de soumission');
         return;
       }
       
-      // 1. Chercher la soumission
+      // 1. Chercher la soumission (avec submission_number, pas submission_no!)
       const { data: submission, error: subError } = await supabase
         .from('submissions')
         .select('*')
-        .eq('submission_number', clientPO.submission_number)
+        .eq('submission_number', clientPO.submission_no)  // 👈 submission_number!
         .single();
       
       if (subError) {
@@ -47,7 +47,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       
       console.log('Soumission trouvée:', submission);
       
-      // 2. Chercher les articles de la soumission (dans quote_items)
+      // 2. Chercher les articles de la soumission
       const { data: items, error: itemsError } = await supabase
         .from('quote_items')
         .select('*')
@@ -61,17 +61,19 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       console.log('Articles trouvés:', items);
       
       // 3. Préparer les articles pour la sélection
-      const itemsWithSelection = items.map(item => ({
-        ...item,
-        selected: false,
-        quantity_to_deliver: 0,
-        remaining_quantity: item.quantity || 0,
-        delivered_quantity: 0,
-        description: item.name || item.description || 'Article'
-      }));
-      
-      setFormData(prev => ({ ...prev, items: itemsWithSelection }));
-      console.log('Articles préparés:', itemsWithSelection);
+      if (items && items.length > 0) {
+        const itemsWithSelection = items.map(item => ({
+          ...item,
+          selected: false,
+          quantity_to_deliver: 0,
+          remaining_quantity: item.quantity || 0,
+          delivered_quantity: 0,
+          description: item.name || item.description || 'Article'
+        }));
+        
+        setFormData(prev => ({ ...prev, items: itemsWithSelection }));
+        console.log(`✅ ${items.length} articles chargés!`);
+      }
       
     } catch (error) {
       console.error('Erreur générale:', error);
