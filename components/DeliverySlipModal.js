@@ -457,8 +457,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </table>
         </div>`;
         
-        <!-- BACK ORDER (Articles restants) -->
-        ${(() => {
+        // BACK ORDER (Articles restants)
+        const backOrderSection = (() => {
           // Calculer les articles restants (Back Order)
           const backOrderItems = formData.items
             .map(item => ({
