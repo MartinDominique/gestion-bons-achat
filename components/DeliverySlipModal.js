@@ -398,7 +398,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         <div class="header">
           <div class="logo-section">
             <div class="logo-container">
-              <img src="public/logo.png" alt="Services TMT" onerror="this.style.display='none'">
+              <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
             </div>
             <div class="company-info">
               <div class="company-name">SERVICES TMT INC.</div>
@@ -410,7 +410,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </div>
           <div class="doc-info">
             <div class="doc-title">BON DE LIVRAISON</div>
-            <div class="doc-number">N° Livraison: ${deliverySlip.delivery_number}</div>
+            <div class="doc-number">N° ${deliverySlip.delivery_number}</div>
             <div class="doc-details">
               Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
               BA Client: ${clientPO.po_number}<br>
@@ -451,23 +451,31 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           <table>
             <thead>
               <tr>
-                <th style="width: 18%;">Code</th>
-                <th style="width: 42%;">Description</th>
-                <th style="width: 12%; text-align: center;">Qté</th>
-                <th style="width: 10%; text-align: center;">Unité</th>
-                <th style="width: 18%; text-align: right;">Prix Unit.</th>
+                <th style="width: 15%;">Code</th>
+                <th style="width: 35%;">Description</th>
+                <th style="width: 8%; text-align: center;">Unité</th>
+                <th style="width: 12%; text-align: center;">Qté Commandée</th>
+                <th style="width: 12%; text-align: center;">Qté Livrée</th>
+                <th style="width: 18%; text-align: center;">Qté en souffrance</th>
               </tr>
             </thead>
             <tbody>
-              ${selectedItems.map(item => `
-                <tr>
-                  <td><strong>${item.product_id}</strong></td>
-                  <td>${item.description}</td>
-                  <td style="text-align: center;"><strong>${item.quantity_to_deliver}</strong></td>
-                  <td style="text-align: center;">${item.unit || 'UN'}</td>
-                  <td style="text-align: right;">$${(item.price || 0).toFixed(2)}</td>
-                </tr>
-              `).join('')}
+              ${selectedItems.map(item => {
+                // Trouver l'item original pour avoir la quantité commandée et en souffrance
+                const originalItem = formData.items.find(i => i.product_id === item.product_id);
+                const qtyEnSouffrance = originalItem ? originalItem.remaining_quantity - item.quantity_to_deliver : 0;
+                
+                return `
+                  <tr>
+                    <td><strong>${item.product_id}</strong></td>
+                    <td>${item.description}</td>
+                    <td style="text-align: center;">${item.unit || 'UN'}</td>
+                    <td style="text-align: center;">${originalItem ? originalItem.quantity : item.quantity}</td>
+                    <td style="text-align: center;"><strong style="color: #059669;">${item.quantity_to_deliver}</strong></td>
+                    <td style="text-align: center; color: #dc2626;">${Math.max(0, qtyEnSouffrance)}</td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -481,11 +489,12 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             <table>
               <thead>
                 <tr>
-                  <th style="width: 18%;">Code</th>
-                  <th style="width: 42%;">Description</th>
-                  <th style="width: 12%; text-align: center;">Qté BO</th>
-                  <th style="width: 10%; text-align: center;">Unité</th>
-                  <th style="width: 18%; text-align: right;">Prix Unit.</th>
+                  <th style="width: 15%;">Code</th>
+                  <th style="width: 35%;">Description</th>
+                  <th style="width: 8%; text-align: center;">Unité</th>
+                  <th style="width: 12%; text-align: center;">Qté Commandée</th>
+                  <th style="width: 12%; text-align: center;">Qté Livrée</th>
+                  <th style="width: 18%; text-align: center;">Qté BO</th>
                 </tr>
               </thead>
               <tbody>
@@ -493,13 +502,28 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
                   <tr>
                     <td><strong>${item.product_id}</strong></td>
                     <td>${item.description}</td>
-                    <td style="text-align: center; color: #dc2626;"><strong>${item.remaining_after_delivery}</strong></td>
                     <td style="text-align: center;">${item.unit || 'UN'}</td>
-                    <td style="text-align: right;">$${(item.price || 0).toFixed(2)}</td>
+                    <td style="text-align: center;">${item.quantity}</td>
+                    <td style="text-align: center;">${item.delivered_quantity || 0}</td>
+                    <td style="text-align: center; color: #dc2626;"><strong>${item.remaining_after_delivery}</strong></td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
+          </div>
+        ` : ''}
+
+        ${formData.special_instructions ? `
+          <div style="background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+            <div style="font-weight: bold; color: #92400e; margin-bottom: 8px; font-size: 14px;">INSTRUCTIONS SPÉCIALES:</div>
+            <div style="font-size: 12px; color: #92400e; line-height: 1.4;">${formData.special_instructions}</div>
+          </div>
+        ` : ''}
+
+        ${clientPO.notes ? `
+          <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+            <div style="font-weight: bold; color: #0369a1; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
+            <div style="font-size: 12px; color: #0369a1; line-height: 1.4; white-space: pre-line;">${clientPO.notes}</div>
           </div>
         ` : ''}
 
