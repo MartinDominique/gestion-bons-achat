@@ -174,6 +174,17 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         purchaseOrderInfo = `BO #${poData.po_number} - ${poData.supplier_name}`;
       }
     }
+
+    // Récupérer les livraisons antérieures pour afficher l'historique
+    const { data: previousDeliveries } = await supabase
+      .from('delivery_slip_items')
+      .select(`
+        quantity_delivered,
+        notes,
+        delivery_slips!inner(delivery_number, delivery_date, purchase_order_id)
+      `)
+      .eq('delivery_slips.purchase_order_id', clientPO.id)
+      .neq('delivery_slips.delivery_number', deliverySlip.delivery_number); // Exclure la livraison actuelle
     
     const printWindow = window.open('', '_blank');
     
@@ -216,7 +227,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             display: flex;
             justify-content: space-between;
             align-items: start;
-            border-bottom: 2px solid #1a365d;
+            border-bottom: 2px solid #333;
             padding-bottom: 15px;
             margin-bottom: 25px;
           }
@@ -236,14 +247,14 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           }
           .company-info {
             font-size: 12px;
-            color: #1a365d;
+            color: #333;
             line-height: 1.4;
             font-weight: 500;
           }
           .company-name {
             font-size: 16px;
             font-weight: bold;
-            color: #1a365d;
+            color: #333;
             margin-bottom: 5px;
           }
           .doc-info {
@@ -252,18 +263,18 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           .doc-title {
             font-size: 24px;
             font-weight: bold;
-            color: #1a365d;
+            color: #333;
             margin-bottom: 8px;
           }
           .doc-number {
             font-size: 16px;
-            color: #1a365d;
+            color: #333;
             font-weight: bold;
             margin-bottom: 5px;
           }
           .doc-details {
             font-size: 12px;
-            color: #4a5568;
+            color: #666;
             line-height: 1.3;
           }
           .info-grid {
@@ -279,7 +290,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           }
           .info-title {
             font-weight: bold;
-            color: #1a365d;
+            color: #333;
             margin-bottom: 8px;
             font-size: 14px;
             border-bottom: 1px solid #e2e8f0;
@@ -288,24 +299,24 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           .info-content {
             font-size: 12px;
             line-height: 1.4;
-            color: #4a5568;
+            color: #666;
           }
           .section-title {
             font-size: 16px;
             font-weight: bold;
-            color: #1a365d;
+            color: #333;
             margin: 25px 0 15px 0;
-            border-bottom: 1px solid #1a365d;
+            border-bottom: 1px solid #333;
             padding-bottom: 5px;
           }
           table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
-            border: 1px solid #1a365d;
+            border: 1px solid #333;
           }
           th {
-            background: #1a365d;
+            background: #333;
             color: white;
             padding: 10px 8px;
             text-align: left;
@@ -351,14 +362,14 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             text-align: center;
           }
           .signature-line {
-            border-top: 2px solid #1a365d;
+            border-top: 2px solid #333;
             width: 200px;
             margin: 40px auto 8px auto;
           }
           .signature-text {
             font-size: 12px;
             font-weight: bold;
-            color: #1a365d;
+            color: #333;
           }
           .legal-text {
             margin-top: 30px;
@@ -468,19 +479,23 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
                 });
                 
                 return allArticles.map(item => {
-                  const deliveryInfo = item.isDelivered ? `[LIVRAISON ${deliverySlip.delivery_number}] - ${new Date().toLocaleDateString('fr-CA')}` : '';
+                  // Chercher les livraisons antérieures pour cet article
+                  const previousDeliveryInfo = previousDeliveries
+                    ?.filter(d => d.notes && d.notes.includes(item.product_id))
+                    ?.map(d => `[${d.delivery_slips.delivery_number}] - ${new Date(d.delivery_slips.delivery_date).toLocaleDateString('fr-CA')}`)
+                    ?.join('<br>') || '';
                   
                   return `
-                    <tr style="${item.isDelivered ? 'background-color: #f0fdf4;' : 'background-color: #fef2f2;'}">
+                    <tr>
                       <td><strong>${item.product_id}</strong></td>
                       <td>
                         ${item.description}
-                        ${deliveryInfo ? `<br><small style="color: #059669; font-style: italic;">${deliveryInfo}</small>` : ''}
+                        ${previousDeliveryInfo ? `<br><small style="font-style: italic; color: #666;">${previousDeliveryInfo}</small>` : ''}
                       </td>
                       <td style="text-align: center;">${item.unit || 'UN'}</td>
                       <td style="text-align: center;">${item.originalQuantity}</td>
-                      <td style="text-align: center;"><strong style="color: ${item.quantity_to_deliver > 0 ? '#059669' : '#666'};">${item.quantity_to_deliver}</strong></td>
-                      <td style="text-align: center; color: ${item.qtyEnSouffrance > 0 ? '#dc2626' : '#666'};">${item.qtyEnSouffrance}</td>
+                      <td style="text-align: center;"><strong>${item.quantity_to_deliver}</strong></td>
+                      <td style="text-align: center;">${item.qtyEnSouffrance > 0 ? item.qtyEnSouffrance : '—'}</td>
                     </tr>
                   `;
                 }).join('');
@@ -489,28 +504,20 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </table>
         </div>
 
-        ${backOrderItems.length > 0 ? `
-          <div style="background: #fef3c7; padding: 10px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #f59e0b;">
-            <div style="font-size: 12px; color: #92400e;">
-              <strong>Note:</strong> Les articles avec fond rouge restent en Back Order et seront livrés ultérieurement.
-            </div>
-          </div>
-        ` : ''}
-
         <div class="page-footer">
           <div class="signature-box">
             <div class="signature-line"></div>
             <div class="signature-text">SIGNATURE CLIENT</div>
           </div>
-          <div style="text-align: center; font-size: 12px; color: #4a5568;">
+          <div style="text-align: center; font-size: 12px; color: #333;">
             Date de réception: ___________________
           </div>
         </div>
 
         ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-          <div style="background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-            <div style="font-weight: bold; color: #92400e; margin-bottom: 8px; font-size: 14px;">INSTRUCTIONS SPÉCIALES:</div>
-            <div style="font-size: 12px; color: #92400e; line-height: 1.4;">${formData.special_instructions}</div>
+          <div style="border: 1px solid #ccc; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #666;">
+            <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">INSTRUCTIONS SPÉCIALES:</div>
+            <div style="font-size: 12px; line-height: 1.4;">${formData.special_instructions}</div>
           </div>
         ` : ''}
 
@@ -518,9 +525,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           // Extraire seulement la note originale du BA (avant les [LIVRAISON...])
           const originalNotes = clientPO.notes ? clientPO.notes.split('[LIVRAISON')[0].trim() : '';
           return originalNotes ? `
-            <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
-              <div style="font-weight: bold; color: #0369a1; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
-              <div style="font-size: 12px; color: #0369a1; line-height: 1.4; white-space: pre-line;">${originalNotes}</div>
+            <div style="border: 1px solid #ccc; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #333;">
+              <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
+              <div style="font-size: 12px; line-height: 1.4; white-space: pre-line;">${originalNotes}</div>
             </div>
           ` : '';
         })()}
