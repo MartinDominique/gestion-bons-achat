@@ -537,17 +537,16 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     
     // IMPRESSION DIRECTE - Ouvrir automatiquement le dialogue d'impression
     printWindow.onload = function() {
-      // Attendre un moment pour que le contenu se charge complètement
-      setTimeout(() => {
-        // Ouvrir directement le dialogue d'impression du navigateur
-        printWindow.print();
-        
-        // Fermer automatiquement la fenêtre après impression ou annulation
-        printWindow.onafterprint = function() {
-          printWindow.close();
-        };
-      }, 100);
-    };
+  setTimeout(() => {
+    printWindow.print();
+    
+    // Fermer automatiquement après 3 secondes
+    setTimeout(() => {
+      printWindow.close();
+     }, 3000);
+    
+    }, 100);
+   };
   };
   
   // Fonction pour soumettre et sauvegarder
