@@ -209,26 +209,28 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       <html lang="fr">
       <head>
         <meta charset="UTF-8">
-        <title>Bon de Livraison ${deliverySlip.delivery_number}</title>
+        <title>${deliverySlip.delivery_number}.pdf</title>
         <style>
           @page { 
             size: letter; 
-            margin: 0.3in;
+            margin: 0.25in;
           }
           body { 
             font-family: Arial, sans-serif; 
             margin: 0; 
-            padding: 15px;
+            padding: 10px;
             color: #333;
-            font-size: 12px;
+            font-size: 11px;
+            line-height: 1.2;
           }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: start;
             border-bottom: 2px solid #333;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            page-break-inside: avoid;
           }
           .logo-section {
             display: flex;
@@ -236,8 +238,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             gap: 20px;
           }
           .logo-container {
-            width: 200px;
-            height: 120px;
+            width: 160px;
+            height: 100px;
           }
           .logo-container img {
             width: 100%;
@@ -245,88 +247,91 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             object-fit: contain;
           }
           .company-info {
-            font-size: 12px;
+            font-size: 11px;
             color: #333;
-            line-height: 1.4;
+            line-height: 1.2;
             font-weight: 500;
           }
           .company-name {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             color: #333;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
           }
           .doc-info {
             text-align: right;
           }
           .doc-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #333;
-            margin-bottom: 8px;
-          }
-          .doc-number {
-            font-size: 16px;
-            color: #333;
-            font-weight: bold;
             margin-bottom: 5px;
           }
+          .doc-number {
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 3px;
+          }
           .doc-details {
-            font-size: 12px;
+            font-size: 10px;
             color: #666;
-            line-height: 1.3;
+            line-height: 1.2;
           }
           .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 15px;
+            gap: 15px;
+            margin-bottom: 10px;
+            page-break-inside: avoid;
           }
           .info-box {
             border: 1px solid #e2e8f0;
-            padding: 10px;
+            padding: 8px;
             border-radius: 5px;
+            border-left: 4px solid #333;
           }
           .info-title {
             font-weight: bold;
             color: #333;
-            margin-bottom: 5px;
-            font-size: 12px;
+            margin-bottom: 4px;
+            font-size: 11px;
             border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 3px;
+            padding-bottom: 2px;
           }
           .info-content {
-            font-size: 11px;
-            line-height: 1.3;
+            font-size: 10px;
+            line-height: 1.2;
             color: #666;
           }
-          .section-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #333;
-            margin: 15px 0 10px 0;
-            border-bottom: 1px solid #333;
-            padding-bottom: 3px;
+          .delivered-section {
+            margin-bottom: 10px;
+            page-break-inside: avoid;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             border: 1px solid #333;
+            page-break-inside: auto;
           }
           th {
             background: #f59e0b;
             color: white;
-            padding: 8px 6px;
+            padding: 6px 4px;
             text-align: left;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
+            page-break-inside: avoid;
+            page-break-after: avoid;
           }
           td {
-            padding: 6px;
+            padding: 4px;
             border-bottom: 1px solid #e2e8f0;
             border-right: 1px solid #e2e8f0;
-            font-size: 10px;
+            font-size: 9px;
+            line-height: 1.1;
+            page-break-inside: avoid;
           }
           tr:last-child td {
             border-bottom: none;
@@ -334,55 +339,48 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           td:last-child {
             border-right: none;
           }
-          .delivered-section {
-            margin-bottom: 25px;
-          }
-          .backorder-section {
-            margin-bottom: 25px;
-          }
-          .backorder-note {
-            background: #fef3c7;
-            padding: 10px;
-            border-radius: 5px;
-            border-left: 4px solid #f59e0b;
-            margin-bottom: 15px;
-            font-size: 12px;
-            color: #92400e;
-          }
           .page-footer {
-            margin-top: 20px;
-            padding-top: 15px;
+            margin-top: 15px;
+            padding-top: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-top: 1px solid #e2e8f0;
+            page-break-inside: avoid;
           }
           .signature-box {
             text-align: center;
           }
           .signature-line {
             border-top: 2px solid #333;
-            width: 150px;
-            margin: 25px auto 5px auto;
+            width: 120px;
+            margin: 15px auto 3px auto;
           }
           .signature-text {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
             color: #333;
           }
           .legal-text {
-            margin-top: 15px;
-            padding-top: 10px;
+            margin-top: 10px;
+            padding-top: 8px;
             border-top: 1px solid #e2e8f0;
-            font-size: 8px;
+            font-size: 7px;
             color: #666;
             text-align: center;
             font-style: italic;
-            line-height: 1.2;
+            line-height: 1.1;
+            page-break-inside: avoid;
           }
           @media print {
             body { margin: 0; }
             .no-print { display: none; }
+            .page-footer { 
+              page-break-inside: avoid;
+            }
+            .legal-text {
+              page-break-inside: avoid;
+            }
           }
         </style>
       </head>
@@ -449,15 +447,14 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
           
           return cleanNotes ? `
-            <div style="border: 1px solid #ccc; padding: 5px 10px; border-radius: 3px; margin: 10px 0; border-left: 3px solid #333;">
-              <strong style="font-size: 11px;">NOTES:</strong> 
-              <span style="font-size: 11px;">${cleanNotes}</span>
+            <div style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #333;">
+              <strong style="font-size: 10px;">NOTES:</strong> 
+              <span style="font-size: 10px;">${cleanNotes}</span>
             </div>
           ` : '';
         })()}
 
         <div class="delivered-section">
-          <div class="section-title">ARTICLES</div>
           <table>
             <thead>
               <tr>
