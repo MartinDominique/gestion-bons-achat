@@ -237,7 +237,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             gap: 20px;
           }
           .logo-container {
-            width: 180px;
+            width: 200px;
             height: 120px;
           }
           .logo-container img {
@@ -316,7 +316,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             border: 1px solid #333;
           }
           th {
-            background: #333;
+            background: #f59e0b;
             color: white;
             padding: 10px 8px;
             text-align: left;
@@ -395,7 +395,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             </div>
             <div class="company-info">
               <div class="company-name"></div>
-              195, 42e Rue Nord<br>
+              3195, 42e Rue Nord<br>
               Saint-Georges, QC G5Z 0V9<br>
               Tél: (418) 225-3875<br>
               info.servicestmt@gmail.com
@@ -431,6 +431,31 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             </div>
           </div>
         </div>
+
+        ${(() => {
+          // Nettoyer les notes : enlever les [LIVRAISON...] ET les [date] Bon de livraison...
+          let cleanNotes = clientPO.notes || '';
+          
+          // Supprimer les lignes avec [LIVRAISON...]
+          cleanNotes = cleanNotes.split('\n')
+            .filter(line => !line.includes('[LIVRAISON'))
+            .join('\n');
+          
+          // Supprimer les lignes avec [date] Bon de livraison... créé
+          cleanNotes = cleanNotes.split('\n')
+            .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
+            .join('\n');
+          
+          // Nettoyer les espaces multiples et lignes vides - une seule ligne
+          cleanNotes = cleanNotes.replace(/\n/g, ' ').trim();
+          
+          return cleanNotes ? `
+            <div style="border: 1px solid #ccc; padding: 8px 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #333;">
+              <strong style="font-size: 12px;">NOTES:</strong> 
+              <span style="font-size: 12px;">${cleanNotes}</span>
+            </div>
+          ` : '';
+        })()}
 
         <div class="delivered-section">
           <div class="section-title">ARTICLES</div>
@@ -478,7 +503,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
                     <td style="text-align: center;">${item.unit || 'UN'}</td>
                     <td style="text-align: center;">${item.quantity}</td>
                     <td style="text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
-                    <td style="text-align: center;">${item.remaining_after_delivery > 0 ? item.remaining_after_delivery : '—'}</td>
+                    <td style="text-align: center;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
                   </tr>
                 `).join('');
               })()}
@@ -539,10 +564,25 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     printWindow.document.write(html);
     printWindow.document.close();
     
-    // Attendre que le contenu soit chargé avant d'imprimer
+    // Attendre que le contenu soit chargé, puis imprimer et fermer automatiquement
     printWindow.onload = function() {
       printWindow.print();
+      
+      // Fermer l'onglet après un délai pour laisser l'impression se terminer
+      setTimeout(() => {
+        printWindow.close();
+      }, 1000);
     };
+    
+    // Alternative au cas où onload ne fonctionnerait pas
+    setTimeout(() => {
+      if (!printWindow.closed) {
+        printWindow.print();
+        setTimeout(() => {
+          printWindow.close();
+        }, 1000);
+      }
+    }, 500);
   };
   
   // Fonction pour soumettre et sauvegarder
