@@ -39,6 +39,81 @@ export default function SupplierPurchaseManager() {
   
   // État pour la correction
   const [isFixingPOs, setIsFixingPOs] = useState(false);
+  // État pour sauvegarder le contexte du formulaire
+const [formContext, setFormContext] = useState(null);
+
+// Fonction pour ouvrir la gestion fournisseur depuis le formulaire
+const openSupplierManagementFromForm = () => {
+  console.log('🏢 Ouverture gestion fournisseur depuis formulaire');
+  
+  // Sauvegarder le contexte actuel du formulaire
+  setFormContext({
+    purchaseForm,
+    selectedItems,
+    editingPurchase
+  });
+  
+  // Fermer temporairement le formulaire
+  setShowForm(false);
+  
+  // Ouvrir la gestion des fournisseurs
+  setShowSupplierModal(true);
+};
+
+// Fonction pour créer un nouveau fournisseur depuis le formulaire
+const openNewSupplierFromForm = () => {
+  console.log('➕ Ouverture nouveau fournisseur depuis formulaire');
+  
+  // Sauvegarder le contexte actuel du formulaire
+  setFormContext({
+    purchaseForm,
+    selectedItems,
+    editingPurchase
+  });
+  
+  // Fermer temporairement le formulaire
+  setShowForm(false);
+  
+  // Préparer un nouveau fournisseur
+  setEditingSupplier(null);
+  setSupplierForm({
+    company_name: '',
+    contact_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    province: 'QC',
+    postal_code: '',
+    country: 'Canada',
+    notes: ''
+  });
+  
+  // Ouvrir directement le formulaire
+  setShowSupplierFormModal(true);
+};
+
+// Fonction pour revenir au formulaire d'achat
+const returnToForm = () => {
+  console.log('🔄 Retour au formulaire d\'achat');
+  
+  if (formContext) {
+    // Restaurer le contexte
+    setPurchaseForm(formContext.purchaseForm);
+    setSelectedItems(formContext.selectedItems);
+    setEditingPurchase(formContext.editingPurchase);
+    
+    // Nettoyer le contexte
+    setFormContext(null);
+  }
+  
+  // Fermer toutes les modals fournisseur
+  setShowSupplierModal(false);
+  setShowSupplierFormModal(false);
+  
+  // Rouvrir le formulaire
+  setShowForm(true);
+};
   
   // Formulaire principal
   const [purchaseForm, setPurchaseForm] = useState({
@@ -371,41 +446,69 @@ export default function SupplierPurchaseManager() {
 
   // Gestion des fournisseurs
   const handleSupplierSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingSupplier) {
-        const { error } = await supabase
-          .from('suppliers')
-          .update(supplierForm)
-          .eq('id', editingSupplier.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('suppliers')
-          .insert([supplierForm]);
-        if (error) throw error;
-      }
-
-      await fetchSuppliers();
-      setShowSupplierModal(false);
-      setEditingSupplier(null);
-      setSupplierForm({
-        company_name: '',
-        contact_name: '',
-        email: '',
-        phone: '',
-        address: '',
-        city: '',
-        province: 'QC',
-        postal_code: '',
-        country: 'Canada',
-        notes: ''
-      });
-    } catch (error) {
-      console.error('Erreur sauvegarde fournisseur:', error);
-      alert('Erreur lors de la sauvegarde du fournisseur');
+  e.preventDefault();
+  try {
+    let savedSupplierId = null;
+    
+    if (editingSupplier) {
+      const { error } = await supabase
+        .from('suppliers')
+        .update(supplierForm)
+        .eq('id', editingSupplier.id);
+      if (error) throw error;
+      savedSupplierId = editingSupplier.id;
+    } else {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .insert([supplierForm])
+        .select()
+        .single();
+      if (error) throw error;
+      savedSupplierId = data.id;
     }
-  };
+
+    await fetchSuppliers();
+    
+    // Si on vient du formulaire d'achat, sélectionner automatiquement le fournisseur
+    if (formContext && savedSupplierId) {
+      const supplier = suppliers.find(s => s.id === savedSupplierId) || 
+                     { id: savedSupplierId, company_name: supplierForm.company_name };
+      
+      setFormContext({
+        ...formContext,
+        purchaseForm: {
+          ...formContext.purchaseForm,
+          supplier_id: savedSupplierId,
+          supplier_name: supplier.company_name
+        }
+      });
+    }
+    
+    setShowSupplierFormModal(false);
+    setEditingSupplier(null);
+    setSupplierForm({
+      company_name: '',
+      contact_name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      province: 'QC',
+      postal_code: '',
+      country: 'Canada',
+      notes: ''
+    });
+    
+    // Retourner au formulaire si on vient de là
+    if (formContext) {
+      setTimeout(() => returnToForm(), 100);
+    }
+    
+  } catch (error) {
+    console.error('Erreur sauvegarde fournisseur:', error);
+    alert('Erreur lors de la sauvegarde du fournisseur');
+  }
+};
 
   const handleDeleteSupplier = async (id) => {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer ce fournisseur ?')) return;
@@ -966,37 +1069,25 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       ))}
     </select>
     
-    {/* BOUTON + CORRIGÉ - OUVRE DIRECTEMENT LE FORMULAIRE FOURNISSEUR */}
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('🏢 Bouton + cliqué - Ouverture directe formulaire fournisseur');
-        
-        // Réinitialiser le formulaire pour un nouveau fournisseur
-        setEditingSupplier(null);
-        setSupplierForm({
-          company_name: '',
-          contact_name: '',
-          email: '',
-          phone: '',
-          address: '',
-          city: '',
-          province: 'QC',
-          postal_code: '',
-          country: 'Canada',
-          notes: ''
-        });
-        
-        // Ouvrir directement le formulaire de création
-        setShowSupplierFormModal(true);
-      }}
-      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0"
-      title="Nouveau fournisseur"
-    >
-      <Plus className="w-5 h-5" />
-    </button>
+    {/* BOUTON + CORRIGÉ */}
+<button
+  type="button"
+  onClick={openNewSupplierFromForm}
+  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0"
+  title="Nouveau fournisseur"
+>
+  <Plus className="w-5 h-5" />
+</button>
+
+{/* BOUTON GESTION CORRIGÉ */}
+<button
+  type="button"
+  onClick={openSupplierManagementFromForm}
+  className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex-shrink-0"
+  title="Gérer les fournisseurs"
+>
+  <Building2 className="w-5 h-5" />
+</button>
     
     {/* Bouton pour gérer les fournisseurs existants */}
     <button
@@ -1734,35 +1825,51 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
             <div className="flex justify-between items-center p-6 border-b bg-orange-50">
               <h2 className="text-2xl font-bold text-orange-600">🏢 Gestion des Fournisseurs</h2>
               <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setEditingSupplier(null);
-                    setSupplierForm({
-                      company_name: '',
-                      contact_name: '',
-                      email: '',
-                      phone: '',
-                      address: '',
-                      city: '',
-                      province: 'QC',
-                      postal_code: '',
-                      country: 'Canada',
-                      notes: ''
-                    });
-                    document.getElementById('supplier-form-modal').showModal();
-                  }}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-                >
-                  ➕ Nouveau Fournisseur
-                </button>
-                <button
-                  onClick={() => setShowSupplierModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  ❌ Fermer
-                </button>
-              </div>
-            </div>
+  <button
+    onClick={() => {
+      setEditingSupplier(null);
+      setSupplierForm({
+        company_name: '',
+        contact_name: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        province: 'QC',
+        postal_code: '',
+        country: 'Canada',
+        notes: ''
+      });
+      document.getElementById('supplier-form-modal').showModal();
+    }}
+    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+  >
+    ➕ Nouveau Fournisseur
+  </button>
+  
+  {/* NOUVEAU BOUTON RETOUR */}
+  {formContext && (
+    <button
+      onClick={returnToForm}
+      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+    >
+      🔄 Retour au formulaire
+    </button>
+  )}
+  
+  <button
+    onClick={() => {
+      if (formContext) {
+        returnToForm();
+      } else {
+        setShowSupplierModal(false);
+      }
+    }}
+    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+  >
+    ❌ Fermer
+  </button>
+</div>
 
             <div className="flex-1 overflow-y-auto p-6">
               {suppliers.length === 0 ? (
@@ -2263,20 +2370,27 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
         </div>
         
         <div className="flex gap-3 justify-end pt-4">
-          <button
-            type="button"
-            onClick={() => setShowSupplierFormModal(false)}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Annuler
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            {editingSupplier ? '💾 Mettre à jour' : '✨ Créer'}
-          </button>
-        </div>
+  <button
+    type="button"
+    onClick={() => {
+      if (formContext) {
+        returnToForm();
+      } else {
+        setShowSupplierFormModal(false);
+      }
+    }}
+    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+  >
+    {formContext ? '🔄 Retour au formulaire' : 'Annuler'}
+  </button>
+  
+  <button
+    type="submit"
+    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+  >
+    {editingSupplier ? '💾 Mettre à jour' : '✨ Créer'}
+  </button>
+</div>
       </form>
     </div>
   </div>
