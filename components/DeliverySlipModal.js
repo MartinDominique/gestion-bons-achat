@@ -540,14 +540,13 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   setTimeout(() => {
     printWindow.print();
     
-    // Fermer automatiquement après 1 secondes
+    // Fermer automatiquement après 3 secondes
     setTimeout(() => {
       printWindow.close();
-     }, 1000);
+     }, 3000);
     
     }, 100);
    };
-  };
   
   // Fonction pour soumettre et sauvegarder
   const handleSubmit = async () => {
