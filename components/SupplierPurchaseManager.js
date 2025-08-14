@@ -26,6 +26,7 @@ export default function SupplierPurchaseManager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPurchaseId, setSelectedPurchaseId] = useState(null);
+  const [showSupplierFormModal, setShowSupplierFormModal] = useState(false);
   
   // Recherche produits
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -939,7 +940,6 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
                 
                 {/* Fournisseur et Bon d'achat lié */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  // Dans le formulaire d'achat, section Fournisseur (vers ligne 500)
 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
   <label className="block text-sm font-semibold text-blue-800 mb-2">
     🏢 Fournisseur *
@@ -966,13 +966,13 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       ))}
     </select>
     
-    {/* NOUVEAU BOUTON + pour créer directement un fournisseur */}
+    {/* BOUTON + CORRIGÉ - OUVRE DIRECTEMENT LE FORMULAIRE FOURNISSEUR */}
     <button
       type="button"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('🏢 Bouton + fournisseur cliqué - Ouverture directe formulaire');
+        console.log('🏢 Bouton + cliqué - Ouverture directe formulaire fournisseur');
         
         // Réinitialiser le formulaire pour un nouveau fournisseur
         setEditingSupplier(null);
@@ -990,7 +990,7 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
         });
         
         // Ouvrir directement le formulaire de création
-        document.getElementById('supplier-form-modal').showModal();
+        setShowSupplierFormModal(true);
       }}
       className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0"
       title="Nouveau fournisseur"
@@ -2086,152 +2086,198 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
         </div>
       )}
 
-      {/* Modal Formulaire Adresse */}
-      {showAddressFormModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
-          style={{ zIndex: 60 }}
-        >
-          <div 
-            className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-xl font-bold text-purple-600 mb-4">
-              {editingAddress ? '✏️ Modifier Adresse' : '➕ Nouvelle Adresse'}
-            </h3>
-            
-            <form onSubmit={handleAddressSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nom de l'adresse *
-                  </label>
-                  <input
-                    type="text"
-                    value={addressForm.name}
-                    onChange={(e) => setAddressForm({...addressForm, name: e.target.value})}
-                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                    placeholder="Ex: Bureau principal, Entrepôt..."
-                    required
-                  />
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Adresse complète *
-                  </label>
-                  <input
-                    type="text"
-                    value={addressForm.address}
-                    onChange={(e) => setAddressForm({...addressForm, address: e.target.value})}
-                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                    placeholder="123 Rue Principale, App. 456"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ville *
-                  </label>
-                  <input
-                    type="text"
-                    value={addressForm.city}
-                    onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
-                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Province *
-                  </label>
-                  <select
-                    value={addressForm.province}
-                    onChange={(e) => setAddressForm({...addressForm, province: e.target.value})}
-                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                    required
-                  >
-                    <option value="QC">Québec</option>
-                    <option value="ON">Ontario</option>
-                    <option value="BC">Colombie-Britannique</option>
-                    <option value="AB">Alberta</option>
-                    <option value="MB">Manitoba</option>
-                    <option value="SK">Saskatchewan</option>
-                    <option value="NS">Nouvelle-Écosse</option>
-                    <option value="NB">Nouveau-Brunswick</option>
-                    <option value="NL">Terre-Neuve-et-Labrador</option>
-                    <option value="PE">Île-du-Prince-Édouard</option>
-                    <option value="NT">Territoires du Nord-Ouest</option>
-                    <option value="YT">Yukon</option>
-                    <option value="NU">Nunavut</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Code postal
-                  </label>
-                  <input
-                    type="text"
-                    value={addressForm.postal_code}
-                    onChange={(e) => setAddressForm({...addressForm, postal_code: e.target.value.toUpperCase()})}
-                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                    placeholder="H1A 1A1"
-                    pattern="[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pays
-                  </label>
-                  <select
-                    value={addressForm.country}
-                    onChange={(e) => setAddressForm({...addressForm, country: e.target.value})}
-                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                  >
-                    <option value="Canada">Canada</option>
-                    <option value="États-Unis">États-Unis</option>
-                    <option value="Mexique">Mexique</option>
-                  </select>
-                </div>
-                
-                <div className="md:col-span-2">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={addressForm.is_default}
-                      onChange={(e) => setAddressForm({...addressForm, is_default: e.target.checked})}
-                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      ⭐ Définir comme adresse par défaut
-                    </span>
-                  </label>
-                </div>
-              </div>
-              
-              <div className="flex gap-3 justify-end pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddressFormModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                >
-                  {editingAddress ? '💾 Mettre à jour' : '✨ Créer'}
-                </button>
-              </div>
-            </form>
+      {/* Modal Formulaire Fournisseur Direct */}
+{showSupplierFormModal && (
+  <div 
+    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+    style={{ zIndex: 70 }}
+  >
+    <div 
+      className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h3 className="text-xl font-bold text-blue-600 mb-4">
+        {editingSupplier ? '✏️ Modifier Fournisseur' : '➕ Nouveau Fournisseur'}
+      </h3>
+      
+      <form onSubmit={async (e) => {
+        e.preventDefault();
+        try {
+          if (editingSupplier) {
+            const { error } = await supabase
+              .from('suppliers')
+              .update(supplierForm)
+              .eq('id', editingSupplier.id);
+            if (error) throw error;
+          } else {
+            const { error } = await supabase
+              .from('suppliers')
+              .insert([supplierForm]);
+            if (error) throw error;
+          }
+
+          await fetchSuppliers();
+          setShowSupplierFormModal(false);
+          setEditingSupplier(null);
+          setSupplierForm({
+            company_name: '',
+            contact_name: '',
+            email: '',
+            phone: '',
+            address: '',
+            city: '',
+            province: 'QC',
+            postal_code: '',
+            country: 'Canada',
+            notes: ''
+          });
+          
+          alert(editingSupplier ? '✅ Fournisseur modifié avec succès!' : '✅ Fournisseur créé avec succès!');
+        } catch (error) {
+          console.error('Erreur sauvegarde fournisseur:', error);
+          alert('❌ Erreur lors de la sauvegarde: ' + error.message);
+        }
+      }} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nom de l'entreprise *
+            </label>
+            <input
+              type="text"
+              value={supplierForm.company_name}
+              onChange={(e) => setSupplierForm({...supplierForm, company_name: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nom du contact
+            </label>
+            <input
+              type="text"
+              value={supplierForm.contact_name}
+              onChange={(e) => setSupplierForm({...supplierForm, contact_name: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              value={supplierForm.email}
+              onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Téléphone
+            </label>
+            <input
+              type="tel"
+              value={supplierForm.phone}
+              onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            />
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Adresse
+            </label>
+            <input
+              type="text"
+              value={supplierForm.address}
+              onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ville
+            </label>
+            <input
+              type="text"
+              value={supplierForm.city}
+              onChange={(e) => setSupplierForm({...supplierForm, city: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Province
+            </label>
+            <select
+              value={supplierForm.province}
+              onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            >
+              <option value="QC">Québec</option>
+              <option value="ON">Ontario</option>
+              <option value="BC">Colombie-Britannique</option>
+              <option value="AB">Alberta</option>
+              <option value="MB">Manitoba</option>
+              <option value="SK">Saskatchewan</option>
+              <option value="NS">Nouvelle-Écosse</option>
+              <option value="NB">Nouveau-Brunswick</option>
+              <option value="NL">Terre-Neuve-et-Labrador</option>
+              <option value="PE">Île-du-Prince-Édouard</option>
+              <option value="NT">Territoires du Nord-Ouest</option>
+              <option value="YT">Yukon</option>
+              <option value="NU">Nunavut</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Code postal
+            </label>
+            <input
+              type="text"
+              value={supplierForm.postal_code}
+              onChange={(e) => setSupplierForm({...supplierForm, postal_code: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+            />
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Notes
+            </label>
+            <textarea
+              value={supplierForm.notes}
+              onChange={(e) => setSupplierForm({...supplierForm, notes: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+              rows="3"
+            />
           </div>
         </div>
-      )}
+        
+        <div className="flex gap-3 justify-end pt-4">
+          <button
+            type="button"
+            onClick={() => setShowSupplierFormModal(false)}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {editingSupplier ? '💾 Mettre à jour' : '✨ Créer'}
+          </button>
+        </div>
+      </form>
     </div>
-  );
-}
+  </div>
+)}
