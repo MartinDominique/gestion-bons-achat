@@ -1243,7 +1243,7 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
 
                 {/* Modal quantité */}
                 {showQuantityInput && selectedProductForQuantity && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{ zIndex: 9999 }}>
                     <div className="bg-white rounded-lg w-full max-w-md p-6">
                       <h3 className="text-lg font-semibold mb-4">
                         Quantité pour: {selectedProductForQuantity.description}
@@ -1816,7 +1816,7 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       )}
 
       {/* Modal Formulaire Fournisseur */}
-      <dialog id="supplier-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
+      <dialog id="supplier-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50" style={{ zIndex: 9999 }}>
         <div className="bg-white rounded-lg w-full max-w-2xl p-6">
           <h3 className="text-xl font-bold text-orange-600 mb-4">
             {editingSupplier ? '✏️ Modifier Fournisseur' : '➕ Nouveau Fournisseur'}
@@ -2090,7 +2090,7 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
 {showSupplierFormModal && (
   <div 
     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
-    style={{ zIndex: 70 }}
+    style={{ zIndex: 9999 }}
   >
     <div 
       className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
