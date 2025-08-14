@@ -896,22 +896,6 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
               <p className="text-sm">{purchaseForm.notes}</p>
             </div>
           )}
-          
-          {/* Signature */}
-          <div className="mt-8 pt-4 border-t">
-            <div className="flex justify-between">
-              <div>
-                <p className="mb-2">Signature du fournisseur:</p>
-                <div className="border-b border-gray-400 w-48 h-8"></div>
-                <p className="text-xs text-gray-600 mt-1">Date: _______________</p>
-              </div>
-              <div>
-                <p className="mb-2">Signature du responsable:</p>
-                <div className="border-b border-gray-400 w-48 h-8"></div>
-                <p className="text-xs text-gray-600 mt-1">Date: _______________</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* FORMULAIRE */}
