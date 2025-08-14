@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search, Plus, Minus } from 'lucide-react';
+import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search, Plus, Minus, Package, Truck, Printer, CheckCircle } from 'lucide-react';
 import { Building2, FileUp, ShoppingCart } from 'lucide-react';
+import DeliverySlipModal from './DeliverySlipModal';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -16,11 +17,26 @@ export default function PurchaseOrderManager() {
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   
-  // NOUVEAU: États pour les achats fournisseurs
+  // États pour les achats fournisseurs
   const [supplierPurchases, setSupplierPurchases] = useState([]);
   const [linkedPurchases, setLinkedPurchases] = useState([]);
   const [availablePurchases, setAvailablePurchases] = useState([]);
   const [loadingPurchases, setLoadingPurchases] = useState(false);
+  
+  // États pour les LIVRAISONS
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [selectedPOForDelivery, setSelectedPOForDelivery] = useState(null);
+  const [deliverySlips, setDeliverySlips] = useState([]);
+  const [loadingDeliveries, setLoadingDeliveries] = useState(false);
+  const [poItems, setPOItems] = useState([]);
+  const [deliveryFormData, setDeliveryFormData] = useState({
+    delivery_date: new Date().toISOString().split('T')[0],
+    transport_company: '',
+    transport_number: '',
+    delivery_contact: '',
+    special_instructions: '',
+    items: []
+  });
   
   const [formData, setFormData] = useState({
     client_name: '',
@@ -31,10 +47,11 @@ export default function PurchaseOrderManager() {
     status: 'pending',
     notes: '',
     additionalNotes: '',
-    files: []
+    files: [],
+    items: []
   });
 
-  // ============ FONCTIONS AVANT useEffect ============
+  // ============ FONCTIONS ============
   
   const fetchPurchaseOrders = async () => {
     try {
@@ -51,7 +68,6 @@ export default function PurchaseOrderManager() {
       setPurchaseOrders(data || []);
     } catch (error) {
       console.error('Erreur lors du chargement des bons d\'achat:', error);
-      console.error('Erreur lors du chargement des bons d\'achat:', error.message);
     } finally {
       setLoading(false);
     }
@@ -91,7 +107,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // NOUVEAU: Récupérer tous les achats fournisseurs
   const fetchSupplierPurchases = async () => {
     try {
       const { data, error } = await supabase
@@ -109,7 +124,6 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  // NOUVEAU: Récupérer les achats fournisseurs liés à un PO spécifique
   const fetchLinkedPurchases = async (purchaseOrderId) => {
     if (!purchaseOrderId) {
       setLinkedPurchases([]);
@@ -119,7 +133,6 @@ export default function PurchaseOrderManager() {
     
     setLoadingPurchases(true);
     try {
-      // Récupérer les achats liés
       const { data: linked, error: linkedError } = await supabase
         .from('supplier_purchases')
         .select('*')
@@ -131,13 +144,11 @@ export default function PurchaseOrderManager() {
         setLinkedPurchases(linked || []);
       }
 
-      // Récupérer les achats disponibles (non liés à ce PO)
-      // NOUVELLE VERSION (corrigée)
-const { data: available, error: availableError } = await supabase
-  .from('supplier_purchases')
-  .select('*')
-  .is('linked_po_id', null)
-  .order('created_at', { ascending: false });
+      const { data: available, error: availableError } = await supabase
+        .from('supplier_purchases')
+        .select('*')
+        .is('linked_po_id', null)
+        .order('created_at', { ascending: false });
 
       if (availableError) {
         console.error('Erreur récupération achats disponibles:', availableError);
@@ -152,155 +163,631 @@ const { data: available, error: availableError } = await supabase
     }
   };
 
-  // FONCTION CORRIGÉE - visualizeSupplierPurchase avec détail des articles
-const visualizeSupplierPurchase = async (purchase) => {
-  try {
-    const { data: purchaseDetails, error } = await supabase
-      .from('supplier_purchases')
-      .select('*')
-      .eq('id', purchase.id)
-      .single();
+  // Récupérer les bons de livraison d'un PO
+  const fetchDeliverySlips = async (purchaseOrderId) => {
+    if (!purchaseOrderId) return;
+    
+    setLoadingDeliveries(true);
+    try {
+      const { data, error } = await supabase
+        .from('delivery_slips')
+        .select(`
+          *,
+          delivery_slip_items (*)
+        `)
+        .eq('purchase_order_id', purchaseOrderId)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
+      if (error) {
+        console.error('Erreur récupération bons de livraison:', error);
+      } else {
+        setDeliverySlips(data || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des livraisons:', error);
+    } finally {
+      setLoadingDeliveries(false);
+    }
+  };
 
+  // Récupérer les articles d'un bon d'achat
+  const fetchPOItems = async (purchaseOrderId) => {
+    if (!purchaseOrderId) return;
+    
+    try {
+      const { data: poData, error: poError } = await supabase
+        .from('purchase_orders')
+        .select('*')
+        .eq('id', purchaseOrderId)
+        .single();
+
+      if (!poError && poData) {
+        if (poData.items && Array.isArray(poData.items)) {
+          setPOItems(poData.items.map((item, index) => ({
+            ...item,
+            id: index,
+            delivered_quantity: item.delivered_quantity || 0
+          })));
+        } else {
+          setPOItems([{
+            id: 1,
+            product_id: 'GENERAL',
+            description: poData.notes || poData.description || 'Articles divers',
+            quantity: 1,
+            unit: 'LOT',
+            selling_price: poData.amount || 0,
+            cost_price: 0,
+            delivered_quantity: 0
+          }]);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur récupération articles PO:', error);
+    }
+  };
+
+  // Générer un numéro de bon de livraison
+  const generateDeliveryNumber = async () => {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const prefix = `BL-${year}${month}`;
+    
+    try {
+      const { data, error } = await supabase
+        .from('delivery_slips')
+        .select('delivery_number')
+        .like('delivery_number', `${prefix}%`)
+        .order('delivery_number', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      let nextNumber = '001';
+      if (data && data.length > 0) {
+        const lastNumber = parseInt(data[0].delivery_number.split('-').pop());
+        nextNumber = (lastNumber + 1).toString().padStart(3, '0');
+      }
+
+      return `${prefix}-${nextNumber}`;
+    } catch (error) {
+      console.error('Erreur génération numéro BL:', error);
+      return `${prefix}-${Date.now().toString().slice(-3)}`;
+    }
+  };
+
+  // Créer un bon de livraison
+  const createDeliverySlip = async () => {
+    const selectedItems = deliveryFormData.items.filter(item => item.selected && item.quantity_to_deliver > 0);
+    
+    if (selectedItems.length === 0) {
+      alert('⚠️ Veuillez sélectionner au moins un article à livrer');
+      return;
+    }
+
+    try {
+      const deliveryNumber = await generateDeliveryNumber();
+      
+      const { data: deliverySlip, error: slipError } = await supabase
+        .from('delivery_slips')
+        .insert([{
+          purchase_order_id: selectedPOForDelivery.id,
+          delivery_number: deliveryNumber,
+          delivery_date: deliveryFormData.delivery_date,
+          transport_company: deliveryFormData.transport_company,
+          transport_number: deliveryFormData.transport_number,
+          delivery_contact: deliveryFormData.delivery_contact,
+          special_instructions: deliveryFormData.special_instructions,
+          status: 'completed'
+        }])
+        .select()
+        .single();
+
+      if (slipError) throw slipError;
+
+      const deliveryItems = selectedItems.map(item => ({
+        delivery_slip_id: deliverySlip.id,
+        client_po_item_id: item.id,
+        quantity_delivered: item.quantity_to_deliver,
+        notes: item.notes || ''
+      }));
+
+      if (deliveryItems.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('delivery_slip_items')
+          .insert(deliveryItems);
+
+        if (itemsError) {
+          console.warn('Avertissement items:', itemsError);
+        }
+      }
+
+      const updatedItems = poItems.map(item => {
+        const deliveredItem = selectedItems.find(si => si.id === item.id);
+        if (deliveredItem) {
+          return {
+            ...item,
+            delivered_quantity: (item.delivered_quantity || 0) + deliveredItem.quantity_to_deliver
+          };
+        }
+        return item;
+      });
+
+      const { error: updateError } = await supabase
+        .from('purchase_orders')
+        .update({ items: updatedItems })
+        .eq('id', selectedPOForDelivery.id);
+
+      if (updateError) {
+        console.error('Erreur mise à jour quantités:', updateError);
+      }
+
+      alert('✅ Bon de livraison créé avec succès !');
+      
+      setShowDeliveryModal(false);
+      setDeliveryFormData({
+        delivery_date: new Date().toISOString().split('T')[0],
+        transport_company: '',
+        transport_number: '',
+        delivery_contact: '',
+        special_instructions: '',
+        items: []
+      });
+      
+      await fetchDeliverySlips(selectedPOForDelivery.id);
+      await fetchPOItems(selectedPOForDelivery.id);
+      printDeliverySlip(deliverySlip, selectedItems);
+      
+    } catch (error) {
+      console.error('Erreur création bon de livraison:', error);
+      alert('❌ Erreur lors de la création du bon de livraison');
+    }
+  };
+
+  // Imprimer un bon de livraison
+  const printDeliverySlip = (deliverySlip, selectedItems) => {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    const itemsToDeliver = selectedItems.filter(item => item.selected && item.quantity_to_deliver > 0);
     
     const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Achat Fournisseur ${purchaseDetails.purchase_number}</title>
+        <title>Bon de Livraison ${deliverySlip.delivery_number}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-          .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
-          .supplier-info, .purchase-info { width: 48%; }
-          .po-link { background-color: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; }
-          
-          /* NOUVEAU: Styles pour le tableau des articles */
-          .items-section { margin: 20px 0; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-          th { background-color: #f0f0f0; font-weight: bold; }
-          .text-right { text-align: right; }
+          @page { size: letter; margin: 0.5in; }
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px;
+            font-size: 12pt;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            border-bottom: 3px solid #000;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+          }
+          .company-info { flex: 1; }
+          .company-name {
+            font-size: 24pt;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 5px;
+          }
+          .company-details {
+            font-size: 10pt;
+            color: #666;
+            line-height: 1.4;
+          }
+          .document-title {
+            flex: 1;
+            text-align: right;
+          }
+          .doc-type {
+            font-size: 20pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          .doc-number {
+            font-size: 14pt;
+            color: #2563eb;
+            font-weight: bold;
+          }
+          .doc-date {
+            font-size: 11pt;
+            color: #666;
+            margin-top: 5px;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+          }
+          .info-box {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f9f9f9;
+          }
+          .info-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 12pt;
+            color: #2563eb;
+            text-transform: uppercase;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+          }
+          .info-box p {
+            margin: 5px 0;
+            font-size: 11pt;
+          }
+          .info-box strong { color: #333; }
+          .transport-info {
+            background: #e3f2fd;
+            border: 1px solid #2563eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+          }
+          th {
+            background: #2563eb;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 11pt;
+            font-weight: bold;
+          }
+          td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 11pt;
+          }
+          tbody tr:nth-child(even) { background: #f9f9f9; }
           .text-center { text-align: center; }
-          .total-row { background-color: #f9f9f9; font-weight: bold; }
-          
-          @media print { body { margin: 0; } }
+          .text-right { text-align: right; }
+          .signature-section {
+            margin-top: 50px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+          }
+          .signature-box {
+            border-top: 2px solid #333;
+            padding-top: 10px;
+          }
+          .signature-label {
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 5px;
+          }
+          .signature-name {
+            font-size: 11pt;
+            font-weight: bold;
+            margin-bottom: 3px;
+          }
+          .signature-date {
+            font-size: 10pt;
+            color: #666;
+          }
+          .footer-note {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 9pt;
+            color: #666;
+            text-align: center;
+          }
+          .special-instructions {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+          }
+          .special-instructions h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+            font-size: 11pt;
+          }
+          @media print {
+            body { margin: 0; }
+            .info-box { break-inside: avoid; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>ACHAT FOURNISSEUR</h1>
-          <h2>N°: ${purchaseDetails.purchase_number || 'N/A'}</h2>
-          <p>Date: ${formatDate(purchaseDetails.delivery_date || purchaseDetails.created_at)}</p>
-        </div>
-        
-        <div class="info-section">
-          <div class="supplier-info">
-            <h3>FOURNISSEUR:</h3>
-            <p><strong>${purchaseDetails.supplier_name || 'N/A'}</strong></p>
-            ${purchaseDetails.supplier_contact ? `<p>Contact: ${purchaseDetails.supplier_contact}</p>` : ''}
+          <div class="company-info">
+            <div class="company-name">SERVICES TMT INC.</div>
+            <div class="company-details">
+              195, 42e Rue Nord<br>
+              Saint-Georges, QC G5Z 0V9<br>
+              Tél: (418) 225-3875<br>
+              info.servicestmt@gmail.com
+            </div>
           </div>
-          <div class="purchase-info">
-            <p><strong>Date création:</strong> ${formatDate(purchaseDetails.created_at)}</p>
-            ${purchaseDetails.delivery_date ? `<p><strong>Date livraison:</strong> ${formatDate(purchaseDetails.delivery_date)}</p>` : ''}
-            <p><strong>Statut:</strong> ${purchaseDetails.status || 'En cours'}</p>
+          <div class="document-title">
+            <div class="doc-type">BON DE LIVRAISON</div>
+            <div class="doc-number"># ${deliverySlip.delivery_number}</div>
+            <div class="doc-date">Date: ${formatDate(deliverySlip.delivery_date)}</div>
           </div>
         </div>
 
-        ${purchaseDetails.linked_po_id ? `
-          <div class="po-link">
-            <h3>🔗 LIEN AVEC BON D'ACHAT CLIENT:</h3>
-            <p><strong>N° Bon d'achat:</strong> ${purchaseDetails.linked_po_number || 'N/A'}</p>
-            <p><em>Cet achat fournisseur est lié au bon d'achat client ci-dessus</em></p>
+        <div class="info-grid">
+          <div class="info-box">
+            <h3>Livraison À:</h3>
+            <p><strong>${selectedPOForDelivery?.client_name || 'N/A'}</strong></p>
+            ${selectedPOForDelivery?.delivery_address ? `
+              <p>${selectedPOForDelivery.delivery_address.street || ''}</p>
+              <p>${selectedPOForDelivery.delivery_address.city || ''}, ${selectedPOForDelivery.delivery_address.province || ''}</p>
+              <p>${selectedPOForDelivery.delivery_address.postal_code || ''}</p>
+            ` : '<p>Adresse à confirmer</p>'}
           </div>
+          
+          <div class="info-box">
+            <h3>Référence:</h3>
+            <p><strong>BA Client:</strong> ${selectedPOForDelivery?.po_number || 'N/A'}</p>
+            ${selectedPOForDelivery?.submission_no ? `<p><strong>Soumission:</strong> ${selectedPOForDelivery.submission_no}</p>` : ''}
+            <p><strong>Contact:</strong> ${deliveryFormData.delivery_contact || 'À confirmer'}</p>
+          </div>
+        </div>
+
+        ${(deliveryFormData.transport_company || deliveryFormData.transport_number) ? `
+        <div class="transport-info">
+          <h3 style="margin: 0 0 10px 0; font-size: 12pt;">🚚 INFORMATION DE TRANSPORT</h3>
+          ${deliveryFormData.transport_company ? `<p><strong>Transporteur:</strong> ${deliveryFormData.transport_company}</p>` : ''}
+          ${deliveryFormData.transport_number ? `<p><strong>N° de suivi:</strong> ${deliveryFormData.transport_number}</p>` : ''}
+        </div>
         ` : ''}
 
-        <!-- NOUVEAU: Section des articles -->
-        ${purchaseDetails.items && purchaseDetails.items.length > 0 ? `
-          <div class="items-section">
-            <h3>DÉTAIL DES ARTICLES:</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Description</th>
-                  <th class="text-center">Qté</th>
-                  <th class="text-center">Unité</th>
-                  <th class="text-right">Prix Unit.</th>
-                  <th class="text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${purchaseDetails.items.map(item => `
-                  <tr>
-                    <td>${item.product_id || item.code || ''}</td>
-                    <td>${item.description || ''}</td>
-                    <td class="text-center">${item.quantity || 0}</td>
-                    <td class="text-center">${item.unit || ''}</td>
-                    <td class="text-right">${formatCurrency(item.cost_price || 0)}</td>
-                    <td class="text-right">${formatCurrency((item.cost_price || 0) * (item.quantity || 0))}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-              <tfoot>
-                <tr class="total-row">
-                  <td colspan="5"><strong>Sous-total:</strong></td>
-                  <td class="text-right"><strong>${formatCurrency(purchaseDetails.subtotal || 0)}</strong></td>
-                </tr>
-                ${purchaseDetails.taxes && purchaseDetails.taxes > 0 ? `
-                  <tr class="total-row">
-                    <td colspan="5"><strong>Taxes (14.975%):</strong></td>
-                    <td class="text-right"><strong>${formatCurrency(purchaseDetails.taxes)}</strong></td>
-                  </tr>
-                ` : ''}
-                ${purchaseDetails.shipping_cost && purchaseDetails.shipping_cost > 0 ? `
-                  <tr class="total-row">
-                    <td colspan="5"><strong>Frais de livraison:</strong></td>
-                    <td class="text-right"><strong>${formatCurrency(purchaseDetails.shipping_cost)}</strong></td>
-                  </tr>
-                ` : ''}
-                <tr class="total-row" style="background-color: #e8f5e8;">
-                  <td colspan="5"><strong>TOTAL GÉNÉRAL:</strong></td>
-                  <td class="text-right"><strong>${formatCurrency(purchaseDetails.total_amount || 0)}</strong></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        ` : `
-          <div class="items-section">
-            <h3>DÉTAIL DES ARTICLES:</h3>
-            <p style="text-align: center; color: #666; font-style: italic; padding: 20px;">
-              Aucun article détaillé pour cet achat fournisseur
-            </p>
-          </div>
-        `}
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 15%;">N° PIÈCE</th>
+              <th style="width: 40%;">DESCRIPTION</th>
+              <th style="width: 10%;" class="text-center">QTÉ CMD</th>
+              <th style="width: 10%;" class="text-center">QTÉ LIVRÉE</th>
+              <th style="width: 10%;" class="text-center">UNITÉ</th>
+              <th style="width: 15%;" class="text-center">RESTANT</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsToDeliver.map(item => `
+              <tr>
+                <td>${item.product_id || 'N/A'}</td>
+                <td>${item.description || ''}</td>
+                <td class="text-center">${item.quantity || 0}</td>
+                <td class="text-center"><strong>${item.quantity_to_deliver || 0}</strong></td>
+                <td class="text-center">${item.unit || ''}</td>
+                <td class="text-center">${Math.max(0, (item.quantity || 0) - (item.delivered_quantity || 0) - (item.quantity_to_deliver || 0))}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
 
-        <div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border-radius: 5px;">
-          <h3>MONTANT TOTAL: ${formatCurrency(purchaseDetails.total_amount || 0)}</h3>
+        ${deliveryFormData.special_instructions ? `
+        <div class="special-instructions">
+          <h4>⚠️ INSTRUCTIONS SPÉCIALES:</h4>
+          <p>${deliveryFormData.special_instructions}</p>
+        </div>
+        ` : ''}
+
+        <div class="signature-section">
+          <div class="signature-box">
+            <div class="signature-label">SIGNATURE CLIENT:</div>
+            <div style="height: 40px;"></div>
+            <div class="signature-name">_______________________________</div>
+            <div class="signature-date">Date: _______________________</div>
+          </div>
+          
+          <div class="signature-box">
+            <div class="signature-label">SIGNATURE LIVREUR:</div>
+            <div style="height: 40px;"></div>
+            <div class="signature-name">_______________________________</div>
+            <div class="signature-date">Date: _______________________</div>
+          </div>
         </div>
 
-        ${purchaseDetails.notes ? `
-          <div style="margin-top: 30px;">
-            <h3>Notes:</h3>
-            <p>${purchaseDetails.notes}</p>
-          </div>
-        ` : ''}
+        <div class="footer-note">
+          <strong>IMPORTANT:</strong> La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
+          Veuillez vérifier la marchandise à la réception. Toute réclamation doit être faite dans les 48 heures.
+        </div>
       </body>
       </html>
     `;
 
     printWindow.document.write(printContent);
     printWindow.document.close();
-    
-  } catch (error) {
-    console.error('Erreur récupération achat fournisseur:', error);
-    alert('❌ Erreur lors de la récupération de l\'achat fournisseur');
-  }
-};;
+    printWindow.print();
+  };
 
-  // NOUVEAU: Lier un achat fournisseur au PO
+  // Ouvrir le modal de livraison
+  const openDeliveryModal = async (po) => {
+    setSelectedPOForDelivery(po);
+    setShowDeliveryModal(true);
+    await fetchPOItems(po.id);
+    await fetchDeliverySlips(po.id);
+  };
+
+  // Calculer le statut de livraison
+  const getDeliveryStatus = (po) => {
+    if (!po.items || po.items.length === 0) return 'non_applicable';
+    
+    const totalQuantity = po.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const deliveredQuantity = po.items.reduce((sum, item) => sum + (item.delivered_quantity || 0), 0);
+    
+    if (deliveredQuantity === 0) return 'non_livre';
+    if (deliveredQuantity < totalQuantity) return 'partiel';
+    return 'complet';
+  };
+
+  // Badge de statut de livraison
+  const getDeliveryBadge = (status) => {
+    switch (status) {
+      case 'complet':
+        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">✅ Livré</span>;
+      case 'partiel':
+        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">📦 Partiel</span>;
+      case 'non_livre':
+        return <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">⏳ À livrer</span>;
+      default:
+        return null;
+    }
+  };
+
+  const visualizeSupplierPurchase = async (purchase) => {
+    try {
+      const { data: purchaseDetails, error } = await supabase
+        .from('supplier_purchases')
+        .select('*')
+        .eq('id', purchase.id)
+        .single();
+
+      if (error) throw error;
+
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Achat Fournisseur ${purchaseDetails.purchase_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+            .supplier-info, .purchase-info { width: 48%; }
+            .po-link { background-color: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; }
+            .items-section { margin: 20px 0; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+            th { background-color: #f0f0f0; font-weight: bold; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            .total-row { background-color: #f9f9f9; font-weight: bold; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>ACHAT FOURNISSEUR</h1>
+            <h2>N°: ${purchaseDetails.purchase_number || 'N/A'}</h2>
+            <p>Date: ${formatDate(purchaseDetails.delivery_date || purchaseDetails.created_at)}</p>
+          </div>
+          
+          <div class="info-section">
+            <div class="supplier-info">
+              <h3>FOURNISSEUR:</h3>
+              <p><strong>${purchaseDetails.supplier_name || 'N/A'}</strong></p>
+              ${purchaseDetails.supplier_contact ? `<p>Contact: ${purchaseDetails.supplier_contact}</p>` : ''}
+            </div>
+            <div class="purchase-info">
+              <p><strong>Date création:</strong> ${formatDate(purchaseDetails.created_at)}</p>
+              ${purchaseDetails.delivery_date ? `<p><strong>Date livraison:</strong> ${formatDate(purchaseDetails.delivery_date)}</p>` : ''}
+              <p><strong>Statut:</strong> ${purchaseDetails.status || 'En cours'}</p>
+            </div>
+          </div>
+
+          ${purchaseDetails.linked_po_id ? `
+            <div class="po-link">
+              <h3>🔗 LIEN AVEC BON D'ACHAT CLIENT:</h3>
+              <p><strong>N° Bon d'achat:</strong> ${purchaseDetails.linked_po_number || 'N/A'}</p>
+              <p><em>Cet achat fournisseur est lié au bon d'achat client ci-dessus</em></p>
+            </div>
+          ` : ''}
+
+          ${purchaseDetails.items && purchaseDetails.items.length > 0 ? `
+            <div class="items-section">
+              <h3>DÉTAIL DES ARTICLES:</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th class="text-center">Qté</th>
+                    <th class="text-center">Unité</th>
+                    <th class="text-right">Prix Unit.</th>
+                    <th class="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${purchaseDetails.items.map(item => `
+                    <tr>
+                      <td>${item.product_id || item.code || ''}</td>
+                      <td>${item.description || ''}</td>
+                      <td class="text-center">${item.quantity || 0}</td>
+                      <td class="text-center">${item.unit || ''}</td>
+                      <td class="text-right">${formatCurrency(item.cost_price || 0)}</td>
+                      <td class="text-right">${formatCurrency((item.cost_price || 0) * (item.quantity || 0))}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+                <tfoot>
+                  <tr class="total-row">
+                    <td colspan="5"><strong>Sous-total:</strong></td>
+                    <td class="text-right"><strong>${formatCurrency(purchaseDetails.subtotal || 0)}</strong></td>
+                  </tr>
+                  ${purchaseDetails.taxes && purchaseDetails.taxes > 0 ? `
+                    <tr class="total-row">
+                      <td colspan="5"><strong>Taxes (14.975%):</strong></td>
+                      <td class="text-right"><strong>${formatCurrency(purchaseDetails.taxes)}</strong></td>
+                    </tr>
+                  ` : ''}
+                  ${purchaseDetails.shipping_cost && purchaseDetails.shipping_cost > 0 ? `
+                    <tr class="total-row">
+                      <td colspan="5"><strong>Frais de livraison:</strong></td>
+                      <td class="text-right"><strong>${formatCurrency(purchaseDetails.shipping_cost)}</strong></td>
+                    </tr>
+                  ` : ''}
+                  <tr class="total-row" style="background-color: #e8f5e8;">
+                    <td colspan="5"><strong>TOTAL GÉNÉRAL:</strong></td>
+                    <td class="text-right"><strong>${formatCurrency(purchaseDetails.total_amount || 0)}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ` : `
+            <div class="items-section">
+              <h3>DÉTAIL DES ARTICLES:</h3>
+              <p style="text-align: center; color: #666; font-style: italic; padding: 20px;">
+                Aucun article détaillé pour cet achat fournisseur
+              </p>
+            </div>
+          `}
+
+          <div style="margin: 30px 0; padding: 20px; background-color: #f5f5f5; border-radius: 5px;">
+            <h3>MONTANT TOTAL: ${formatCurrency(purchaseDetails.total_amount || 0)}</h3>
+          </div>
+
+          ${purchaseDetails.notes ? `
+            <div style="margin-top: 30px;">
+              <h3>Notes:</h3>
+              <p>${purchaseDetails.notes}</p>
+            </div>
+          ` : ''}
+        </body>
+        </html>
+      `;
+
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+    } catch (error) {
+      console.error('Erreur récupération achat fournisseur:', error);
+      alert('❌ Erreur lors de la récupération de l\'achat fournisseur');
+    }
+  };
+
   const linkSupplierPurchase = async (supplierPurchaseId) => {
     if (!editingPO) return;
 
@@ -315,7 +802,6 @@ const visualizeSupplierPurchase = async (purchase) => {
 
       if (error) throw error;
 
-      // Recharger les données
       await fetchLinkedPurchases(editingPO.id);
       alert('✅ Achat fournisseur lié avec succès !');
 
@@ -325,7 +811,6 @@ const visualizeSupplierPurchase = async (purchase) => {
     }
   };
 
-  // NOUVEAU: Délier un achat fournisseur du PO
   const unlinkSupplierPurchase = async (supplierPurchaseId) => {
     if (!confirm('🔗 Êtes-vous sûr de vouloir délier cet achat fournisseur ?')) return;
 
@@ -340,7 +825,6 @@ const visualizeSupplierPurchase = async (purchase) => {
 
       if (error) throw error;
 
-      // Recharger les données
       await fetchLinkedPurchases(editingPO.id);
       alert('✅ Achat fournisseur délié avec succès !');
 
@@ -350,12 +834,12 @@ const visualizeSupplierPurchase = async (purchase) => {
     }
   };
 
-  // ============ useEffect CORRIGÉ ============
+  // ============ useEffect ============
   useEffect(() => {
     fetchPurchaseOrders();
     fetchClients();
     fetchSubmissions();
-    fetchSupplierPurchases(); // NOUVEAU
+    fetchSupplierPurchases();
     
     const handleBeforeUnload = () => {
       supabase.auth.signOut();
@@ -368,7 +852,21 @@ const visualizeSupplierPurchase = async (purchase) => {
     };
   }, []);
 
-  // ============ HANDLERS APRÈS useEffect ============
+  useEffect(() => {
+    if (poItems.length > 0 && showDeliveryModal) {
+      setDeliveryFormData(prev => ({
+        ...prev,
+        items: poItems.map(item => ({
+          ...item,
+          selected: false,
+          quantity_to_deliver: 0,
+          notes: ''
+        }))
+      }));
+    }
+  }, [poItems, showDeliveryModal]);
+
+  // ============ HANDLERS ============
 
   const handleSendReport = async () => {
     setSendingReport(true);
@@ -409,7 +907,8 @@ const visualizeSupplierPurchase = async (purchase) => {
       description: formData.notes,
       additionalNotes: formData.additionalNotes,
       vendor: formData.client_name,
-      files: formData.files
+      files: formData.files,
+      items: formData.items
     };
 
     try {
@@ -450,7 +949,8 @@ const visualizeSupplierPurchase = async (purchase) => {
         status: 'pending',
         notes: '',
         additionalNotes: '',
-        files: []
+        files: [],
+        items: []
       });
       
     } catch (error) {
@@ -469,11 +969,10 @@ const visualizeSupplierPurchase = async (purchase) => {
       status: po.status || 'pending',
       notes: po.notes || po.description || '',
       additionalNotes: po.additionalNotes || '',
-      files: po.files || []
+      files: po.files || [],
+      items: po.items || []
     });
     setShowForm(true);
-    
-    // NOUVEAU: Charger les achats fournisseurs liés
     fetchLinkedPurchases(po.id);
   };
 
@@ -517,7 +1016,6 @@ const visualizeSupplierPurchase = async (purchase) => {
         console.error('❌ Erreur récupération bon d\'achat:', fetchError);
       }
 
-      // NOUVEAU: Délier tous les achats fournisseurs avant suppression
       const { error: unlinkError } = await supabase
         .from('supplier_purchases')
         .update({ 
@@ -542,7 +1040,7 @@ const visualizeSupplierPurchase = async (purchase) => {
       }
 
       await fetchPurchaseOrders();
-      await fetchSupplierPurchases(); // Recharger pour mettre à jour les liens
+      await fetchSupplierPurchases();
       console.log('✅ Bon d\'achat et fichiers supprimés avec succès');
 
     } catch (error) {
@@ -817,7 +1315,8 @@ const visualizeSupplierPurchase = async (purchase) => {
                       status: 'pending',
                       notes: '',
                       additionalNotes: '',
-                      files: []
+                      files: [],
+                      items: []
                     });
                   }}
                   className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-sm font-medium"
@@ -907,7 +1406,6 @@ const visualizeSupplierPurchase = async (purchase) => {
                         ))}
                       </select>
                       
-                      {/* NOUVEAU: Bouton Visualiser Soumission */}
                       {formData.submission_no && (
                         <button
                           type="button"
@@ -915,7 +1413,6 @@ const visualizeSupplierPurchase = async (purchase) => {
                             const selectedSubmission = submissions.find(s => s.submission_number === formData.submission_no);
                             if (selectedSubmission) {
                               try {
-                                // Récupérer les détails complets de la soumission depuis Supabase
                                 const { data: submissionDetails, error } = await supabase
                                   .from('submissions')
                                   .select('*')
@@ -924,12 +1421,11 @@ const visualizeSupplierPurchase = async (purchase) => {
 
                                 if (error) throw error;
 
-                                // Calculer les totaux à partir des items
-                                  const totalVente = submissionDetails.items?.reduce((sum, item) => 
-                                    sum + ((item.selling_price || item.sale_price || item.unit_price || 0) * (item.quantity || 0)), 0) || 0;
-                                  const totalCost = submissionDetails.items?.reduce((sum, item) => 
-                                    sum + ((item.cost_price || item.unit_cost || 0) * (item.quantity || 0)), 0) || 0;
-                                // Créer une nouvelle fenêtre avec le contenu de la soumission formaté pour l'impression
+                                const totalVente = submissionDetails.items?.reduce((sum, item) => 
+                                  sum + ((item.selling_price || item.sale_price || item.unit_price || 0) * (item.quantity || 0)), 0) || 0;
+                                const totalCost = submissionDetails.items?.reduce((sum, item) => 
+                                  sum + ((item.cost_price || item.unit_cost || 0) * (item.quantity || 0)), 0) || 0;
+                                
                                 const printWindow = window.open('', '_blank', 'width=800,height=600');
                                 
                                 const printContent = `
@@ -1103,7 +1599,6 @@ const visualizeSupplierPurchase = async (purchase) => {
                 />
               </div>
 
-              {/* SECTION: Achats Fournisseurs Liés - VERSION CORRIGÉE */}
               {editingPO && (
                 <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
                   <label className="block text-sm font-semibold text-orange-800 mb-2">
@@ -1117,7 +1612,6 @@ const visualizeSupplierPurchase = async (purchase) => {
                     </div>
                   ) : (
                     <>
-                      {/* Achats fournisseurs déjà liés */}
                       {linkedPurchases.length > 0 ? (
                         <div className="mb-4">
                           <p className="text-sm font-medium text-orange-700 mb-3">
@@ -1260,6 +1754,266 @@ const visualizeSupplierPurchase = async (purchase) => {
 
   return (
     <div className="space-y-6 p-4">
+      {/* Modal de Livraison AMÉLIORÉ avec Checkboxes */}
+      {showDeliveryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header du Modal */}
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">🚚 Créer un Bon de Livraison</h2>
+                  <p className="text-blue-100 mt-1">
+                    BA Client: {selectedPOForDelivery?.po_number} • {selectedPOForDelivery?.client_name}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowDeliveryModal(false);
+                    setSelectedPOForDelivery(null);
+                    setDeliveryFormData({
+                      delivery_date: new Date().toISOString().split('T')[0],
+                      transport_company: '',
+                      transport_number: '',
+                      delivery_contact: '',
+                      special_instructions: '',
+                      items: []
+                    });
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu du Modal */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {/* Informations de livraison */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    📅 Date de livraison *
+                  </label>
+                  <input
+                    type="date"
+                    value={deliveryFormData.delivery_date}
+                    onChange={(e) => setDeliveryFormData({...deliveryFormData, delivery_date: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    👤 Contact de livraison
+                  </label>
+                  <input
+                    type="text"
+                    value={deliveryFormData.delivery_contact}
+                    onChange={(e) => setDeliveryFormData({...deliveryFormData, delivery_contact: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nom du contact sur place"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    🚚 Transporteur
+                  </label>
+                  <select
+                    value={deliveryFormData.transport_company}
+                    onChange={(e) => setDeliveryFormData({...deliveryFormData, transport_company: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="Purolator">Purolator</option>
+                    <option value="Dicom">Dicom</option>
+                    <option value="FedEx">FedEx</option>
+                    <option value="UPS">UPS</option>
+                    <option value="Postes Canada">Postes Canada</option>
+                    <option value="Transport TMT">Transport TMT</option>
+                    <option value="Client">Ramassage Client</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    📦 N° de suivi
+                  </label>
+                  <input
+                    type="text"
+                    value={deliveryFormData.transport_number}
+                    onChange={(e) => setDeliveryFormData({...deliveryFormData, transport_number: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Numéro de tracking"
+                  />
+                </div>
+              </div>
+
+              {/* Instructions spéciales */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  📝 Instructions spéciales
+                </label>
+                <textarea
+                  value={deliveryFormData.special_instructions}
+                  onChange={(e) => setDeliveryFormData({...deliveryFormData, special_instructions: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows="3"
+                  placeholder="Instructions de livraison, notes importantes..."
+                />
+              </div>
+
+              {/* Articles à livrer AVEC CHECKBOXES */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">📦 Articles à livrer</h3>
+                
+                {/* Historique des livraisons */}
+                {deliverySlips.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-blue-700 font-medium mb-2">
+                      📋 Historique: {deliverySlips.length} livraison(s) effectuée(s)
+                    </p>
+                    <div className="space-y-1">
+                      {deliverySlips.slice(0, 3).map(slip => (
+                        <div key={slip.id} className="text-xs text-blue-600">
+                          • {slip.delivery_number} - {formatDate(slip.delivery_date)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-gray-50 rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-200">
+                      <tr>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">
+                          <input
+                            type="checkbox"
+                            onChange={(e) => {
+                              const newItems = deliveryFormData.items.map(item => ({
+                                ...item,
+                                selected: e.target.checked && (item.quantity - item.delivered_quantity) > 0,
+                                quantity_to_deliver: e.target.checked ? (item.quantity - item.delivered_quantity) : 0
+                              }));
+                              setDeliveryFormData({...deliveryFormData, items: newItems});
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Article</th>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Qté Totale</th>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Déjà Livré</th>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Restant</th>
+                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">À Livrer</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {deliveryFormData.items.map((item, index) => {
+                        const remaining = (item.quantity || 0) - (item.delivered_quantity || 0);
+                        return (
+                          <tr key={index} className={remaining <= 0 ? 'bg-green-50' : ''}>
+                            <td className="px-4 py-3 text-center">
+                              {remaining > 0 ? (
+                                <input
+                                  type="checkbox"
+                                  checked={item.selected || false}
+                                  onChange={(e) => {
+                                    const newItems = [...deliveryFormData.items];
+                                    newItems[index].selected = e.target.checked;
+                                    newItems[index].quantity_to_deliver = e.target.checked ? remaining : 0;
+                                    setDeliveryFormData({...deliveryFormData, items: newItems});
+                                  }}
+                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm font-medium text-gray-900">{item.product_id || 'N/A'}</div>
+                              <div className="text-xs text-gray-500">{item.description}</div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="text-sm font-medium">{item.quantity || 0}</span>
+                              <span className="text-xs text-gray-500 ml-1">{item.unit}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="text-sm">{item.delivered_quantity || 0}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`text-sm font-medium ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                                {remaining}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {remaining > 0 ? (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={remaining}
+                                  value={item.quantity_to_deliver || 0}
+                                  onChange={(e) => {
+                                    const newItems = [...deliveryFormData.items];
+                                    const newValue = Math.min(
+                                      parseFloat(e.target.value) || 0,
+                                      remaining
+                                    );
+                                    newItems[index].quantity_to_deliver = newValue;
+                                    newItems[index].selected = newValue > 0;
+                                    setDeliveryFormData({...deliveryFormData, items: newItems});
+                                  }}
+                                  disabled={!item.selected}
+                                  className="w-20 p-1 border border-gray-300 rounded text-center disabled:bg-gray-100"
+                                />
+                              ) : (
+                                <span className="text-green-600 text-sm">✅ Complet</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer du Modal */}
+            <div className="bg-gray-50 px-6 py-4 border-t">
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-gray-600">
+                  {deliveryFormData.items.filter(i => i.selected && i.quantity_to_deliver > 0).length} article(s) sélectionné(s)
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowDeliveryModal(false);
+                      setSelectedPOForDelivery(null);
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={createDeliverySlip}
+                    disabled={!deliveryFormData.items.some(i => i.selected && i.quantity_to_deliver > 0)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Créer et Imprimer BL
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER PRINCIPAL - TOUJOURS VISIBLE */}
       <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
           <div>
@@ -1332,6 +2086,7 @@ const visualizeSupplierPurchase = async (purchase) => {
         </div>
       </div>
 
+      {/* BARRE DE RECHERCHE - TOUJOURS VISIBLE */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="flex-1">
@@ -1361,6 +2116,7 @@ const visualizeSupplierPurchase = async (purchase) => {
         </div>
       </div>
 
+      {/* TABLEAU DESKTOP MODIFIÉ */}
       <div className="hidden lg:block bg-white shadow-lg overflow-hidden rounded-lg border border-gray-200">
         {filteredPurchaseOrders.length === 0 ? (
           <div className="text-center py-12">
@@ -1397,9 +2153,12 @@ const visualizeSupplierPurchase = async (purchase) => {
                   Statut
                 </th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Livraison
+                </th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Fichiers
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
                   Actions
                 </th>
               </tr>
@@ -1447,6 +2206,9 @@ const visualizeSupplierPurchase = async (purchase) => {
                        po.status?.toLowerCase() === 'rejected' ? '❌' : '❓'}
                     </span>
                   </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                    {getDeliveryBadge(getDeliveryStatus(po))}
+                  </td>
                   <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
                     {po.files && po.files.length > 0 ? (
                       <div className="flex items-center justify-center">
@@ -1459,6 +2221,15 @@ const visualizeSupplierPurchase = async (purchase) => {
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-center">
                     <div className="flex justify-center space-x-1">
+                      {po.status?.toLowerCase() === 'approved' && (
+                        <button
+                          onClick={() => openDeliveryModal(po)}
+                          className="bg-purple-100 text-purple-700 hover:bg-purple-200 p-2 rounded-lg transition-colors"
+                          title="Gérer les livraisons"
+                        >
+                          <Truck className="w-4 h-4" />
+                        </button>
+                      )}
                       {po.status?.toLowerCase() === 'pending' && (
                         <>
                           <button
@@ -1500,6 +2271,7 @@ const visualizeSupplierPurchase = async (purchase) => {
         )}
       </div>
 
+      {/* VUE MOBILE MODIFIÉE */}
       <div className="lg:hidden space-y-4">
         {filteredPurchaseOrders.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -1682,6 +2454,14 @@ const visualizeSupplierPurchase = async (purchase) => {
                 >
                   ✏️ Modifier
                 </button>
+                {po.status?.toLowerCase() === 'approved' && (
+                  <button
+                    onClick={() => openDeliveryModal(po)}
+                    className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                  >
+                    🚚 Livraison
+                  </button>
+                )}
                 {po.status?.toLowerCase() === 'pending' && (
                   <button
                     onClick={() => handleStatusChange(po.id, 'approved')}
@@ -1701,6 +2481,25 @@ const visualizeSupplierPurchase = async (purchase) => {
           📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
         </p>
       </div>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-700">
+          📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
+        </p>
+      </div>
+      
+      {/* 👇 AJOUTEZ CES LIGNES ICI */}
+      <DeliverySlipModal
+        isOpen={showDeliveryModal}
+        onClose={() => {
+          setShowDeliveryModal(false);
+          setSelectedPOForDelivery(null);
+        }}
+        clientPO={selectedPOForDelivery}
+        onRefresh={() => {
+          fetchPurchaseOrders();
+          setShowDeliveryModal(false);
+        }}
+      />      
     </div>
   );
 }
