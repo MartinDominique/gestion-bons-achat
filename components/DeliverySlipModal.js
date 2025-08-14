@@ -540,10 +540,10 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   setTimeout(() => {
     printWindow.print();
     
-    // Fermer automatiquement après 3 secondes
+    // Fermer automatiquement après 1 secondes
     setTimeout(() => {
       printWindow.close();
-     }, 500);
+     }, 1000);
     
     }, 100);
    };
