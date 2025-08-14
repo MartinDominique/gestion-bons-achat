@@ -52,7 +52,8 @@ export default function SupplierPurchaseManager() {
     delivery_date: '',
     items: [],
     subtotal: 0,
-    taxes: 0,
+    tps: 0,
+    tvq: 0,
     shipping_cost: 0,
     total_amount: 0,
     status: 'draft',
@@ -136,21 +137,23 @@ export default function SupplierPurchaseManager() {
   }, [productSearchTerm]);
 
   // Calcul automatique des totaux
-  useEffect(() => {
-    const subtotal = selectedItems.reduce((sum, item) => {
-      return sum + (item.cost_price * item.quantity);
-    }, 0);
-    
-    const taxes = subtotal * 0.14975; // TPS + TVQ
-    const total = subtotal + taxes + parseFloat(purchaseForm.shipping_cost || 0);
-    
-    setPurchaseForm(prev => ({ 
-      ...prev, 
-      subtotal,
-      taxes,
-      total_amount: total
-    }));
-  }, [selectedItems, purchaseForm.shipping_cost]);
+useEffect(() => {
+  const subtotal = selectedItems.reduce((sum, item) => {
+    return sum + (item.cost_price * item.quantity);
+  }, 0);
+  
+  const tps = subtotal * 0.05;    // TPS 5%
+  const tvq = subtotal * 0.09975; // TVQ 9.975%
+  const total = subtotal + tps + tvq + parseFloat(purchaseForm.shipping_cost || 0);
+  
+  setPurchaseForm(prev => ({ 
+    ...prev, 
+    subtotal,
+    tps,
+    tvq,
+    total_amount: total
+  }));
+}, [selectedItems, purchaseForm.shipping_cost]);
 
   // Fonction pour générer le numéro d'achat
   const generatePurchaseNumber = async () => {
@@ -614,7 +617,8 @@ export default function SupplierPurchaseManager() {
 })(),
       items: selectedItems,
       subtotal: purchaseForm.subtotal,
-      taxes: purchaseForm.taxes,
+      tps: purchaseForm.tps,
+      tvq: purchaseForm.tvq,
       shipping_cost: parseFloat(purchaseForm.shipping_cost || 0),
       total_amount: purchaseForm.total_amount,
       status: purchaseForm.status,
@@ -689,8 +693,21 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
   };
 
   const handlePrint = () => {
-    window.print();
-  };
+  // Sauvegarder le titre original
+  const originalTitle = document.title;
+  
+  // Changer temporairement le titre pour le nom du fichier PDF
+  const pdfFileName = purchaseForm.purchase_number || 'Achat-nouveau';
+  document.title = pdfFileName;
+  
+  // Imprimer
+  window.print();
+  
+  // Restaurer le titre original après un délai
+  setTimeout(() => {
+    document.title = originalTitle;
+  }, 1000);
+};
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
@@ -788,7 +805,7 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
             <div className="text-right">
               <h1 className="text-2xl font-bold mb-2">BON DE COMMANDE</h1>
               <div className="text-sm text-gray-600 space-y-1">
-                <p><strong>N° Achat:</strong> {purchaseForm.purchase_number}</p>
+                <p><strong>{purchaseForm.purchase_number}</strong></p>
                 <p><strong>Date:</strong> {formatDate(new Date())}</p>
                 {purchaseForm.linked_po_number && (
                   <p><strong>PO Client:</strong> {purchaseForm.linked_po_number}</p>
@@ -835,7 +852,7 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
           {/* Informations de livraison */}
           {(purchaseForm.shipping_company || purchaseForm.shipping_account) && (
             <div className="mb-6 bg-gray-50 p-3 rounded">
-              <h3 className="font-bold mb-2">Méthode de livraison:</h3>
+              <h3 className="font-bold mb-2">Livraison:</h3>
               <div className="flex gap-6">
                 {purchaseForm.shipping_company && <p><strong>Transporteur:</strong> {purchaseForm.shipping_company}</p>}
                 {purchaseForm.shipping_account && <p><strong>N° de compte:</strong> {purchaseForm.shipping_account}</p>}
@@ -872,10 +889,14 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
                 <td colSpan="5" className="text-right font-medium">Sous-total:</td>
                 <td className="text-right">{formatCurrency(purchaseForm.subtotal)}</td>
               </tr>
-              <tr>
-                <td colSpan="5" className="text-right font-medium">Taxes (14.975%):</td>
-                <td className="text-right">{formatCurrency(purchaseForm.taxes)}</td>
-              </tr>
+             <tr>
+              <td colSpan="5" className="text-right font-medium">TPS (5%):</td>
+              <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
+            </tr>
+            <tr>
+              <td colSpan="5" className="text-right font-medium">TVQ (9.975%):</td>
+              <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
+            </tr>
               {purchaseForm.shipping_cost > 0 && (
                 <tr>
                   <td colSpan="5" className="text-right font-medium">Frais de livraison:</td>
@@ -1351,25 +1372,29 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
                 </div>
 
                 {/* Totaux */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="bg-green-100 p-4 rounded-lg border border-green-300">
-                    <p className="text-sm font-semibold text-green-800">Sous-total</p>
-                    <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
-                  </div>
-                  <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
-                    <p className="text-sm font-semibold text-blue-800">Taxes</p>
-                    <p className="text-xl font-bold text-blue-900">{formatCurrency(purchaseForm.taxes)}</p>
-                  </div>
-                  <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
-                    <p className="text-sm font-semibold text-orange-800">Livraison</p>
-                    <p className="text-xl font-bold text-orange-900">{formatCurrency(purchaseForm.shipping_cost)}</p>
-                  </div>
-                  <div className="bg-purple-100 p-4 rounded-lg border border-purple-300">
-                    <p className="text-sm font-semibold text-purple-800">TOTAL</p>
-                    <p className="text-xl font-bold text-purple-900">{formatCurrency(purchaseForm.total_amount)}</p>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+                <div className="bg-green-100 p-4 rounded-lg border border-green-300">
+                <p className="text-sm font-semibold text-green-800">Sous-total</p>
+                <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
                 </div>
-              </form>
+                <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
+                 <p className="text-sm font-semibold text-blue-800">TPS (5%)</p>
+                <p className="text-xl font-bold text-blue-900">{formatCurrency(purchaseForm.tps)}</p>
+              </div>
+                <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
+                <p className="text-sm font-semibold text-cyan-800">TVQ (9.975%)</p>
+                <p className="text-xl font-bold text-cyan-900">{formatCurrency(purchaseForm.tvq)}</p>
+              </div>
+                <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
+                <p className="text-sm font-semibold text-orange-800">Livraison</p>
+                <p className="text-xl font-bold text-orange-900">{formatCurrency(purchaseForm.shipping_cost)}</p>
+              </div>
+                <div className="bg-purple-100 p-4 rounded-lg border border-purple-300">
+                <p className="text-sm font-semibold text-purple-800">TOTAL</p>
+                <p className="text-xl font-bold text-purple-900">{formatCurrency(purchaseForm.total_amount)}</p>
+                </div>
+              </div>
+             </form>
             </div>
           </div>
         </div>
