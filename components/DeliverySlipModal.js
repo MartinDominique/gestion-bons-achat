@@ -213,23 +213,22 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         <style>
           @page { 
             size: letter; 
-            margin: 0.5in;
+            margin: 0.3in;
           }
           body { 
             font-family: Arial, sans-serif; 
             margin: 0; 
-            padding: 20px;
+            padding: 15px;
             color: #333;
-            min-height: calc(100vh - 80px);
-            position: relative;
+            font-size: 12px;
           }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: start;
             border-bottom: 2px solid #333;
-            padding-bottom: 15px;
-            margin-bottom: 25px;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
           }
           .logo-section {
             display: flex;
@@ -280,54 +279,54 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 25px;
+            gap: 20px;
+            margin-bottom: 15px;
           }
           .info-box {
             border: 1px solid #e2e8f0;
-            padding: 15px;
+            padding: 10px;
             border-radius: 5px;
           }
           .info-title {
             font-weight: bold;
             color: #333;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 5px;
+            font-size: 12px;
             border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 5px;
+            padding-bottom: 3px;
           }
           .info-content {
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 11px;
+            line-height: 1.3;
             color: #666;
           }
           .section-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             color: #333;
-            margin: 25px 0 15px 0;
+            margin: 15px 0 10px 0;
             border-bottom: 1px solid #333;
-            padding-bottom: 5px;
+            padding-bottom: 3px;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border: 1px solid #333;
           }
           th {
             background: #f59e0b;
             color: white;
-            padding: 10px 8px;
+            padding: 8px 6px;
             text-align: left;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
           }
           td {
-            padding: 8px;
+            padding: 6px;
             border-bottom: 1px solid #e2e8f0;
             border-right: 1px solid #e2e8f0;
-            font-size: 11px;
+            font-size: 10px;
           }
           tr:last-child td {
             border-bottom: none;
@@ -351,8 +350,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             color: #92400e;
           }
           .page-footer {
-            margin-top: 40px;
-            padding-top: 20px;
+            margin-top: 20px;
+            padding-top: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -363,23 +362,23 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           }
           .signature-line {
             border-top: 2px solid #333;
-            width: 200px;
-            margin: 40px auto 8px auto;
+            width: 150px;
+            margin: 25px auto 5px auto;
           }
           .signature-text {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             color: #333;
           }
           .legal-text {
-            margin-top: 30px;
-            padding-top: 15px;
+            margin-top: 15px;
+            padding-top: 10px;
             border-top: 1px solid #e2e8f0;
-            font-size: 9px;
+            font-size: 8px;
             color: #666;
             text-align: center;
             font-style: italic;
-            line-height: 1.3;
+            line-height: 1.2;
           }
           @media print {
             body { margin: 0; }
@@ -446,13 +445,13 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
             .join('\n');
           
-          // Nettoyer les espaces multiples et lignes vides - une seule ligne
-          cleanNotes = cleanNotes.replace(/\n/g, ' ').trim();
+          // Nettoyer les espaces multiples et lignes vides - forcer une seule ligne
+          cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
           
           return cleanNotes ? `
-            <div style="border: 1px solid #ccc; padding: 8px 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #333;">
-              <strong style="font-size: 12px;">NOTES:</strong> 
-              <span style="font-size: 12px;">${cleanNotes}</span>
+            <div style="border: 1px solid #ccc; padding: 5px 10px; border-radius: 3px; margin: 10px 0; border-left: 3px solid #333;">
+              <strong style="font-size: 11px;">NOTES:</strong> 
+              <span style="font-size: 11px;">${cleanNotes}</span>
             </div>
           ` : '';
         })()}
@@ -510,13 +509,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             </tbody>
           </table>
         </div>
-
-        ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-          <div style="border: 1px solid #ccc; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #666;">
-            <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">INSTRUCTIONS SPÉCIALES:</div>
-            <div style="font-size: 12px; line-height: 1.4;">${formData.special_instructions}</div>
-          </div>
-        ` : ''}
 
         <div class="page-footer">
           <div class="signature-box">
@@ -625,7 +617,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       
       if (slipError) {
         console.error('Erreur création bon:', slipError);
-        alert('Erreur lors de la création du bon de livraison');
+        alert('❌ Erreur lors de la création du bon de livraison: ' + slipError.message);
         return;
       }
       
@@ -658,12 +650,14 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         }))
       };
       
-      // 5. Mettre à jour seulement le statut du BA (sans modifier les notes)
+      // 5. Mettre à jour le statut du BA - NE PAS changer le statut si partiellement livré
+      // Garder le statut 'approved' pour permettre d'autres livraisons
       const allFullyDelivered = formData.items.every(
-        item => item.quantity_to_deliver >= item.quantity
+        item => (item.delivered_quantity + item.quantity_to_deliver) >= item.quantity
       );
       
-      const newStatus = allFullyDelivered ? 'delivered' : 'partially_delivered';
+      // Changer le statut seulement si TOUT est livré
+      const newStatus = allFullyDelivered ? 'delivered' : clientPO.status; // Garder le statut actuel
       
       // Garder les notes originales sans y ajouter l'historique des livraisons
       let cleanNotes = clientPO.notes || '';
@@ -690,7 +684,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         })
         .eq('id', clientPO.id);
       
-      alert(`✅ Bon de livraison ${deliveryNumber} créé avec succès!`);
+      console.log(`✅ Bon de livraison ${deliveryNumber} créé, statut BA: ${newStatus}`);
+      
+      console.log(`✅ Bon de livraison ${deliveryNumber} créé, statut BA: ${newStatus}`);
       
       // 6. Générer le PDF
       await generatePDF(deliverySlip, selectedItems);
@@ -701,7 +697,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       
     } catch (error) {
       console.error('Erreur générale:', error);
-      alert('Erreur lors de la création du bon de livraison');
+      alert('❌ Erreur lors de la création du bon de livraison: ' + error.message);
     }
   };
 
