@@ -157,9 +157,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
   };
   
-  // Générer le PDF professionnel
+  // Générer le PDF professionnel avec 2 copies
   const generatePDF = async (deliverySlip, selectedItems) => {
-    console.log('Génération PDF professionnel pour:', deliverySlip);
+    console.log('Génération PDF avec 2 copies pour:', deliverySlip);
     
     // Récupérer les informations du BO associé
     let purchaseOrderInfo = '';
@@ -175,7 +175,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       }
     }
 
-    // Récupérer les livraisons antérieures pour afficher l'historique
+    // Récupérer les livraisons antérieures
     const { data: previousDeliveries } = await supabase
       .from('delivery_slip_items')
       .select(`
@@ -184,27 +184,154 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         delivery_slips!inner(delivery_number, delivery_date, purchase_order_id)
       `)
       .eq('delivery_slips.purchase_order_id', clientPO.id)
-      .neq('delivery_slips.delivery_number', deliverySlip.delivery_number); // Exclure la livraison actuelle
-    
+      .neq('delivery_slips.delivery_number', deliverySlip.delivery_number);
+
+    // Nettoyer les notes une seule fois
+    let cleanNotes = clientPO.notes || '';
+    cleanNotes = cleanNotes.split('\n')
+      .filter(line => !line.includes('[LIVRAISON'))
+      .join('\n');
+    cleanNotes = cleanNotes.split('\n')
+      .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
+      .join('\n');
+    cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
+
+    // Générer le contenu d'une copie
+    const generateCopyContent = (copyType, items) => {
+      return `
+        <div class="copy-container" style="page-break-after: ${copyType === 'CLIENT' ? 'always' : 'auto'};">
+          <div class="copy-header" style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #333; text-transform: uppercase; letter-spacing: 1px;">
+            ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
+          </div>
+          
+          <div class="header">
+            <div class="logo-section">
+              <div class="logo-container">
+                <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
+              </div>
+              <div class="company-info">
+                <div class="company-name"></div>
+                3195, 42e Rue Nord<br>
+                Saint-Georges, QC G5Z 0V9<br>
+                Tél: (418) 225-3875<br>
+                info.servicestmt@gmail.com
+              </div>
+            </div>
+            <div class="doc-info">
+              <div class="doc-title">BON DE LIVRAISON</div>
+              <div class="doc-number">${deliverySlip.delivery_number}</div>
+              <div class="doc-details">
+                Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
+                BA Client: ${clientPO.po_number}<br>
+                ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
+                ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="info-grid">
+            <div class="info-box">
+              <div class="info-title">Livrer à:</div>
+              <div class="info-content">
+                <strong>${clientPO.client_name}</strong><br>
+                ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
+                ${clientPO.delivery_address || 'Adresse de livraison à confirmer'}
+              </div>
+            </div>
+            <div class="info-box">
+              <div class="info-title">Informations de transport:</div>
+              <div class="info-content">
+                Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
+                N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
+                Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
+              </div>
+            </div>
+          </div>
+
+          ${cleanNotes ? `
+            <div style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #333;">
+              <strong style="font-size: 10px;">NOTES:</strong> 
+              <span style="font-size: 10px;">${cleanNotes}</span>
+            </div>
+          ` : ''}
+
+          <div class="delivered-section">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 15%;">Code</th>
+                  <th style="width: 35%;">Description</th>
+                  <th style="width: 8%; text-align: center;">Unité</th>
+                  <th style="width: 12%; text-align: center;">Qté Commandée</th>
+                  <th style="width: 12%; text-align: center;">Qté Livrée</th>
+                  <th style="width: 18%; text-align: center;">Qté en souffrance</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map(item => `
+                  <tr>
+                    <td><strong>${item.product_id}</strong></td>
+                    <td>
+                      ${item.description}
+                      ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #666;">${item.previousDeliveryInfo}</small>` : ''}
+                    </td>
+                    <td style="text-align: center;">${item.unit || 'UN'}</td>
+                    <td style="text-align: center;">${item.quantity}</td>
+                    <td style="text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
+                    <td style="text-align: center;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="page-footer">
+            <div class="signature-box">
+              <div class="signature-line"></div>
+              <div class="signature-text">SIGNATURE CLIENT</div>
+            </div>
+            <div style="text-align: center; font-size: 10px; color: #333;">
+              Date de réception: ___________________
+            </div>
+          </div>
+
+          ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+            <div style="border: 1px solid #ccc; padding: 6px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #666; page-break-inside: avoid;">
+              <strong style="font-size: 9px;">INSTRUCTIONS SPÉCIALES:</strong> 
+              <span style="font-size: 9px;">${formData.special_instructions}</span>
+            </div>
+          ` : ''}
+
+          <div class="legal-text">
+            La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
+            Toute réclamation doit être faite dans les 48 heures suivant la réception.
+          </div>
+        </div>
+      `;
+    };
+
+    // Préparer les données des articles
+    const allOrderItems = formData.items.map(item => {
+      const deliveredItem = selectedItems.find(si => si.product_id === item.product_id);
+      const quantityDeliveredNow = deliveredItem ? deliveredItem.quantity_to_deliver : 0;
+      const remainingAfterDelivery = item.remaining_quantity - quantityDeliveredNow;
+      
+      const previousDeliveryInfo = previousDeliveries
+        ?.filter(d => d.notes && d.notes.includes(item.product_id))
+        ?.map(d => `[${d.delivery_slips.delivery_number}] - ${new Date(d.delivery_slips.delivery_date).toLocaleDateString('fr-CA')}`)
+        ?.join('<br>') || '';
+      
+      return {
+        ...item,
+        quantity_delivered_now: quantityDeliveredNow,
+        remaining_after_delivery: Math.max(0, remainingAfterDelivery),
+        previousDeliveryInfo: previousDeliveryInfo
+      };
+    });
+
     const printWindow = window.open('', '_blank');
     
-    // Calculer les articles restants (Back Order)
-    const allItems = formData.items;
-    const backOrderItems = allItems
-      .map(item => {
-        // Trouver si cet article est livré dans cette livraison
-        const deliveredItem = selectedItems.find(si => si.product_id === item.product_id);
-        const quantityBeingDelivered = deliveredItem ? deliveredItem.quantity_to_deliver : 0;
-        const remainingAfterDelivery = item.remaining_quantity - quantityBeingDelivered;
-        
-        return {
-          ...item,
-          remaining_after_delivery: remainingAfterDelivery
-        };
-      })
-      .filter(item => item.remaining_after_delivery > 0);
-    
-    const html = `
+    const fullHTML = `
       <!DOCTYPE html>
       <html lang="fr">
       <head>
@@ -222,6 +349,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             color: #333;
             font-size: 11px;
             line-height: 1.2;
+          }
+          .copy-container {
+            min-height: 100vh;
           }
           .header {
             display: flex;
@@ -385,198 +515,29 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="logo-section">
-            <div class="logo-container">
-              <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
-            </div>
-            <div class="company-info">
-              <div class="company-name"></div>
-              3195, 42e Rue Nord<br>
-              Saint-Georges, QC G5Z 0V9<br>
-              Tél: (418) 225-3875<br>
-              info.servicestmt@gmail.com
-            </div>
-          </div>
-          <div class="doc-info">
-            <div class="doc-title">BON DE LIVRAISON</div>
-            <div class="doc-number">${deliverySlip.delivery_number}</div>
-            <div class="doc-details">
-              Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
-              BA Client: ${clientPO.po_number}<br>
-              ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
-              ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
-            </div>
-          </div>
-        </div>
-
-        <div class="info-grid">
-          <div class="info-box">
-            <div class="info-title">Livrer à:</div>
-            <div class="info-content">
-              <strong>${clientPO.client_name}</strong><br>
-              ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
-              ${clientPO.delivery_address || 'Adresse de livraison à confirmer'}
-            </div>
-          </div>
-          <div class="info-box">
-            <div class="info-title">Informations de transport:</div>
-            <div class="info-content">
-              Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
-              N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
-              Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
-            </div>
-          </div>
-        </div>
-
-        ${(() => {
-          // Nettoyer les notes : enlever les [LIVRAISON...] ET les [date] Bon de livraison...
-          let cleanNotes = clientPO.notes || '';
-          
-          // Supprimer les lignes avec [LIVRAISON...]
-          cleanNotes = cleanNotes.split('\n')
-            .filter(line => !line.includes('[LIVRAISON'))
-            .join('\n');
-          
-          // Supprimer les lignes avec [date] Bon de livraison... créé
-          cleanNotes = cleanNotes.split('\n')
-            .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
-            .join('\n');
-          
-          // Nettoyer les espaces multiples et lignes vides - forcer une seule ligne
-          cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
-          
-          return cleanNotes ? `
-            <div style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #333;">
-              <strong style="font-size: 10px;">NOTES:</strong> 
-              <span style="font-size: 10px;">${cleanNotes}</span>
-            </div>
-          ` : '';
-        })()}
-
-        <div class="delivered-section">
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 15%;">Code</th>
-                <th style="width: 35%;">Description</th>
-                <th style="width: 8%; text-align: center;">Unité</th>
-                <th style="width: 12%; text-align: center;">Qté Commandée</th>
-                <th style="width: 12%; text-align: center;">Qté Livrée</th>
-                <th style="width: 18%; text-align: center;">Qté en souffrance</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(() => {
-                // Afficher TOUS les articles de la commande
-                const allOrderItems = formData.items.map(item => {
-                  // Trouver si cet article est livré dans cette livraison
-                  const deliveredItem = selectedItems.find(si => si.product_id === item.product_id);
-                  const quantityDeliveredNow = deliveredItem ? deliveredItem.quantity_to_deliver : 0;
-                  const remainingAfterDelivery = item.remaining_quantity - quantityDeliveredNow;
-                  
-                  // Chercher les livraisons antérieures pour cet article
-                  const previousDeliveryInfo = previousDeliveries
-                    ?.filter(d => d.notes && d.notes.includes(item.product_id))
-                    ?.map(d => `[${d.delivery_slips.delivery_number}] - ${new Date(d.delivery_slips.delivery_date).toLocaleDateString('fr-CA')}`)
-                    ?.join('<br>') || '';
-                  
-                  return {
-                    ...item,
-                    quantity_delivered_now: quantityDeliveredNow,
-                    remaining_after_delivery: Math.max(0, remainingAfterDelivery),
-                    previousDeliveryInfo: previousDeliveryInfo
-                  };
-                });
-                
-                return allOrderItems.map(item => `
-                  <tr>
-                    <td><strong>${item.product_id}</strong></td>
-                    <td>
-                      ${item.description}
-                      ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #666;">${item.previousDeliveryInfo}</small>` : ''}
-                    </td>
-                    <td style="text-align: center;">${item.unit || 'UN'}</td>
-                    <td style="text-align: center;">${item.quantity}</td>
-                    <td style="text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
-                    <td style="text-align: center;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
-                  </tr>
-                `).join('');
-              })()}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="page-footer">
-          <div class="signature-box">
-            <div class="signature-line"></div>
-            <div class="signature-text">SIGNATURE CLIENT</div>
-          </div>
-          <div style="text-align: center; font-size: 12px; color: #333;">
-            Date de réception: ___________________
-          </div>
-        </div>
-
-        ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-          <div style="border: 1px solid #ccc; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #666;">
-            <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">INSTRUCTIONS SPÉCIALES:</div>
-            <div style="font-size: 12px; line-height: 1.4;">${formData.special_instructions}</div>
-          </div>
-        ` : ''}
-
-        ${(() => {
-          // Nettoyer les notes : enlever les [LIVRAISON...] ET les [date] Bon de livraison...
-          let cleanNotes = clientPO.notes || '';
-          
-          // Supprimer les lignes avec [LIVRAISON...]
-          cleanNotes = cleanNotes.split('\n')
-            .filter(line => !line.includes('[LIVRAISON'))
-            .join('\n');
-          
-          // Supprimer les lignes avec [date] Bon de livraison... créé
-          cleanNotes = cleanNotes.split('\n')
-            .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
-            .join('\n');
-          
-          // Nettoyer les espaces multiples et lignes vides
-          cleanNotes = cleanNotes.replace(/\n\s*\n/g, '\n').trim();
-          
-          return cleanNotes ? `
-            <div style="border: 1px solid #ccc; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #333;">
-              <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
-              <div style="font-size: 12px; line-height: 1.4; white-space: pre-line;">${cleanNotes}</div>
-            </div>
-          ` : '';
-        })()}
-
-        <div class="legal-text">
-          La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
-          Toute réclamation doit être faite dans les 48 heures suivant la réception.
-        </div>
+        ${generateCopyContent('CLIENT', allOrderItems)}
+        ${generateCopyContent('STMT', allOrderItems)}
       </body>
       </html>
     `;
     
-    printWindow.document.write(html);
+    printWindow.document.write(fullHTML);
     printWindow.document.close();
     
-    // Approche plus robuste pour fermer l'onglet après impression
+    // Approche pour fermer l'onglet après impression
     printWindow.onload = function() {
-      // Déclencher l'impression
       printWindow.print();
     };
     
-    // Écouter l'événement afterprint pour fermer l'onglet
     printWindow.onafterprint = function() {
       printWindow.close();
     };
     
-    // Fallback : fermer après un délai si l'événement afterprint ne fonctionne pas
     setTimeout(() => {
       if (!printWindow.closed) {
         printWindow.close();
       }
-    }, 3000); // 3 secondes pour laisser le temps à l'impression
+    }, 3000);
   };
   
   // Fonction pour soumettre et sauvegarder
@@ -648,44 +609,38 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       };
       
       // 5. Mettre à jour le statut du BA - NE PAS changer le statut si partiellement livré
-      // Garder le statut 'approved' pour permettre d'autres livraisons
       const allFullyDelivered = formData.items.every(
         item => (item.delivered_quantity + item.quantity_to_deliver) >= item.quantity
       );
       
       // Changer le statut seulement si TOUT est livré
-      const newStatus = allFullyDelivered ? 'delivered' : clientPO.status; // Garder le statut actuel
+      const newStatus = allFullyDelivered ? 'delivered' : clientPO.status;
       
       // Garder les notes originales sans y ajouter l'historique des livraisons
       let cleanNotes = clientPO.notes || '';
       
-      // Supprimer les lignes avec [LIVRAISON...]
       cleanNotes = cleanNotes.split('\n')
         .filter(line => !line.includes('[LIVRAISON'))
         .join('\n');
       
-      // Supprimer les lignes avec [date] Bon de livraison... créé
       cleanNotes = cleanNotes.split('\n')
         .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
         .join('\n');
       
-      // Nettoyer les espaces multiples et lignes vides
       cleanNotes = cleanNotes.replace(/\n\s*\n/g, '\n').trim();
       
       await supabase
         .from('purchase_orders')
         .update({ 
           status: newStatus,
-          notes: cleanNotes, // Garder seulement les notes propres
+          notes: cleanNotes,
           additionalNotes: JSON.stringify(deliveryInfo)
         })
         .eq('id', clientPO.id);
       
       console.log(`✅ Bon de livraison ${deliveryNumber} créé, statut BA: ${newStatus}`);
       
-      console.log(`✅ Bon de livraison ${deliveryNumber} créé, statut BA: ${newStatus}`);
-      
-      // 6. Générer le PDF
+      // 6. Générer le PDF avec 2 copies
       await generatePDF(deliverySlip, selectedItems);
       
       // 7. Rafraîchir et fermer
