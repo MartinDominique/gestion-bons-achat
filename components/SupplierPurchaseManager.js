@@ -939,31 +939,76 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
                 
                 {/* Fournisseur et Bon d'achat lié */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <label className="block text-sm font-semibold text-blue-800 mb-2">
-                      🏢 Fournisseur *
-                    </label>
-                    <select
-                      value={purchaseForm.supplier_id}
-                      onChange={(e) => {
-                        const supplier = suppliers.find(s => s.id === e.target.value);
-                        setPurchaseForm({
-                          ...purchaseForm, 
-                          supplier_id: e.target.value,
-                          supplier_name: supplier?.company_name || ''
-                        });
-                      }}
-                      className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
-                      required
-                    >
-                      <option value="">Sélectionner un fournisseur...</option>
-                      {suppliers.map((supplier) => (
-                        <option key={supplier.id} value={supplier.id}>
-                          {supplier.company_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  // Dans le formulaire d'achat, section Fournisseur (vers ligne 500)
+<div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+  <label className="block text-sm font-semibold text-blue-800 mb-2">
+    🏢 Fournisseur *
+  </label>
+  <div className="flex gap-2">
+    <select
+      value={purchaseForm.supplier_id}
+      onChange={(e) => {
+        const supplier = suppliers.find(s => s.id === e.target.value);
+        setPurchaseForm({
+          ...purchaseForm, 
+          supplier_id: e.target.value,
+          supplier_name: supplier?.company_name || ''
+        });
+      }}
+      className="block flex-1 rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+      required
+    >
+      <option value="">Sélectionner un fournisseur...</option>
+      {suppliers.map((supplier) => (
+        <option key={supplier.id} value={supplier.id}>
+          {supplier.company_name}
+        </option>
+      ))}
+    </select>
+    
+    {/* NOUVEAU BOUTON + pour créer directement un fournisseur */}
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🏢 Bouton + fournisseur cliqué - Ouverture directe formulaire');
+        
+        // Réinitialiser le formulaire pour un nouveau fournisseur
+        setEditingSupplier(null);
+        setSupplierForm({
+          company_name: '',
+          contact_name: '',
+          email: '',
+          phone: '',
+          address: '',
+          city: '',
+          province: 'QC',
+          postal_code: '',
+          country: 'Canada',
+          notes: ''
+        });
+        
+        // Ouvrir directement le formulaire de création
+        document.getElementById('supplier-form-modal').showModal();
+      }}
+      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0"
+      title="Nouveau fournisseur"
+    >
+      <Plus className="w-5 h-5" />
+    </button>
+    
+    {/* Bouton pour gérer les fournisseurs existants */}
+    <button
+      type="button"
+      onClick={() => setShowSupplierModal(true)}
+      className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex-shrink-0"
+      title="Gérer les fournisseurs"
+    >
+      <Building2 className="w-5 h-5" />
+    </button>
+  </div>
+</div>
 
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                     <label className="block text-sm font-semibold text-green-800 mb-2">
