@@ -547,6 +547,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     
     }, 100);
    };
+ };
   
   // Fonction pour soumettre et sauvegarder
   const handleSubmit = async () => {
