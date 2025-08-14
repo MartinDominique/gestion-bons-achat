@@ -348,26 +348,47 @@ export default function SupplierPurchaseManager() {
 
   // Recherche produits
   const searchProducts = async (searchTerm) => {
-    if (!searchTerm || searchTerm.length < 2) {
-      setProducts([]);
-      return;
-    }
+  if (!searchTerm || searchTerm.length < 2) {
+    setProducts([]);
+    return;
+  }
 
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
-        .order('description', { ascending: true })
-        .limit(50);
+  try {
+    // Recherche dans les produits inventaire
+    const { data: inventoryProducts, error: error1 } = await supabase
+      .from('products')
+      .select('*')
+      .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
+      .order('description', { ascending: true })
+      .limit(25);
 
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
-      console.error('Erreur recherche produits:', error);
-      setProducts([]);
-    }
-  };
+    if (error1) throw error1;
+
+    // Recherche dans les produits non-inventaire
+    const { data: nonInventoryProducts, error: error2 } = await supabase
+      .from('non_inventory_items')
+      .select('*')
+      .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
+      .order('description', { ascending: true })
+      .limit(25);
+
+    if (error2) throw error2;
+
+    // Combiner les résultats avec un indicateur de type
+    const combinedResults = [
+      ...(inventoryProducts || []).map(item => ({ ...item, type: 'inventory' })),
+      ...(nonInventoryProducts || []).map(item => ({ ...item, type: 'non_inventory' }))
+    ];
+
+    // Trier par description
+    combinedResults.sort((a, b) => a.description.localeCompare(b.description));
+
+    setProducts(combinedResults);
+  } catch (error) {
+    console.error('Erreur recherche produits:', error);
+    setProducts([]);
+  }
+};
 
   // Gestion des fournisseurs
   const handleSupplierSubmit = async (e) => {
