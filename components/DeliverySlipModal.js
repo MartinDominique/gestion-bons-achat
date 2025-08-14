@@ -199,7 +199,10 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     // Générer le contenu d'une copie
     const generateCopyContent = (copyType, items) => {
       return `
-        <div class="copy-container" style="page-break-after: ${copyType === 'CLIENT' ? 'always' : 'auto'}; min-height: 100vh; position: relative;">
+        <div class="copy-container" style="page-break-after: ${copyType === 'CLIENT' ? 'always' : 'auto'};">
+          <div class="copy-header" style="text-align: center; margin-bottom: 15px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
+            ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
+          </div>
           
           <div class="header">
             <div class="logo-section">
@@ -232,7 +235,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
               <div class="info-content">
                 <strong>${clientPO.client_name}</strong><br>
                 ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
-                ${clientPO.delivery_address || 'Adresse de livraison à confirmer'}
+                ${clientPO.delivery_address || clientPO.client_address || 'Adresse de livraison à confirmer'}
               </div>
             </div>
             <div class="info-box">
@@ -303,10 +306,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
             Toute réclamation doit être faite dans les 48 heures suivant la réception.
           </div>
-
-          <div class="copy-footer" style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
-            ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
-          </div>
         </div>
       `;
     };
@@ -352,9 +351,18 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             line-height: 1.2;
           }
           .copy-container {
-            min-height: 100vh;
-            position: relative;
-            padding-bottom: 40px;
+            margin-bottom: 20px;
+          }
+          .copy-header {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 8px;
+            background: #f0f0f0;
+            font-weight: bold;
+            font-size: 12px;
+            border: 2px solid #000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
           }
           .header {
             display: flex;
@@ -527,20 +535,17 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     printWindow.document.write(fullHTML);
     printWindow.document.close();
     
-    // Approche pour fermer l'onglet après impression
+    // Créer un bouton pour ouvrir en PDF ET imprimer
     printWindow.onload = function() {
-      printWindow.print();
+      // Ajouter un bouton pour télécharger en PDF
+      const buttonContainer = printWindow.document.createElement('div');
+      buttonContainer.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border: 2px solid #000; border-radius: 5px;';
+      buttonContainer.innerHTML = `
+        <button onclick="window.print()" style="margin-right: 10px; padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 3px; cursor: pointer;">📄 Imprimer</button>
+        <button onclick="window.close()" style="padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 3px; cursor: pointer;">✕ Fermer</button>
+      `;
+      printWindow.document.body.appendChild(buttonContainer);
     };
-    
-    printWindow.onafterprint = function() {
-      printWindow.close();
-    };
-    
-    setTimeout(() => {
-      if (!printWindow.closed) {
-        printWindow.close();
-      }
-    }, 3000);
   };
   
   // Fonction pour soumettre et sauvegarder
