@@ -157,7 +157,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
   };
   
-  // Générer le PDF professionnel avec 2 copies
+  // Générer le PDF professionnel avec 2 copies - IMPRESSION DIRECTE
   const generatePDF = async (deliverySlip, selectedItems) => {
     console.log('Génération PDF avec 2 copies pour:', deliverySlip);
     
@@ -231,7 +231,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
 
           <div class="info-grid">
             <div class="info-box">
-              <div class="info-title">Livrer à:</div>
+              <div class="info-title">Livrer à :</div>
               <div class="info-content">
                 <strong>${clientPO.client_name}</strong><br>
                 ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
@@ -535,16 +535,18 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     printWindow.document.write(fullHTML);
     printWindow.document.close();
     
-    // Créer un bouton pour ouvrir en PDF ET imprimer
+    // IMPRESSION DIRECTE - Ouvrir automatiquement le dialogue d'impression
     printWindow.onload = function() {
-      // Ajouter un bouton pour télécharger en PDF
-      const buttonContainer = printWindow.document.createElement('div');
-      buttonContainer.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border: 2px solid #000; border-radius: 5px;';
-      buttonContainer.innerHTML = `
-        <button onclick="window.print()" style="margin-right: 10px; padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 3px; cursor: pointer;">📄 Imprimer</button>
-        <button onclick="window.close()" style="padding: 8px 16px; background: #dc2626; color: white; border: none; border-radius: 3px; cursor: pointer;">✕ Fermer</button>
-      `;
-      printWindow.document.body.appendChild(buttonContainer);
+      // Attendre un moment pour que le contenu se charge complètement
+      setTimeout(() => {
+        // Ouvrir directement le dialogue d'impression du navigateur
+        printWindow.print();
+        
+        // Fermer automatiquement la fenêtre après impression ou annulation
+        printWindow.onafterprint = function() {
+          printWindow.close();
+        };
+      }, 100);
     };
   };
   
@@ -648,7 +650,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       
       console.log(`✅ Bon de livraison ${deliveryNumber} créé, statut BA: ${newStatus}`);
       
-      // 6. Générer le PDF avec 2 copies
+      // 6. Générer le PDF avec 2 copies et impression directe
       await generatePDF(deliverySlip, selectedItems);
       
       // 7. Rafraîchir et fermer
