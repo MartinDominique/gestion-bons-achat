@@ -395,7 +395,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             </div>
             <div class="company-info">
               <div class="company-name"></div>
-              3195, 42e Rue Nord<br>
+              195, 42e Rue Nord<br>
               Saint-Georges, QC G5Z 0V9<br>
               Tél: (418) 225-3875<br>
               info.servicestmt@gmail.com
@@ -403,7 +403,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </div>
           <div class="doc-info">
             <div class="doc-title">BON DE LIVRAISON</div>
-            <div class="doc-number">N° ${deliverySlip.delivery_number}</div>
+            <div class="doc-number">${deliverySlip.delivery_number}</div>
             <div class="doc-details">
               Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
               BA Client: ${clientPO.po_number}<br>
@@ -447,58 +447,40 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             </thead>
             <tbody>
               ${(() => {
-                // Créer une liste combinée : articles livrés + articles en BO
-                const allArticles = [];
-                
-                // Ajouter les articles livrés
-                selectedItems.forEach(item => {
-                  const originalItem = formData.items.find(i => i.product_id === item.product_id);
-                  const qtyEnSouffrance = originalItem ? originalItem.remaining_quantity - item.quantity_to_deliver : 0;
+                // Afficher TOUS les articles de la commande
+                const allOrderItems = formData.items.map(item => {
+                  // Trouver si cet article est livré dans cette livraison
+                  const deliveredItem = selectedItems.find(si => si.product_id === item.product_id);
+                  const quantityDeliveredNow = deliveredItem ? deliveredItem.quantity_to_deliver : 0;
+                  const remainingAfterDelivery = item.remaining_quantity - quantityDeliveredNow;
                   
-                  allArticles.push({
-                    ...item,
-                    originalQuantity: originalItem ? originalItem.quantity : item.quantity,
-                    qtyEnSouffrance: Math.max(0, qtyEnSouffrance),
-                    isDelivered: true
-                  });
-                });
-                
-                // Ajouter les articles en Back Order (non livrés dans cette livraison)
-                backOrderItems.forEach(item => {
-                  // Vérifier si cet article n'est pas déjà dans les articles livrés
-                  const alreadyInDelivered = allArticles.find(a => a.product_id === item.product_id);
-                  if (!alreadyInDelivered) {
-                    allArticles.push({
-                      ...item,
-                      originalQuantity: item.quantity,
-                      quantity_to_deliver: 0,
-                      qtyEnSouffrance: item.remaining_after_delivery,
-                      isDelivered: false
-                    });
-                  }
-                });
-                
-                return allArticles.map(item => {
                   // Chercher les livraisons antérieures pour cet article
                   const previousDeliveryInfo = previousDeliveries
                     ?.filter(d => d.notes && d.notes.includes(item.product_id))
                     ?.map(d => `[${d.delivery_slips.delivery_number}] - ${new Date(d.delivery_slips.delivery_date).toLocaleDateString('fr-CA')}`)
                     ?.join('<br>') || '';
                   
-                  return `
-                    <tr>
-                      <td><strong>${item.product_id}</strong></td>
-                      <td>
-                        ${item.description}
-                        ${previousDeliveryInfo ? `<br><small style="font-style: italic; color: #666;">${previousDeliveryInfo}</small>` : ''}
-                      </td>
-                      <td style="text-align: center;">${item.unit || 'UN'}</td>
-                      <td style="text-align: center;">${item.originalQuantity}</td>
-                      <td style="text-align: center;"><strong>${item.quantity_to_deliver}</strong></td>
-                      <td style="text-align: center;">${item.qtyEnSouffrance > 0 ? item.qtyEnSouffrance : '—'}</td>
-                    </tr>
-                  `;
-                }).join('');
+                  return {
+                    ...item,
+                    quantity_delivered_now: quantityDeliveredNow,
+                    remaining_after_delivery: Math.max(0, remainingAfterDelivery),
+                    previousDeliveryInfo: previousDeliveryInfo
+                  };
+                });
+                
+                return allOrderItems.map(item => `
+                  <tr>
+                    <td><strong>${item.product_id}</strong></td>
+                    <td>
+                      ${item.description}
+                      ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #666;">${item.previousDeliveryInfo}</small>` : ''}
+                    </td>
+                    <td style="text-align: center;">${item.unit || 'UN'}</td>
+                    <td style="text-align: center;">${item.quantity}</td>
+                    <td style="text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
+                    <td style="text-align: center;">${item.remaining_after_delivery > 0 ? item.remaining_after_delivery : '—'}</td>
+                  </tr>
+                `).join('');
               })()}
             </tbody>
           </table>
@@ -522,12 +504,26 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         ` : ''}
 
         ${(() => {
-          // Extraire seulement la note originale du BA (avant les [LIVRAISON...])
-          const originalNotes = clientPO.notes ? clientPO.notes.split('[LIVRAISON')[0].trim() : '';
-          return originalNotes ? `
+          // Nettoyer les notes : enlever les [LIVRAISON...] ET les [date] Bon de livraison...
+          let cleanNotes = clientPO.notes || '';
+          
+          // Supprimer les lignes avec [LIVRAISON...]
+          cleanNotes = cleanNotes.split('\n')
+            .filter(line => !line.includes('[LIVRAISON'))
+            .join('\n');
+          
+          // Supprimer les lignes avec [date] Bon de livraison... créé
+          cleanNotes = cleanNotes.split('\n')
+            .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
+            .join('\n');
+          
+          // Nettoyer les espaces multiples et lignes vides
+          cleanNotes = cleanNotes.replace(/\n\s*\n/g, '\n').trim();
+          
+          return cleanNotes ? `
             <div style="border: 1px solid #ccc; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #333;">
               <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">NOTES:</div>
-              <div style="font-size: 12px; line-height: 1.4; white-space: pre-line;">${originalNotes}</div>
+              <div style="font-size: 12px; line-height: 1.4; white-space: pre-line;">${cleanNotes}</div>
             </div>
           ` : '';
         })()}
@@ -625,13 +621,26 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       const newStatus = allFullyDelivered ? 'delivered' : 'partially_delivered';
       
       // Garder les notes originales sans y ajouter l'historique des livraisons
-      const originalNotes = clientPO.notes ? clientPO.notes.split('[LIVRAISON')[0].trim() : '';
+      let cleanNotes = clientPO.notes || '';
+      
+      // Supprimer les lignes avec [LIVRAISON...]
+      cleanNotes = cleanNotes.split('\n')
+        .filter(line => !line.includes('[LIVRAISON'))
+        .join('\n');
+      
+      // Supprimer les lignes avec [date] Bon de livraison... créé
+      cleanNotes = cleanNotes.split('\n')
+        .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
+        .join('\n');
+      
+      // Nettoyer les espaces multiples et lignes vides
+      cleanNotes = cleanNotes.replace(/\n\s*\n/g, '\n').trim();
       
       await supabase
         .from('purchase_orders')
         .update({ 
           status: newStatus,
-          notes: originalNotes, // Garder seulement la note originale
+          notes: cleanNotes, // Garder seulement les notes propres
           additionalNotes: JSON.stringify(deliveryInfo)
         })
         .eq('id', clientPO.id);
