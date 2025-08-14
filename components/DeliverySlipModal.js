@@ -511,6 +511,13 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </table>
         </div>
 
+        ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+          <div style="border: 1px solid #ccc; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #666;">
+            <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">INSTRUCTIONS SPÉCIALES:</div>
+            <div style="font-size: 12px; line-height: 1.4;">${formData.special_instructions}</div>
+          </div>
+        ` : ''}
+
         <div class="page-footer">
           <div class="signature-box">
             <div class="signature-line"></div>
@@ -564,25 +571,23 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     printWindow.document.write(html);
     printWindow.document.close();
     
-    // Attendre que le contenu soit chargé, puis imprimer et fermer automatiquement
+    // Approche plus robuste pour fermer l'onglet après impression
     printWindow.onload = function() {
+      // Déclencher l'impression
       printWindow.print();
-      
-      // Fermer l'onglet après un délai pour laisser l'impression se terminer
-      setTimeout(() => {
-        printWindow.close();
-      }, 1000);
     };
     
-    // Alternative au cas où onload ne fonctionnerait pas
+    // Écouter l'événement afterprint pour fermer l'onglet
+    printWindow.onafterprint = function() {
+      printWindow.close();
+    };
+    
+    // Fallback : fermer après un délai si l'événement afterprint ne fonctionne pas
     setTimeout(() => {
       if (!printWindow.closed) {
-        printWindow.print();
-        setTimeout(() => {
-          printWindow.close();
-        }, 1000);
+        printWindow.close();
       }
-    }, 500);
+    }, 3000); // 3 secondes pour laisser le temps à l'impression
   };
   
   // Fonction pour soumettre et sauvegarder
