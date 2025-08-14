@@ -237,7 +237,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             gap: 20px;
           }
           .logo-container {
-            width: 120px;
+            width: 180px;
             height: 120px;
           }
           .logo-container img {
@@ -394,8 +394,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
               <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
             </div>
             <div class="company-info">
-              <div class="company-name">SERVICES TMT INC.</div>
-              195, 42e Rue Nord<br>
+              <div class="company-name"></div>
+              3195, 42e Rue Nord<br>
               Saint-Georges, QC G5Z 0V9<br>
               Tél: (418) 225-3875<br>
               info.servicestmt@gmail.com
