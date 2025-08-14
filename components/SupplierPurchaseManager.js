@@ -2281,3 +2281,6 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
     </div>
   </div>
 )}
+      </div>
+    );
+  }
