@@ -199,10 +199,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     // Générer le contenu d'une copie
     const generateCopyContent = (copyType, items) => {
       return `
-        <div class="copy-container" style="page-break-after: ${copyType === 'CLIENT' ? 'always' : 'auto'};">
-          <div class="copy-header" style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #333; text-transform: uppercase; letter-spacing: 1px;">
-            ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
-          </div>
+        <div class="copy-container" style="page-break-after: ${copyType === 'CLIENT' ? 'always' : 'auto'}; min-height: 100vh; position: relative;">
           
           <div class="header">
             <div class="logo-section">
@@ -249,7 +246,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           </div>
 
           ${cleanNotes ? `
-            <div style="border: 1px solid #ccc; padding: 4px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #333;">
+            <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #000;">
               <strong style="font-size: 10px;">NOTES:</strong> 
               <span style="font-size: 10px;">${cleanNotes}</span>
             </div>
@@ -273,7 +270,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
                     <td><strong>${item.product_id}</strong></td>
                     <td>
                       ${item.description}
-                      ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #666;">${item.previousDeliveryInfo}</small>` : ''}
+                      ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #000;">${item.previousDeliveryInfo}</small>` : ''}
                     </td>
                     <td style="text-align: center;">${item.unit || 'UN'}</td>
                     <td style="text-align: center;">${item.quantity}</td>
@@ -290,13 +287,13 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
               <div class="signature-line"></div>
               <div class="signature-text">SIGNATURE CLIENT</div>
             </div>
-            <div style="text-align: center; font-size: 10px; color: #333;">
+            <div style="text-align: center; font-size: 10px; color: #000;">
               Date de réception: ___________________
             </div>
           </div>
 
           ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-            <div style="border: 1px solid #ccc; padding: 6px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #666; page-break-inside: avoid;">
+            <div style="border: 1px solid #000; padding: 6px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #000; page-break-inside: avoid;">
               <strong style="font-size: 9px;">INSTRUCTIONS SPÉCIALES:</strong> 
               <span style="font-size: 9px;">${formData.special_instructions}</span>
             </div>
@@ -305,6 +302,10 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           <div class="legal-text">
             La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
             Toute réclamation doit être faite dans les 48 heures suivant la réception.
+          </div>
+
+          <div class="copy-footer" style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
+            ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
           </div>
         </div>
       `;
@@ -346,18 +347,20 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             font-family: Arial, sans-serif; 
             margin: 0; 
             padding: 10px;
-            color: #333;
+            color: #000;
             font-size: 11px;
             line-height: 1.2;
           }
           .copy-container {
             min-height: 100vh;
+            position: relative;
+            padding-bottom: 40px;
           }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: start;
-            border-bottom: 2px solid #333;
+            border-bottom: 2px solid #000;
             padding-bottom: 8px;
             margin-bottom: 12px;
             page-break-inside: avoid;
@@ -378,14 +381,14 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           }
           .company-info {
             font-size: 11px;
-            color: #333;
+            color: #000;
             line-height: 1.2;
             font-weight: 500;
           }
           .company-name {
             font-size: 14px;
             font-weight: bold;
-            color: #333;
+            color: #000;
             margin-bottom: 3px;
           }
           .doc-info {
@@ -394,18 +397,18 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           .doc-title {
             font-size: 20px;
             font-weight: bold;
-            color: #333;
+            color: #000;
             margin-bottom: 5px;
           }
           .doc-number {
             font-size: 14px;
-            color: #333;
+            color: #000;
             font-weight: bold;
             margin-bottom: 3px;
           }
           .doc-details {
             font-size: 10px;
-            color: #666;
+            color: #000;
             line-height: 1.2;
           }
           .info-grid {
@@ -416,23 +419,23 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             page-break-inside: avoid;
           }
           .info-box {
-            border: 1px solid #e2e8f0;
+            border: 1px solid #000;
             padding: 8px;
             border-radius: 5px;
-            border-left: 4px solid #333;
+            border-left: 4px solid #000;
           }
           .info-title {
             font-weight: bold;
-            color: #333;
+            color: #000;
             margin-bottom: 4px;
             font-size: 11px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #000;
             padding-bottom: 2px;
           }
           .info-content {
             font-size: 10px;
             line-height: 1.2;
-            color: #666;
+            color: #000;
           }
           .delivered-section {
             margin-bottom: 10px;
@@ -442,7 +445,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 10px;
-            border: 1px solid #333;
+            border: 1px solid #000;
             page-break-inside: auto;
           }
           th {
@@ -457,8 +460,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           }
           td {
             padding: 4px;
-            border-bottom: 1px solid #e2e8f0;
-            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #000;
+            border-right: 1px solid #000;
             font-size: 9px;
             line-height: 1.1;
             page-break-inside: avoid;
@@ -475,28 +478,28 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid #000;
             page-break-inside: avoid;
           }
           .signature-box {
             text-align: center;
           }
           .signature-line {
-            border-top: 2px solid #333;
+            border-top: 2px solid #000;
             width: 120px;
             margin: 15px auto 3px auto;
           }
           .signature-text {
             font-size: 10px;
             font-weight: bold;
-            color: #333;
+            color: #000;
           }
           .legal-text {
             margin-top: 10px;
             padding-top: 8px;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid #000;
             font-size: 7px;
-            color: #666;
+            color: #000;
             text-align: center;
             font-style: italic;
             line-height: 1.1;
