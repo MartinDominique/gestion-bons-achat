@@ -213,8 +213,8 @@ const generateCopyContent = (copyType, items) => {
       <!-- PAGE ${pageNumber} -->
       <div class="print-page" style="height: 10.5in; page-break-after: ${pageNumber < totalPages ? 'always' : 'auto'}; display: block; position: relative;">
         
-        <!-- HEADER FIXE (2 inches) -->
-        <div style="height: 1.8in; overflow: hidden;">
+        <!-- HEADER FIXE (2.2 inches) -->
+        <div style="height: 2.2in; overflow: hidden;">
           <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
             <div style="display: flex; align-items: start; gap: 20px;">
               <div style="width: 120px; height: 80px;">
@@ -267,7 +267,7 @@ const generateCopyContent = (copyType, items) => {
         </div>
 
         <!-- BODY - TABLEAU (7 inches) -->
-        <div style="height: 7in; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
+        <div style="height: 6.8in; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
           <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
             <thead>
               <tr>
@@ -309,7 +309,7 @@ const generateCopyContent = (copyType, items) => {
         </div>
 
         <!-- FOOTER FIXE (1.5 inches) -->
-        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.5in; border-top: 1px solid #000; padding-top: 10px;">
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.3in; border-top: 1px solid #000; padding-top: 10px;">
           <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
             ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
           </div>
