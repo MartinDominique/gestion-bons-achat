@@ -197,8 +197,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
     // Générer le contenu des copies
-  const generateCopyContent = (copyType, items) => {
-  const ITEMS_PER_PAGE = 30; // ← Réduire à 18 pour laisser place au footer
+  // SOLUTION FINALE - Approche Table Fixe
+const generateCopyContent = (copyType, items) => {
+  const ITEMS_PER_PAGE = 32; // ← Réduire à 18 pour laisser place au footer
   
   // Diviser les articles en groupes par page
   const pageGroups = [];
@@ -271,11 +272,11 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             <thead>
               <tr>
                 <th style="width: 15%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Code</th>
-                <th style="width: 35%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Description</th>
+                <th style="width: 50%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Description</th>
                 <th style="width: 8%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Unité</th>
-                <th style="width: 12%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Commandée</th>
-                <th style="width: 12%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Livrée</th>
-                <th style="width: 18%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté en souffrance</th>
+                <th style="width: 9%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Cmd</th>
+                <th style="width: 9%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Liv.</th>
+                <th style="width: 9%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté Souff.</th>
               </tr>
             </thead>
             <tbody>
