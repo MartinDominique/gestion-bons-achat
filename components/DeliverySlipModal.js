@@ -351,7 +351,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             line-height: 1.2;
           }
           .copy-container {
-            margin-bottom: 20px;
+          margin-bottom: 20px;
+          page-break-inside: avoid;
+          page-break-after: always;
           }
           .copy-header {
             text-align: center;
@@ -446,8 +448,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             color: #000;
           }
           .delivered-section {
-            margin-bottom: 10px;
-            page-break-inside: avoid;
+          margin-bottom: 10px;
+          page-break-inside: auto;
+          page-break-before: avoid;
           }
           table {
             width: 100%;
@@ -455,6 +458,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             margin-bottom: 10px;
             border: 1px solid #000;
             page-break-inside: auto;
+            page-break-before: avoid;
           }
           th {
             background: #f59e0b;
