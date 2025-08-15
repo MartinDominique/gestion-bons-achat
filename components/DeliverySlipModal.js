@@ -197,9 +197,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
     // Générer le contenu des copies
-  // SOLUTION FINALE - Approche Table Fixe
-const generateCopyContent = (copyType, items) => {
-  const ITEMS_PER_PAGE = 25; // ← Réduire à 18 pour laisser place au footer
+  const generateCopyContent = (copyType, items) => {
+  const ITEMS_PER_PAGE = 30; // ← Réduire à 18 pour laisser place au footer
   
   // Diviser les articles en groupes par page
   const pageGroups = [];
@@ -285,7 +284,6 @@ const generateCopyContent = (copyType, items) => {
                   <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
                   <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; vertical-align: top; overflow: hidden;">
                     ${item.description}
-                    ${item.previousDeliveryInfo ? `<br><small style="font-style: italic;">${item.previousDeliveryInfo}</small>` : ''}
                   </td>
                   <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
                   <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.quantity}</td>
