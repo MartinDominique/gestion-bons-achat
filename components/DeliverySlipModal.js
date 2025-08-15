@@ -197,7 +197,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
     // SOLUTION FINALE - Approche Table Fixe - VERSION MODIFIÉE MARTIN + CORRECTION PAGES VIDES
-const generateCopyContent = (copyType, items) => {
+const generateCopyContent = (copyType, items, isLastCopy = false) => {
   const ITEMS_PER_PAGE = 30; // Ajusté par Martin
   
   // Diviser les articles en groupes par page
@@ -208,9 +208,14 @@ const generateCopyContent = (copyType, items) => {
   
   // Fonction pour générer UNE page avec hauteur contrôlée
   const generateSinglePage = (pageItems, pageNumber, totalPages) => {
+    // LOGIQUE CORRECTE : 
+    // - Toutes les pages ont page-break: always SAUF la toute dernière du document
+    const isVeryLastPage = isLastCopy && (pageNumber === totalPages);
+    const pageBreak = isVeryLastPage ? 'auto' : 'always';
+    
     return `
-      <!-- PAGE ${pageNumber} -->
-      <div class="print-page" style="height: 10.5in; page-break-after: ${pageNumber < totalPages || copyType === 'CLIENT' ? 'always' : 'auto'}; display: block; position: relative;">
+      <!-- PAGE ${pageNumber} ${copyType} -->
+      <div class="print-page" style="height: 10.5in; page-break-after: ${pageBreak}; display: block; position: relative;">
         
         <!-- HEADER FIXE (2.2 inches - ajusté par Martin) -->
         <div style="height: 2.2in; overflow: hidden;">
@@ -635,8 +640,8 @@ const generateCopyContent = (copyType, items) => {
         </style>
       </head>
       <body>
-        ${generateCopyContent('CLIENT', allOrderItems)}
-        ${generateCopyContent('STMT', allOrderItems)}
+        ${generateCopyContent('CLIENT', allOrderItems, false)}
+        ${generateCopyContent('STMT', allOrderItems, true)}
       </body>
       </html>
     `;
