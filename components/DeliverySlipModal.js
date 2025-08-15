@@ -197,6 +197,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
     // SOLUTION FINALE - Approche Table Fixe - VERSION MODIFIÉE MARTIN + CORRECTION PAGES VIDES
+// SOLUTION FINALE - Approche Table Fixe - CORRECTION VRAIE PAGINATION
 const generateCopyContent = (copyType, items, isLastCopy = false) => {
   const ITEMS_PER_PAGE = 30; // Ajusté par Martin
   
@@ -215,7 +216,7 @@ const generateCopyContent = (copyType, items, isLastCopy = false) => {
     
     return `
       <!-- PAGE ${pageNumber} ${copyType} -->
-      <div class="print-page" style="height: 10.5in; page-break-after: ${pageBreak}; display: block; position: relative;">
+      <div class="print-page" style="height: 10.5in; display: block; position: relative;">
         
         <!-- HEADER FIXE (2.2 inches - ajusté par Martin) -->
         <div style="height: 2.2in; overflow: hidden;">
@@ -297,17 +298,7 @@ const generateCopyContent = (copyType, items, isLastCopy = false) => {
                 </tr>
               `).join('')}
               
-              <!-- Remplir l'espace vide si moins de 30 articles -->
-              ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
-                <tr style="height: 20px;">
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000;">&nbsp;</td>
-                </tr>
-              `).join('')}
+              <!-- Supprimé temporairement pour test -->
             </tbody>
           </table>
         </div>
