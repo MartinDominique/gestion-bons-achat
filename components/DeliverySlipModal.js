@@ -196,10 +196,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       .join('\n');
     cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
-    // Générer le contenu des copies
-  // SOLUTION FINALE - Approche Table Fixe
+    // SOLUTION FINALE - Approche Table Fixe - VERSION MODIFIÉE MARTIN + CORRECTION PAGES VIDES
 const generateCopyContent = (copyType, items) => {
-  const ITEMS_PER_PAGE = 30; // ← Réduire à 18 pour laisser place au footer
+  const ITEMS_PER_PAGE = 30; // Ajusté par Martin
   
   // Diviser les articles en groupes par page
   const pageGroups = [];
@@ -211,9 +210,9 @@ const generateCopyContent = (copyType, items) => {
   const generateSinglePage = (pageItems, pageNumber, totalPages) => {
     return `
       <!-- PAGE ${pageNumber} -->
-      <div class="print-page" style="height: 10.5in; page-break-after: ${pageNumber < totalPages ? 'always' : 'auto'}; display: block; position: relative;">
+      <div class="print-page" style="height: 10.5in; page-break-after: ${pageNumber < totalPages || copyType === 'CLIENT' ? 'always' : 'auto'}; display: block; position: relative;">
         
-        <!-- HEADER FIXE (2.2 inches) -->
+        <!-- HEADER FIXE (2.2 inches - ajusté par Martin) -->
         <div style="height: 2.2in; overflow: hidden;">
           <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
             <div style="display: flex; align-items: start; gap: 20px;">
@@ -266,7 +265,7 @@ const generateCopyContent = (copyType, items) => {
         ` : ''}
         </div>
 
-        <!-- BODY - TABLEAU (7 inches) -->
+        <!-- BODY - TABLEAU (6.8 inches - ajusté par Martin) -->
         <div style="height: 6.8in; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
           <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
             <thead>
@@ -293,13 +292,22 @@ const generateCopyContent = (copyType, items) => {
                 </tr>
               `).join('')}
               
-              <!-- Remplir l'espace vide si moins de 18 articles -->
-              
+              <!-- Remplir l'espace vide si moins de 30 articles -->
+              ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
+                <tr style="height: 20px;">
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000;">&nbsp;</td>
+                </tr>
+              `).join('')}
             </tbody>
           </table>
         </div>
 
-        <!-- FOOTER FIXE (1.5 inches) -->
+        <!-- FOOTER FIXE (1.3 inches - ajusté par Martin) -->
         <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.3in; border-top: 1px solid #000; padding-top: 10px;">
           <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
             ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
