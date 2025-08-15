@@ -578,6 +578,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         border: 2px solid #000;
         text-transform: uppercase;
         letter-spacing: 1px;
+        page-break-inside: avoid;
       }
       
       .signature-section {
@@ -621,13 +622,22 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   setTimeout(() => {
     printWindow.print();
     
-    // Fermer automatiquement après 3 secondes
-    setTimeout(() => {
+    // Méthode plus agressive pour fermer
+    printWindow.onafterprint = function() {
       printWindow.close();
-     }, 3000);
+    };
     
-    }, 100);
-   };
+    // Force la fermeture après 2 secondes
+    setTimeout(() => {
+      try {
+        printWindow.close();
+      } catch(e) {
+        console.log('Fermeture manuelle nécessaire');
+      }
+    }, 2000);
+    
+   }, 500);
+  };
  };
   
   // Fonction pour soumettre et sauvegarder
