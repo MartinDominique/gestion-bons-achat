@@ -200,7 +200,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     // REMPLACER COMPLÈTEMENT la fonction generateCopyContent par :
 
 const generateCopyContent = (copyType, items) => {
-  const ITEMS_PER_PAGE = 25; // Nombre d'articles par page
+  const ITEMS_PER_PAGE = 18; // Nombre d'articles par page
   
   // Diviser les articles en groupes par page
   const pageGroups = [];
