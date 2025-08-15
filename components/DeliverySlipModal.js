@@ -196,66 +196,99 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       .join('\n');
     cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
-    // Générer le contenu d'une copie
+    // Générer le contenu des copies
     const generateCopyContent = (copyType, items) => {
-  return `
-    <div class="copy-page" style="page-break-after: ${copyType === 'CLIENT' ? 'always' : 'auto'};">
-      
-      <!-- HEADER FIXE -->
-      <div class="page-header">
-        <div class="header">
-          <div class="logo-section">
-            <div class="logo-container">
-              <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
-            </div>
-            <div class="company-info">
-              <div class="company-name">Services TMT Inc.</div>
-              3195, 42e Rue Nord<br>
-              Saint-Georges, QC G5Z 0V9<br>
-              Tél: (418) 225-3875<br>
-              info.servicestmt@gmail.com
-            </div>
+  // Fonction pour générer le header complet
+  const generateHeader = () => `
+    <div class="fixed-header">
+      <div class="header">
+        <div class="logo-section">
+          <div class="logo-container">
+            <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
           </div>
-          <div class="doc-info">
-            <div class="doc-title">BON DE LIVRAISON</div>
-            <div class="doc-number">${deliverySlip.delivery_number}</div>
-            <div class="doc-details">
-              Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
-              BA Client: ${clientPO.po_number}<br>
-              ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
-              ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
-            </div>
+          <div class="company-info">
+            <div class="company-name">Services TMT Inc.</div>
+            3195, 42e Rue Nord<br>
+            Saint-Georges, QC G5Z 0V9<br>
+            Tél: (418) 225-3875<br>
+            info.servicestmt@gmail.com
           </div>
         </div>
-
-        <div class="info-grid">
-          <div class="info-box">
-            <div class="info-title">Livrer à :</div>
-            <div class="info-content">
-              <strong>${clientPO.client_name}</strong><br>
-              ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
-              ${clientPO.delivery_address || clientPO.client_address || 'Adresse de livraison à confirmer'}
-            </div>
-          </div>
-          <div class="info-box">
-            <div class="info-title">Informations de transport:</div>
-            <div class="info-content">
-              Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
-              N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
-              Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
-            </div>
+        <div class="doc-info">
+          <div class="doc-title">BON DE LIVRAISON</div>
+          <div class="doc-number">${deliverySlip.delivery_number}</div>
+          <div class="doc-details">
+            Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
+            BA Client: ${clientPO.po_number}<br>
+            ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
+            ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
           </div>
         </div>
-
-        ${cleanNotes ? `
-          <div class="notes-section">
-            <strong>NOTES:</strong> ${cleanNotes}
-          </div>
-        ` : ''}
       </div>
 
-      <!-- BODY - TABLEAU DES ARTICLES -->
-      <div class="page-body">
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="info-title">Livrer à :</div>
+          <div class="info-content">
+            <strong>${clientPO.client_name}</strong><br>
+            ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
+            ${clientPO.delivery_address || clientPO.client_address || 'Adresse de livraison à confirmer'}
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="info-title">Informations de transport:</div>
+          <div class="info-content">
+            Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
+            N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
+            Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
+          </div>
+        </div>
+      </div>
+
+      ${cleanNotes ? `
+        <div class="notes-section">
+          <strong>NOTES:</strong> ${cleanNotes}
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  // Fonction pour générer le footer complet
+  const generateFooter = () => `
+    <div class="fixed-footer">
+      <div class="copy-banner">
+        ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
+      </div>
+      
+      <div class="signature-section">
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <div class="signature-text">SIGNATURE CLIENT</div>
+        </div>
+        <div class="reception-date">
+          Date de réception: ___________________
+        </div>
+      </div>
+
+      ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+        <div class="special-instructions">
+          <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
+        </div>
+      ` : ''}
+
+      <div class="legal-text">
+        La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
+        Toute réclamation doit être faite dans les 48 heures suivant la réception.
+      </div>
+    </div>
+  `;
+
+  // Structure finale avec répétition header/footer
+  return `
+    <div class="page-container">
+      ${generateHeader()}
+      
+      <div class="content-body">
         <table class="items-table">
           <thead>
             <tr>
@@ -283,36 +316,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             `).join('')}
           </tbody>
         </table>
-
-        ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-          <div class="special-instructions">
-            <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
-          </div>
-        ` : ''}
       </div>
 
-      <!-- FOOTER FIXE -->
-      <div class="page-footer">
-        <!-- BANDEAU COPIE (déplacé ici) -->
-        <div class="copy-banner">
-          ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
-        </div>
-        
-        <div class="signature-section">
-          <div class="signature-box">
-            <div class="signature-line"></div>
-            <div class="signature-text">SIGNATURE CLIENT</div>
-          </div>
-          <div class="reception-date">
-            Date de réception: ___________________
-          </div>
-        </div>
-
-        <div class="legal-text">
-          La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
-          Toute réclamation doit être faite dans les 48 heures suivant la réception.
-        </div>
-      </div>
+      ${generateFooter()}
     </div>
   `;
 };
