@@ -197,10 +197,9 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
     // Générer le contenu des copies
-    // REMPLACER COMPLÈTEMENT la fonction generateCopyContent par :
-
+  // SOLUTION FINALE - Approche Table Fixe
 const generateCopyContent = (copyType, items) => {
-  const ITEMS_PER_PAGE = 18; // Nombre d'articles par page
+  const ITEMS_PER_PAGE = 18; // ← Réduire à 18 pour laisser place au footer
   
   // Diviser les articles en groupes par page
   const pageGroups = [];
@@ -208,30 +207,31 @@ const generateCopyContent = (copyType, items) => {
     pageGroups.push(items.slice(i, i + ITEMS_PER_PAGE));
   }
   
-  // Fonction pour générer UNE page complète
+  // Fonction pour générer UNE page avec hauteur contrôlée
   const generateSinglePage = (pageItems, pageNumber, totalPages) => {
     return `
-      <div class="single-page" style="page-break-after: ${pageNumber < totalPages ? 'always' : 'auto'}; min-height: 100vh; display: flex; flex-direction: column;">
+      <!-- PAGE ${pageNumber} -->
+      <div class="print-page" style="height: 10.5in; page-break-after: ${pageNumber < totalPages ? 'always' : 'auto'}; display: block; position: relative;">
         
-        <!-- HEADER COMPLET -->
-        <div class="page-header" style="flex-shrink: 0;">
-          <div class="header">
-            <div class="logo-section">
-              <div class="logo-container">
-                <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
+        <!-- HEADER FIXE (2 inches) -->
+        <div style="height: 2in; overflow: hidden;">
+          <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: start; gap: 20px;">
+              <div style="width: 120px; height: 80px;">
+                <img src="/logo.png" alt="Services TMT" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'">
               </div>
-              <div class="company-info">
-                <div class="company-name">Services TMT Inc.</div>
+              <div style="font-size: 11px; line-height: 1.2;">
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">Services TMT Inc.</div>
                 3195, 42e Rue Nord<br>
                 Saint-Georges, QC G5Z 0V9<br>
                 Tél: (418) 225-3875<br>
                 info.servicestmt@gmail.com
               </div>
             </div>
-            <div class="doc-info">
-              <div class="doc-title">BON DE LIVRAISON</div>
-              <div class="doc-number">${deliverySlip.delivery_number}</div>
-              <div class="doc-details">
+            <div style="text-align: right;">
+              <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">BON DE LIVRAISON</div>
+              <div style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">${deliverySlip.delivery_number}</div>
+              <div style="font-size: 10px; line-height: 1.2;">
                 Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
                 BA Client: ${clientPO.po_number}<br>
                 ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
@@ -240,18 +240,18 @@ const generateCopyContent = (copyType, items) => {
             </div>
           </div>
 
-          <div class="info-grid">
-            <div class="info-box">
-              <div class="info-title">Livrer à :</div>
-              <div class="info-content">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+            <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
+              <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Livrer à :</div>
+              <div style="font-size: 10px; line-height: 1.2;">
                 <strong>${clientPO.client_name}</strong><br>
                 ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
                 ${clientPO.delivery_address || clientPO.client_address || 'Adresse de livraison à confirmer'}
               </div>
             </div>
-            <div class="info-box">
-              <div class="info-title">Informations de transport:</div>
-              <div class="info-content">
+            <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
+              <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Informations de transport:</div>
+              <div style="font-size: 10px; line-height: 1.2;">
                 Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
                 N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
                 Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
@@ -260,66 +260,78 @@ const generateCopyContent = (copyType, items) => {
           </div>
 
           ${cleanNotes ? `
-            <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #000; font-size: 10px;">
+            <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin-bottom: 8px; border-left: 3px solid #000; font-size: 10px;">
               <strong>NOTES:</strong> ${cleanNotes}
             </div>
           ` : ''}
         </div>
 
-        <!-- BODY - TABLEAU DE CETTE PAGE -->
-        <div class="page-body" style="flex-grow: 1; margin: 10px 0;">
-          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
+        <!-- BODY - TABLEAU (7 inches) -->
+        <div style="height: 7in; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
             <thead>
               <tr>
-                <th style="width: 15%; background: #f59e0b; color: white; padding: 6px 4px; text-align: left; font-size: 9px; font-weight: bold;">Code</th>
-                <th style="width: 35%; background: #f59e0b; color: white; padding: 6px 4px; text-align: left; font-size: 9px; font-weight: bold;">Description</th>
-                <th style="width: 8%; background: #f59e0b; color: white; padding: 6px 4px; text-align: center; font-size: 9px; font-weight: bold;">Unité</th>
-                <th style="width: 12%; background: #f59e0b; color: white; padding: 6px 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté Commandée</th>
-                <th style="width: 12%; background: #f59e0b; color: white; padding: 6px 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté Livrée</th>
-                <th style="width: 18%; background: #f59e0b; color: white; padding: 6px 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté en souffrance</th>
+                <th style="width: 15%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Code</th>
+                <th style="width: 35%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Description</th>
+                <th style="width: 8%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Unité</th>
+                <th style="width: 12%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Commandée</th>
+                <th style="width: 12%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Livrée</th>
+                <th style="width: 18%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté en souffrance</th>
               </tr>
             </thead>
             <tbody>
               ${pageItems.map(item => `
-                <tr>
-                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px;"><strong>${item.product_id}</strong></td>
-                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px;">
+                <tr style="height: 20px;">
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; vertical-align: top; overflow: hidden;">
                     ${item.description}
-                    ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #000;">${item.previousDeliveryInfo}</small>` : ''}
+                    ${item.previousDeliveryInfo ? `<br><small style="font-style: italic;">${item.previousDeliveryInfo}</small>` : ''}
                   </td>
-                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px; text-align: center;">${item.unit || 'UN'}</td>
-                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px; text-align: center;">${item.quantity}</td>
-                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px; text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
-                  <td style="padding: 4px; border-bottom: 1px solid #000; font-size: 9px; text-align: center;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.quantity}</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;"><strong>${item.quantity_delivered_now}</strong></td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+                </tr>
+              `).join('')}
+              
+              <!-- Remplir l'espace vide si moins de 18 articles -->
+              ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
+                <tr style="height: 20px;">
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                  <td style="padding: 3px; border-bottom: 1px solid #000;">&nbsp;</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
 
-        <!-- FOOTER COMPLET -->
-        <div class="page-footer" style="flex-shrink: 0; margin-top: auto; border-top: 1px solid #000; padding-top: 10px;">
-          <div style="text-align: center; margin-bottom: 15px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
+        <!-- FOOTER FIXE (1.5 inches) -->
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.5in; border-top: 1px solid #000; padding-top: 10px;">
+          <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
             ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
           </div>
           
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div style="text-align: center;">
-              <div style="border-top: 2px solid #000; width: 120px; margin: 15px auto 3px auto;"></div>
-              <div style="font-size: 10px; font-weight: bold; color: #000;">SIGNATURE CLIENT</div>
+              <div style="border-top: 2px solid #000; width: 120px; margin: 10px auto 3px auto;"></div>
+              <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
             </div>
-            <div style="text-align: center; font-size: 10px; color: #000;">
+            <div style="font-size: 10px;">
               Date de réception: ___________________
             </div>
           </div>
 
           ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-            <div style="border: 1px solid #000; padding: 6px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #000; font-size: 9px;">
+            <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 8px;">
               <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
             </div>
           ` : ''}
 
-          <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #000; font-size: 7px; color: #000; text-align: center; font-style: italic; line-height: 1.1;">
+          <div style="font-size: 7px; text-align: center; font-style: italic; line-height: 1.1;">
             La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
             Toute réclamation doit être faite dans les 48 heures suivant la réception.
           </div>
