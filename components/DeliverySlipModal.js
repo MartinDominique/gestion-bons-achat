@@ -622,22 +622,18 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   setTimeout(() => {
     printWindow.print();
     
-    // Méthode plus agressive pour fermer
-    printWindow.onafterprint = function() {
-      printWindow.close();
-    };
+    // Multiple tentatives de fermeture
+    const closeAttempts = [1000, 3000, 5000];
+    closeAttempts.forEach(delay => {
+      setTimeout(() => {
+        if (!printWindow.closed) {
+          printWindow.close();
+        }
+      }, delay);
+    });
     
-    // Force la fermeture après 2 secondes
-    setTimeout(() => {
-      try {
-        printWindow.close();
-      } catch(e) {
-        console.log('Fermeture manuelle nécessaire');
-      }
-    }, 2000);
-    
-   }, 500);
-  };
+  }, 100);
+};
  };
   
   // Fonction pour soumettre et sauvegarder
