@@ -198,117 +198,124 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
 
     // Générer le contenu d'une copie
     const generateCopyContent = (copyType, items) => {
-      return `
-        <div class="copy-container" style="page-break-after: ${copyType === 'CLIENT' ? 'always' : 'auto'};">
-          <div class="copy-header" style="text-align: center; margin-bottom: 15px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
-            ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
-          </div>
-          
-          <div class="header">
-            <div class="logo-section">
-              <div class="logo-container">
-                <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
-              </div>
-              <div class="company-info">
-                <div class="company-name"></div>
-                3195, 42e Rue Nord<br>
-                Saint-Georges, QC G5Z 0V9<br>
-                Tél: (418) 225-3875<br>
-                info.servicestmt@gmail.com
-              </div>
+  return `
+    <div class="copy-page" style="page-break-after: ${copyType === 'CLIENT' ? 'always' : 'auto'};">
+      
+      <!-- HEADER FIXE -->
+      <div class="page-header">
+        <div class="header">
+          <div class="logo-section">
+            <div class="logo-container">
+              <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
             </div>
-            <div class="doc-info">
-              <div class="doc-title">BON DE LIVRAISON</div>
-              <div class="doc-number">${deliverySlip.delivery_number}</div>
-              <div class="doc-details">
-                Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
-                BA Client: ${clientPO.po_number}<br>
-                ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
-                ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
-              </div>
+            <div class="company-info">
+              <div class="company-name">Services TMT Inc.</div>
+              3195, 42e Rue Nord<br>
+              Saint-Georges, QC G5Z 0V9<br>
+              Tél: (418) 225-3875<br>
+              info.servicestmt@gmail.com
             </div>
           </div>
-
-          <div class="info-grid">
-            <div class="info-box">
-              <div class="info-title">Livrer à :</div>
-              <div class="info-content">
-                <strong>${clientPO.client_name}</strong><br>
-                ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
-                ${clientPO.delivery_address || clientPO.client_address || 'Adresse de livraison à confirmer'}
-              </div>
+          <div class="doc-info">
+            <div class="doc-title">BON DE LIVRAISON</div>
+            <div class="doc-number">${deliverySlip.delivery_number}</div>
+            <div class="doc-details">
+              Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
+              BA Client: ${clientPO.po_number}<br>
+              ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
+              ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
             </div>
-            <div class="info-box">
-              <div class="info-title">Informations de transport:</div>
-              <div class="info-content">
-                Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
-                N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
-                Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
-              </div>
-            </div>
-          </div>
-
-          ${cleanNotes ? `
-            <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #000;">
-              <strong style="font-size: 10px;">NOTES:</strong> 
-              <span style="font-size: 10px;">${cleanNotes}</span>
-            </div>
-          ` : ''}
-
-          <div class="delivered-section">
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 15%;">Code</th>
-                  <th style="width: 35%;">Description</th>
-                  <th style="width: 8%; text-align: center;">Unité</th>
-                  <th style="width: 12%; text-align: center;">Qté Commandée</th>
-                  <th style="width: 12%; text-align: center;">Qté Livrée</th>
-                  <th style="width: 18%; text-align: center;">Qté en souffrance</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${items.map(item => `
-                  <tr>
-                    <td><strong>${item.product_id}</strong></td>
-                    <td>
-                      ${item.description}
-                      ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #000;">${item.previousDeliveryInfo}</small>` : ''}
-                    </td>
-                    <td style="text-align: center;">${item.unit || 'UN'}</td>
-                    <td style="text-align: center;">${item.quantity}</td>
-                    <td style="text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
-                    <td style="text-align: center;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-
-          <div class="page-footer">
-            <div class="signature-box">
-              <div class="signature-line"></div>
-              <div class="signature-text">SIGNATURE CLIENT</div>
-            </div>
-            <div style="text-align: center; font-size: 10px; color: #000;">
-              Date de réception: ___________________
-            </div>
-          </div>
-
-          ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-            <div style="border: 1px solid #000; padding: 6px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #000; page-break-inside: avoid;">
-              <strong style="font-size: 9px;">INSTRUCTIONS SPÉCIALES:</strong> 
-              <span style="font-size: 9px;">${formData.special_instructions}</span>
-            </div>
-          ` : ''}
-
-          <div class="legal-text">
-            La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
-            Toute réclamation doit être faite dans les 48 heures suivant la réception.
           </div>
         </div>
-      `;
-    };
+
+        <div class="info-grid">
+          <div class="info-box">
+            <div class="info-title">Livrer à :</div>
+            <div class="info-content">
+              <strong>${clientPO.client_name}</strong><br>
+              ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
+              ${clientPO.delivery_address || clientPO.client_address || 'Adresse de livraison à confirmer'}
+            </div>
+          </div>
+          <div class="info-box">
+            <div class="info-title">Informations de transport:</div>
+            <div class="info-content">
+              Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
+              N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
+              Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
+            </div>
+          </div>
+        </div>
+
+        ${cleanNotes ? `
+          <div class="notes-section">
+            <strong>NOTES:</strong> ${cleanNotes}
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- BODY - TABLEAU DES ARTICLES -->
+      <div class="page-body">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 15%;">Code</th>
+              <th style="width: 35%;">Description</th>
+              <th style="width: 8%; text-align: center;">Unité</th>
+              <th style="width: 12%; text-align: center;">Qté Commandée</th>
+              <th style="width: 12%; text-align: center;">Qté Livrée</th>
+              <th style="width: 18%; text-align: center;">Qté en souffrance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(item => `
+              <tr>
+                <td><strong>${item.product_id}</strong></td>
+                <td>
+                  ${item.description}
+                  ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #000;">${item.previousDeliveryInfo}</small>` : ''}
+                </td>
+                <td style="text-align: center;">${item.unit || 'UN'}</td>
+                <td style="text-align: center;">${item.quantity}</td>
+                <td style="text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
+                <td style="text-align: center;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+          <div class="special-instructions">
+            <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- FOOTER FIXE -->
+      <div class="page-footer">
+        <!-- BANDEAU COPIE (déplacé ici) -->
+        <div class="copy-banner">
+          ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
+        </div>
+        
+        <div class="signature-section">
+          <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-text">SIGNATURE CLIENT</div>
+          </div>
+          <div class="reception-date">
+            Date de réception: ___________________
+          </div>
+        </div>
+
+        <div class="legal-text">
+          La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
+          Toute réclamation doit être faite dans les 48 heures suivant la réception.
+        </div>
+      </div>
+    </div>
+  `;
+};
 
     // Préparer les données des articles
     const allOrderItems = formData.items.map(item => {
@@ -526,7 +533,77 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
             .legal-text {
               page-break-inside: avoid;
             }
+            
           }
+          /* === NOUVELLES RÈGLES POUR STRUCTURE HEADER/BODY/FOOTER === */
+      .copy-page {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        page-break-after: always;
+      }
+      
+      .page-header {
+        flex-shrink: 0;
+        border-bottom: 2px solid #000;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+      }
+      
+      .page-body {
+        flex-grow: 1;
+        margin-bottom: 20px;
+      }
+      
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #000;
+      }
+      
+      .page-footer {
+        flex-shrink: 0;
+        margin-top: auto;
+        border-top: 1px solid #000;
+        padding-top: 10px;
+      }
+      
+      .copy-banner {
+        text-align: center;
+        margin-bottom: 15px;
+        padding: 8px;
+        background: #f0f0f0;
+        font-weight: bold;
+        font-size: 12px;
+        border: 2px solid #000;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      
+      .signature-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      
+      .notes-section {
+        border: 1px solid #000;
+        padding: 4px 8px;
+        border-radius: 3px;
+        margin: 8px 0;
+        border-left: 3px solid #000;
+        font-size: 10px;
+      }
+      
+      .special-instructions {
+        border: 1px solid #000;
+        padding: 6px 8px;
+        border-radius: 3px;
+        margin: 8px 0;
+        border-left: 3px solid #000;
+        font-size: 9px;
+      }
         </style>
       </head>
       <body>
