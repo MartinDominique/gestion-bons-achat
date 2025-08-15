@@ -199,7 +199,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     // Générer le contenu des copies
   // SOLUTION FINALE - Approche Table Fixe
 const generateCopyContent = (copyType, items) => {
-  const ITEMS_PER_PAGE = 30; // ← Réduire à 18 pour laisser place au footer
+  const ITEMS_PER_PAGE = 28; // ← Réduire à 18 pour laisser place au footer
   
   // Diviser les articles en groupes par page
   const pageGroups = [];
@@ -214,7 +214,7 @@ const generateCopyContent = (copyType, items) => {
       <div class="print-page" style="height: 10.5in; page-break-after: ${pageNumber < totalPages ? 'always' : 'auto'}; display: block; position: relative;">
         
         <!-- HEADER FIXE (2 inches) -->
-        <div style="height: 2in; overflow: hidden;">
+        <div style="height: 1.8in; overflow: hidden;">
           <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
             <div style="display: flex; align-items: start; gap: 20px;">
               <div style="width: 120px; height: 80px;">
