@@ -199,7 +199,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     // Générer le contenu des copies
   // SOLUTION FINALE - Approche Table Fixe
 const generateCopyContent = (copyType, items) => {
-  const ITEMS_PER_PAGE = 28; // ← Réduire à 18 pour laisser place au footer
+  const ITEMS_PER_PAGE = 30; // ← Réduire à 18 pour laisser place au footer
   
   // Diviser les articles en groupes par page
   const pageGroups = [];
@@ -294,16 +294,7 @@ const generateCopyContent = (copyType, items) => {
               `).join('')}
               
               <!-- Remplir l'espace vide si moins de 18 articles -->
-              ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
-                <tr style="height: 20px;">
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                  <td style="padding: 3px; border-bottom: 1px solid #000;">&nbsp;</td>
-                </tr>
-              `).join('')}
+              
             </tbody>
           </table>
         </div>
