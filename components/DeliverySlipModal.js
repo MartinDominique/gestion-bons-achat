@@ -197,130 +197,141 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
     // Générer le contenu des copies
-    const generateCopyContent = (copyType, items) => {
-  // Fonction pour générer le header complet
-  const generateHeader = () => `
-    <div class="fixed-header">
-      <div class="header">
-        <div class="logo-section">
-          <div class="logo-container">
-            <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
+    // REMPLACER COMPLÈTEMENT la fonction generateCopyContent par :
+
+const generateCopyContent = (copyType, items) => {
+  const ITEMS_PER_PAGE = 25; // Nombre d'articles par page
+  
+  // Diviser les articles en groupes par page
+  const pageGroups = [];
+  for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
+    pageGroups.push(items.slice(i, i + ITEMS_PER_PAGE));
+  }
+  
+  // Fonction pour générer UNE page complète
+  const generateSinglePage = (pageItems, pageNumber, totalPages) => {
+    return `
+      <div class="single-page" style="page-break-after: ${pageNumber < totalPages ? 'always' : 'auto'}; min-height: 100vh; display: flex; flex-direction: column;">
+        
+        <!-- HEADER COMPLET -->
+        <div class="page-header" style="flex-shrink: 0;">
+          <div class="header">
+            <div class="logo-section">
+              <div class="logo-container">
+                <img src="/logo.png" alt="Services TMT" onerror="this.style.display='none'">
+              </div>
+              <div class="company-info">
+                <div class="company-name">Services TMT Inc.</div>
+                3195, 42e Rue Nord<br>
+                Saint-Georges, QC G5Z 0V9<br>
+                Tél: (418) 225-3875<br>
+                info.servicestmt@gmail.com
+              </div>
+            </div>
+            <div class="doc-info">
+              <div class="doc-title">BON DE LIVRAISON</div>
+              <div class="doc-number">${deliverySlip.delivery_number}</div>
+              <div class="doc-details">
+                Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
+                BA Client: ${clientPO.po_number}<br>
+                ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
+                ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
+              </div>
+            </div>
           </div>
-          <div class="company-info">
-            <div class="company-name">Services TMT Inc.</div>
-            3195, 42e Rue Nord<br>
-            Saint-Georges, QC G5Z 0V9<br>
-            Tél: (418) 225-3875<br>
-            info.servicestmt@gmail.com
+
+          <div class="info-grid">
+            <div class="info-box">
+              <div class="info-title">Livrer à :</div>
+              <div class="info-content">
+                <strong>${clientPO.client_name}</strong><br>
+                ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
+                ${clientPO.delivery_address || clientPO.client_address || 'Adresse de livraison à confirmer'}
+              </div>
+            </div>
+            <div class="info-box">
+              <div class="info-title">Informations de transport:</div>
+              <div class="info-content">
+                Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
+                N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
+                Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="doc-info">
-          <div class="doc-title">BON DE LIVRAISON</div>
-          <div class="doc-number">${deliverySlip.delivery_number}</div>
-          <div class="doc-details">
-            Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
-            BA Client: ${clientPO.po_number}<br>
-            ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
-            ${clientPO.submission_no ? `Soumission: #${clientPO.submission_no}` : ''}
-          </div>
-        </div>
-      </div>
 
-      <div class="info-grid">
-        <div class="info-box">
-          <div class="info-title">Livrer à :</div>
-          <div class="info-content">
-            <strong>${clientPO.client_name}</strong><br>
-            ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
-            ${clientPO.delivery_address || clientPO.client_address || 'Adresse de livraison à confirmer'}
-          </div>
+          ${cleanNotes ? `
+            <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #000; font-size: 10px;">
+              <strong>NOTES:</strong> ${cleanNotes}
+            </div>
+          ` : ''}
         </div>
-        <div class="info-box">
-          <div class="info-title">Informations de transport:</div>
-          <div class="info-content">
-            Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
-            N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
-            Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
-          </div>
-        </div>
-      </div>
 
-      ${cleanNotes ? `
-        <div class="notes-section">
-          <strong>NOTES:</strong> ${cleanNotes}
-        </div>
-      ` : ''}
-    </div>
-  `;
-
-  // Fonction pour générer le footer complet
-  const generateFooter = () => `
-    <div class="fixed-footer">
-      <div class="copy-banner">
-        ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
-      </div>
-      
-      <div class="signature-section">
-        <div class="signature-box">
-          <div class="signature-line"></div>
-          <div class="signature-text">SIGNATURE CLIENT</div>
-        </div>
-        <div class="reception-date">
-          Date de réception: ___________________
-        </div>
-      </div>
-
-      ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-        <div class="special-instructions">
-          <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
-        </div>
-      ` : ''}
-
-      <div class="legal-text">
-        La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
-        Toute réclamation doit être faite dans les 48 heures suivant la réception.
-      </div>
-    </div>
-  `;
-
-  // Structure finale avec répétition header/footer
-  return `
-    <div class="page-container">
-      ${generateHeader()}
-      
-      <div class="content-body">
-        <table class="items-table">
-          <thead>
-            <tr>
-              <th style="width: 15%;">Code</th>
-              <th style="width: 35%;">Description</th>
-              <th style="width: 8%; text-align: center;">Unité</th>
-              <th style="width: 12%; text-align: center;">Qté Commandée</th>
-              <th style="width: 12%; text-align: center;">Qté Livrée</th>
-              <th style="width: 18%; text-align: center;">Qté en souffrance</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map(item => `
+        <!-- BODY - TABLEAU DE CETTE PAGE -->
+        <div class="page-body" style="flex-grow: 1; margin: 10px 0;">
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
+            <thead>
               <tr>
-                <td><strong>${item.product_id}</strong></td>
-                <td>
-                  ${item.description}
-                  ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #000;">${item.previousDeliveryInfo}</small>` : ''}
-                </td>
-                <td style="text-align: center;">${item.unit || 'UN'}</td>
-                <td style="text-align: center;">${item.quantity}</td>
-                <td style="text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
-                <td style="text-align: center;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+                <th style="width: 15%; background: #f59e0b; color: white; padding: 6px 4px; text-align: left; font-size: 9px; font-weight: bold;">Code</th>
+                <th style="width: 35%; background: #f59e0b; color: white; padding: 6px 4px; text-align: left; font-size: 9px; font-weight: bold;">Description</th>
+                <th style="width: 8%; background: #f59e0b; color: white; padding: 6px 4px; text-align: center; font-size: 9px; font-weight: bold;">Unité</th>
+                <th style="width: 12%; background: #f59e0b; color: white; padding: 6px 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté Commandée</th>
+                <th style="width: 12%; background: #f59e0b; color: white; padding: 6px 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté Livrée</th>
+                <th style="width: 18%; background: #f59e0b; color: white; padding: 6px 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté en souffrance</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              ${pageItems.map(item => `
+                <tr>
+                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px;"><strong>${item.product_id}</strong></td>
+                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px;">
+                    ${item.description}
+                    ${item.previousDeliveryInfo ? `<br><small style="font-style: italic; color: #000;">${item.previousDeliveryInfo}</small>` : ''}
+                  </td>
+                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px; text-align: center;">${item.unit || 'UN'}</td>
+                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px; text-align: center;">${item.quantity}</td>
+                  <td style="padding: 4px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 9px; text-align: center;"><strong>${item.quantity_delivered_now}</strong></td>
+                  <td style="padding: 4px; border-bottom: 1px solid #000; font-size: 9px; text-align: center;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
 
-      ${generateFooter()}
-    </div>
-  `;
+        <!-- FOOTER COMPLET -->
+        <div class="page-footer" style="flex-shrink: 0; margin-top: auto; border-top: 1px solid #000; padding-top: 10px;">
+          <div style="text-align: center; margin-bottom: 15px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
+            ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="text-align: center;">
+              <div style="border-top: 2px solid #000; width: 120px; margin: 15px auto 3px auto;"></div>
+              <div style="font-size: 10px; font-weight: bold; color: #000;">SIGNATURE CLIENT</div>
+            </div>
+            <div style="text-align: center; font-size: 10px; color: #000;">
+              Date de réception: ___________________
+            </div>
+          </div>
+
+          ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+            <div style="border: 1px solid #000; padding: 6px 8px; border-radius: 3px; margin: 8px 0; border-left: 3px solid #000; font-size: 9px;">
+              <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
+            </div>
+          ` : ''}
+
+          <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #000; font-size: 7px; color: #000; text-align: center; font-style: italic; line-height: 1.1;">
+            La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
+            Toute réclamation doit être faite dans les 48 heures suivant la réception.
+          </div>
+        </div>
+      </div>
+    `;
+  };
+  
+  // Générer toutes les pages pour cette copie
+  return pageGroups.map((pageItems, index) => 
+    generateSinglePage(pageItems, index + 1, pageGroups.length)
+  ).join('');
 };
 
     // Préparer les données des articles
