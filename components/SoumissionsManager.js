@@ -694,18 +694,35 @@ export default function SoumissionsManager() {
   };
 
   const handlePrint = () => {
-    window.print();
-  };
+  // Sauvegarder le titre original
+  const originalTitle = document.title;
+  // Changer le titre pour l'impression
+  document.title = `Soumission ${submissionForm.submission_number}`;
+  
+  window.print();
+  
+  // Restaurer le titre original après impression
+  setTimeout(() => {
+    document.title = originalTitle;
+  }, 100);
+};
 
-  const handlePrintClient = () => {
-    // Ajouter classe temporaire pour impression client
-    document.body.classList.add('print-client');
-    window.print();
-    // Retirer la classe après impression
-    setTimeout(() => {
-      document.body.classList.remove('print-client');
-    }, 100);
-  };
+const handlePrintClient = () => {
+  // Sauvegarder le titre original
+  const originalTitle = document.title;
+  // Changer le titre pour l'impression
+  document.title = `Soumission ${submissionForm.submission_number}`;
+  
+  // Ajouter classe temporaire pour impression client
+  document.body.classList.add('print-client');
+  window.print();
+  
+  // Retirer la classe et restaurer le titre après impression
+  setTimeout(() => {
+    document.body.classList.remove('print-client');
+    document.title = originalTitle;
+  }, 100);
+};
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
