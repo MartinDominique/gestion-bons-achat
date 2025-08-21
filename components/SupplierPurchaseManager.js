@@ -921,13 +921,7 @@ if (action === 'modal') {
     if (typeof onClose === 'function') onClose();
   }
 
-  closeBtn.addEventListener('click', doClose);
-  document.addEventListener('keydown', escHandler);
-  overlay.addEventListener('click', clickHandler);
-}
-
-
-  closeBtn.addEventListener('click', doClose);
+    closeBtn.addEventListener('click', doClose);
   document.addEventListener('keydown', escHandler);
   overlay.addEventListener('click', clickHandler);
 }
