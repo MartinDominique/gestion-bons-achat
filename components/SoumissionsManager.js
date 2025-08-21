@@ -782,7 +782,7 @@ const handleFileUpload = async (e) => {
       const filePath = `submissions/${fileName}`;
 
       const { data, error } = await supabase.storage
-        .from('purchase-orders-pdfs')
+        .from('submissions-files')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
@@ -791,7 +791,7 @@ const handleFileUpload = async (e) => {
       if (error) throw new Error(`Erreur upload: ${error.message}`);
 
       const { data: urlData } = supabase.storage
-        .from('purchase-orders-pdfs')
+        .from('submissions-files')
         .getPublicUrl(filePath);
 
       uploadedFiles.push({
@@ -827,7 +827,7 @@ const removeFile = async (index) => {
   if (fileToRemove.path) {
     try {
       const { error } = await supabase.storage
-        .from('purchase-orders-pdfs')
+        .from('submissions-files')
         .remove([fileToRemove.path]);
       
       if (error) {
@@ -901,7 +901,7 @@ const cleanupFilesForSubmission = async (files) => {
     
     if (filePaths.length > 0) {
       const { error } = await supabase.storage
-        .from('purchase-orders-pdfs')
+        .from('submissions-files')
         .remove(filePaths);
       
       if (error) {
