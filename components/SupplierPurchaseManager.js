@@ -711,9 +711,8 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
   }, 1000);
 };
 
-    const exportPDF = async (action = 'download') => {
+      const exportPDF = async (action = 'download') => {
     try {
-      // Créer temporairement une version d'impression
       const printContainer = document.querySelector('.print-container');
       if (!printContainer) {
         alert("Aucun contenu à exporter.");
@@ -751,7 +750,6 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       `;
       document.head.appendChild(printStyles);
 
-      // Cloner et préparer le contenu
       const clonedContainer = printContainer.cloneNode(true);
       clonedContainer.className = 'temp-print-view';
       clonedContainer.style.visibility = 'visible';
@@ -760,7 +758,6 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       document.body.appendChild(clonedContainer);
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Capturer avec html2canvas
       const canvas = await html2canvas(clonedContainer, { 
         scale: 2,
         useCORS: true,
@@ -770,13 +767,10 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
         height: 1056
       });
       
-      // Nettoyer
       document.body.removeChild(clonedContainer);
       document.head.removeChild(printStyles);
       
       const imgData = canvas.toDataURL('image/png');
-
-      // Créer le PDF
       const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -786,14 +780,23 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
 
       if (action === 'download') {
-        // Téléchargement seulement
+        // Téléchargement uniquement
         pdf.save(`${purchaseNumber}.pdf`);
-      } else {
-        // Ouverture dans nouvel onglet seulement
-        const pdfBlob = pdf.output('blob');
-        const url = URL.createObjectURL(pdfBlob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else if (action === 'view') {
+        // Affichage dans nouvel onglet uniquement
+        const pdfDataUri = pdf.output('datauristring');
+        const newWindow = window.open();
+        newWindow.document.write(`
+          <html>
+            <head>
+              <title>${purchaseNumber}.pdf</title>
+            </head>
+            <body style="margin:0;">
+              <embed src="${pdfDataUri}" type="application/pdf" width="100%" height="100%">
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
       }
 
     } catch (error) {
