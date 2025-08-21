@@ -783,20 +783,17 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
         // Téléchargement uniquement
         pdf.save(`${purchaseNumber}.pdf`);
       } else if (action === 'view') {
-        // Affichage dans nouvel onglet uniquement
-        const pdfDataUri = pdf.output('datauristring');
-        const newWindow = window.open();
-        newWindow.document.write(`
-          <html>
-            <head>
-              <title>${purchaseNumber}.pdf</title>
-            </head>
-            <body style="margin:0;">
-              <embed src="${pdfDataUri}" type="application/pdf" width="100%" height="100%">
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
+        // Affichage dans nouvel onglet - MÉTHODE CORRIGÉE
+        const pdfBlob = pdf.output('blob');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        
+        // Ouvrir directement l'URL du blob
+        const newWindow = window.open(pdfUrl, '_blank');
+        
+        // Nettoyer l'URL après 5 secondes
+        setTimeout(() => {
+          URL.revokeObjectURL(pdfUrl);
+        }, 5000);
       }
 
     } catch (error) {
