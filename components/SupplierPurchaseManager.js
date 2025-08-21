@@ -1051,7 +1051,7 @@ if (action === 'modal') {
                 <p><strong>{purchaseForm.purchase_number}</strong></p>
                 <p><strong>Date / Date:</strong> {formatDate(new Date())}</p>
                 {purchaseForm.linked_po_number && (
-                  <p><strong>PO Client / Client PO:</strong> {purchaseForm.linked_po_number}</p>
+                  <p><strong>PO Client:</strong> {purchaseForm.linked_po_number}</p>
                 )}
                 {purchaseForm.delivery_date && (
                   <p><strong>Livraison prévue / Expected Delivery:</strong> {formatDate(purchaseForm.delivery_date)}</p>
@@ -1117,12 +1117,12 @@ if (action === 'modal') {
           <table className="mb-6">
             <thead>
               <tr>
-                <th>Code / Code</th>
-                <th>Description / Description</th>
+                <th>Code</th>
+                <th>Description</th>
                 <th>Qté / Qty</th>
                 <th>Unité / Unit</th>
                 <th>Prix Unit. / Unit Price</th>
-                <th>Total / Total</th>
+                <th>Total CA$</th>
               </tr>
             </thead>
             <tbody>
@@ -1143,11 +1143,11 @@ if (action === 'modal') {
                 <td className="text-right">{formatCurrency(purchaseForm.subtotal)}</td>
               </tr>
               <tr>
-                <td colSpan="5" className="text-right font-medium">TPS (5%) / GST (5%):</td>
+                <td colSpan="5" className="text-right font-medium">TPS/GST (5%):</td>
                 <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
               </tr>
               <tr>
-                <td colSpan="5" className="text-right font-medium">TVQ (9.975%) / PST (9.975%):</td>
+                <td colSpan="5" className="text-right font-medium">TVQ/PST (9.975%):</td>
                 <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
               </tr>
               {purchaseForm.shipping_cost > 0 && (
@@ -1157,7 +1157,7 @@ if (action === 'modal') {
                 </tr>
               )}
               <tr>
-                <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">TOTAL / TOTAL:</td>
+                <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">TOTAL:</td>
                 <td className="text-right font-bold text-lg bg-gray-100">{formatCurrency(purchaseForm.total_amount)}</td>
               </tr>
             </tfoot>
@@ -1166,7 +1166,7 @@ if (action === 'modal') {
           {/* Notes */}
           {purchaseForm.notes && (
             <div className="mt-6 border-t pt-4">
-              <h3 className="font-bold mb-2">Notes / Notes:</h3>
+              <h3 className="font-bold mb-2">Notes:</h3>
               <p className="text-sm">{purchaseForm.notes}</p>
             </div>
           )}
