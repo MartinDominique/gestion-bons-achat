@@ -711,61 +711,91 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
   }, 1000);
 };
 
-  const exportPDF = async (clientVersion = false) => {
+    const exportPDF = async () => {
     try {
-      // Choisir la zone à capturer
-      const selector = '.print-container';
-      const node = document.querySelector(selector);
-      if (!node) {
+      // Créer temporairement une version d'impression
+      const printContainer = document.querySelector('.print-container');
+      if (!printContainer) {
         alert("Aucun contenu à exporter.");
         return;
       }
 
-      // Afficher temporairement la zone d'impression
-      const originalDisplay = node.style.display;
-      node.style.display = 'block';
-      node.style.visibility = 'visible';
+      // Forcer les styles d'impression
+      const printStyles = document.createElement('style');
+      printStyles.textContent = `
+        .temp-print-view * { visibility: visible !important; }
+        .temp-print-view { 
+          position: absolute !important; 
+          left: 0 !important; 
+          top: 0 !important; 
+          width: 8.5in !important;
+          background: white !important;
+          padding: 0.5in !important;
+          font-size: 12px !important;
+          line-height: 1.4 !important;
+        }
+        .temp-print-view table { 
+          width: 100% !important; 
+          border-collapse: collapse !important; 
+        }
+        .temp-print-view th, .temp-print-view td { 
+          border: 1px solid #000 !important; 
+          padding: 8px !important; 
+          text-align: left !important; 
+        }
+        .temp-print-view th { 
+          background-color: #f0f0f0 !important; 
+        }
+      `;
+      document.head.appendChild(printStyles);
 
-      // Rendu en image
-      const canvas = await html2canvas(node, { 
-        scale: 2, 
-        useCORS: true, 
-        backgroundColor: '#fff',
+      // Cloner et préparer le contenu
+      const clonedContainer = printContainer.cloneNode(true);
+      clonedContainer.className = 'temp-print-view';
+      clonedContainer.style.visibility = 'visible';
+      clonedContainer.style.display = 'block';
+      
+      document.body.appendChild(clonedContainer);
+
+      // Attendre que le DOM soit mis à jour
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capturer avec html2canvas
+      const canvas = await html2canvas(clonedContainer, { 
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
         logging: false,
-        width: node.scrollWidth,
-        height: node.scrollHeight
+        width: 816, // 8.5 inches * 96 DPI
+        height: 1056 // 11 inches * 96 DPI
       });
+      
+      // Nettoyer
+      document.body.removeChild(clonedContainer);
+      document.head.removeChild(printStyles);
       
       const imgData = canvas.toDataURL('image/png');
 
-      // Créer le PDF (format Letter)
+      // Créer le PDF
       const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      // Redimensionner l'image
       const imgWidth = pageWidth;
       const imgHeight = canvas.height * (imgWidth / canvas.width);
 
-      let positionY = 0;
-      let remaining = imgHeight;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
 
-      // Multi-pages si nécessaire
-      while (remaining > 0) {
-        const sliceHeight = Math.min(remaining, pageHeight);
-        pdf.addImage(imgData, 'PNG', 0, positionY ? -positionY : 0, imgWidth, imgHeight, undefined, 'FAST');
-        remaining -= pageHeight;
-        if (remaining > 0) pdf.addPage();
-        positionY += pageHeight;
-      }
-
-      // Ouvrir le PDF dans un nouvel onglet
+      // Générer le nom de fichier avec le numéro de bon de commande
+      const fileName = `${purchaseForm.purchase_number || 'Achat-nouveau'}.pdf`;
+      
+      // Télécharger ET ouvrir
+      pdf.save(fileName);
+      
+      // Aussi ouvrir dans un nouvel onglet
       const blob = pdf.output('blob');
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
-
-      // Restaurer l'affichage original
-      node.style.display = originalDisplay;
 
     } catch (error) {
       console.error('Erreur lors de la génération PDF:', error);
@@ -835,6 +865,8 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
               top: 0;
               width: 100%;
               background: white;
+              font-size: 12px;
+              line-height: 1.4;
             }
             
             .no-print {
@@ -844,17 +876,40 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
             table {
               width: 100%;
               border-collapse: collapse;
+              margin: 1rem 0;
             }
             
             th, td {
               border: 1px solid #000;
               padding: 8px;
               text-align: left;
+              font-size: 11px;
             }
             
             th {
-              background-color: #f0f0f0;
+              background-color: #f0f0f0 !important;
+              font-weight: bold;
             }
+            
+            .grid {
+              display: grid !important;
+            }
+            
+            .grid-cols-2 {
+              grid-template-columns: 1fr 1fr !important;
+            }
+            
+            .gap-8 {
+              gap: 2rem !important;
+            }
+          }
+          
+          /* Styles pour la capture HTML2Canvas */
+          .temp-print-view {
+            font-family: Arial, sans-serif;
+            background: white;
+            padding: 36pt;
+            width: 576pt; /* 8 inches */
           }
         `}</style>
 
