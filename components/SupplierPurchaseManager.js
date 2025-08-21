@@ -720,6 +720,10 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
         return;
       }
 
+      // Vérifier le numéro de bon de commande
+      const purchaseNumber = purchaseForm.purchase_number || editingPurchase?.purchase_number || 'Achat-nouveau';
+      console.log('Numéro de bon de commande:', purchaseNumber);
+
       // Forcer les styles d'impression
       const printStyles = document.createElement('style');
       printStyles.textContent = `
@@ -766,8 +770,8 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
-        width: 816, // 8.5 inches * 96 DPI
-        height: 1056 // 11 inches * 96 DPI
+        width: 816,
+        height: 1056
       });
       
       // Nettoyer
@@ -786,16 +790,32 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
 
       pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
 
-      // Générer le nom de fichier avec le numéro de bon de commande
-      const fileName = `${purchaseForm.purchase_number || 'Achat-nouveau'}.pdf`;
+      // Créer le blob avec le bon nom
+      const pdfBlob = pdf.output('blob');
       
-      // Télécharger ET ouvrir
-      pdf.save(fileName);
+      // Créer un lien de téléchargement avec le nom correct
+      const fileName = `${purchaseNumber}.pdf`;
+      const url = URL.createObjectURL(pdfBlob);
       
-      // Aussi ouvrir dans un nouvel onglet
-      const blob = pdf.output('blob');
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      // Créer un lien temporaire pour téléchargement
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = fileName;
+      downloadLink.style.display = 'none';
+      
+      // Ajouter au DOM et déclencher le téléchargement
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      
+      // Nettoyer le lien
+      document.body.removeChild(downloadLink);
+      
+      // Ouvrir aussi dans un nouvel onglet (avec le bon nom dans l'URL)
+      setTimeout(() => {
+        window.open(url, '_blank');
+        // Nettoyer l'URL après un délai
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }, 100);
 
     } catch (error) {
       console.error('Erreur lors de la génération PDF:', error);
