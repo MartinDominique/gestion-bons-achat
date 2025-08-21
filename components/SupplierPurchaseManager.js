@@ -840,6 +840,82 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
   }
 };
 
+  function openPdfModal(blobUrl, onClose) {
+  // Création des éléments
+  const overlay = document.createElement('div');
+  const modal = document.createElement('div');
+  const header = document.createElement('div');
+  const title = document.createElement('div');
+  const closeBtn = document.createElement('button');
+  const frame = document.createElement('iframe');
+
+  // Styles inline pour éviter dépendances CSS
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.style.cssText = `
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 99999;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  `;
+  modal.style.cssText = `
+    background: #fff; width: 100%; max-width: 1100px; height: 85vh;
+    border-radius: 12px; overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column;
+  `;
+  header.style.cssText = `
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: #f7f7f7; border-bottom: 1px solid #e5e5e5;
+  `;
+  title.textContent = 'Aperçu PDF';
+  title.style.cssText = `font-weight: 600; font-size: 14px;`;
+
+  closeBtn.type = 'button';
+  closeBtn.textContent = 'Fermer';
+  closeBtn.style.cssText = `
+    padding: 6px 12px; background: #222; color: #fff; border: 0; border-radius: 6px;
+    cursor: pointer; font-size: 13px;
+  `;
+
+  frame.src = blobUrl;
+  frame.title = 'Aperçu PDF';
+  frame.style.cssText = `border: 0; width: 100%; height: 100%;`;
+
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+  modal.appendChild(frame);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Focus management / Échap / click overlay
+  const escHandler = (e) => {
+    if (e.key === 'Escape') doClose();
+  };
+  const clickHandler = (e) => {
+    // fermer si on clique en dehors du modal
+    if (e.target === overlay) doClose();
+  };
+
+  function doClose() {
+    // Vider la source pour libérer le Blob
+    frame.src = 'about:blank';
+    // Retirer les écouteurs
+    document.removeEventListener('keydown', escHandler);
+    overlay.removeEventListener('click', clickHandler);
+    // Supprimer le DOM
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    // Callback nettoyage blob
+    if (typeof onClose === 'function') onClose();
+  }
+
+  closeBtn.addEventListener('click', doClose);
+  document.addEventListener('keydown', escHandler);
+  overlay.addEventListener('click', clickHandler);
+}
+
   
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
@@ -1098,6 +1174,12 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
                     className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
                   >
                     📥 Télécharger PDF
+                  </button>
+                  <button
+                  onClick={() => exportPDF('modal')}
+                  className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
+                  >
+                  🪟 Aperçu Modal
                   </button>
                   <button
                     onClick={() => exportPDF('view')}
