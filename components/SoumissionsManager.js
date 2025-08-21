@@ -19,6 +19,8 @@ export default function SoumissionsManager() {
   const [sendingReport, setSendingReport] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState(null);
   const [uploadingInventory, setUploadingInventory] = useState(false);
+  // États pour la gestion des fichiers uploaded
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   
   // Recherche produits avec debounce et navigation clavier
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -65,7 +67,8 @@ export default function SoumissionsManager() {
     amount: 0,
     status: 'draft',
     items: [],
-    submission_number: ''
+    submission_number: '',
+    files: []
   });
 
   const [clientForm, setClientForm] = useState({
@@ -379,19 +382,36 @@ export default function SoumissionsManager() {
   };
 
   const handleDeleteSubmission = async (id) => {
-    if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cette soumission ?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('submissions')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
-      await fetchSoumissions();
-    } catch (error) {
-      console.error('Erreur suppression soumission:', error);
+  if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cette soumission ?')) return;
+  
+  try {
+    // NOUVEAU: Récupérer les fichiers avant suppression
+    const { data: submissionData, error: fetchError } = await supabase
+      .from('submissions')
+      .select('files')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error('Erreur récupération soumission:', fetchError);
     }
-  };
+
+    const { error } = await supabase
+      .from('submissions')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+
+    // NOUVEAU: Nettoyer les fichiers
+    if (submissionData?.files) {
+      await cleanupFilesForSubmission(submissionData.files);
+    }
+
+    await fetchSoumissions();
+  } catch (error) {
+    console.error('Erreur suppression soumission:', error);
+  }
+};
 
   const handleSendReport = async () => {
     setSendingReport(true);
@@ -680,13 +700,14 @@ export default function SoumissionsManager() {
       setEditingSubmission(null);
       setSelectedItems([]);
       setSubmissionForm({
-        client_name: '',
-        description: '',
-        amount: 0,
-        status: 'draft',
-        items: [],
-        submission_number: ''
-      });
+  client_name: '',
+  description: '',
+  amount: 0,
+  status: 'draft',
+  items: [],
+  submission_number: '',
+  files: []
+});
       setCalculatedCostTotal(0);
     } catch (error) {
       console.error('Erreur sauvegarde:', error.message);
@@ -742,6 +763,156 @@ const handlePrintClient = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // NOUVELLES FONCTIONS À AJOUTER COMPLÈTEMENT
+const handleFileUpload = async (e) => {
+  const files = Array.from(e.target.files);
+  if (files.length === 0) return;
+
+  setUploadingFiles(true);
+  const uploadedFiles = [];
+
+  for (const file of files) {
+    try {
+      const cleanFileName = file.name
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9._-]/g, '')
+        .substring(0, 100);
+
+      const fileName = `${Date.now()}_${cleanFileName}`;
+      const filePath = `submissions/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('purchase-orders-pdfs')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw new Error(`Erreur upload: ${error.message}`);
+
+      const { data: urlData } = supabase.storage
+        .from('purchase-orders-pdfs')
+        .getPublicUrl(filePath);
+
+      uploadedFiles.push({
+        name: file.name,
+        cleanName: cleanFileName,
+        size: file.size,
+        type: file.type,
+        path: data.path,
+        url: urlData.publicUrl,
+        uploaded_at: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Erreur upload fichier:', file.name, error);
+      alert(`Erreur upload "${file.name}": ${error.message}`);
+    }
+  }
+
+  if (uploadedFiles.length > 0) {
+    setSubmissionForm(prev => ({
+      ...prev, 
+      files: [...(prev.files || []), ...uploadedFiles]
+    }));
+  }
+
+  setUploadingFiles(false);
+  e.target.value = '';
+};
+
+const removeFile = async (index) => {
+  const fileToRemove = submissionForm.files[index];
+  
+  if (fileToRemove.path) {
+    try {
+      const { error } = await supabase.storage
+        .from('purchase-orders-pdfs')
+        .remove([fileToRemove.path]);
+      
+      if (error) {
+        console.error('Erreur suppression fichier:', error);
+      }
+    } catch (error) {
+      console.error('Erreur suppression fichier:', error);
+    }
+  }
+  
+  const newFiles = submissionForm.files.filter((_, i) => i !== index);
+  setSubmissionForm(prev => ({...prev, files: newFiles}));
+};
+
+const openFile = (file) => {
+  if (file.url) {
+    window.open(file.url, '_blank');
+  } else {
+    alert('Fichier non accessible - URL manquante');
+  }
+};
+
+const downloadFile = async (file) => {
+  if (!file.url) {
+    alert('Impossible de télécharger - URL manquante');
+    return;
+  }
+
+  try {
+    const response = await fetch(file.url);
+    const blob = await response.blob();
+    
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+  } catch (error) {
+    console.error('Erreur téléchargement:', error);
+    alert('Erreur lors du téléchargement');
+  }
+};
+
+const getFileIcon = (fileType) => {
+  if (fileType?.includes('pdf')) return '📄';
+  if (fileType?.includes('excel') || fileType?.includes('sheet')) return '📊';
+  if (fileType?.includes('word') || fileType?.includes('document')) return '📝';
+  if (fileType?.includes('image')) return '🖼️';
+  return '📎';
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const cleanupFilesForSubmission = async (files) => {
+  if (!files || files.length === 0) return;
+  
+  try {
+    const filePaths = files
+      .filter(file => file.path)
+      .map(file => file.path);
+    
+    if (filePaths.length > 0) {
+      const { error } = await supabase.storage
+        .from('purchase-orders-pdfs')
+        .remove(filePaths);
+      
+      if (error) {
+        console.error('Erreur nettoyage fichiers:', error);
+      }
+    }
+  } catch (error) {
+    console.error('Erreur lors du nettoyage:', error);
+  }
+};
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -1888,6 +2059,94 @@ const handlePrintClient = () => {
                     </div>
                   </div>
                 )}
+
+                  {/* Section Documents - NOUVEAU */}
+<div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+  <label className="block text-sm font-semibold text-purple-800 mb-2">
+    📎 Documents (PDF, XLS, DOC, etc.)
+  </label>
+  
+  <div className="mb-4">
+    <div className="flex flex-col sm:flex-row gap-3">
+      <input
+        type="file"
+        multiple
+        accept=".pdf,.xls,.xlsx,.doc,.docx,.txt,.png,.jpg,.jpeg"
+        onChange={handleFileUpload}
+        disabled={uploadingFiles}
+        className="block w-full text-sm text-purple-600 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 disabled:opacity-50"
+      />
+    </div>
+    {uploadingFiles && (
+      <p className="text-sm text-purple-600 mt-2 flex items-center">
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
+        📤 Upload en cours... Veuillez patienter.
+      </p>
+    )}
+  </div>
+
+  {submissionForm.files && submissionForm.files.length > 0 && (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-purple-700">
+        📁 Documents joints ({submissionForm.files.length})
+      </p>
+      <div className="space-y-2">
+        {submissionForm.files.map((file, index) => (
+          <div key={index} className="bg-white p-3 rounded border border-purple-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                <span className="text-xl flex-shrink-0">{getFileIcon(file.type)}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formatFileSize(file.size)} • {file.type}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                {file.url ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openFile(file)}
+                      className="flex-1 sm:flex-none px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors"
+                      title="Ouvrir le fichier"
+                    >
+                      👁️ Voir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadFile(file)}
+                      className="flex-1 sm:flex-none px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded border border-green-300 transition-colors"
+                      title="Télécharger le fichier"
+                    >
+                      💾 Télécharger
+                    </button>
+                  </>
+                ) : (
+                  <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
+                    📄 En cours...
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeFile(index)}
+                  className="flex-1 sm:flex-none px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-300 transition-colors"
+                  title="Supprimer le fichier"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+</div>
 
                 {/* Totaux responsive */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
