@@ -809,30 +809,30 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
     }
 
     // 5) Actions : download / view / modal
-    if (action === 'download') {
-      pdf.save(`${purchaseNumber}.pdf`);
-      return;
-    }
+if (action === 'download') {
+  pdf.save(`${purchaseNumber}.pdf`);
+  return;
+}
 
-    // Génère un Blob (commune à view & modal)
-    const pdfBlob = pdf.output('blob');
-    const blobUrl = URL.createObjectURL(pdfBlob);
+// ⚠️ NE PAS utiliser pdf.output('blob') pour le modal (edge/iframe => "Open")
+if (action === 'view') {
+  // Nouvel onglet sans téléchargement auto
+  const pdfBlob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  window.open(blobUrl, '_blank');
+  // (Optionnel) révoquer plus tard si tu veux
+  return;
+}
 
-    if (action === 'view') {
-      // Nouvel onglet SANS téléchargement auto
-      window.open(blobUrl, '_blank');
-      // Ne pas révoquer tout de suite (laisser l’utilisateur fermer l’onglet)
-      // Optionnel: révoquer après un long délai si tu veux
-      return;
-    }
+if (action === 'modal') {
+  // Data URL = rendu inline fiable dans <embed>
+  const dataUrl = pdf.output('dataurlstring'); // "data:application/pdf;filename=...;base64,...."
+  openPdfModal(dataUrl, () => {
+    /* rien à révoquer pour data: URL */
+  });
+  return;
+}
 
-    if (action === 'modal') {
-      openPdfModal(blobUrl, () => {
-        // callback de fermeture: révoquer l’URL proprement
-        URL.revokeObjectURL(blobUrl);
-      });
-      return;
-    }
 
   } catch (error) {
     console.error('Erreur lors de la génération PDF:', error);
@@ -840,16 +840,16 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
   }
 };
 
-  function openPdfModal(blobUrl, onClose) {
+  function openPdfModal(pdfUrl, onClose) {
   // Création des éléments
   const overlay = document.createElement('div');
   const modal = document.createElement('div');
   const header = document.createElement('div');
   const title = document.createElement('div');
   const closeBtn = document.createElement('button');
-  const frame = document.createElement('iframe');
+  const viewer = document.createElement('embed'); // 👈 EMBED au lieu d'iframe
 
-  // Styles inline pour éviter dépendances CSS
+  // Styles
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
   overlay.style.cssText = `
@@ -879,37 +879,53 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
     cursor: pointer; font-size: 13px;
   `;
 
-  frame.src = blobUrl;
-  frame.title = 'Aperçu PDF';
-  frame.style.cssText = `border: 0; width: 100%; height: 100%;`;
+  // 👇 Rendu PDF inline fiable
+  viewer.type = 'application/pdf';
+  viewer.src = pdfUrl;                // data:application/pdf;... (pas blob:)
+  viewer.style.cssText = `border: 0; width: 100%; height: 100%;`;
 
+  // Fallback “ouvrir dans un onglet” si jamais
+  const fallbackBar = document.createElement('div');
+  fallbackBar.style.cssText = `display:flex; gap:8px; align-items:center; padding:8px 14px; border-top:1px solid #eee;`;
+  const openTabBtn = document.createElement('a');
+  openTabBtn.textContent = 'Ouvrir dans un onglet';
+  openTabBtn.href = pdfUrl;
+  openTabBtn.target = '_blank';
+  openTabBtn.rel = 'noopener';
+  openTabBtn.style.cssText = `font-size: 12px; color: #2563eb; text-decoration: underline;`;
+  // (On ne l’affiche que si l’embed échoue)
+  fallbackBar.style.display = 'none';
+
+  // Structure
   header.appendChild(title);
   header.appendChild(closeBtn);
   modal.appendChild(header);
-  modal.appendChild(frame);
+  modal.appendChild(viewer);
+  modal.appendChild(fallbackBar);
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 
-  // Focus management / Échap / click overlay
-  const escHandler = (e) => {
-    if (e.key === 'Escape') doClose();
-  };
-  const clickHandler = (e) => {
-    // fermer si on clique en dehors du modal
-    if (e.target === overlay) doClose();
-  };
+  // Si le PDF ne se rend pas, on montre le fallback
+  viewer.addEventListener('error', () => { fallbackBar.style.display = 'flex'; fallbackBar.appendChild(openTabBtn); });
+  viewer.addEventListener('load', () => { /* ok */ });
+
+  // Fermeture (Échap, clic overlay, bouton)
+  const escHandler = (e) => { if (e.key === 'Escape') doClose(); };
+  const clickHandler = (e) => { if (e.target === overlay) doClose(); };
 
   function doClose() {
-    // Vider la source pour libérer le Blob
-    frame.src = 'about:blank';
-    // Retirer les écouteurs
+    viewer.src = 'about:blank';
     document.removeEventListener('keydown', escHandler);
     overlay.removeEventListener('click', clickHandler);
-    // Supprimer le DOM
     if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    // Callback nettoyage blob
     if (typeof onClose === 'function') onClose();
   }
+
+  closeBtn.addEventListener('click', doClose);
+  document.addEventListener('keydown', escHandler);
+  overlay.addEventListener('click', clickHandler);
+}
+
 
   closeBtn.addEventListener('click', doClose);
   document.addEventListener('keydown', escHandler);
