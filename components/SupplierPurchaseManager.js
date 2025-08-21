@@ -1,3 +1,5 @@
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
@@ -709,6 +711,68 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
   }, 1000);
 };
 
+  const exportPDF = async (clientVersion = false) => {
+    try {
+      // Choisir la zone à capturer
+      const selector = '.print-container';
+      const node = document.querySelector(selector);
+      if (!node) {
+        alert("Aucun contenu à exporter.");
+        return;
+      }
+
+      // Afficher temporairement la zone d'impression
+      const originalDisplay = node.style.display;
+      node.style.display = 'block';
+      node.style.visibility = 'visible';
+
+      // Rendu en image
+      const canvas = await html2canvas(node, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: '#fff',
+        logging: false,
+        width: node.scrollWidth,
+        height: node.scrollHeight
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+
+      // Créer le PDF (format Letter)
+      const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Redimensionner l'image
+      const imgWidth = pageWidth;
+      const imgHeight = canvas.height * (imgWidth / canvas.width);
+
+      let positionY = 0;
+      let remaining = imgHeight;
+
+      // Multi-pages si nécessaire
+      while (remaining > 0) {
+        const sliceHeight = Math.min(remaining, pageHeight);
+        pdf.addImage(imgData, 'PNG', 0, positionY ? -positionY : 0, imgWidth, imgHeight, undefined, 'FAST');
+        remaining -= pageHeight;
+        if (remaining > 0) pdf.addPage();
+        positionY += pageHeight;
+      }
+
+      // Ouvrir le PDF dans un nouvel onglet
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+
+      // Restaurer l'affichage original
+      node.style.display = originalDisplay;
+
+    } catch (error) {
+      console.error('Erreur lors de la génération PDF:', error);
+      alert('Erreur lors de la génération du PDF');
+    }
+  };
+  
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
       style: 'currency',
@@ -936,6 +1000,12 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                  <button
+                    onClick={() => exportPDF(false)}
+                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
+                  >
+                    📄 Exporter PDF
+                  </button>
                   <button
                     onClick={handlePrint}
                     className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
