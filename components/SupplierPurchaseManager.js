@@ -712,95 +712,134 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
 };
 
       const exportPDF = async (action = 'download') => {
-    try {
-      const printContainer = document.querySelector('.print-container');
-      if (!printContainer) {
-        alert("Aucun contenu à exporter.");
-        return;
-      }
-
-      const purchaseNumber = purchaseForm.purchase_number || editingPurchase?.purchase_number || 'Achat-nouveau';
-
-      // Forcer les styles d'impression
-      const printStyles = document.createElement('style');
-      printStyles.textContent = `
-        .temp-print-view * { visibility: visible !important; }
-        .temp-print-view { 
-          position: absolute !important; 
-          left: 0 !important; 
-          top: 0 !important; 
-          width: 8.5in !important;
-          background: white !important;
-          padding: 0.5in !important;
-          font-size: 12px !important;
-          line-height: 1.4 !important;
-        }
-        .temp-print-view table { 
-          width: 100% !important; 
-          border-collapse: collapse !important; 
-        }
-        .temp-print-view th, .temp-print-view td { 
-          border: 1px solid #000 !important; 
-          padding: 8px !important; 
-          text-align: left !important; 
-        }
-        .temp-print-view th { 
-          background-color: #f0f0f0 !important; 
-        }
-      `;
-      document.head.appendChild(printStyles);
-
-      const clonedContainer = printContainer.cloneNode(true);
-      clonedContainer.className = 'temp-print-view';
-      clonedContainer.style.visibility = 'visible';
-      clonedContainer.style.display = 'block';
-      
-      document.body.appendChild(clonedContainer);
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(clonedContainer, { 
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: 816,
-        height: 1056
-      });
-      
-      document.body.removeChild(clonedContainer);
-      document.head.removeChild(printStyles);
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = canvas.height * (imgWidth / canvas.width);
-
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-
-      if (action === 'download') {
-        // Téléchargement uniquement
-        pdf.save(`${purchaseNumber}.pdf`);
-      } else if (action === 'view') {
-        // Affichage dans nouvel onglet - MÉTHODE CORRIGÉE
-        const pdfBlob = pdf.output('blob');
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        
-        // Ouvrir directement l'URL du blob
-        const newWindow = window.open(pdfUrl, '_blank');
-        
-        // Nettoyer l'URL après 5 secondes
-        setTimeout(() => {
-          URL.revokeObjectURL(pdfUrl);
-        }, 5000);
-      }
-
-    } catch (error) {
-      console.error('Erreur lors de la génération PDF:', error);
-      alert('Erreur lors de la génération du PDF');
+  try {
+    const printContainer = document.querySelector('.print-container');
+    if (!printContainer) {
+      alert("Aucun contenu à exporter.");
+      return;
     }
-  };
+
+    const purchaseNumber =
+      purchaseForm?.purchase_number ||
+      editingPurchase?.purchase_number ||
+      'Achat-nouveau';
+
+    // 1) Styles d'impression temporaires
+    const printStyles = document.createElement('style');
+    printStyles.textContent = `
+      .temp-print-view * { visibility: visible !important; }
+      .temp-print-view {
+        position: absolute !important;
+        left: 0 !important; top: 0 !important;
+        width: 8.5in !important;
+        background: #fff !important;
+        padding: 0.5in !important;
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+      }
+      .temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
+      .temp-print-view th, .temp-print-view td {
+        border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
+      }
+      .temp-print-view th { background-color: #f0f0f0 !important; }
+    `;
+    document.head.appendChild(printStyles);
+
+    // 2) Cloner le contenu
+    const clonedContainer = printContainer.cloneNode(true);
+    clonedContainer.className = 'temp-print-view';
+    clonedContainer.style.visibility = 'visible';
+    clonedContainer.style.display = 'block';
+    document.body.appendChild(clonedContainer);
+
+    await new Promise(r => setTimeout(r, 80));
+
+    // 3) Canvas (laisser html2canvas gérer la hauteur)
+    const canvas = await html2canvas(clonedContainer, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false
+    });
+
+    // Nettoyage DOM temporaire
+    document.body.removeChild(clonedContainer);
+    document.head.removeChild(printStyles);
+
+    // 4) PDF avec pagination, marges, numéros de page
+    const pdf = new jsPDF({ unit: 'pt', format: 'letter' }); // 612 x 792
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = { top: 36, right: 36, bottom: 36, left: 36 };
+    const usableWidth = pageWidth - margin.left - margin.right;
+    const usableHeight = pageHeight - margin.top - margin.bottom;
+
+    const imgData = canvas.toDataURL('image/png');
+    const imgWidth = usableWidth;
+    const imgHeight = canvas.height * (imgWidth / canvas.width);
+
+    let heightLeft = imgHeight;
+    let positionY = 0;
+    let page = 1;
+
+    while (heightLeft > 0) {
+      if (page > 1) pdf.addPage();
+
+      pdf.addImage(
+        imgData,
+        'PNG',
+        margin.left,
+        margin.top + positionY,
+        imgWidth,
+        imgHeight
+      );
+
+      // pied de page: numéro de page
+      pdf.setFontSize(10);
+      pdf.text(
+        `Page ${page}`,
+        pageWidth - margin.right,
+        pageHeight - 14,
+        { align: 'right', baseline: 'bottom' }
+      );
+
+      heightLeft -= usableHeight;
+      positionY -= usableHeight;
+      page++;
+    }
+
+    // 5) Actions : download / view / modal
+    if (action === 'download') {
+      pdf.save(`${purchaseNumber}.pdf`);
+      return;
+    }
+
+    // Génère un Blob (commune à view & modal)
+    const pdfBlob = pdf.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+
+    if (action === 'view') {
+      // Nouvel onglet SANS téléchargement auto
+      window.open(blobUrl, '_blank');
+      // Ne pas révoquer tout de suite (laisser l’utilisateur fermer l’onglet)
+      // Optionnel: révoquer après un long délai si tu veux
+      return;
+    }
+
+    if (action === 'modal') {
+      openPdfModal(blobUrl, () => {
+        // callback de fermeture: révoquer l’URL proprement
+        URL.revokeObjectURL(blobUrl);
+      });
+      return;
+    }
+
+  } catch (error) {
+    console.error('Erreur lors de la génération PDF:', error);
+    alert('Erreur lors de la génération du PDF');
+  }
+};
+
   
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
