@@ -1037,7 +1037,7 @@ if (action === 'modal') {
           }
         `}</style>
 
-        {/* ZONE D'IMPRESSION - NOUVELLE MISE EN PAGE */}
+        {/* ZONE D'IMPRESSION - VERSION BILINGUE PERMANENTE */}
         <div className="print-container hidden print:block">
           {/* En-tête avec logo et informations du bon de commande */}
           <div className="flex justify-between items-start mb-8">
@@ -1046,15 +1046,15 @@ if (action === 'modal') {
             </div>
             
             <div className="text-right">
-              <h1 className="text-2xl font-bold mb-2">BON DE COMMANDE</h1>
+              <h1 className="text-2xl font-bold mb-2">BON DE COMMANDE / PURCHASE ORDER</h1>
               <div className="text-sm text-gray-600 space-y-1">
                 <p><strong>{purchaseForm.purchase_number}</strong></p>
-                <p><strong>Date:</strong> {formatDate(new Date())}</p>
+                <p><strong>Date / Date:</strong> {formatDate(new Date())}</p>
                 {purchaseForm.linked_po_number && (
-                  <p><strong>PO Client:</strong> {purchaseForm.linked_po_number}</p>
+                  <p><strong>PO Client / Client PO:</strong> {purchaseForm.linked_po_number}</p>
                 )}
                 {purchaseForm.delivery_date && (
-                  <p><strong>Livraison prévue:</strong> {formatDate(purchaseForm.delivery_date)}</p>
+                  <p><strong>Livraison prévue / Expected Delivery:</strong> {formatDate(purchaseForm.delivery_date)}</p>
                 )}
               </div>
             </div>
@@ -1065,23 +1065,29 @@ if (action === 'modal') {
             {/* Fournisseur à gauche */}
             {selectedSupplier && (
               <div>
-                <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">Fournisseur:</h3>
+                <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
+                  Fournisseur / Supplier:
+                </h3>
                 <div className="space-y-1">
                   <p className="font-medium text-base">{selectedSupplier.company_name}</p>
-                  {selectedSupplier.contact_name && <p>Contact: {selectedSupplier.contact_name}</p>}
+                  {selectedSupplier.contact_name && (
+                    <p>Contact / Contact: {selectedSupplier.contact_name}</p>
+                  )}
                   <p>{selectedSupplier.address}</p>
                   <p>{selectedSupplier.city}, {selectedSupplier.province} {selectedSupplier.postal_code}</p>
                   <p>{selectedSupplier.country}</p>
                   {selectedSupplier.email && <p>Email: {selectedSupplier.email}</p>}
-                  {selectedSupplier.phone && <p>Tél: {selectedSupplier.phone}</p>}
+                  {selectedSupplier.phone && <p>Tél / Tel: {selectedSupplier.phone}</p>}
                 </div>
               </div>
             )}
             
-            {/* Livrer à à droite */}
+            {/* Livrer à droite */}
             {selectedAddress && (
               <div>
-                <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">Livrer à:</h3>
+                <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
+                  Livrer à / Ship to:
+                </h3>
                 <div className="space-y-1">
                   <p className="font-medium text-base">{selectedAddress.name}</p>
                   <p>{selectedAddress.address}</p>
@@ -1095,10 +1101,14 @@ if (action === 'modal') {
           {/* Informations de livraison */}
           {(purchaseForm.shipping_company || purchaseForm.shipping_account) && (
             <div className="mb-6 bg-gray-50 p-3 rounded">
-              <h3 className="font-bold mb-2">Livraison:</h3>
+              <h3 className="font-bold mb-2">Livraison / Shipping:</h3>
               <div className="flex gap-6">
-                {purchaseForm.shipping_company && <p><strong>Transporteur:</strong> {purchaseForm.shipping_company}</p>}
-                {purchaseForm.shipping_account && <p><strong>N° de compte:</strong> {purchaseForm.shipping_account}</p>}
+                {purchaseForm.shipping_company && (
+                  <p><strong>Transporteur / Carrier:</strong> {purchaseForm.shipping_company}</p>
+                )}
+                {purchaseForm.shipping_account && (
+                  <p><strong>N° de compte / Account #:</strong> {purchaseForm.shipping_account}</p>
+                )}
               </div>
             </div>
           )}
@@ -1107,12 +1117,12 @@ if (action === 'modal') {
           <table className="mb-6">
             <thead>
               <tr>
-                <th>Code</th>
-                <th>Description</th>
-                <th>Qté</th>
-                <th>Unité</th>
-                <th>Prix Unit.</th>
-                <th>Total</th>
+                <th>Code / Code</th>
+                <th>Description / Description</th>
+                <th>Qté / Qty</th>
+                <th>Unité / Unit</th>
+                <th>Prix Unit. / Unit Price</th>
+                <th>Total / Total</th>
               </tr>
             </thead>
             <tbody>
@@ -1129,25 +1139,25 @@ if (action === 'modal') {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan="5" className="text-right font-medium">Sous-total:</td>
+                <td colSpan="5" className="text-right font-medium">Sous-total / Subtotal:</td>
                 <td className="text-right">{formatCurrency(purchaseForm.subtotal)}</td>
               </tr>
-             <tr>
-              <td colSpan="5" className="text-right font-medium">TPS (5%):</td>
-              <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
-            </tr>
-            <tr>
-              <td colSpan="5" className="text-right font-medium">TVQ (9.975%):</td>
-              <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
-            </tr>
+              <tr>
+                <td colSpan="5" className="text-right font-medium">TPS (5%) / GST (5%):</td>
+                <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
+              </tr>
+              <tr>
+                <td colSpan="5" className="text-right font-medium">TVQ (9.975%) / PST (9.975%):</td>
+                <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
+              </tr>
               {purchaseForm.shipping_cost > 0 && (
                 <tr>
-                  <td colSpan="5" className="text-right font-medium">Frais de livraison:</td>
+                  <td colSpan="5" className="text-right font-medium">Frais de livraison / Shipping:</td>
                   <td className="text-right">{formatCurrency(purchaseForm.shipping_cost)}</td>
                 </tr>
               )}
               <tr>
-                <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">TOTAL:</td>
+                <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">TOTAL / TOTAL:</td>
                 <td className="text-right font-bold text-lg bg-gray-100">{formatCurrency(purchaseForm.total_amount)}</td>
               </tr>
             </tfoot>
@@ -1156,7 +1166,7 @@ if (action === 'modal') {
           {/* Notes */}
           {purchaseForm.notes && (
             <div className="mt-6 border-t pt-4">
-              <h3 className="font-bold mb-2">Notes:</h3>
+              <h3 className="font-bold mb-2">Notes / Notes:</h3>
               <p className="text-sm">{purchaseForm.notes}</p>
             </div>
           )}
