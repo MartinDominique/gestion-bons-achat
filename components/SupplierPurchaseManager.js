@@ -711,7 +711,7 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
   }, 1000);
 };
 
-    const exportPDF = async () => {
+    const exportPDF = async (action = 'download') => {
     try {
       // Créer temporairement une version d'impression
       const printContainer = document.querySelector('.print-container');
@@ -720,9 +720,7 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
         return;
       }
 
-      // Vérifier le numéro de bon de commande
       const purchaseNumber = purchaseForm.purchase_number || editingPurchase?.purchase_number || 'Achat-nouveau';
-      console.log('Numéro de bon de commande:', purchaseNumber);
 
       // Forcer les styles d'impression
       const printStyles = document.createElement('style');
@@ -760,8 +758,6 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       clonedContainer.style.display = 'block';
       
       document.body.appendChild(clonedContainer);
-
-      // Attendre que le DOM soit mis à jour
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Capturer avec html2canvas
@@ -784,38 +780,21 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-
       const imgWidth = pageWidth;
       const imgHeight = canvas.height * (imgWidth / canvas.width);
 
       pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
 
-      // Créer le blob avec le bon nom
-      const pdfBlob = pdf.output('blob');
-      
-      // Créer un lien de téléchargement avec le nom correct
-      const fileName = `${purchaseNumber}.pdf`;
-      const url = URL.createObjectURL(pdfBlob);
-      
-      // Créer un lien temporaire pour téléchargement
-      const downloadLink = document.createElement('a');
-      downloadLink.href = url;
-      downloadLink.download = fileName;
-      downloadLink.style.display = 'none';
-      
-      // Ajouter au DOM et déclencher le téléchargement
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      
-      // Nettoyer le lien
-      document.body.removeChild(downloadLink);
-      
-      // Ouvrir aussi dans un nouvel onglet (avec le bon nom dans l'URL)
-      setTimeout(() => {
+      if (action === 'download') {
+        // Téléchargement seulement
+        pdf.save(`${purchaseNumber}.pdf`);
+      } else {
+        // Ouverture dans nouvel onglet seulement
+        const pdfBlob = pdf.output('blob');
+        const url = URL.createObjectURL(pdfBlob);
         window.open(url, '_blank');
-        // Nettoyer l'URL après un délai
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }, 100);
+      }
 
     } catch (error) {
       console.error('Erreur lors de la génération PDF:', error);
@@ -1076,10 +1055,16 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
                 
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <button
-                    onClick={() => exportPDF(false)}
+                    onClick={() => exportPDF('download')}
                     className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
                   >
-                    📄 Exporter PDF
+                    📥 Télécharger PDF
+                  </button>
+                  <button
+                    onClick={() => exportPDF('view')}
+                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
+                  >
+                    👁️ Voir PDF
                   </button>
                   <button
                     onClick={handlePrint}
