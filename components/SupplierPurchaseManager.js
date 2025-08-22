@@ -978,9 +978,9 @@ useEffect(() => {
 
     // Fonction pour vérifier si c'est un fournisseur canadien (pour les taxes)
   const isCanadianSupplier = () => {
-    const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
-    return (!selectedSupplier || selectedSupplier.country === 'Canada') && !selectedSupplier?.tax_exempt;
-  };
+  const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
+  return !selectedSupplier || selectedSupplier.country === 'Canada';
+};
 
   const filteredPurchases = supplierPurchases.filter(purchase => {
     const matchesSearch = 
