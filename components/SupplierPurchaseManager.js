@@ -74,7 +74,8 @@ export default function SupplierPurchaseManager() {
     province: 'QC',
     postal_code: '',
     country: 'Canada',
-    notes: ''
+    notes: '',
+    preferred_english: false
   });
 
   // Formulaire adresse
@@ -425,7 +426,8 @@ useEffect(() => {
         province: 'QC',
         postal_code: '',
         country: 'Canada',
-        notes: ''
+        notes: '',
+        preferred_english: false
       });
     } catch (error) {
       console.error('Erreur sauvegarde fournisseur:', error);
@@ -939,6 +941,12 @@ if (action === 'modal') {
     return new Date(dateString).toLocaleDateString('fr-CA');
   };
 
+  // Fonction pour déterminer si le bon doit être bilingue basé sur le fournisseur
+  const shouldShowBilingual = () => {
+    const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
+    return selectedSupplier?.preferred_english || false;
+  };
+  
   const filteredPurchases = supplierPurchases.filter(purchase => {
     const matchesSearch = 
       purchase.purchase_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1037,7 +1045,7 @@ if (action === 'modal') {
           }
         `}</style>
 
-        {/* ZONE D'IMPRESSION - VERSION BILINGUE PERMANENTE */}
+        {/* ZONE D'IMPRESSION - VERSION CONDITIONNELLE BASÉE SUR FOURNISSEUR */}
         <div className="print-container hidden print:block">
           {/* En-tête avec logo et informations du bon de commande */}
           <div className="flex justify-between items-start mb-8">
@@ -1046,15 +1054,17 @@ if (action === 'modal') {
             </div>
             
             <div className="text-right">
-              <h1 className="text-2xl font-bold mb-2">BON DE COMMANDE / PURCHASE ORDER</h1>
+              <h1 className="text-2xl font-bold mb-2">
+                {shouldShowBilingual() ? 'BON DE COMMANDE / PURCHASE ORDER' : 'BON DE COMMANDE'}
+              </h1>
               <div className="text-sm text-gray-600 space-y-1">
                 <p><strong>{purchaseForm.purchase_number}</strong></p>
-                <p><strong>Date / Date:</strong> {formatDate(new Date())}</p>
+                <p><strong>{shouldShowBilingual() ? 'Date / Date:' : 'Date:'}</strong> {formatDate(new Date())}</p>
                 {purchaseForm.linked_po_number && (
-                  <p><strong>PO Client:</strong> {purchaseForm.linked_po_number}</p>
+                  <p><strong>{shouldShowBilingual() ? 'PO Client / Client PO:' : 'PO Client:'}</strong> {purchaseForm.linked_po_number}</p>
                 )}
                 {purchaseForm.delivery_date && (
-                  <p><strong>Livraison prévue / Expected Delivery:</strong> {formatDate(purchaseForm.delivery_date)}</p>
+                  <p><strong>{shouldShowBilingual() ? 'Livraison prévue / Expected Delivery:' : 'Livraison prévue:'}</strong> {formatDate(purchaseForm.delivery_date)}</p>
                 )}
               </div>
             </div>
@@ -1066,18 +1076,20 @@ if (action === 'modal') {
             {selectedSupplier && (
               <div>
                 <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
-                  Fournisseur / Supplier:
+                  {shouldShowBilingual() ? 'Fournisseur / Supplier:' : 'Fournisseur:'}
                 </h3>
                 <div className="space-y-1">
                   <p className="font-medium text-base">{selectedSupplier.company_name}</p>
                   {selectedSupplier.contact_name && (
-                    <p>Contact / Contact: {selectedSupplier.contact_name}</p>
+                    <p>{shouldShowBilingual() ? 'Contact / Contact:' : 'Contact:'} {selectedSupplier.contact_name}</p>
                   )}
                   <p>{selectedSupplier.address}</p>
                   <p>{selectedSupplier.city}, {selectedSupplier.province} {selectedSupplier.postal_code}</p>
                   <p>{selectedSupplier.country}</p>
                   {selectedSupplier.email && <p>Email: {selectedSupplier.email}</p>}
-                  {selectedSupplier.phone && <p>Tél / Tel: {selectedSupplier.phone}</p>}
+                  {selectedSupplier.phone && (
+                    <p>{shouldShowBilingual() ? 'Tél / Tel:' : 'Tél:'} {selectedSupplier.phone}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -1086,7 +1098,7 @@ if (action === 'modal') {
             {selectedAddress && (
               <div>
                 <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
-                  Livrer à / Ship to:
+                  {shouldShowBilingual() ? 'Livrer à / Ship to:' : 'Livrer à:'}
                 </h3>
                 <div className="space-y-1">
                   <p className="font-medium text-base">{selectedAddress.name}</p>
@@ -1101,13 +1113,15 @@ if (action === 'modal') {
           {/* Informations de livraison */}
           {(purchaseForm.shipping_company || purchaseForm.shipping_account) && (
             <div className="mb-6 bg-gray-50 p-3 rounded">
-              <h3 className="font-bold mb-2">Livraison / Shipping:</h3>
+              <h3 className="font-bold mb-2">
+                {shouldShowBilingual() ? 'Livraison / Shipping:' : 'Livraison:'}
+              </h3>
               <div className="flex gap-6">
                 {purchaseForm.shipping_company && (
-                  <p><strong>Transporteur / Carrier:</strong> {purchaseForm.shipping_company}</p>
+                  <p><strong>{shouldShowBilingual() ? 'Transporteur / Carrier:' : 'Transporteur:'}</strong> {purchaseForm.shipping_company}</p>
                 )}
                 {purchaseForm.shipping_account && (
-                  <p><strong>N° de compte / Account #:</strong> {purchaseForm.shipping_account}</p>
+                  <p><strong>{shouldShowBilingual() ? 'N° de compte / Account #:' : 'N° de compte:'}</strong> {purchaseForm.shipping_account}</p>
                 )}
               </div>
             </div>
@@ -1117,12 +1131,12 @@ if (action === 'modal') {
           <table className="mb-6">
             <thead>
               <tr>
-                <th>Code</th>
-                <th>Description</th>
-                <th>Qté / Qty</th>
-                <th>Unité / Unit</th>
-                <th>Prix Unit. / Unit Price</th>
-                <th>Total CA$</th>
+                <th>{shouldShowBilingual() ? 'Code / Code' : 'Code'}</th>
+                <th>{shouldShowBilingual() ? 'Description / Description' : 'Description'}</th>
+                <th>{shouldShowBilingual() ? 'Qté / Qty' : 'Qté'}</th>
+                <th>{shouldShowBilingual() ? 'Unité / Unit' : 'Unité'}</th>
+                <th>{shouldShowBilingual() ? 'Prix Unit. / Unit Price' : 'Prix Unit.'}</th>
+                <th>{shouldShowBilingual() ? 'Total / Total' : 'Total'}</th>
               </tr>
             </thead>
             <tbody>
@@ -1139,25 +1153,35 @@ if (action === 'modal') {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan="5" className="text-right font-medium">Sous-total / Subtotal:</td>
+                <td colSpan="5" className="text-right font-medium">
+                  {shouldShowBilingual() ? 'Sous-total / Subtotal:' : 'Sous-total:'}
+                </td>
                 <td className="text-right">{formatCurrency(purchaseForm.subtotal)}</td>
               </tr>
               <tr>
-                <td colSpan="5" className="text-right font-medium">TPS/GST (5%):</td>
+                <td colSpan="5" className="text-right font-medium">
+                  {shouldShowBilingual() ? 'TPS (5%) / GST (5%):' : 'TPS (5%):'}
+                </td>
                 <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
               </tr>
               <tr>
-                <td colSpan="5" className="text-right font-medium">TVQ/PST (9.975%):</td>
+                <td colSpan="5" className="text-right font-medium">
+                  {shouldShowBilingual() ? 'TVQ (9.975%) / PST (9.975%):' : 'TVQ (9.975%):'}
+                </td>
                 <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
               </tr>
               {purchaseForm.shipping_cost > 0 && (
                 <tr>
-                  <td colSpan="5" className="text-right font-medium">Frais de livraison / Shipping:</td>
+                  <td colSpan="5" className="text-right font-medium">
+                    {shouldShowBilingual() ? 'Frais de livraison / Shipping:' : 'Frais de livraison:'}
+                  </td>
                   <td className="text-right">{formatCurrency(purchaseForm.shipping_cost)}</td>
                 </tr>
               )}
               <tr>
-                <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">TOTAL:</td>
+                <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">
+                  {shouldShowBilingual() ? 'TOTAL / TOTAL:' : 'TOTAL:'}
+                </td>
                 <td className="text-right font-bold text-lg bg-gray-100">{formatCurrency(purchaseForm.total_amount)}</td>
               </tr>
             </tfoot>
@@ -1166,7 +1190,9 @@ if (action === 'modal') {
           {/* Notes */}
           {purchaseForm.notes && (
             <div className="mt-6 border-t pt-4">
-              <h3 className="font-bold mb-2">Notes:</h3>
+              <h3 className="font-bold mb-2">
+                {shouldShowBilingual() ? 'Notes / Notes:' : 'Notes:'}
+              </h3>
               <p className="text-sm">{purchaseForm.notes}</p>
             </div>
           )}
@@ -2222,6 +2248,22 @@ if (action === 'modal') {
                   rows="3"
                 />
               </div>
+               <div className="md:col-span-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={supplierForm.preferred_english}
+                    onChange={(e) => setSupplierForm({...supplierForm, preferred_english: e.target.checked})}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Préférence anglais / English preference
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Si coché, les bons de commande seront générés en anglais/français pour ce fournisseur
+                </p>
+              </div>     
             </div>
             
             <div className="flex gap-3 justify-end pt-4">
@@ -2540,7 +2582,7 @@ if (action === 'modal') {
                 setSupplierForm({
                   company_name: '', contact_name: '', email: '', phone: '',
                   address: '', city: '', province: 'QC', postal_code: '',
-                  country: 'Canada', notes: ''
+                  country: 'Canada', notes: '', preferred_english: false
                 });
                 
                 alert('✅ Fournisseur créé et sélectionné!');
@@ -2574,7 +2616,17 @@ if (action === 'modal') {
                   className="w-full rounded-lg border-gray-300 p-3"
                 />
               </div>
-              
+
+                <div className="flex items-center space-x-2 pt-2">
+                <input
+                  type="checkbox"
+                  checked={supplierForm.preferred_english}
+                  onChange={(e) => setSupplierForm({...supplierForm, preferred_english: e.target.checked})}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Préférence anglais / English preference</span>
+              </div>    
+                    
               <div className="flex gap-3 justify-end pt-4">
                 <button
                   type="button"
