@@ -2380,23 +2380,6 @@ const shouldShowBilingual = () => {
   </p>
 </div>
 
-                  <div className="md:col-span-2">
-  <label className="flex items-center space-x-2">
-    <input
-      type="checkbox"
-      checked={supplierForm.tax_exempt}
-      onChange={(e) => setSupplierForm({...supplierForm, tax_exempt: e.target.checked})}
-      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-    />
-    <span className="text-sm font-medium text-gray-700">
-      Exempt de taxes / Tax exempt
-    </span>
-  </label>
-  <p className="text-xs text-gray-500 mt-1">
-    Si coché, aucune taxe ne sera appliquée aux commandes de ce fournisseur
-  </p>
-</div>
-
               {/* Tax ID pour les fournisseurs américains */}
               {supplierForm.country === 'USA' && (
                 <div className="md:col-span-2">
