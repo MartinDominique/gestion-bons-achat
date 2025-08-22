@@ -116,7 +116,7 @@ export default function SupplierPurchaseManager() {
   });
 
   // Chargement initial avec vérification auth
-  (() => {
+  useEffect(() => {
     const initializeData = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -148,7 +148,7 @@ export default function SupplierPurchaseManager() {
 
     initializeData();
   }, []);
-
+  
   // Recherche produits avec debounce
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -165,7 +165,7 @@ export default function SupplierPurchaseManager() {
     return () => clearTimeout(timeoutId);
   }, [productSearchTerm]);
 
-  // Calcul automatique des totaux (VERSION ORIGINALE)
+  // Calcul automatique des totaux
 useEffect(() => {
   const subtotal = selectedItems.reduce((sum, item) => {
     return sum + (item.cost_price * item.quantity);
