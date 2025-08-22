@@ -8,6 +8,30 @@ import {
   MapPin, Calendar, Package, DollarSign, Printer, Wrench
 } from 'lucide-react';
 
+// Fonction pour obtenir le pattern du code postal
+const getPostalCodePattern = (country) => {
+  switch (country) {
+    case 'Canada':
+      return "[A-Za-z]\\d[A-Za-z] \\d[A-Za-z]\\d";
+    case 'USA':
+      return "\\d{5}(-\\d{4})?";
+    default:
+      return "";
+  }
+};
+
+// Fonction pour obtenir le placeholder du code postal
+const getPostalCodePlaceholder = (country) => {
+  switch (country) {
+    case 'Canada':
+      return "H1A 1A1";
+    case 'USA':
+      return "12345 ou 12345-6789";
+    default:
+      return "";
+  }
+};
+
 export default function SupplierPurchaseManager() {
   // États principaux
   const [supplierPurchases, setSupplierPurchases] = useState([]);
@@ -75,7 +99,9 @@ export default function SupplierPurchaseManager() {
     postal_code: '',
     country: 'Canada',
     notes: '',
-    preferred_english: false
+    preferred_english: false,
+    tax_id: '',
+    tax_exempt: false
   });
 
   // Formulaire adresse
@@ -145,8 +171,14 @@ useEffect(() => {
     return sum + (item.cost_price * item.quantity);
   }, 0);
   
-  const tps = subtotal * 0.05;    // TPS 5%
-  const tvq = subtotal * 0.09975; // TVQ 9.975%
+  // Vérifier le pays du fournisseur sélectionné
+  const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
+  const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
+  
+  // Appliquer les taxes seulement pour les fournisseurs canadiens
+  const tps = isCanadianSupplier ? subtotal * 0.05 : 0;
+  const tvq = isCanadianSupplier ? subtotal * 0.09975 : 0;
+  
   const total = subtotal + tps + tvq + parseFloat(purchaseForm.shipping_cost || 0);
   
   setPurchaseForm(prev => ({ 
@@ -156,7 +188,7 @@ useEffect(() => {
     tvq,
     total_amount: total
   }));
-}, [selectedItems, purchaseForm.shipping_cost]);
+}, [selectedItems, purchaseForm.shipping_cost, purchaseForm.supplier_id, suppliers]);
 
   // Fonction pour générer le numéro d'achat
   const generatePurchaseNumber = async () => {
@@ -1675,8 +1707,58 @@ if (action === 'modal') {
                   />
                 </div>
 
+                {/* Tax ID pour les fournisseurs américains */}
+{supplierForm.country === 'USA' && (
+  <div className="md:col-span-2">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Tax ID / EIN (optionnel)
+    </label>
+    <input
+      type="text"
+      value={supplierForm.tax_id}
+      onChange={(e) => setSupplierForm({...supplierForm, tax_id: e.target.value})}
+      className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+      placeholder="12-3456789"
+    />
+  </div>
+)}
+
                 {/* Totaux */}
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+                {(() => {
+  const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
+  const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
+  
+  return (
+    <div className={`grid grid-cols-1 gap-4 ${isCanadianSupplier ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
+      <div className="bg-green-100 p-4 rounded-lg border border-green-300">
+        <p className="text-sm font-semibold text-green-800">Sous-total</p>
+        <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
+      </div>
+      
+      {isCanadianSupplier && (
+        <>
+          <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
+            <p className="text-sm font-semibold text-blue-800">TPS (5%)</p>
+            <p className="text-xl font-bold text-blue-900">{formatCurrency(purchaseForm.tps)}</p>
+          </div>
+          <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
+            <p className="text-sm font-semibold text-cyan-800">TVQ (9.975%)</p>
+            <p className="text-xl font-bold text-cyan-900">{formatCurrency(purchaseForm.tvq)}</p>
+          </div>
+        </>
+      )}
+      
+      <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
+        <p className="text-sm font-semibold text-orange-800">Livraison</p>
+        <p className="text-xl font-bold text-orange-900">{formatCurrency(purchaseForm.shipping_cost)}</p>
+      </div>
+      <div className="bg-purple-100 p-4 rounded-lg border border-purple-300">
+        <p className="text-sm font-semibold text-purple-800">TOTAL</p>
+        <p className="text-xl font-bold text-purple-900">{formatCurrency(purchaseForm.total_amount)}</p>
+      </div>
+    </div>
+  );
+})()}
                 <div className="bg-green-100 p-4 rounded-lg border border-green-300">
                 <p className="text-sm font-semibold text-green-800">Sous-total</p>
                 <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
@@ -2197,55 +2279,98 @@ if (action === 'modal') {
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 />
               </div>
+              <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Pays
+  </label>
+  <select
+    value={supplierForm.country}
+    onChange={(e) => {
+      const newCountry = e.target.value;
+      setSupplierForm({
+        ...supplierForm, 
+        country: newCountry,
+        province: newCountry === 'Canada' ? 'QC' : '',
+        postal_code: ''
+      });
+    }}
+    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+  >
+    <option value="Canada">Canada</option>
+    <option value="USA">USA</option>
+    <option value="Mexique">Mexique</option>
+  </select>
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Ville
+  </label>
+  <input
+    type="text"
+    value={supplierForm.city}
+    onChange={(e) => setSupplierForm({...supplierForm, city: e.target.value})}
+    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+  />
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    {supplierForm.country === 'USA' ? 'État' : 'Province'}
+  </label>
+  {supplierForm.country === 'Canada' ? (
+    <select
+      value={supplierForm.province}
+      onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
+      className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+    >
+      <option value="QC">Québec</option>
+      <option value="ON">Ontario</option>
+      <option value="BC">Colombie-Britannique</option>
+      <option value="AB">Alberta</option>
+      <option value="MB">Manitoba</option>
+      <option value="SK">Saskatchewan</option>
+      <option value="NS">Nouvelle-Écosse</option>
+      <option value="NB">Nouveau-Brunswick</option>
+      <option value="NL">Terre-Neuve-et-Labrador</option>
+      <option value="PE">Île-du-Prince-Édouard</option>
+      <option value="NT">Territoires du Nord-Ouest</option>
+      <option value="YT">Yukon</option>
+      <option value="NU">Nunavut</option>
+    </select>
+  ) : (
+    <input
+      type="text"
+      value={supplierForm.province}
+      onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
+      className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+      placeholder={supplierForm.country === 'USA' ? 'Ex: California, Texas...' : 'État/Province'}
+    />
+  )}
+</div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ville
-                </label>
-                <input
-                  type="text"
-                  value={supplierForm.city}
-                  onChange={(e) => setSupplierForm({...supplierForm, city: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Province
-                </label>
-                <select
-                  value={supplierForm.province}
-                  onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                >
-                  <option value="QC">Québec</option>
-                  <option value="ON">Ontario</option>
-                  <option value="BC">Colombie-Britannique</option>
-                  <option value="AB">Alberta</option>
-                  <option value="MB">Manitoba</option>
-                  <option value="SK">Saskatchewan</option>
-                  <option value="NS">Nouvelle-Écosse</option>
-                  <option value="NB">Nouveau-Brunswick</option>
-                  <option value="NL">Terre-Neuve-et-Labrador</option>
-                  <option value="PE">Île-du-Prince-Édouard</option>
-                  <option value="NT">Territoires du Nord-Ouest</option>
-                  <option value="YT">Yukon</option>
-                  <option value="NU">Nunavut</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Code postal
-                </label>
-                <input
-                  type="text"
-                  value={supplierForm.postal_code}
-                  onChange={(e) => setSupplierForm({...supplierForm, postal_code: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-                />
-              </div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    {supplierForm.country === 'USA' ? 'ZIP Code' : 'Code postal'}
+  </label>
+  <input
+    type="text"
+    value={supplierForm.postal_code}
+    onChange={(e) => {
+      let value = e.target.value;
+      if (supplierForm.country === 'Canada') {
+        value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (value.length >= 4) {
+          value = value.slice(0, 3) + ' ' + value.slice(3, 6);
+        }
+      }
+      setSupplierForm({...supplierForm, postal_code: value});
+    }}
+    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+    placeholder={getPostalCodePlaceholder(supplierForm.country)}
+    pattern={getPostalCodePattern(supplierForm.country)}
+  />
+</div>
               
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2522,7 +2647,7 @@ if (action === 'modal') {
                     className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                   >
                     <option value="Canada">Canada</option>
-                    <option value="États-Unis">États-Unis</option>
+                    <option value="USA">USA</option>
                     <option value="Mexique">Mexique</option>
                   </select>
                 </div>
