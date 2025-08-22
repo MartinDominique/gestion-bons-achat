@@ -976,6 +976,12 @@ useEffect(() => {
     return new Date(dateString).toLocaleDateString('fr-CA');
   };
 
+    // Fonction pour déterminer si le bon doit être bilingue basé sur le fournisseur
+const shouldShowBilingual = () => {
+  const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
+  return selectedSupplier?.preferred_english || false;
+};
+  
     // Fonction pour vérifier si c'est un fournisseur canadien (pour les taxes)
   const isCanadianSupplier = () => {
   const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
