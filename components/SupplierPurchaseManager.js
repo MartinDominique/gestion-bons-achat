@@ -166,29 +166,29 @@ export default function SupplierPurchaseManager() {
   }, [productSearchTerm]);
 
   // Calcul automatique des totaux
-useEffect(() => {
-  const subtotal = selectedItems.reduce((sum, item) => {
-    return sum + (item.cost_price * item.quantity);
-  }, 0);
-  
-  // Vérifier le pays du fournisseur sélectionné
-  const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
-  const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
-  
-  // Appliquer les taxes seulement pour les fournisseurs canadiens
-  const tps = isCanadianSupplier ? subtotal * 0.05 : 0;
-  const tvq = isCanadianSupplier ? subtotal * 0.09975 : 0;
-  
-  const total = subtotal + tps + tvq + parseFloat(purchaseForm.shipping_cost || 0);
-  
-  setPurchaseForm(prev => ({ 
-    ...prev, 
-    subtotal,
-    tps,
-    tvq,
-    total_amount: total
-  }));
-}, [selectedItems, purchaseForm.shipping_cost, purchaseForm.supplier_id, suppliers]);
+  useEffect(() => {
+    const subtotal = selectedItems.reduce((sum, item) => {
+      return sum + (item.cost_price * item.quantity);
+    }, 0);
+    
+    // Vérifier le pays du fournisseur sélectionné
+    const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
+    const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
+    
+    // Appliquer les taxes seulement pour les fournisseurs canadiens
+    const tps = isCanadianSupplier ? subtotal * 0.05 : 0;
+    const tvq = isCanadianSupplier ? subtotal * 0.09975 : 0;
+    
+    const total = subtotal + tps + tvq + parseFloat(purchaseForm.shipping_cost || 0);
+    
+    setPurchaseForm(prev => ({ 
+      ...prev, 
+      subtotal,
+      tps,
+      tvq,
+      total_amount: total
+    }));
+  }, [selectedItems, purchaseForm.shipping_cost, purchaseForm.supplier_id, suppliers]);
 
   // Fonction pour générer le numéro d'achat
   const generatePurchaseNumber = async () => {
@@ -333,12 +333,11 @@ useEffect(() => {
         const po = allPOs.find(p => p.id === purchase.linked_po_id);
         if (po && (!purchase.linked_po_number || purchase.linked_po_number === '')) {
           const { error: updateError } = await supabase
-  .from('supplier_purchases')
-  .update({
-    linked_po_number: po.po_number
-    // linked_client_name supprimé car la colonne n'existe pas
-  })
-  .eq('id', purchase.id);
+            .from('supplier_purchases')
+            .update({
+              linked_po_number: po.po_number
+            })
+            .eq('id', purchase.id);
             
           if (updateError) {
             console.error(`❌ Erreur correction achat ${purchase.purchase_number}:`, updateError);
@@ -386,47 +385,47 @@ useEffect(() => {
 
   // Recherche produits
   const searchProducts = async (searchTerm) => {
-  if (!searchTerm || searchTerm.length < 2) {
-    setProducts([]);
-    return;
-  }
+    if (!searchTerm || searchTerm.length < 2) {
+      setProducts([]);
+      return;
+    }
 
-  try {
-    // Recherche dans les produits inventaire
-    const { data: inventoryProducts, error: error1 } = await supabase
-      .from('products')
-      .select('*')
-      .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
-      .order('description', { ascending: true })
-      .limit(25);
+    try {
+      // Recherche dans les produits inventaire
+      const { data: inventoryProducts, error: error1 } = await supabase
+        .from('products')
+        .select('*')
+        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
+        .order('description', { ascending: true })
+        .limit(25);
 
-    if (error1) throw error1;
+      if (error1) throw error1;
 
-    // Recherche dans les produits non-inventaire
-    const { data: nonInventoryProducts, error: error2 } = await supabase
-      .from('non_inventory_items')
-      .select('*')
-      .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
-      .order('description', { ascending: true })
-      .limit(25);
+      // Recherche dans les produits non-inventaire
+      const { data: nonInventoryProducts, error: error2 } = await supabase
+        .from('non_inventory_items')
+        .select('*')
+        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
+        .order('description', { ascending: true })
+        .limit(25);
 
-    if (error2) throw error2;
+      if (error2) throw error2;
 
-    // Combiner les résultats avec un indicateur de type
-    const combinedResults = [
-      ...(inventoryProducts || []).map(item => ({ ...item, type: 'inventory' })),
-      ...(nonInventoryProducts || []).map(item => ({ ...item, type: 'non_inventory' }))
-    ];
+      // Combiner les résultats avec un indicateur de type
+      const combinedResults = [
+        ...(inventoryProducts || []).map(item => ({ ...item, type: 'inventory' })),
+        ...(nonInventoryProducts || []).map(item => ({ ...item, type: 'non_inventory' }))
+      ];
 
-    // Trier par description
-    combinedResults.sort((a, b) => a.description.localeCompare(b.description));
+      // Trier par description
+      combinedResults.sort((a, b) => a.description.localeCompare(b.description));
 
-    setProducts(combinedResults);
-  } catch (error) {
-    console.error('Erreur recherche produits:', error);
-    setProducts([]);
-  }
-};
+      setProducts(combinedResults);
+    } catch (error) {
+      console.error('Erreur recherche produits:', error);
+      setProducts([]);
+    }
+  };
 
   // Gestion des fournisseurs
   const handleSupplierSubmit = async (e) => {
@@ -638,63 +637,62 @@ useEffect(() => {
 
   // Sauvegarde achat
   const handlePurchaseSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    let purchaseNumber = purchaseForm.purchase_number;
-    
-    if (!editingPurchase) {
-      purchaseNumber = await generatePurchaseNumber();
+    e.preventDefault();
+    try {
+      let purchaseNumber = purchaseForm.purchase_number;
+      
+      if (!editingPurchase) {
+        purchaseNumber = await generatePurchaseNumber();
+      }
+
+      // CORRECTION: Filtrer les données pour ne garder que les colonnes de la table
+      const purchaseData = {
+        supplier_id: purchaseForm.supplier_id,
+        supplier_name: purchaseForm.supplier_name,
+        linked_po_id: purchaseForm.linked_po_id || null,
+        linked_po_number: purchaseForm.linked_po_number,
+        shipping_address_id: purchaseForm.shipping_address_id,
+        shipping_company: purchaseForm.shipping_company,
+        shipping_account: purchaseForm.shipping_account,
+        delivery_date: purchaseForm.delivery_date || (() => {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          return tomorrow.toISOString().split('T')[0];
+        })(),
+        items: selectedItems,
+        subtotal: purchaseForm.subtotal,
+        tps: purchaseForm.tps,
+        tvq: purchaseForm.tvq,
+        shipping_cost: parseFloat(purchaseForm.shipping_cost || 0),
+        total_amount: purchaseForm.total_amount,
+        status: purchaseForm.status,
+        notes: purchaseForm.notes,
+        purchase_number: purchaseNumber
+      };
+
+      if (editingPurchase) {
+        const { error } = await supabase
+          .from('supplier_purchases')
+          .update(purchaseData)
+          .eq('id', editingPurchase.id);
+        if (error) throw error;
+        console.log('✅ Achat mis à jour avec succès');
+      } else {
+        const { error } = await supabase
+          .from('supplier_purchases')
+          .insert([purchaseData]);
+        if (error) throw error;
+        console.log('✅ Achat créé avec succès');
+      }
+
+      await fetchSupplierPurchases();
+      resetForm();
+      console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat créé avec succès!');
+    } catch (error) {
+      console.error('Erreur sauvegarde achat:', error);
+      alert('❌ Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
     }
-
-    // CORRECTION: Filtrer les données pour ne garder que les colonnes de la table
-    const purchaseData = {
-      supplier_id: purchaseForm.supplier_id,
-      supplier_name: purchaseForm.supplier_name,
-      linked_po_id: purchaseForm.linked_po_id || null,
-      linked_po_number: purchaseForm.linked_po_number,
-      shipping_address_id: purchaseForm.shipping_address_id,
-      shipping_company: purchaseForm.shipping_company,
-      shipping_account: purchaseForm.shipping_account,
-      delivery_date: purchaseForm.delivery_date || (() => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
-})(),
-      items: selectedItems,
-      subtotal: purchaseForm.subtotal,
-      tps: purchaseForm.tps,
-      tvq: purchaseForm.tvq,
-      shipping_cost: parseFloat(purchaseForm.shipping_cost || 0),
-      total_amount: purchaseForm.total_amount,
-      status: purchaseForm.status,
-      notes: purchaseForm.notes,
-      purchase_number: purchaseNumber
-    };
-
-    if (editingPurchase) {
-      const { error } = await supabase
-        .from('supplier_purchases')
-        .update(purchaseData)
-        .eq('id', editingPurchase.id);
-      if (error) throw error;
-      console.log('✅ Achat mis à jour avec succès');
-    } else {
-      const { error } = await supabase
-        .from('supplier_purchases')
-        .insert([purchaseData]);
-      if (error) throw error;
-      console.log('✅ Achat créé avec succès');
-    }
-
-    await fetchSupplierPurchases();
-    resetForm();
-    // Supprimé - pas d'alerte popup
-console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat créé avec succès!');
-  } catch (error) {
-    console.error('Erreur sauvegarde achat:', error);
-    alert('❌ Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
-  }
-};
+  };
 
   const handleDeletePurchase = async (id) => {
     if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cet achat ?')) return;
@@ -728,7 +726,6 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       subtotal: 0,
       tps: 0,
       tvq: 0,
-      taxes: 0,
       shipping_cost: 0,
       total_amount: 0,
       status: 'draft',
@@ -740,238 +737,233 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
   };
 
   const handlePrint = () => {
-  // Sauvegarder le titre original
-  const originalTitle = document.title;
-  
-  // Changer temporairement le titre pour le nom du fichier PDF
-  const pdfFileName = purchaseForm.purchase_number || 'Achat-nouveau';
-  document.title = pdfFileName;
-  
-  // Imprimer
-  window.print();
-  
-  // Restaurer le titre original après un délai
-  setTimeout(() => {
-    document.title = originalTitle;
-  }, 1000);
-};
+    // Sauvegarder le titre original
+    const originalTitle = document.title;
+    
+    // Changer temporairement le titre pour le nom du fichier PDF
+    const pdfFileName = purchaseForm.purchase_number || 'Achat-nouveau';
+    document.title = pdfFileName;
+    
+    // Imprimer
+    window.print();
+    
+    // Restaurer le titre original après un délai
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
+  };
 
-      const exportPDF = async (action = 'download') => {
-  try {
-    const printContainer = document.querySelector('.print-container');
-    if (!printContainer) {
-      alert("Aucun contenu à exporter.");
-      return;
-    }
-
-    const purchaseNumber =
-      purchaseForm?.purchase_number ||
-      editingPurchase?.purchase_number ||
-      'Achat-nouveau';
-
-    // 1) Styles d'impression temporaires
-    const printStyles = document.createElement('style');
-    printStyles.textContent = `
-      .temp-print-view * { visibility: visible !important; }
-      .temp-print-view {
-        position: absolute !important;
-        left: 0 !important; top: 0 !important;
-        width: 8.5in !important;
-        background: #fff !important;
-        padding: 0.5in !important;
-        font-size: 12px !important;
-        line-height: 1.4 !important;
+  const exportPDF = async (action = 'download') => {
+    try {
+      const printContainer = document.querySelector('.print-container');
+      if (!printContainer) {
+        alert("Aucun contenu à exporter.");
+        return;
       }
-      .temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
-      .temp-print-view th, .temp-print-view td {
-        border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
+
+      const purchaseNumber =
+        purchaseForm?.purchase_number ||
+        editingPurchase?.purchase_number ||
+        'Achat-nouveau';
+
+      // 1) Styles d'impression temporaires
+      const printStyles = document.createElement('style');
+      printStyles.textContent = `
+        .temp-print-view * { visibility: visible !important; }
+        .temp-print-view {
+          position: absolute !important;
+          left: 0 !important; top: 0 !important;
+          width: 8.5in !important;
+          background: #fff !important;
+          padding: 0.5in !important;
+          font-size: 12px !important;
+          line-height: 1.4 !important;
+        }
+        .temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
+        .temp-print-view th, .temp-print-view td {
+          border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
+        }
+        .temp-print-view th { background-color: #f0f0f0 !important; }
+      `;
+      document.head.appendChild(printStyles);
+
+      // 2) Cloner le contenu
+      const clonedContainer = printContainer.cloneNode(true);
+      clonedContainer.className = 'temp-print-view';
+      clonedContainer.style.visibility = 'visible';
+      clonedContainer.style.display = 'block';
+      document.body.appendChild(clonedContainer);
+
+      await new Promise(r => setTimeout(r, 80));
+
+      // 3) Canvas (laisser html2canvas gérer la hauteur)
+      const canvas = await html2canvas(clonedContainer, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      // Nettoyage DOM temporaire
+      document.body.removeChild(clonedContainer);
+      document.head.removeChild(printStyles);
+
+      // 4) PDF avec pagination, marges, numéros de page
+      const pdf = new jsPDF({ unit: 'pt', format: 'letter' }); // 612 x 792
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = { top: 36, right: 36, bottom: 36, left: 36 };
+      const usableWidth = pageWidth - margin.left - margin.right;
+      const usableHeight = pageHeight - margin.top - margin.bottom;
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = usableWidth;
+      const imgHeight = canvas.height * (imgWidth / canvas.width);
+
+      let heightLeft = imgHeight;
+      let positionY = 0;
+      let page = 1;
+
+      while (heightLeft > 0) {
+        if (page > 1) pdf.addPage();
+
+        pdf.addImage(
+          imgData,
+          'PNG',
+          margin.left,
+          margin.top + positionY,
+          imgWidth,
+          imgHeight
+        );
+
+        // pied de page: numéro de page
+        pdf.setFontSize(10);
+        pdf.text(
+          `Page ${page}`,
+          pageWidth - margin.right,
+          pageHeight - 14,
+          { align: 'right', baseline: 'bottom' }
+        );
+
+        heightLeft -= usableHeight;
+        positionY -= usableHeight;
+        page++;
       }
-      .temp-print-view th { background-color: #f0f0f0 !important; }
-    `;
-    document.head.appendChild(printStyles);
 
-    // 2) Cloner le contenu
-    const clonedContainer = printContainer.cloneNode(true);
-    clonedContainer.className = 'temp-print-view';
-    clonedContainer.style.visibility = 'visible';
-    clonedContainer.style.display = 'block';
-    document.body.appendChild(clonedContainer);
+      // 5) Actions : download / view / modal
+      if (action === 'download') {
+        pdf.save(`${purchaseNumber}.pdf`);
+        return;
+      }
 
-    await new Promise(r => setTimeout(r, 80));
+      if (action === 'view') {
+        // Nouvel onglet sans téléchargement auto
+        const pdfBlob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(pdfBlob);
+        window.open(blobUrl, '_blank');
+        return;
+      }
 
-    // 3) Canvas (laisser html2canvas gérer la hauteur)
-    const canvas = await html2canvas(clonedContainer, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false
-    });
+      if (action === 'modal') {
+        // Data URL = rendu inline fiable dans <embed>
+        const dataUrl = pdf.output('dataurlstring');
+        openPdfModal(dataUrl, () => {
+          /* rien à révoquer pour data: URL */
+        });
+        return;
+      }
 
-    // Nettoyage DOM temporaire
-    document.body.removeChild(clonedContainer);
-    document.head.removeChild(printStyles);
-
-    // 4) PDF avec pagination, marges, numéros de page
-    const pdf = new jsPDF({ unit: 'pt', format: 'letter' }); // 612 x 792
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = { top: 36, right: 36, bottom: 36, left: 36 };
-    const usableWidth = pageWidth - margin.left - margin.right;
-    const usableHeight = pageHeight - margin.top - margin.bottom;
-
-    const imgData = canvas.toDataURL('image/png');
-    const imgWidth = usableWidth;
-    const imgHeight = canvas.height * (imgWidth / canvas.width);
-
-    let heightLeft = imgHeight;
-    let positionY = 0;
-    let page = 1;
-
-    while (heightLeft > 0) {
-      if (page > 1) pdf.addPage();
-
-      pdf.addImage(
-        imgData,
-        'PNG',
-        margin.left,
-        margin.top + positionY,
-        imgWidth,
-        imgHeight
-      );
-
-      // pied de page: numéro de page
-      pdf.setFontSize(10);
-      pdf.text(
-        `Page ${page}`,
-        pageWidth - margin.right,
-        pageHeight - 14,
-        { align: 'right', baseline: 'bottom' }
-      );
-
-      heightLeft -= usableHeight;
-      positionY -= usableHeight;
-      page++;
+    } catch (error) {
+      console.error('Erreur lors de la génération PDF:', error);
+      alert('Erreur lors de la génération du PDF');
     }
-
-    // 5) Actions : download / view / modal
-if (action === 'download') {
-  pdf.save(`${purchaseNumber}.pdf`);
-  return;
-}
-
-// ⚠️ NE PAS utiliser pdf.output('blob') pour le modal (edge/iframe => "Open")
-if (action === 'view') {
-  // Nouvel onglet sans téléchargement auto
-  const pdfBlob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
-  const blobUrl = URL.createObjectURL(pdfBlob);
-  window.open(blobUrl, '_blank');
-  // (Optionnel) révoquer plus tard si tu veux
-  return;
-}
-
-if (action === 'modal') {
-  // Data URL = rendu inline fiable dans <embed>
-  const dataUrl = pdf.output('dataurlstring'); // "data:application/pdf;filename=...;base64,...."
-  openPdfModal(dataUrl, () => {
-    /* rien à révoquer pour data: URL */
-  });
-  return;
-}
-
-
-  } catch (error) {
-    console.error('Erreur lors de la génération PDF:', error);
-    alert('Erreur lors de la génération du PDF');
-  }
-};
+  };
 
   function openPdfModal(pdfUrl, onClose) {
-  // Création des éléments
-  const overlay = document.createElement('div');
-  const modal = document.createElement('div');
-  const header = document.createElement('div');
-  const title = document.createElement('div');
-  const closeBtn = document.createElement('button');
-  const viewer = document.createElement('embed'); // 👈 EMBED au lieu d'iframe
+    // Création des éléments
+    const overlay = document.createElement('div');
+    const modal = document.createElement('div');
+    const header = document.createElement('div');
+    const title = document.createElement('div');
+    const closeBtn = document.createElement('button');
+    const viewer = document.createElement('embed');
 
-  // Styles
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-  overlay.style.cssText = `
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 99999;
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px;
-  `;
-  modal.style.cssText = `
-    background: #fff; width: 100%; max-width: 1100px; height: 85vh;
-    border-radius: 12px; overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    display: flex; flex-direction: column;
-  `;
-  header.style.cssText = `
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 14px; background: #f7f7f7; border-bottom: 1px solid #e5e5e5;
-  `;
-  title.textContent = 'Aperçu PDF';
-  title.style.cssText = `font-weight: 600; font-size: 14px;`;
+    // Styles
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.style.cssText = `
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 99999;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    `;
+    modal.style.cssText = `
+      background: #fff; width: 100%; max-width: 1100px; height: 85vh;
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      display: flex; flex-direction: column;
+    `;
+    header.style.cssText = `
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: #f7f7f7; border-bottom: 1px solid #e5e5e5;
+    `;
+    title.textContent = 'Aperçu PDF';
+    title.style.cssText = `font-weight: 600; font-size: 14px;`;
 
-  closeBtn.type = 'button';
-  closeBtn.textContent = 'Fermer';
-  closeBtn.style.cssText = `
-    padding: 6px 12px; background: #222; color: #fff; border: 0; border-radius: 6px;
-    cursor: pointer; font-size: 13px;
-  `;
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Fermer';
+    closeBtn.style.cssText = `
+      padding: 6px 12px; background: #222; color: #fff; border: 0; border-radius: 6px;
+      cursor: pointer; font-size: 13px;
+    `;
 
-  // 👇 Rendu PDF inline fiable
-  viewer.type = 'application/pdf';
-  viewer.src = pdfUrl;                // data:application/pdf;... (pas blob:)
-  viewer.style.cssText = `border: 0; width: 100%; height: 100%;`;
+    // Rendu PDF inline fiable
+    viewer.type = 'application/pdf';
+    viewer.src = pdfUrl;
+    viewer.style.cssText = `border: 0; width: 100%; height: 100%;`;
 
-  // Fallback “ouvrir dans un onglet” si jamais
-  const fallbackBar = document.createElement('div');
-  fallbackBar.style.cssText = `display:flex; gap:8px; align-items:center; padding:8px 14px; border-top:1px solid #eee;`;
-  const openTabBtn = document.createElement('a');
-  openTabBtn.textContent = 'Ouvrir dans un onglet';
-  openTabBtn.href = pdfUrl;
-  openTabBtn.target = '_blank';
-  openTabBtn.rel = 'noopener';
-  openTabBtn.style.cssText = `font-size: 12px; color: #2563eb; text-decoration: underline;`;
-  // (On ne l’affiche que si l’embed échoue)
-  fallbackBar.style.display = 'none';
+    // Fallback "ouvrir dans un onglet" si jamais
+    const fallbackBar = document.createElement('div');
+    fallbackBar.style.cssText = `display:flex; gap:8px; align-items:center; padding:8px 14px; border-top:1px solid #eee;`;
+    const openTabBtn = document.createElement('a');
+    openTabBtn.textContent = 'Ouvrir dans un onglet';
+    openTabBtn.href = pdfUrl;
+    openTabBtn.target = '_blank';
+    openTabBtn.rel = 'noopener';
+    openTabBtn.style.cssText = `font-size: 12px; color: #2563eb; text-decoration: underline;`;
+    fallbackBar.style.display = 'none';
 
-  // Structure
-  header.appendChild(title);
-  header.appendChild(closeBtn);
-  modal.appendChild(header);
-  modal.appendChild(viewer);
-  modal.appendChild(fallbackBar);
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
+    // Structure
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    modal.appendChild(header);
+    modal.appendChild(viewer);
+    modal.appendChild(fallbackBar);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
 
-  // Si le PDF ne se rend pas, on montre le fallback
-  viewer.addEventListener('error', () => { fallbackBar.style.display = 'flex'; fallbackBar.appendChild(openTabBtn); });
-  viewer.addEventListener('load', () => { /* ok */ });
+    // Si le PDF ne se rend pas, on montre le fallback
+    viewer.addEventListener('error', () => { fallbackBar.style.display = 'flex'; fallbackBar.appendChild(openTabBtn); });
+    viewer.addEventListener('load', () => { /* ok */ });
 
-  // Fermeture (Échap, clic overlay, bouton)
-  const escHandler = (e) => { if (e.key === 'Escape') doClose(); };
-  const clickHandler = (e) => { if (e.target === overlay) doClose(); };
+    // Fermeture (Échap, clic overlay, bouton)
+    const escHandler = (e) => { if (e.key === 'Escape') doClose(); };
+    const clickHandler = (e) => { if (e.target === overlay) doClose(); };
 
-  function doClose() {
-    viewer.src = 'about:blank';
-    document.removeEventListener('keydown', escHandler);
-    overlay.removeEventListener('click', clickHandler);
-    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    if (typeof onClose === 'function') onClose();
-  }
+    function doClose() {
+      viewer.src = 'about:blank';
+      document.removeEventListener('keydown', escHandler);
+      overlay.removeEventListener('click', clickHandler);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (typeof onClose === 'function') onClose();
+    }
 
     closeBtn.addEventListener('click', doClose);
-  document.addEventListener('keydown', escHandler);
-  overlay.addEventListener('click', clickHandler);
-}
+    document.addEventListener('keydown', escHandler);
+    overlay.addEventListener('click', clickHandler);
+  }
 
-  
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
       style: 'currency',
@@ -988,6 +980,12 @@ if (action === 'modal') {
   const shouldShowBilingual = () => {
     const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
     return selectedSupplier?.preferred_english || false;
+  };
+
+  // Fonction pour vérifier si c'est un fournisseur canadien (pour les taxes)
+  const isCanadianSupplier = () => {
+    const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
+    return !selectedSupplier || selectedSupplier.country === 'Canada';
   };
   
   const filteredPurchases = supplierPurchases.filter(purchase => {
@@ -1141,7 +1139,7 @@ if (action === 'modal') {
             {selectedAddress && (
               <div>
                 <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
-                  {shouldShowBilingual() ? 'Ship to:' : 'Livrer à:'}
+                  {shouldShowBilingual() ? 'Ship to:' : 'Livrer à :'}
                 </h3>
                 <div className="space-y-1">
                   <p className="font-medium text-base">{selectedAddress.name}</p>
@@ -1201,18 +1199,25 @@ if (action === 'modal') {
                 </td>
                 <td className="text-right">{formatCurrency(purchaseForm.subtotal)}</td>
               </tr>
-              <tr>
-                <td colSpan="5" className="text-right font-medium">
-                  {shouldShowBilingual() ? 'GST (5%):' : 'TPS (5%):'}
-                </td>
-                <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
-              </tr>
-              <tr>
-                <td colSpan="5" className="text-right font-medium">
-                  {shouldShowBilingual() ? 'PST (9.975%):' : 'TVQ (9.975%):'}
-                </td>
-                <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
-              </tr>
+              
+              {/* Afficher les taxes seulement si le fournisseur est canadien */}
+              {isCanadianSupplier() && (
+                <>
+                  <tr>
+                    <td colSpan="5" className="text-right font-medium">
+                      {shouldShowBilingual() ? 'GST (5%):' : 'TPS (5%):'}
+                    </td>
+                    <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan="5" className="text-right font-medium">
+                      {shouldShowBilingual() ? 'PST (9.975%):' : 'TVQ (9.975%):'}
+                    </td>
+                    <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
+                  </tr>
+                </>
+              )}
+              
               {purchaseForm.shipping_cost > 0 && (
                 <tr>
                   <td colSpan="5" className="text-right font-medium">
@@ -1265,10 +1270,10 @@ if (action === 'modal') {
                     📥 Télécharger PDF
                   </button>
                   <button
-                  onClick={() => exportPDF('modal')}
-                  className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
+                    onClick={() => exportPDF('modal')}
+                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
                   >
-                  🪟 Aperçu Modal
+                    🪟 Aperçu Modal
                   </button>
                   <button
                     onClick={() => exportPDF('view')}
@@ -1307,56 +1312,55 @@ if (action === 'modal') {
                 {/* Fournisseur et Bon d'achat lié */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-  <label className="block text-sm font-semibold text-blue-800 mb-2">
-    🏢 Fournisseur *
-  </label>
-  <div className="flex gap-2">
-    <select
-      value={purchaseForm.supplier_id}
-      onChange={(e) => {
-        const supplier = suppliers.find(s => s.id === e.target.value);
-        setPurchaseForm({
-          ...purchaseForm, 
-          supplier_id: e.target.value,
-          supplier_name: supplier?.company_name || ''
-        });
-      }}
-      className="block flex-1 rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
-      required
-    >
-      <option value="">Sélectionner un fournisseur...</option>
-      {suppliers.map((supplier) => (
-        <option key={supplier.id} value={supplier.id}>
-          {supplier.company_name}
-        </option>
-      ))}
-    </select>
-    
-    <button
-      type="button"
-      onClick={() => setShowSupplierFormModal(true)}
-      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0"
-      title="Nouveau fournisseur"
-    >
-      <Plus className="w-5 h-5" />
-    </button>
-    
-    <button
-      type="button"
-      onClick={() => setShowSupplierModal(true)}
-      className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex-shrink-0"
-      title="Gérer les fournisseurs"
-    >
-      <Building2 className="w-5 h-5" />
-    </button>
-  </div>
-</div>
+                    <label className="block text-sm font-semibold text-blue-800 mb-2">
+                      🏢 Fournisseur *
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={purchaseForm.supplier_id}
+                        onChange={(e) => {
+                          const supplier = suppliers.find(s => s.id === e.target.value);
+                          setPurchaseForm({
+                            ...purchaseForm, 
+                            supplier_id: e.target.value,
+                            supplier_name: supplier?.company_name || ''
+                          });
+                        }}
+                        className="block flex-1 rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+                        required
+                      >
+                        <option value="">Sélectionner un fournisseur...</option>
+                        {suppliers.map((supplier) => (
+                          <option key={supplier.id} value={supplier.id}>
+                            {supplier.company_name}
+                          </option>
+                        ))}
+                      </select>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setShowSupplierFormModal(true)}
+                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0"
+                        title="Nouveau fournisseur"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setShowSupplierModal(true)}
+                        className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex-shrink-0"
+                        title="Gérer les fournisseurs"
+                      >
+                        <Building2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                     <label className="block text-sm font-semibold text-green-800 mb-2">
                       📋 Bon d'achat client lié
                     </label>
-                    {/* CORRECTION: Gestion améliorée du PO */}
                     <select
                       value={purchaseForm.linked_po_id}
                       onChange={(e) => {
@@ -1405,15 +1409,12 @@ if (action === 'modal') {
                         ))}
                       </select>
                       
-                      {/* BOUTON + CORRIGÉ - OUVRE DIRECTEMENT LE FORMULAIRE */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log('🔘 Bouton + cliqué - Ouverture directe formulaire adresse');
                           
-                          // Réinitialiser le formulaire pour une nouvelle adresse
                           setEditingAddress(null);
                           setAddressForm({
                             name: '',
@@ -1425,7 +1426,6 @@ if (action === 'modal') {
                             is_default: false
                           });
                           
-                          // Ouvrir directement le formulaire de création
                           setShowAddressFormModal(true);
                         }}
                         className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex-shrink-0"
@@ -1434,7 +1434,6 @@ if (action === 'modal') {
                         <Plus className="w-5 h-5" />
                       </button>
                       
-                      {/* Bouton pour gérer les adresses existantes */}
                       <button
                         type="button"
                         onClick={() => setShowAddressModal(true)}
@@ -1462,7 +1461,7 @@ if (action === 'modal') {
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-orange-800 mb-2">
-                          📝 N° Compte
+                          🔢 N° Compte
                         </label>
                         <input
                           type="text"
@@ -1711,81 +1710,36 @@ if (action === 'modal') {
                   />
                 </div>
 
-                {/* Tax ID pour les fournisseurs américains */}
-{supplierForm.country === 'USA' && (
-  <div className="md:col-span-2">
-    <label className="block text-sm font-medium text-gray-700 mb-2">
-      Tax ID / EIN (optionnel)
-    </label>
-    <input
-      type="text"
-      value={supplierForm.tax_id}
-      onChange={(e) => setSupplierForm({...supplierForm, tax_id: e.target.value})}
-      className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-      placeholder="12-3456789"
-    />
-  </div>
-)}
-
                 {/* Totaux */}
-                {(() => {
-         {(() => {
-  const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
-  const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
-  
-  return (
-    <div className={`grid grid-cols-1 gap-4 ${isCanadianSupplier ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
-      <div className="bg-green-100 p-4 rounded-lg border border-green-300">
-        <p className="text-sm font-semibold text-green-800">Sous-total</p>
-        <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
-      </div>
-      
-      {isCanadianSupplier && (
-        <>
-          <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
-            <p className="text-sm font-semibold text-blue-800">TPS (5%)</p>
-            <p className="text-xl font-bold text-blue-900">{formatCurrency(purchaseForm.tps)}</p>
-          </div>
-          <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
-            <p className="text-sm font-semibold text-cyan-800">TVQ (9.975%)</p>
-            <p className="text-xl font-bold text-cyan-900">{formatCurrency(purchaseForm.tvq)}</p>
-          </div>
-        </>
-      )}
-      
-      <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
-        <p className="text-sm font-semibold text-orange-800">Livraison</p>
-        <p className="text-xl font-bold text-orange-900">{formatCurrency(purchaseForm.shipping_cost)}</p>
-      </div>
-      <div className="bg-purple-100 p-4 rounded-lg border border-purple-300">
-        <p className="text-sm font-semibold text-purple-800">TOTAL</p>
-        <p className="text-xl font-bold text-purple-900">{formatCurrency(purchaseForm.total_amount)}</p>
-      </div>
-    </div>
-  );
-})()}
-                <div className="bg-green-100 p-4 rounded-lg border border-green-300">
-                <p className="text-sm font-semibold text-green-800">Sous-total</p>
-                <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
+                <div className={`grid grid-cols-1 gap-4 ${isCanadianSupplier() ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
+                  <div className="bg-green-100 p-4 rounded-lg border border-green-300">
+                    <p className="text-sm font-semibold text-green-800">Sous-total</p>
+                    <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
+                  </div>
+                  
+                  {isCanadianSupplier() && (
+                    <>
+                      <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
+                        <p className="text-sm font-semibold text-blue-800">TPS (5%)</p>
+                        <p className="text-xl font-bold text-blue-900">{formatCurrency(purchaseForm.tps)}</p>
+                      </div>
+                      <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
+                        <p className="text-sm font-semibold text-cyan-800">TVQ (9.975%)</p>
+                        <p className="text-xl font-bold text-cyan-900">{formatCurrency(purchaseForm.tvq)}</p>
+                      </div>
+                    </>
+                  )}
+                  
+                  <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
+                    <p className="text-sm font-semibold text-orange-800">Livraison</p>
+                    <p className="text-xl font-bold text-orange-900">{formatCurrency(purchaseForm.shipping_cost)}</p>
+                  </div>
+                  <div className="bg-purple-100 p-4 rounded-lg border border-purple-300">
+                    <p className="text-sm font-semibold text-purple-800">TOTAL</p>
+                    <p className="text-xl font-bold text-purple-900">{formatCurrency(purchaseForm.total_amount)}</p>
+                  </div>
                 </div>
-                <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
-                 <p className="text-sm font-semibold text-blue-800">TPS (5%)</p>
-                <p className="text-xl font-bold text-blue-900">{formatCurrency(purchaseForm.tps)}</p>
-              </div>
-                <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
-                <p className="text-sm font-semibold text-cyan-800">TVQ (9.975%)</p>
-                <p className="text-xl font-bold text-cyan-900">{formatCurrency(purchaseForm.tvq)}</p>
-              </div>
-                <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
-                <p className="text-sm font-semibold text-orange-800">Livraison</p>
-                <p className="text-xl font-bold text-orange-900">{formatCurrency(purchaseForm.shipping_cost)}</p>
-              </div>
-                <div className="bg-purple-100 p-4 rounded-lg border border-purple-300">
-                <p className="text-sm font-semibold text-purple-800">TOTAL</p>
-                <p className="text-xl font-bold text-purple-900">{formatCurrency(purchaseForm.total_amount)}</p>
-                </div>
-              </div>
-             </form>
+              </form>
             </div>
           </div>
         </div>
@@ -1806,7 +1760,6 @@ if (action === 'modal') {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            {/* NOUVEAU BOUTON DE CORRECTION */}
             <button
               onClick={fixExistingPurchases}
               disabled={isFixingPOs}
@@ -1963,7 +1916,6 @@ if (action === 'modal') {
                     <td className="px-3 py-4">
                       <div className="text-sm font-medium text-gray-900">{purchase.supplier_name}</div>
                     </td>
-                    {/* CELLULE CORRIGÉE - PO CLIENT LIÉ */}
                     <td className="px-3 py-4 text-center">
                       {poNumber ? (
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
@@ -2085,7 +2037,6 @@ if (action === 'modal') {
                 </div>
 
                 <div className="p-4 space-y-3">
-                  {/* PO CLIENT LIÉ CORRIGÉ EN MOBILE AUSSI */}
                   {poNumber && (
                     <div>
                       <span className="text-gray-500 text-sm">PO Client lié</span>
@@ -2144,7 +2095,10 @@ if (action === 'modal') {
                       province: 'QC',
                       postal_code: '',
                       country: 'Canada',
-                      notes: ''
+                      notes: '',
+                      preferred_english: false,
+                      tax_id: '',
+                      tax_exempt: false
                     });
                     document.getElementById('supplier-form-modal').showModal();
                   }}
@@ -2190,7 +2144,9 @@ if (action === 'modal') {
                               setEditingSupplier(supplier);
                               setSupplierForm({
                                 ...supplier,
-                                preferred_english: supplier.preferred_english || false
+                                preferred_english: supplier.preferred_english || false,
+                                tax_id: supplier.tax_id || '',
+                                tax_exempt: supplier.tax_exempt || false
                               });
                               document.getElementById('supplier-form-modal').showModal();
                             }}
@@ -2284,98 +2240,99 @@ if (action === 'modal') {
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 />
               </div>
+
               <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Pays
-  </label>
-  <select
-    value={supplierForm.country}
-    onChange={(e) => {
-      const newCountry = e.target.value;
-      setSupplierForm({
-        ...supplierForm, 
-        country: newCountry,
-        province: newCountry === 'Canada' ? 'QC' : '',
-        postal_code: ''
-      });
-    }}
-    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-  >
-    <option value="Canada">Canada</option>
-    <option value="USA">USA</option>
-    <option value="Mexique">Mexique</option>
-  </select>
-</div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Pays
+                </label>
+                <select
+                  value={supplierForm.country}
+                  onChange={(e) => {
+                    const newCountry = e.target.value;
+                    setSupplierForm({
+                      ...supplierForm, 
+                      country: newCountry,
+                      province: newCountry === 'Canada' ? 'QC' : '',
+                      postal_code: ''
+                    });
+                  }}
+                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                >
+                  <option value="Canada">Canada</option>
+                  <option value="USA">USA</option>
+                  <option value="Mexique">Mexique</option>
+                </select>
+              </div>
 
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Ville
-  </label>
-  <input
-    type="text"
-    value={supplierForm.city}
-    onChange={(e) => setSupplierForm({...supplierForm, city: e.target.value})}
-    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-  />
-</div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ville
+                </label>
+                <input
+                  type="text"
+                  value={supplierForm.city}
+                  onChange={(e) => setSupplierForm({...supplierForm, city: e.target.value})}
+                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                />
+              </div>
 
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    {supplierForm.country === 'USA' ? 'État' : 'Province'}
-  </label>
-  {supplierForm.country === 'Canada' ? (
-    <select
-      value={supplierForm.province}
-      onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
-      className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-    >
-      <option value="QC">Québec</option>
-      <option value="ON">Ontario</option>
-      <option value="BC">Colombie-Britannique</option>
-      <option value="AB">Alberta</option>
-      <option value="MB">Manitoba</option>
-      <option value="SK">Saskatchewan</option>
-      <option value="NS">Nouvelle-Écosse</option>
-      <option value="NB">Nouveau-Brunswick</option>
-      <option value="NL">Terre-Neuve-et-Labrador</option>
-      <option value="PE">Île-du-Prince-Édouard</option>
-      <option value="NT">Territoires du Nord-Ouest</option>
-      <option value="YT">Yukon</option>
-      <option value="NU">Nunavut</option>
-    </select>
-  ) : (
-    <input
-      type="text"
-      value={supplierForm.province}
-      onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
-      className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-      placeholder={supplierForm.country === 'USA' ? 'Ex: California, Texas...' : 'État/Province'}
-    />
-  )}
-</div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {supplierForm.country === 'USA' ? 'État' : 'Province'}
+                </label>
+                {supplierForm.country === 'Canada' ? (
+                  <select
+                    value={supplierForm.province}
+                    onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                  >
+                    <option value="QC">Québec</option>
+                    <option value="ON">Ontario</option>
+                    <option value="BC">Colombie-Britannique</option>
+                    <option value="AB">Alberta</option>
+                    <option value="MB">Manitoba</option>
+                    <option value="SK">Saskatchewan</option>
+                    <option value="NS">Nouvelle-Écosse</option>
+                    <option value="NB">Nouveau-Brunswick</option>
+                    <option value="NL">Terre-Neuve-et-Labrador</option>
+                    <option value="PE">Île-du-Prince-Édouard</option>
+                    <option value="NT">Territoires du Nord-Ouest</option>
+                    <option value="YT">Yukon</option>
+                    <option value="NU">Nunavut</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={supplierForm.province}
+                    onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                    placeholder={supplierForm.country === 'USA' ? 'Ex: California, Texas...' : 'État/Province'}
+                  />
+                )}
+              </div>
               
               <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    {supplierForm.country === 'USA' ? 'ZIP Code' : 'Code postal'}
-  </label>
-  <input
-    type="text"
-    value={supplierForm.postal_code}
-    onChange={(e) => {
-      let value = e.target.value;
-      if (supplierForm.country === 'Canada') {
-        value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        if (value.length >= 4) {
-          value = value.slice(0, 3) + ' ' + value.slice(3, 6);
-        }
-      }
-      setSupplierForm({...supplierForm, postal_code: value});
-    }}
-    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
-    placeholder={getPostalCodePlaceholder(supplierForm.country)}
-    pattern={getPostalCodePattern(supplierForm.country)}
-  />
-</div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {supplierForm.country === 'USA' ? 'ZIP Code' : 'Code postal'}
+                </label>
+                <input
+                  type="text"
+                  value={supplierForm.postal_code}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    if (supplierForm.country === 'Canada') {
+                      value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                      if (value.length >= 4) {
+                        value = value.slice(0, 3) + ' ' + value.slice(3, 6);
+                      }
+                    }
+                    setSupplierForm({...supplierForm, postal_code: value});
+                  }}
+                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                  placeholder={getPostalCodePlaceholder(supplierForm.country)}
+                  pattern={getPostalCodePattern(supplierForm.country)}
+                />
+              </div>
               
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2388,7 +2345,8 @@ if (action === 'modal') {
                   rows="3"
                 />
               </div>
-               <div className="md:col-span-2">
+
+              <div className="md:col-span-2">
                 <label className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -2403,7 +2361,23 @@ if (action === 'modal') {
                 <p className="text-xs text-gray-500 mt-1">
                   Si coché, les bons de commande seront générés en anglais/français pour ce fournisseur
                 </p>
-              </div>     
+              </div>
+
+              {/* Tax ID pour les fournisseurs américains */}
+              {supplierForm.country === 'USA' && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tax ID / EIN (optionnel)
+                  </label>
+                  <input
+                    type="text"
+                    value={supplierForm.tax_id}
+                    onChange={(e) => setSupplierForm({...supplierForm, tax_id: e.target.value})}
+                    className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                    placeholder="12-3456789"
+                  />
+                </div>
+              )}
             </div>
             
             <div className="flex gap-3 justify-end pt-4">
@@ -2436,14 +2410,12 @@ if (action === 'modal') {
             className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* En-tête */}
             <div className="flex justify-between items-center p-6 border-b bg-purple-50">
               <h2 className="text-2xl font-bold text-purple-600">📍 Gestion des Adresses de Livraison</h2>
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
-                    console.log('➕ Nouvelle adresse depuis gestion');
                     setEditingAddress(null);
                     setAddressForm({
                       name: '',
@@ -2454,7 +2426,6 @@ if (action === 'modal') {
                       country: 'Canada',
                       is_default: false
                     });
-                    // Fermer la modal de gestion et ouvrir le formulaire
                     setShowAddressModal(false);
                     setShowAddressFormModal(true);
                   }}
@@ -2472,7 +2443,6 @@ if (action === 'modal') {
               </div>
             </div>
 
-            {/* Contenu */}
             <div className="flex-1 overflow-y-auto p-6">
               {shippingAddresses.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
@@ -2691,9 +2661,8 @@ if (action === 'modal') {
           </div>
         </div>
       )}
-    </div>
-  );
-{/* Modal Formulaire Fournisseur Simple */}
+
+      {/* Modal Formulaire Fournisseur Simple */}
       {showSupplierFormModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-2xl">
@@ -2720,9 +2689,19 @@ if (action === 'modal') {
                 
                 setShowSupplierFormModal(false);
                 setSupplierForm({
-                  company_name: '', contact_name: '', email: '', phone: '',
-                  address: '', city: '', province: 'QC', postal_code: '',
-                  country: 'Canada', notes: '', preferred_english: false
+                  company_name: '', 
+                  contact_name: '', 
+                  email: '', 
+                  phone: '',
+                  address: '', 
+                  city: '', 
+                  province: 'QC', 
+                  postal_code: '',
+                  country: 'Canada', 
+                  notes: '', 
+                  preferred_english: false,
+                  tax_id: '',
+                  tax_exempt: false
                 });
                 
                 alert('✅ Fournisseur créé et sélectionné!');
@@ -2757,7 +2736,7 @@ if (action === 'modal') {
                 />
               </div>
 
-                <div className="flex items-center space-x-2 pt-2">
+              <div className="flex items-center space-x-2 pt-2">
                 <input
                   type="checkbox"
                   checked={supplierForm.preferred_english}
@@ -2765,8 +2744,8 @@ if (action === 'modal') {
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700">Préférence anglais / English preference</span>
-              </div>    
-                    
+              </div>
+                      
               <div className="flex gap-3 justify-end pt-4">
                 <button
                   type="button"
@@ -2786,4 +2765,6 @@ if (action === 'modal') {
           </div>
         </div>
       )}
+    </div>
+  );
 }
