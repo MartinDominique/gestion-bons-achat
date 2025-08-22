@@ -116,7 +116,7 @@ export default function SupplierPurchaseManager() {
   });
 
   // Chargement initial avec vérification auth
-  useEffect(() => {
+  (() => {
     const initializeData = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -166,29 +166,30 @@ export default function SupplierPurchaseManager() {
   }, [productSearchTerm]);
 
   // Calcul automatique des totaux
-  useEffect(() => {
-    const subtotal = selectedItems.reduce((sum, item) => {
-      return sum + (item.cost_price * item.quantity);
-    }, 0);
-    
-    // Vérifier le pays du fournisseur sélectionné
-    const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
-    const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
-    
-    // Appliquer les taxes seulement pour les fournisseurs canadiens
-    const tps = isCanadianSupplier ? subtotal * 0.05 : 0;
-    const tvq = isCanadianSupplier ? subtotal * 0.09975 : 0;
-    
-    const total = subtotal + tps + tvq + parseFloat(purchaseForm.shipping_cost || 0);
-    
-    setPurchaseForm(prev => ({ 
-      ...prev, 
-      subtotal,
-      tps,
-      tvq,
-      total_amount: total
-    }));
-  }, [selectedItems, purchaseForm.shipping_cost, purchaseForm.supplier_id, suppliers]);
+useEffect(() => {
+  const subtotal = selectedItems.reduce((sum, item) => {
+    return sum + (item.cost_price * item.quantity);
+  }, 0);
+  
+  // Vérifier le pays du fournisseur sélectionné et son statut d'exemption
+  const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
+  const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
+  const isTaxExempt = selectedSupplier?.tax_exempt || false;
+  
+  // Appliquer les taxes seulement pour les fournisseurs canadiens ET non-exemptés
+  const tps = (isCanadianSupplier && !isTaxExempt) ? subtotal * 0.05 : 0;
+  const tvq = (isCanadianSupplier && !isTaxExempt) ? subtotal * 0.09975 : 0;
+  
+  const total = subtotal + tps + tvq + parseFloat(purchaseForm.shipping_cost || 0);
+  
+  setPurchaseForm(prev => ({ 
+    ...prev, 
+    subtotal,
+    tps,
+    tvq,
+    total_amount: total
+  }));
+}, [selectedItems, purchaseForm.shipping_cost, purchaseForm.supplier_id, suppliers]);
 
   // Fonction pour générer le numéro d'achat
   const generatePurchaseNumber = async () => {
@@ -976,10 +977,10 @@ export default function SupplierPurchaseManager() {
     return new Date(dateString).toLocaleDateString('fr-CA');
   };
 
-  // Fonction pour déterminer si le bon doit être bilingue basé sur le fournisseur
-  const shouldShowBilingual = () => {
+    // Fonction pour vérifier si c'est un fournisseur canadien (pour les taxes)
+  const isCanadianSupplier = () => {
     const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
-    return selectedSupplier?.preferred_english || false;
+    return (!selectedSupplier || selectedSupplier.country === 'Canada') && !selectedSupplier?.tax_exempt;
   };
 
   // Fonction pour vérifier si c'est un fournisseur canadien (pour les taxes)
@@ -1200,23 +1201,23 @@ export default function SupplierPurchaseManager() {
                 <td className="text-right">{formatCurrency(purchaseForm.subtotal)}</td>
               </tr>
               
-              {/* Afficher les taxes seulement si le fournisseur est canadien */}
-              {isCanadianSupplier() && (
-                <>
-                  <tr>
-                    <td colSpan="5" className="text-right font-medium">
-                      {shouldShowBilingual() ? 'GST (5%):' : 'TPS (5%):'}
-                    </td>
-                    <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan="5" className="text-right font-medium">
-                      {shouldShowBilingual() ? 'PST (9.975%):' : 'TVQ (9.975%):'}
-                    </td>
-                    <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
-                  </tr>
-                </>
-              )}
+              {/* Afficher les taxes seulement si le fournisseur est canadien ET non-exempté */}
+{isCanadianSupplier() && (
+  <>
+    <tr>
+      <td colSpan="5" className="text-right font-medium">
+        {shouldShowBilingual() ? 'GST (5%):' : 'TPS (5%):'}
+      </td>
+      <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
+    </tr>
+    <tr>
+      <td colSpan="5" className="text-right font-medium">
+        {shouldShowBilingual() ? 'PST (9.975%):' : 'TVQ (9.975%):'}
+      </td>
+      <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
+    </tr>
+  </>
+)}
               
               {purchaseForm.shipping_cost > 0 && (
                 <tr>
@@ -2362,6 +2363,23 @@ export default function SupplierPurchaseManager() {
                   Si coché, les bons de commande seront générés en anglais/français pour ce fournisseur
                 </p>
               </div>
+
+                  <div className="md:col-span-2">
+  <label className="flex items-center space-x-2">
+    <input
+      type="checkbox"
+      checked={supplierForm.tax_exempt}
+      onChange={(e) => setSupplierForm({...supplierForm, tax_exempt: e.target.checked})}
+      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+    />
+    <span className="text-sm font-medium text-gray-700">
+      Exempt de taxes / Tax exempt
+    </span>
+  </label>
+  <p className="text-xs text-gray-500 mt-1">
+    Si coché, aucune taxe ne sera appliquée aux commandes de ce fournisseur
+  </p>
+</div>
 
               {/* Tax ID pour les fournisseurs américains */}
               {supplierForm.country === 'USA' && (
