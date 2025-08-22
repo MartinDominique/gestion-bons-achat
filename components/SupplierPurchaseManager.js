@@ -415,6 +415,13 @@ useEffect(() => {
 
       await fetchSuppliers();
       setShowSupplierModal(false);
+      
+      // Fermer le modal dialog s'il est ouvert
+      const modal = document.getElementById('supplier-form-modal');
+      if (modal) {
+        modal.close();
+      }
+      
       setEditingSupplier(null);
       setSupplierForm({
         company_name: '',
