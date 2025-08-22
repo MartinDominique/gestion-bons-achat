@@ -466,7 +466,9 @@ useEffect(() => {
         postal_code: '',
         country: 'Canada',
         notes: '',
-        preferred_english: false
+        preferred_english: false,
+        tax_id: '',
+        tax_exempt: false
       });
     } catch (error) {
       console.error('Erreur sauvegarde fournisseur:', error);
@@ -724,6 +726,8 @@ console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat cr
       delivery_date: '',
       items: [],
       subtotal: 0,
+      tps: 0,
+      tvq: 0,
       taxes: 0,
       shipping_cost: 0,
       total_amount: 0,
@@ -1728,35 +1732,9 @@ if (action === 'modal') {
   const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
   const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
   
-  return (
+  return (  
     <div className={`grid grid-cols-1 gap-4 ${isCanadianSupplier ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
-      <div className="bg-green-100 p-4 rounded-lg border border-green-300">
-        <p className="text-sm font-semibold text-green-800">Sous-total</p>
-        <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
-      </div>
-      
-      {isCanadianSupplier && (
-        <>
-          <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
-            <p className="text-sm font-semibold text-blue-800">TPS (5%)</p>
-            <p className="text-xl font-bold text-blue-900">{formatCurrency(purchaseForm.tps)}</p>
-          </div>
-          <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
-            <p className="text-sm font-semibold text-cyan-800">TVQ (9.975%)</p>
-            <p className="text-xl font-bold text-cyan-900">{formatCurrency(purchaseForm.tvq)}</p>
-          </div>
-        </>
-      )}
-      
-      <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
-        <p className="text-sm font-semibold text-orange-800">Livraison</p>
-        <p className="text-xl font-bold text-orange-900">{formatCurrency(purchaseForm.shipping_cost)}</p>
-      </div>
-      <div className="bg-purple-100 p-4 rounded-lg border border-purple-300">
-        <p className="text-sm font-semibold text-purple-800">TOTAL</p>
-        <p className="text-xl font-bold text-purple-900">{formatCurrency(purchaseForm.total_amount)}</p>
-      </div>
-    </div>
+        
   );
 })()}
                 <div className="bg-green-100 p-4 rounded-lg border border-green-300">
