@@ -2101,7 +2101,10 @@ if (action === 'modal') {
                           <button
                             onClick={() => {
                               setEditingSupplier(supplier);
-                              setSupplierForm(supplier);
+                              setSupplierForm({
+                                ...supplier,
+                                preferred_english: supplier.preferred_english || false
+                              });
                               document.getElementById('supplier-form-modal').showModal();
                             }}
                             className="px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
