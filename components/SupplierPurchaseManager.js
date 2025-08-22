@@ -1062,16 +1062,16 @@ if (action === 'modal') {
             
             <div className="text-right">
               <h1 className="text-2xl font-bold mb-2">
-                {shouldShowBilingual() ? 'BON DE COMMANDE / PURCHASE ORDER' : 'BON DE COMMANDE'}
+                {shouldShowBilingual() ? 'PURCHASE ORDER' : 'BON DE COMMANDE'}
               </h1>
               <div className="text-sm text-gray-600 space-y-1">
                 <p><strong>{purchaseForm.purchase_number}</strong></p>
-                <p><strong>{shouldShowBilingual() ? 'Date / Date:' : 'Date:'}</strong> {formatDate(new Date())}</p>
+                <p><strong>{shouldShowBilingual() ? 'Date:' : 'Date:'}</strong> {formatDate(new Date())}</p>
                 {purchaseForm.linked_po_number && (
-                  <p><strong>{shouldShowBilingual() ? 'PO Client / Client PO:' : 'PO Client:'}</strong> {purchaseForm.linked_po_number}</p>
+                  <p><strong>{shouldShowBilingual() ? 'Client PO:' : 'PO Client:'}</strong> {purchaseForm.linked_po_number}</p>
                 )}
                 {purchaseForm.delivery_date && (
-                  <p><strong>{shouldShowBilingual() ? 'Livraison prévue / Expected Delivery:' : 'Livraison prévue:'}</strong> {formatDate(purchaseForm.delivery_date)}</p>
+                  <p><strong>{shouldShowBilingual() ? 'Expected Delivery:' : 'Livraison prévue:'}</strong> {formatDate(purchaseForm.delivery_date)}</p>
                 )}
               </div>
             </div>
@@ -1083,19 +1083,19 @@ if (action === 'modal') {
             {selectedSupplier && (
               <div>
                 <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
-                  {shouldShowBilingual() ? 'Fournisseur / Supplier:' : 'Fournisseur:'}
+                  {shouldShowBilingual() ? 'Supplier:' : 'Fournisseur:'}
                 </h3>
                 <div className="space-y-1">
                   <p className="font-medium text-base">{selectedSupplier.company_name}</p>
                   {selectedSupplier.contact_name && (
-                    <p>{shouldShowBilingual() ? 'Contact / Contact:' : 'Contact:'} {selectedSupplier.contact_name}</p>
+                    <p>{shouldShowBilingual() ? 'Contact:' : 'Contact:'} {selectedSupplier.contact_name}</p>
                   )}
                   <p>{selectedSupplier.address}</p>
                   <p>{selectedSupplier.city}, {selectedSupplier.province} {selectedSupplier.postal_code}</p>
                   <p>{selectedSupplier.country}</p>
                   {selectedSupplier.email && <p>Email: {selectedSupplier.email}</p>}
                   {selectedSupplier.phone && (
-                    <p>{shouldShowBilingual() ? 'Tél / Tel:' : 'Tél:'} {selectedSupplier.phone}</p>
+                    <p>{shouldShowBilingual() ? 'Tel:' : 'Tél:'} {selectedSupplier.phone}</p>
                   )}
                 </div>
               </div>
@@ -1105,7 +1105,7 @@ if (action === 'modal') {
             {selectedAddress && (
               <div>
                 <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
-                  {shouldShowBilingual() ? 'Livrer à / Ship to:' : 'Livrer à:'}
+                  {shouldShowBilingual() ? 'Ship to:' : 'Livrer à:'}
                 </h3>
                 <div className="space-y-1">
                   <p className="font-medium text-base">{selectedAddress.name}</p>
@@ -1121,14 +1121,14 @@ if (action === 'modal') {
           {(purchaseForm.shipping_company || purchaseForm.shipping_account) && (
             <div className="mb-6 bg-gray-50 p-3 rounded">
               <h3 className="font-bold mb-2">
-                {shouldShowBilingual() ? 'Livraison / Shipping:' : 'Livraison:'}
+                {shouldShowBilingual() ? 'Shipping:' : 'Livraison:'}
               </h3>
               <div className="flex gap-6">
                 {purchaseForm.shipping_company && (
-                  <p><strong>{shouldShowBilingual() ? 'Transporteur / Carrier:' : 'Transporteur:'}</strong> {purchaseForm.shipping_company}</p>
+                  <p><strong>{shouldShowBilingual() ? 'Carrier:' : 'Transporteur:'}</strong> {purchaseForm.shipping_company}</p>
                 )}
                 {purchaseForm.shipping_account && (
-                  <p><strong>{shouldShowBilingual() ? 'N° de compte / Account #:' : 'N° de compte:'}</strong> {purchaseForm.shipping_account}</p>
+                  <p><strong>{shouldShowBilingual() ? 'Account #:' : 'N° de compte:'}</strong> {purchaseForm.shipping_account}</p>
                 )}
               </div>
             </div>
@@ -1138,12 +1138,12 @@ if (action === 'modal') {
           <table className="mb-6">
             <thead>
               <tr>
-                <th>{shouldShowBilingual() ? 'Code / Code' : 'Code'}</th>
-                <th>{shouldShowBilingual() ? 'Description / Description' : 'Description'}</th>
-                <th>{shouldShowBilingual() ? 'Qté / Qty' : 'Qté'}</th>
-                <th>{shouldShowBilingual() ? 'Unité / Unit' : 'Unité'}</th>
-                <th>{shouldShowBilingual() ? 'Prix Unit. / Unit Price' : 'Prix Unit.'}</th>
-                <th>{shouldShowBilingual() ? 'Total / Total' : 'Total'}</th>
+                <th>{shouldShowBilingual() ? 'Code' : 'Code'}</th>
+                <th>{shouldShowBilingual() ? 'Description' : 'Description'}</th>
+                <th>{shouldShowBilingual() ? 'Qty' : 'Qté'}</th>
+                <th>{shouldShowBilingual() ? 'Unit' : 'Unité'}</th>
+                <th>{shouldShowBilingual() ? 'Unit Price' : 'Prix Unit.'}</th>
+                <th>{shouldShowBilingual() ? 'Total' : 'Total'}</th>
               </tr>
             </thead>
             <tbody>
@@ -1167,27 +1167,27 @@ if (action === 'modal') {
               </tr>
               <tr>
                 <td colSpan="5" className="text-right font-medium">
-                  {shouldShowBilingual() ? 'TPS (5%) / GST (5%):' : 'TPS (5%):'}
+                  {shouldShowBilingual() ? 'GST (5%):' : 'TPS (5%):'}
                 </td>
                 <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
               </tr>
               <tr>
                 <td colSpan="5" className="text-right font-medium">
-                  {shouldShowBilingual() ? 'TVQ (9.975%) / PST (9.975%):' : 'TVQ (9.975%):'}
+                  {shouldShowBilingual() ? 'PST (9.975%):' : 'TVQ (9.975%):'}
                 </td>
                 <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
               </tr>
               {purchaseForm.shipping_cost > 0 && (
                 <tr>
                   <td colSpan="5" className="text-right font-medium">
-                    {shouldShowBilingual() ? 'Frais de livraison / Shipping:' : 'Frais de livraison:'}
+                    {shouldShowBilingual() ? 'Shipping:' : 'Frais de livraison:'}
                   </td>
                   <td className="text-right">{formatCurrency(purchaseForm.shipping_cost)}</td>
                 </tr>
               )}
               <tr>
                 <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">
-                  {shouldShowBilingual() ? 'TOTAL / TOTAL:' : 'TOTAL:'}
+                  {shouldShowBilingual() ? 'TOTAL CAD$:' : 'TOTAL:'}
                 </td>
                 <td className="text-right font-bold text-lg bg-gray-100">{formatCurrency(purchaseForm.total_amount)}</td>
               </tr>
@@ -1198,7 +1198,7 @@ if (action === 'modal') {
           {purchaseForm.notes && (
             <div className="mt-6 border-t pt-4">
               <h3 className="font-bold mb-2">
-                {shouldShowBilingual() ? 'Notes / Notes:' : 'Notes:'}
+                {shouldShowBilingual() ? 'Notes:' : 'Notes:'}
               </h3>
               <p className="text-sm">{purchaseForm.notes}</p>
             </div>
