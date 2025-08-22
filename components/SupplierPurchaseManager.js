@@ -165,20 +165,19 @@ export default function SupplierPurchaseManager() {
     return () => clearTimeout(timeoutId);
   }, [productSearchTerm]);
 
-  // Calcul automatique des totaux
+  // Calcul automatique des totaux (VERSION ORIGINALE)
 useEffect(() => {
   const subtotal = selectedItems.reduce((sum, item) => {
     return sum + (item.cost_price * item.quantity);
   }, 0);
   
-  // Vérifier le pays du fournisseur sélectionné et son statut d'exemption
+  // Vérifier le pays du fournisseur sélectionné
   const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
   const isCanadianSupplier = !selectedSupplier || selectedSupplier.country === 'Canada';
-  const isTaxExempt = selectedSupplier?.tax_exempt || false;
   
-  // Appliquer les taxes seulement pour les fournisseurs canadiens ET non-exemptés
-  const tps = (isCanadianSupplier && !isTaxExempt) ? subtotal * 0.05 : 0;
-  const tvq = (isCanadianSupplier && !isTaxExempt) ? subtotal * 0.09975 : 0;
+  // Appliquer les taxes seulement pour les fournisseurs canadiens
+  const tps = isCanadianSupplier ? subtotal * 0.05 : 0;
+  const tvq = isCanadianSupplier ? subtotal * 0.09975 : 0;
   
   const total = subtotal + tps + tvq + parseFloat(purchaseForm.shipping_cost || 0);
   
