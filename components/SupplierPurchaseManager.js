@@ -1102,7 +1102,7 @@ const shouldShowBilingual = () => {
                 <p><strong>{purchaseForm.purchase_number}</strong></p>
                 <p><strong>{shouldShowBilingual() ? 'Date:' : 'Date:'}</strong> {formatDate(new Date())}</p>
                 {purchaseForm.linked_po_number && (
-                  <p><strong>{shouldShowBilingual() ? 'Client PO:' : 'PO Client:'}</strong> {purchaseForm.linked_po_number}</p>
+                  <p><strong>{shouldShowBilingual() ? 'Client PO:' : 'BA Client:'}</strong> {purchaseForm.linked_po_number}</p>
                 )}
                 {purchaseForm.delivery_date && (
                   <p><strong>{shouldShowBilingual() ? 'Expected Delivery:' : 'Livraison prévue:'}</strong> {formatDate(purchaseForm.delivery_date)}</p>
@@ -2362,6 +2362,23 @@ const shouldShowBilingual = () => {
                   Si coché, les bons de commande seront générés en anglais/français pour ce fournisseur
                 </p>
               </div>
+
+                      <div className="md:col-span-2">
+  <label className="flex items-center space-x-2">
+    <input
+      type="checkbox"
+      checked={supplierForm.tax_exempt}
+      onChange={(e) => setSupplierForm({...supplierForm, tax_exempt: e.target.checked})}
+      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+    />
+    <span className="text-sm font-medium text-gray-700">
+      Exempt de taxes / Tax exempt
+    </span>
+  </label>
+  <p className="text-xs text-gray-500 mt-1">
+    Si coché, aucune taxe ne sera appliquée aux commandes de ce fournisseur
+  </p>
+</div>
 
                   <div className="md:col-span-2">
   <label className="flex items-center space-x-2">
