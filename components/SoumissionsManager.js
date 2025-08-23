@@ -2343,7 +2343,7 @@ const cleanupFilesForSubmission = async (files) => {
       {/* Info système */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <p className="text-sm text-gray-600">
-          📊 {soumissions.length} soumissions • {clients.length} clients • 6718 produits • 💬 Commentaires • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto • 📁 Import inventaire
+          📊 6718 produits • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto
         </p>
       </div>
 
