@@ -2454,14 +2454,14 @@ export default function PurchaseOrderManager() {
                 >
                   ✏️ Modifier
                 </button>
-                {po.status?.toLowerCase() === 'approved' && (
-                  <button
-                    onClick={() => openDeliveryModal(po)}
-                    className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
-                  >
-                    🚚 Livraison
-                  </button>
-                )}
+                {(['approved', 'partially_delivered'].includes(po.status?.toLowerCase())) && (
+  <button
+    onClick={() => openDeliveryModal(po)}
+    className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+  >
+    🚚 Livraison
+  </button>
+)}
                 {po.status?.toLowerCase() === 'pending' && (
                   <button
                     onClick={() => handleStatusChange(po.id, 'approved')}
