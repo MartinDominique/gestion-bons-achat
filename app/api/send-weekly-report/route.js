@@ -78,13 +78,16 @@ export async function GET() {
       montantTotal: finalPurchaseOrders.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0)
     };
 
-    // Stats soumissions
+    // Stats soumissions avec montant accepté séparé
     const submissionStats = {
       total: submissions.length,
       draft: submissions.filter(s => s.status === 'draft').length,
       sent: submissions.filter(s => s.status === 'sent').length,
       accepted: submissions.filter(s => s.status === 'accepted').length,
-      montantTotal: submissions.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
+      montantTotal: submissions.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
+      montantAccepted: submissions
+        .filter(s => s.status === 'accepted')
+        .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0) // ➕ NOUVEAU
     };
 
     // =============== CRÉER LE CONTENU EMAIL ===============
@@ -147,6 +150,7 @@ export async function GET() {
                 <li>📤 Envoyées: ${submissionStats.sent}</li>
                 <li>✅ Acceptées: ${submissionStats.accepted}</li>
                 <li>💰 Montant total: ${submissionStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
+                <li>💚 Montant accepté: ${submissionStats.montantAccepted.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
               </ul>
             </div>
             <div>
@@ -181,7 +185,8 @@ export async function GET() {
               <ul style="list-style: none; padding: 0;">
                 <li>📋 Total documents: ${poStats.total + submissionStats.total}</li>
                 <li>💰 Bons d'achat: ${poStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
-                <li>💰 Soumissions: ${submissionStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
+                <li>💰 Soumissions (total): ${submissionStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
+                <li>💚 Soumissions acceptées: ${submissionStats.montantAccepted.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
               </ul>
             </div>
             <div>
@@ -229,7 +234,7 @@ export async function GET() {
       emailId: result.data?.id,
       poStats, // ✅ Maintenant avec les bons chiffres !
       submissionStats,
-      message: `Rapport envoyé avec ${poStats.total} bon(s) d'achat (${poStats.approuve} approuvés, ${poStats.refuse} refusés, ${poStats.delivered} livrés) et ${submissionStats.total} soumission(s)`
+      message: `Rapport envoyé avec ${poStats.total} bon(s) d'achat (${poStats.approuve} approuvés, ${poStats.refuse} refusés, ${poStats.delivered} livrés) et ${submissionStats.total} soumission(s) dont ${submissionStats.accepted} acceptées (${submissionStats.montantAccepted.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })})`
     });
 
   } catch (error) {
