@@ -2290,6 +2290,8 @@ const cleanupFilesForSubmission = async (files) => {
           </div>
         </div>
 
+        // Remplacez cette section dans votre SoumissionsManager.js
+
         {/* Statistiques responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
@@ -2325,11 +2327,14 @@ const cleanupFilesForSubmission = async (files) => {
           </div>
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">💰</span>
+              <span className="text-2xl sm:text-3xl mr-3">✅</span>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Total Vente</p>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Total Accepté</p>
                 <p className="text-lg sm:text-2xl font-bold">
-                  {formatCurrency(soumissions.reduce((sum, s) => sum + (s.amount || 0), 0))}
+                  {formatCurrency(soumissions.filter(s => s.status === 'accepted').reduce((sum, s) => sum + (s.amount || 0), 0))}
+                </p>
+                <p className="text-xs text-white/70">
+                  {soumissions.filter(s => s.status === 'accepted').length} soumissions
                 </p>
               </div>
             </div>
