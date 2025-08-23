@@ -2290,8 +2290,6 @@ const cleanupFilesForSubmission = async (files) => {
           </div>
         </div>
 
-        // Remplacez cette section dans votre SoumissionsManager.js
-
         {/* Statistiques responsive */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
