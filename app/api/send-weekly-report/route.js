@@ -51,6 +51,14 @@ console.log(`📅 Récupération des données depuis le ${startDate} (${periodIn
     }
 
     console.log(`📊 ${purchaseOrders?.length || 0} bons d'achat trouvés`);
+// Après avoir récupéré les purchase_orders, ajoutez :
+console.log('🔍 DEBUG - Analyse des statuts:');
+finalPurchaseOrders.forEach((po, index) => {
+  if (index < 10) { // Afficher les 10 premiers
+    console.log(`ID: ${po.id}, Status: "${po.status}", Type: ${typeof po.status}`);
+  }
+});
+    
     const finalPurchaseOrders = purchaseOrders || [];
 
     // =============== RÉCUPÉRER LES SOUMISSIONS ===============
@@ -66,6 +74,14 @@ console.log(`📅 Récupération des données depuis le ${startDate} (${periodIn
     }
 
     console.log(`📊 ${submissions?.length || 0} soumissions trouvées`);
+
+    // Ajoutez ceci juste après avoir récupéré les purchase_orders
+console.log('🔍 Statuts trouvés dans la base:');
+const uniqueStatuses = [...new Set(finalPurchaseOrders.map(o => o.status))];
+console.log('Statuts uniques:', uniqueStatuses);
+
+// Afficher quelques exemples
+console.log('Premiers bons d\'achat:', finalPurchaseOrders.slice(0, 3).map(o => ({ id: o.id, status: o.status, client: o.client_name })));
 
     // =============== CALCULER LES STATISTIQUES ===============
     
