@@ -867,7 +867,70 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         </div>
       )}
 
-      {/* Modal import soumissions - Garder le code existant */}
+      {/* Modal import soumissions */}
+{showSubmissionModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
+    <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
+      <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
+        <h3 className="text-xl font-semibold">Sélectionner une Soumission</h3>
+        <button
+          onClick={() => setShowSubmissionModal(false)}
+          className="text-white hover:bg-white/20 rounded-lg p-2"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+        {submissions.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">Aucune soumission disponible</p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {submissions.map((submission) => (
+              <div key={submission.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-semibold">#{submission.submission_number || submission.id}</h4>
+                    <p className="text-gray-600">{submission.client_name}</p>
+                    <p className="text-sm text-gray-500 mb-2">{submission.description}</p>
+                    <div className="flex gap-4 text-xs text-gray-500">
+                      <span>Date: {formatDate(submission.created_at)}</span>
+                      <span className={`px-2 py-1 rounded ${
+                        submission.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                        submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {submission.status}
+                      </span>
+                      <span>{submission.items?.length || 0} articles</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold text-green-600 mb-2">
+                      {formatCurrency(submission.amount)}
+                    </div>
+                    <button
+                      onClick={() => importSubmission(submission)}
+                      disabled={submission.status !== 'accepted'}
+                      className={`px-4 py-2 rounded text-sm ${
+                        submission.status === 'accepted'
+                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {submission.status === 'accepted' ? 'Importer' : 'Non acceptée'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
