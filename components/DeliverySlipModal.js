@@ -205,4 +205,4 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
   };
   
-  
+ export default DeliverySlipModal; 
