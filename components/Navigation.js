@@ -11,8 +11,7 @@ import { useEffect, useState } from 'react';
 const pages = [
   { id: 'bons-achat', name: "Bons d'achat Clients", icon: Package },
   { id: 'soumissions', name: 'Soumissions', icon: FileText },
-  { id: 'achat-materiels', name: 'Achat MatÃ©riels', icon: ShoppingCart },
-  { id: 'dashboard-livraisons', name: 'Dashboard Livraisons', icon: Truck }
+  { id: 'achat-materiels', name: 'Achat Matériels', icon: ShoppingCart },
 ];
 
 export default function Navigation() {
@@ -49,7 +48,7 @@ export default function Navigation() {
           setUser(user);
         }
 
-        const protectedRoutes = ['/bons-achat', '/soumissions'];
+        const protectedRoutes = ['/bons-', '/soumissions'];
         const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
         
         if (isProtectedRoute && !user) {
