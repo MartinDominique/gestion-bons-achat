@@ -558,25 +558,51 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   <h3 className="text-lg font-semibold">Informations du Bon d'Achat</h3>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setShowClientModal(true)}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-                    >
-                      👤 Sélectionner Client
-                    </button>
-                    <button
                       onClick={loadSubmissions}
                       disabled={hasExistingSubmission}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      📝 {hasExistingSubmission ? 'Soumission Attribuée' : 'Importer Soumission'}
+                      {hasExistingSubmission ? 'Soumission Attribuée' : 'Importer Soumission'}
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Client - Menu déroulant */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Numéro de bon d'achat *
+                      Client *
+                    </label>
+                    <select
+                      value={formData.client_name}
+                      onChange={(e) => {
+                        const selectedClient = clients.find(c => c.name === e.target.value);
+                        if (selectedClient) {
+                          setFormData(prev => ({
+                            ...prev,
+                            client_name: selectedClient.name,
+                            client_email: selectedClient.email || '',
+                            client_phone: selectedClient.phone || '',
+                            client_address: selectedClient.address || ''
+                          }));
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Sélectionner un client...</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.name}>
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* No. Bon Achat Client */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      No. Bon Achat Client *
                     </label>
                     <input
                       type="text"
@@ -584,54 +610,31 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                       value={formData.po_number}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ex: BA-2024-001"
+                      placeholder="Ex: PO-2025-001"
                       required
                     />
                   </div>
 
+                  {/* No Soumission */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nom du client *
+                      No Soumission
                     </label>
                     <input
                       type="text"
-                      name="client_name"
-                      value={formData.client_name}
+                      name="submission_no"
+                      value={formData.submission_no}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100"
+                      placeholder="Sera rempli par import soumission"
+                      readOnly
                     />
                   </div>
 
+                  {/* Date */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email du client
-                    </label>
-                    <input
-                      type="email"
-                      name="client_email"
-                      value={formData.client_email}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Téléphone du client
-                    </label>
-                    <input
-                      type="tel"
-                      name="client_phone"
-                      value={formData.client_phone}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date du bon d'achat *
+                      Date *
                     </label>
                     <input
                       type="date"
@@ -643,53 +646,76 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     />
                   </div>
 
+                  {/* Montant */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date de livraison souhaitée
+                      Montant
                     </label>
                     <input
-                      type="date"
-                      name="delivery_date"
-                      value={formData.delivery_date}
+                      type="number"
+                      name="amount"
+                      value={formData.amount}
+                      onChange={handleChange}
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100"
+                      placeholder="0.00"
+                      readOnly
+                    />
+                  </div>
+
+                  {/* Statut */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Statut
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
+                    >
+                      <option value="draft">En attente</option>
+                      <option value="approved">Approuvé</option>
+                      <option value="rejected">Rejeté</option>
+                      <option value="completed">Complété</option>
+                    </select>
                   </div>
                 </div>
 
+                {/* Notes - Ligne unique */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Adresse de livraison
+                    Notes complémentaires (optionnel)
                   </label>
-                  <textarea
-                    name="client_address"
-                    value={formData.client_address}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Adresse complète de livraison..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Instructions spéciales
-                  </label>
-                  <textarea
+                  <input
+                    type="text"
                     name="special_instructions"
                     value={formData.special_instructions}
                     onChange={handleChange}
-                    rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Instructions particulières..."
+                    placeholder="Notes additionnelles, instructions spéciales..."
                   />
                 </div>
 
+                {/* Affichage soumission liée */}
                 {formData.submission_no && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <p className="text-green-800">
-                      📝 <strong>Soumission liée:</strong> #{formData.submission_no}
+                      <strong>Soumission liée:</strong> #{formData.submission_no}
                     </p>
+                  </div>
+                )}
+
+                {/* Informations client affichées */}
+                {formData.client_name && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-blue-800 mb-2">Informations Client:</h4>
+                    <div className="text-sm text-blue-700 space-y-1">
+                      <p><strong>Nom:</strong> {formData.client_name}</p>
+                      {formData.client_email && <p><strong>Email:</strong> {formData.client_email}</p>}
+                      {formData.client_phone && <p><strong>Téléphone:</strong> {formData.client_phone}</p>}
+                      {formData.client_address && <p><strong>Adresse:</strong> {formData.client_address}</p>}
+                    </div>
                   </div>
                 )}
               </div>
