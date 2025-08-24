@@ -40,51 +40,23 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [submissions, setSubmissions] = useState([]);
   const [clients, setClients] = useState([]);
 
-  // Charger les clients depuis ClientManager
   const loadClients = async () => {
-    try {
-      // Charger depuis la table clients (ajustez selon votre structure)
-      const { data, error } = await supabase
-        .from('clients') // ou submissions si les clients sont là
-        .select('*')
-        .order('client_name');
-      
-      if (error) {
-        // Fallback: charger depuis submissions si table clients n'existe pas
-        const { data: submissionClients, error: subError } = await supabase
-          .from('submissions')
-          .select('client_name, client_email, client_phone, client_address')
-          .not('client_name', 'is', null);
-        
-        if (subError) throw new Error(subError.message);
-        
-        // Supprimer doublons
-        const uniqueClients = submissionClients?.reduce((acc, client) => {
-          const existing = acc.find(c => c.client_name === client.client_name);
-          if (!existing) {
-            acc.push({
-              id: `sub-${acc.length}`,
-              client_name: client.client_name,
-              client_email: client.client_email,
-              client_phone: client.client_phone,
-              client_address: client.client_address
-            });
-          }
-          return acc;
-        }, []) || [];
-        
-        setClients(uniqueClients);
-        return;
-      }
-      
-      setClients(data || []);
-      console.log(`✅ ${data?.length || 0} clients chargés`);
-      
-    } catch (err) {
-      console.error('Erreur chargement clients:', err);
-      setError(err.message);
-    }
-  };
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .order('client_name');
+    
+    if (error) throw new Error(error.message);
+    
+    setClients(data || []);
+    console.log(`✅ ${data?.length || 0} clients chargés`);
+    
+  } catch (err) {
+    console.error('Erreur chargement clients:', err);
+    setError(err.message);
+  }
+};
 
   // Sélectionner un client
   const selectClient = (client) => {
