@@ -355,7 +355,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
             special_instructions: formData.special_instructions || null,
-            submission_no: formData.submission_no || null,
+            submission_no: formData.submission_no || null, // Permettre null
             status: 'draft',
             amount: formData.amount || 0
           })
@@ -470,6 +470,54 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const ItemRow = ({ item, onUpdate, onDelete }) => {
     const [editMode, setEditMode] = useState(item.from_manual && !item.product_id);
     const [localItem, setLocalItem] = useState(item);
+    const [searchResults, setSearchResults] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Rechercher des produits dans la base
+    const searchProducts = async (term) => {
+      if (!term || term.length < 2) {
+        setSearchResults([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .or(`product_id.ilike.%${term}%,description.ilike.%${term}%`)
+          .order('product_id')
+          .limit(10);
+
+        if (error) throw error;
+
+        setSearchResults(data || []);
+        setShowSuggestions(true);
+      } catch (error) {
+        console.error('Erreur recherche produits:', error);
+      }
+    };
+
+    // Sélectionner un produit depuis les suggestions
+    const selectProduct = (product) => {
+      setLocalItem({
+        ...localItem,
+        product_id: product.product_id,
+        description: product.description || product.name || '',
+        selling_price: parseFloat(product.selling_price || product.price || 0),
+        unit: product.unit || 'unité'
+      });
+      setSearchTerm(product.product_id);
+      setShowSuggestions(false);
+    };
+
+    // Gérer le changement dans le champ product_id
+    const handleProductIdChange = (value) => {
+      setSearchTerm(value);
+      setLocalItem({...localItem, product_id: value});
+      searchProducts(value);
+    };
 
     const handleSave = () => {
       onUpdate(localItem);
@@ -479,6 +527,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     const handleCancel = () => {
       setLocalItem(item);
       setEditMode(false);
+      setShowSuggestions(false);
       // Si c'est un nouvel article vide, le supprimer
       if (item.from_manual && !item.product_id) {
         onDelete();
@@ -488,14 +537,38 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     if (editMode) {
       return (
         <tr className="bg-yellow-50">
-          <td className="px-2 py-2">
+          <td className="px-2 py-2 relative">
             <input
               type="text"
-              value={localItem.product_id}
-              onChange={(e) => setLocalItem({...localItem, product_id: e.target.value})}
-              placeholder="Code produit"
+              value={searchTerm || localItem.product_id}
+              onChange={(e) => handleProductIdChange(e.target.value)}
+              onFocus={() => {
+                if (searchResults.length > 0) setShowSuggestions(true);
+              }}
+              placeholder="Tapez pour chercher..."
               className="w-full px-2 py-1 text-sm border rounded"
             />
+            
+            {/* Suggestions dropdown */}
+            {showSuggestions && searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-b shadow-lg z-10 max-h-48 overflow-y-auto">
+                {searchResults.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => selectProduct(product)}
+                    className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
+                  >
+                    <div className="font-medium text-sm">{product.product_id}</div>
+                    <div className="text-xs text-gray-600 truncate">
+                      {product.description || product.name}
+                    </div>
+                    <div className="text-xs text-green-600">
+                      ${parseFloat(product.selling_price || product.price || 0).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </td>
           <td className="px-2 py-2">
             <input
@@ -552,12 +625,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 onClick={handleSave}
                 className="text-green-600 hover:text-green-800 text-sm px-2 py-1 border border-green-300 rounded"
                 disabled={!localItem.product_id || !localItem.description}
+                title="Sauvegarder"
               >
                 ✓
               </button>
               <button
                 onClick={handleCancel}
                 className="text-red-600 hover:text-red-800 text-sm px-2 py-1 border border-red-300 rounded"
+                title="Annuler"
               >
                 ✕
               </button>
@@ -612,7 +687,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         <td className="px-4 py-3">
           <div className="flex gap-1">
             <button
-              onClick={() => setEditMode(true)}
+              onClick={() => {
+                setSearchTerm(item.product_id);
+                setEditMode(true);
+              }}
               className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1"
               title="Modifier"
             >
