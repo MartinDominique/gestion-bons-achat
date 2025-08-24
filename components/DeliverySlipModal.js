@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
-  console.log('ClientPO reçu:', clientPO);
-  
-  // État pour le formulaire
+const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
   const [formData, setFormData] = useState({
     delivery_date: new Date().toISOString().split('T')[0],
     transport_company: '',
@@ -16,139 +13,117 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hasExistingSubmission, setHasExistingSubmission] = useState(false);
 
-  // Charger les articles quand le modal s'ouvre
-  useEffect(() => {
-    if (isOpen && clientPO) {
-      loadPOItems();
-    }
-  }, [isOpen, clientPO]);
-
-  // NOUVELLE FONCTION - Charger depuis client_po_items au lieu de submissions.items
-  const loadPOItems = async () => {
+  // Vérifier si le BA a déjà une soumission attribuée
+  const checkExistingSubmission = async (poId) => {
+    if (!poId) return false;
+    
     try {
-      console.log('Chargement articles depuis client_po_items pour BA:', clientPO.id);
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('id, submission_number, status')
+        .eq('linked_po_id', poId)
+        .eq('status', 'accepted');
       
-      // 1. Charger directement depuis client_po_items
+      if (error) throw error;
+      
+      const hasSubmission = data && data.length > 0;
+      setHasExistingSubmission(hasSubmission);
+      return hasSubmission;
+      
+    } catch (error) {
+      console.error('Erreur vérification soumission:', error);
+      return false;
+    }
+  };
+
+  // Charger les articles depuis client_po_items
+  const loadPOItems = async () => {
+    if (!purchaseOrder?.id) return;
+
+    try {
+      console.log('Chargement articles pour BA:', purchaseOrder.id);
+      
+      // Vérifier d'abord qu'il y a une soumission attribuée
+      const hasSubmission = await checkExistingSubmission(purchaseOrder.id);
+      
+      if (!hasSubmission) {
+        setError('Ce bon d\'achat n\'a pas de soumission attribuée. Impossible de créer une livraison.');
+        return;
+      }
+
+      // Charger les articles depuis client_po_items
       const { data: poItems, error: itemsError } = await supabase
         .from('client_po_items')
         .select('*')
-        .eq('purchase_order_id', clientPO.id)
+        .eq('purchase_order_id', purchaseOrder.id)
         .order('product_id');
       
       if (itemsError) {
         console.error('Erreur chargement articles:', itemsError);
+        setError('Erreur lors du chargement des articles');
         return;
       }
       
       if (!poItems || poItems.length === 0) {
-        console.log('Aucun article trouvé dans client_po_items pour ce BA');
-        // Fallback vers l'ancien système si pas d'articles dans client_po_items
-        await loadFromSubmission();
+        setError('Aucun article trouvé pour ce bon d\'achat');
         return;
       }
-      
-      console.log('Articles trouvés dans client_po_items:', poItems);
 
-      // 2. Préparer les articles avec quantités restantes (plus simple maintenant!)
+      // Préparer les articles avec quantités restantes
       const itemsWithSelection = poItems.map(item => {
-        const remainingQuantity = Math.max(0, item.quantity - (item.delivered_quantity || 0));
+        const deliveredQty = parseFloat(item.delivered_quantity) || 0;
+        const totalQty = parseFloat(item.quantity) || 0;
+        const remainingQty = Math.max(0, totalQty - deliveredQty);
         
         return {
-          id: item.id, // ID réel de client_po_items (important pour delivery_slip_items.client_po_item_id)
+          id: item.id,
           product_id: item.product_id,
           description: item.description,
-          quantity: parseFloat(item.quantity) || 0,
+          quantity: totalQty,
           unit: item.unit || 'unité',
           price: parseFloat(item.selling_price) || 0,
+          delivered_quantity: deliveredQty,
+          remaining_quantity: remainingQty,
           selected: false,
-          quantity_to_deliver: 0,
-          remaining_quantity: remainingQuantity,
-          delivered_quantity: parseFloat(item.delivered_quantity) || 0
+          quantity_to_deliver: 0
         };
       });
       
       setFormData(prev => ({ ...prev, items: itemsWithSelection }));
-      console.log(`✅ ${poItems.length} articles chargés depuis client_po_items!`, itemsWithSelection);
+      console.log(`Articles chargés: ${poItems.length}`);
       
     } catch (error) {
       console.error('Erreur générale chargement:', error);
+      setError('Erreur lors du chargement des données');
     }
   };
 
-  // FONCTION FALLBACK - Ancien système si client_po_items vide
-  const loadFromSubmission = async () => {
-    try {
-      console.log('Fallback: Recherche soumission:', clientPO.submission_no);
-      
-      if (!clientPO.submission_no) {
-        console.log('Pas de numéro de soumission');
-        return;
-      }
-      
-      // Charger depuis l'ancien système (submissions.items)
-      const { data: submission, error: subError } = await supabase
-        .from('submissions')
-        .select('items')
-        .eq('submission_number', clientPO.submission_no)
-        .single();
-      
-      if (subError) {
-        console.error('Erreur recherche soumission:', subError);
-        return;
-      }
-      
-      const items = submission.items || [];
-      
-      // Récupérer les quantités déjà livrées (ancien calcul complexe)
-      const { data: deliveredItems } = await supabase
-        .from('delivery_slip_items')
-        .select(`
-          quantity_delivered,
-          notes,
-          delivery_slips!inner(purchase_order_id)
-        `)
-        .eq('delivery_slips.purchase_order_id', clientPO.id);
-
-      console.log('Quantités déjà livrées (ancien système):', deliveredItems);
-      
-      if (items && items.length > 0) {
-        const itemsWithSelection = items.map((item, index) => {
-          const productId = item.product_id || item.code || `ITEM-${index + 1}`;
-          
-          // Calculer la quantité déjà livrée pour cet article (ancien système)
-          const alreadyDelivered = deliveredItems
-            ?.filter(d => d.notes && d.notes.includes(productId))
-            ?.reduce((sum, d) => sum + (parseFloat(d.quantity_delivered) || 0), 0) || 0;
-          
-          const totalQuantity = parseFloat(item.quantity) || 0;
-          const remainingQuantity = Math.max(0, totalQuantity - alreadyDelivered);
-
-          return {
-            id: index + 1, // ID temporaire (pas réel)
-            product_id: productId,
-            description: item.name || item.description || 'Article',
-            quantity: totalQuantity,
-            unit: item.unit || 'unité',
-            price: parseFloat(item.price) || 0,
-            selected: false,
-            quantity_to_deliver: 0,
-            remaining_quantity: remainingQuantity,
-            delivered_quantity: alreadyDelivered,
-            from_submission: true // Flag pour différencier
-          };
-        });
-        
-        setFormData(prev => ({ ...prev, items: itemsWithSelection }));
-        console.log(`✅ ${items.length} articles chargés depuis submission (fallback)!`);
-      }
-      
-    } catch (error) {
-      console.error('Erreur fallback submission:', error);
+  // Charger les données quand le modal s'ouvre
+  useEffect(() => {
+    if (isOpen && purchaseOrder) {
+      loadPOItems();
     }
-  };
+  }, [isOpen, purchaseOrder]);
 
-  // Fonction pour sélectionner/désélectionner un article
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        delivery_date: new Date().toISOString().split('T')[0],
+        transport_company: '',
+        tracking_number: '',
+        delivery_contact: '',
+        special_instructions: '',
+        items: []
+      });
+      setError('');
+      setHasExistingSubmission(false);
+    }
+  }, [isOpen]);
+
+  // Sélectionner/désélectionner un article
   const handleItemSelect = (itemId) => {
     setFormData(prev => ({
       ...prev,
@@ -164,7 +139,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     }));
   };
 
-  // Fonction pour changer la quantité
+  // Changer la quantité à livrer
   const handleQuantityChange = (itemId, newQuantity) => {
     setFormData(prev => ({
       ...prev,
@@ -207,7 +182,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
     return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
   };
 
-  // Fonction pour soumettre le formulaire
+  // Soumettre le formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -229,7 +204,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         .from('delivery_slips')
         .insert({
           delivery_number: deliveryNumber,
-          purchase_order_id: clientPO.id,
+          purchase_order_id: purchaseOrder.id,
           delivery_date: formData.delivery_date,
           transport_company: formData.transport_company || null,
           tracking_number: formData.tracking_number || null,
@@ -247,12 +222,11 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       // 2. Ajouter les articles du bon de livraison
       const deliveryItems = selectedItems.map(item => ({
         delivery_slip_id: deliverySlip.id,
-        client_po_item_id: item.from_submission ? null : item.id, // Seulement si depuis client_po_items
+        client_po_item_id: item.id,
         product_id: item.product_id,
         description: item.description,
         quantity_delivered: item.quantity_to_deliver,
-        unit: item.unit,
-        notes: item.from_submission ? `Depuis soumission: ${item.product_id}` : null
+        unit: item.unit
       }));
 
       const { error: itemsError } = await supabase
@@ -263,8 +237,8 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         throw new Error(`Erreur ajout articles: ${itemsError.message}`);
       }
 
-      // 3. Mettre à jour les quantités livrées dans client_po_items (seulement si pas depuis submission)
-      for (const item of selectedItems.filter(i => !i.from_submission)) {
+      // 3. Mettre à jour les quantités livrées dans client_po_items
+      for (const item of selectedItems) {
         const newDeliveredQty = item.delivered_quantity + item.quantity_to_deliver;
         
         const { error: updateError } = await supabase
@@ -280,9 +254,26 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         }
       }
 
-      console.log(`✅ Bon de livraison ${deliveryNumber} créé avec succès!`);
+      // 4. Mettre à jour le statut du BA si nécessaire
+      const allItemsDelivered = formData.items.every(item => {
+        if (selectedItems.find(si => si.id === item.id)) {
+          return (item.delivered_quantity + item.quantity_to_deliver) >= item.quantity;
+        }
+        return item.delivered_quantity >= item.quantity;
+      });
+
+      const newStatus = allItemsDelivered ? 'delivered' : 'partially_delivered';
       
-      // Rafraîchir les données et fermer le modal
+      await supabase
+        .from('purchase_orders')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', purchaseOrder.id);
+
+      console.log(`Bon de livraison ${deliveryNumber} créé avec succès!`);
+      
       if (onRefresh) onRefresh();
       onClose();
 
@@ -293,21 +284,6 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
       setIsLoading(false);
     }
   };
-
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setFormData({
-        delivery_date: new Date().toISOString().split('T')[0],
-        transport_company: '',
-        tracking_number: '',
-        delivery_contact: '',
-        special_instructions: '',
-        items: []
-      });
-      setError('');
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -320,7 +296,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
         {/* Header */}
         <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold">
-            Créer un Bon de Livraison - BA #{clientPO?.po_number}
+            Créer un Bon de Livraison - BA #{purchaseOrder?.po_number}
           </h2>
           <button
             onClick={onClose}
@@ -334,6 +310,20 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
+            </div>
+          )}
+
+          {!hasExistingSubmission && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">⚠️</div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    <strong>Attention:</strong> Ce bon d'achat n'a pas de soumission attribuée.
+                    Vous devez d'abord attribuer une soumission avant de pouvoir créer une livraison.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -400,7 +390,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
               <textarea
                 value={formData.special_instructions}
                 onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value }))}
-                rows={3}
+                rows={2}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 placeholder="Instructions particulières pour la livraison..."
               />
@@ -517,7 +507,7 @@ const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
               </button>
               <button
                 type="submit"
-                disabled={isLoading || selectedItems.length === 0}
+                disabled={isLoading || selectedItems.length === 0 || !hasExistingSubmission}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 {isLoading ? (
