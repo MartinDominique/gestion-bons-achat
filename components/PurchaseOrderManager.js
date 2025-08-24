@@ -2203,7 +2203,8 @@ export default function PurchaseOrderManager() {
                     }`}>
                       {po.status?.toLowerCase() === 'approved' ? '✅' :
                        po.status?.toLowerCase() === 'pending' ? '⏳' :
-                       po.status?.toLowerCase() === 'rejected' ? '❌' : '❓'}
+                       po.status?.toLowerCase() === 'rejected' ? '❌' :
+                       po.status?.toLowerCase() === 'partially_delivered' ? '📦' : '❓'}
                     </span>
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-center">
