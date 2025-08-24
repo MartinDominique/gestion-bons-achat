@@ -4,6 +4,7 @@ import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Up
 import { Building2, FileUp, ShoppingCart } from 'lucide-react';
 import DeliverySlipModal from './DeliverySlipModal';
 import DeliveryDashboard from './DeliveryDashboard';
+import { formatCurrency, formatDate, formatFileSize, getFileIcon, getStatusEmoji } from './utils/formatting';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -1208,32 +1209,7 @@ export default function PurchaseOrderManager() {
     }
   };
 
-  const getFileIcon = (fileType) => {
-    if (fileType?.includes('pdf')) return '📄';
-    if (fileType?.includes('excel') || fileType?.includes('sheet')) return '📊';
-    if (fileType?.includes('word') || fileType?.includes('document')) return '📝';
-    if (fileType?.includes('image')) return '🖼️';
-    return '📎';
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const getStatusEmoji = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'approved': return '✅';
-      case 'pending': return '⏳';
-      case 'rejected': return '❌';
-      default: return '⏳';
-    }
-  };
-
-  const getStatusBadge = (status) => {
+      const getStatusBadge = (status) => {
     const baseClasses = "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium";
     switch (status?.toLowerCase()) {
       case 'approved':
@@ -1245,18 +1221,6 @@ export default function PurchaseOrderManager() {
       default:
         return `${baseClasses} bg-gray-100 text-gray-800 border border-gray-200`;
     }
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('fr-CA');
   };
 
   const filteredPurchaseOrders = purchaseOrders.filter(po => {
