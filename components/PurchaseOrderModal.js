@@ -1010,7 +1010,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                             </td>
                             <td className="px-4 py-3"></td>
                           </tr>
-                        </tbody>
+                        </tfoot>
                       </table>
                     </div>
                   </div>
