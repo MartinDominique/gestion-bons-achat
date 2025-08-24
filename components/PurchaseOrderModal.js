@@ -711,6 +711,92 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     );
   };
 
+  // Supprimer le bon d'achat
+  const deletePurchaseOrder = async () => {
+    if (!editingPO) return;
+
+    const confirmDelete = window.confirm(
+      `Êtes-vous sûr de vouloir supprimer le bon d'achat ${editingPO.po_number} ?\n\n` +
+      `Cette action supprimera également :\n` +
+      `- Tous les articles du BA\n` +
+      `- Tous les bons de livraison associés\n` +
+      `- Toutes les données liées\n\n` +
+      `Cette action est IRRÉVERSIBLE.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setIsLoading(true);
+      setError('');
+
+      // 1. Supprimer les articles de livraison liés
+      const { error: deliveryItemsError } = await supabase
+        .from('delivery_slip_items')
+        .delete()
+        .in('delivery_slip_id', 
+          deliverySlips.map(slip => slip.id)
+        );
+
+      if (deliveryItemsError) {
+        console.error('Erreur suppression articles livraison:', deliveryItemsError);
+      }
+
+      // 2. Supprimer les bons de livraison
+      const { error: deliverySlipsError } = await supabase
+        .from('delivery_slips')
+        .delete()
+        .eq('purchase_order_id', editingPO.id);
+
+      if (deliverySlipsError) {
+        console.error('Erreur suppression bons livraison:', deliverySlipsError);
+      }
+
+      // 3. Supprimer les articles du BA
+      const { error: itemsError } = await supabase
+        .from('client_po_items')
+        .delete()
+        .eq('purchase_order_id', editingPO.id);
+
+      if (itemsError) {
+        console.error('Erreur suppression articles BA:', itemsError);
+      }
+
+      // 4. Délier la soumission si elle existe
+      if (editingPO.submission_no) {
+        const { error: unlinkError } = await supabase
+          .from('submissions')
+          .update({ linked_po_id: null })
+          .eq('submission_number', editingPO.submission_no);
+
+        if (unlinkError) {
+          console.error('Erreur déliage soumission:', unlinkError);
+        }
+      }
+
+      // 5. Supprimer le bon d'achat principal
+      const { error: poError } = await supabase
+        .from('purchase_orders')
+        .delete()
+        .eq('id', editingPO.id);
+
+      if (poError) {
+        throw new Error(`Erreur suppression BA: ${poError.message}`);
+      }
+
+      console.log(`BA ${editingPO.po_number} supprimé avec succès`);
+      
+      if (onRefresh) onRefresh();
+      onClose();
+
+    } catch (err) {
+      console.error('Erreur suppression BA:', err);
+      setError(`Erreur lors de la suppression: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Calculer le statut de livraison
   const getDeliveryStatus = () => {
     if (items.length === 0) return 'not_started';
