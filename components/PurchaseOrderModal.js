@@ -728,89 +728,83 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   <h3 className="text-lg font-semibold">
                     Articles du Bon d'Achat ({items.length})
                   </h3>
-                  {items.length === 0 && (
+                  <div className="flex gap-2">
                     <button
                       onClick={loadSubmissions}
                       disabled={hasExistingSubmission}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2"
                     >
-                      📝 Importer depuis Soumission
+                      Importer depuis Soumission
                     </button>
-                  )}
+                    <button
+                      onClick={addNewItem}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                    >
+                      + Ajouter Article
+                    </button>
+                  </div>
                 </div>
 
                 {items.length === 0 ? (
-                  <div className="text-center py-12">
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                     <p className="text-gray-500 mb-4">Aucun article dans ce bon d'achat</p>
-                    <p className="text-sm text-gray-400">Importez une soumission pour ajouter des articles</p>
+                    <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
+                    <div className="flex justify-center gap-4">
+                      <button
+                        onClick={addNewItem}
+                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
+                      >
+                        Ajouter un article manuellement
+                      </button>
+                      <button
+                        onClick={loadSubmissions}
+                        disabled={hasExistingSubmission}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                      >
+                        Importer depuis une soumission
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Article</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantité</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix Unit.</th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sous-Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {items.map((item, index) => {
-                          const deliveredQty = parseFloat(item.delivered_quantity) || 0;
-                          const totalQty = parseFloat(item.quantity) || 0;
-                          const deliveryPercentage = totalQty > 0 ? (deliveredQty / totalQty) * 100 : 0;
-                          
-                          return (
-                            <tr key={item.id || index} className="hover:bg-gray-50">
-                              <td className="px-4 py-3">
-                                <div>
-                                  <div className="font-medium text-gray-900">{item.product_id}</div>
-                                  <div className="text-sm text-gray-500">{item.description}</div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                <div className="text-sm">
-                                  <div className="font-medium">{item.quantity} {item.unit}</div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                ${parseFloat(item.selling_price || 0).toFixed(2)}
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                <div className="flex flex-col items-center gap-1">
-                                  <span className="text-sm font-medium">{deliveredQty}</span>
-                                  {deliveryPercentage > 0 && (
-                                    <div className="w-16 bg-gray-200 rounded-full h-2">
-                                      <div
-                                        className={`h-2 rounded-full ${
-                                          deliveryPercentage === 100 ? 'bg-green-500' : 'bg-blue-500'
-                                        }`}
-                                        style={{ width: `${Math.min(deliveryPercentage, 100)}%` }}
-                                      ></div>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium">
-                                ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot className="bg-gray-50">
-                        <tr>
-                          <td colSpan="4" className="px-4 py-3 text-right font-semibold">
-                            Total:
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-lg">
-                            ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                  <div className="space-y-4">
+                    {/* Tableau des articles */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code Produit</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantité</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unité</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix Unit.</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sous-Total</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {items.map((item, index) => (
+                            <ItemRow
+                              key={item.id || index}
+                              item={item}
+                              onUpdate={(updatedItem) => updateItem(index, updatedItem)}
+                              onDelete={() => deleteItem(index)}
+                            />
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-gray-50">
+                          <tr>
+                            <td colSpan="6" className="px-4 py-3 text-right font-semibold">
+                              Total:
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-lg">
+                              ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3"></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
