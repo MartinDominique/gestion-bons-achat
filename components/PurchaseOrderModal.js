@@ -11,7 +11,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     client_email: '',
     client_phone: '',
     client_address: '',
-    po_date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T')[0],
     delivery_date: '',
     payment_terms: '',
     special_instructions: '',
@@ -141,7 +141,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         client_email: po.client_email || '',
         client_phone: po.client_phone || '',
         client_address: po.client_address || '',
-        po_date: po.po_date || '',
+        date: po.date || '',
         delivery_date: po.delivery_date || '',
         payment_terms: po.payment_terms || '',
         special_instructions: po.special_instructions || '',
@@ -170,7 +170,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       client_email: '',
       client_phone: '',
       client_address: '',
-      po_date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split('T')[0],
       delivery_date: '',
       payment_terms: '',
       special_instructions: '',
@@ -294,7 +294,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             client_email: formData.client_email || null,
             client_phone: formData.client_phone || null,
             client_address: formData.client_address || null,
-            po_date: formData.po_date,
+            date: formData.date,
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
             special_instructions: formData.special_instructions || null,
@@ -318,13 +318,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             client_email: formData.client_email || null,
             client_phone: formData.client_phone || null,
             client_address: formData.client_address || null,
-            po_date: formData.po_date,
+            date: formData.date,
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
             special_instructions: formData.special_instructions || null,
             submission_no: formData.submission_no || null,
             status: 'draft',
-            total_amount: 0
+            amount: 0
           })
           .select()
           .single();
@@ -362,7 +362,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         
         await supabase
           .from('purchase_orders')
-          .update({ total_amount: totalAmount })
+          .update({ amount: totalAmount })
           .eq('id', poData.id);
       }
       
@@ -629,8 +629,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   </label>
                   <input
                     type="date"
-                    value={formData.po_date}
-                    onChange={(e) => setFormData({...formData, po_date: e.target.value})}
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     required
                   />
