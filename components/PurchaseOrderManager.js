@@ -1,69 +1,127 @@
-// ========================================
-// FICHIER 6: PurchaseOrderManager.js
-// ========================================
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, FileText, Truck, BarChart3 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
-// Hooks personnalisés
-import usePurchaseOrders from './hooks/usePurchaseOrders';
-import useDeliveries from './hooks/useDeliveries';
-import useFileUpload from './hooks/useFileUpload';
+// Importer seulement vos composants existants
+import PurchaseOrderModal from './PurchaseOrderModal';
+// import DeliveryDashboard from './DeliveryDashboard'; // Commenté si n'existe pas
 
-// Composants
-import DeliveryDashboard from '../DeliveryDashboard';
-
-// Utilitaires
-import { formatCurrency, formatDate, formatStatus, getStatusColor } from './utils/formatting';
+// Utiliser vos utilitaires existants
+import { formatCurrency, formatDate, getStatusEmoji } from './PurchaseOrder/utils/formatting';
 
 const PurchaseOrderManager = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPO, setSelectedPO] = useState(null);
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  
+  // États pour la gestion des BAs (logique directe au lieu de hooks)
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [filteredPOs, setFilteredPOs] = useState([]);
 
-  // Hooks personnalisés
-  const {
-    purchaseOrders,
-    clients,
-    isLoading,
-    error,
-    searchTerm,
-    statusFilter,
-    setSearchTerm,
-    setStatusFilter,
-    fetchPurchaseOrders,
-    createPurchaseOrder
-  } = usePurchaseOrders();
-
-  const deliveryHook = useDeliveries(selectedPO);
-  const fileUploadHook = useFileUpload();
-
-  const handleCreatePO = async (formData) => {
+  // Charger les bons d'achat directement (sans hook)
+  const fetchPurchaseOrders = async () => {
     try {
-      await createPurchaseOrder(formData);
-      setShowCreateModal(false);
-    } catch (error) {
-      console.error('Erreur création BA:', error);
+      setIsLoading(true);
+      setError('');
+      
+      const { data, error: fetchError } = await supabase
+        .from('purchase_orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        throw new Error(`Erreur chargement BAs: ${fetchError.message}`);
+      }
+
+      setPurchaseOrders(data || []);
+      console.log(`✅ ${data?.length || 0} bons d'achat chargés`);
+      
+    } catch (err) {
+      console.error('Erreur fetchPurchaseOrders:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDeliveryClick = (po) => {
+  // Filtrer les BAs
+  useEffect(() => {
+    let filtered = purchaseOrders;
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(po => 
+        po.po_number?.toLowerCase().includes(term) ||
+        po.client_name?.toLowerCase().includes(term) ||
+        po.submission_no?.toLowerCase().includes(term)
+      );
+    }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(po => po.status === statusFilter);
+    }
+
+    setFilteredPOs(filtered);
+  }, [purchaseOrders, searchTerm, statusFilter]);
+
+  // Charger au montage
+  useEffect(() => {
+    fetchPurchaseOrders();
+  }, []);
+
+  const handleEditPO = (po) => {
     setSelectedPO(po);
-    setShowDeliveryModal(true);
+    setShowCreateModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowCreateModal(false);
+    setSelectedPO(null);
+    fetchPurchaseOrders(); // Rafraîchir après modification
   };
 
   const tabs = [
-    { id: 'list', label: 'Bons d\'Achat', icon: FileText },
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 }
+    { id: 'list', label: 'Bons d\'Achat', icon: FileText }
+    // { id: 'dashboard', label: 'Dashboard', icon: BarChart3 } // Commenté si DeliveryDashboard n'existe pas
   ];
 
   const stats = {
-    total: purchaseOrders.length,
-    draft: purchaseOrders.filter(po => po.status === 'draft').length,
-    approved: purchaseOrders.filter(po => po.status === 'approved').length,
-    delivered: purchaseOrders.filter(po => po.status === 'delivered').length,
-    partial: purchaseOrders.filter(po => po.status === 'partially_delivered').length,
-    totalValue: purchaseOrders.reduce((sum, po) => sum + (parseFloat(po.total_amount) || 0), 0)
+    total: filteredPOs.length,
+    draft: filteredPOs.filter(po => po.status === 'draft').length,
+    approved: filteredPOs.filter(po => po.status === 'approved').length,
+    delivered: filteredPOs.filter(po => po.status === 'delivered').length,
+    partial: filteredPOs.filter(po => po.status === 'partially_delivered').length,
+    totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.total_amount) || 0), 0)
+  };
+
+  // Formater statut
+  const formatStatus = (status) => {
+    const statusLabels = {
+      draft: 'Brouillon',
+      pending: 'En attente',
+      approved: 'Approuvé',
+      partially_delivered: 'Partiellement livré',
+      delivered: 'Livré',
+      cancelled: 'Annulé'
+    };
+    return statusLabels[status] || status;
+  };
+
+  // Couleur statut
+  const getStatusColor = (status) => {
+    const statusColors = {
+      draft: 'bg-gray-100 text-gray-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      approved: 'bg-green-100 text-green-800',
+      partially_delivered: 'bg-blue-100 text-blue-800',
+      delivered: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800'
+    };
+    return statusColors[status] || 'bg-gray-100 text-gray-800';
   };
 
   if (isLoading) {
@@ -129,6 +187,15 @@ const PurchaseOrderManager = () => {
         </div>
       </div>
 
+      {/* Message d'erreur */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="text-red-800">
+            <strong>Erreur:</strong> {error}
+          </div>
+        </div>
+      )}
+
       {/* Navigation par onglets */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">
@@ -154,6 +221,7 @@ const PurchaseOrderManager = () => {
         </div>
 
         <div className="p-6">
+          {/* Onglet Liste des Bons d'Achat */}
           {activeTab === 'list' && (
             <div className="space-y-6">
               {/* Barre de recherche */}
@@ -183,7 +251,7 @@ const PurchaseOrderManager = () => {
 
               {/* Liste des bons d'achat */}
               <div className="space-y-4">
-                {purchaseOrders.length === 0 ? (
+                {filteredPOs.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun bon d'achat trouvé</h3>
@@ -195,25 +263,22 @@ const PurchaseOrderManager = () => {
                     </button>
                   </div>
                 ) : (
-                  purchaseOrders.map((po) => (
+                  filteredPOs.map((po) => (
                     <div key={po.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
                           <div className="text-lg font-semibold text-gray-900">BA #{po.po_number}</div>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(po.status)}`}>
-                            {formatStatus(po.status)}
+                            {getStatusEmoji(po.status)} {formatStatus(po.status)}
                           </span>
                         </div>
                         <div className="flex gap-2">
-                          {(po.status === 'approved' || po.status === 'partially_delivered') && (
-                            <button
-                              onClick={() => handleDeliveryClick(po)}
-                              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 flex items-center gap-1"
-                            >
-                              <Truck className="w-4 h-4" />
-                              Livrer
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleEditPO(po)}
+                            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+                          >
+                            Gérer
+                          </button>
                         </div>
                       </div>
                       
@@ -231,6 +296,12 @@ const PurchaseOrderManager = () => {
                           <div className="text-gray-900 font-semibold">{formatCurrency(po.total_amount)}</div>
                         </div>
                       </div>
+
+                      {po.submission_no && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          Soumission: #{po.submission_no}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
@@ -238,11 +309,24 @@ const PurchaseOrderManager = () => {
             </div>
           )}
 
+          {/* Onglet Dashboard - Commenté si composant n'existe pas */}
+          {/*
           {activeTab === 'dashboard' && (
             <DeliveryDashboard />
           )}
+          */}
         </div>
       </div>
+
+      {/* Modal centralisé */}
+      {showCreateModal && (
+        <PurchaseOrderModal
+          isOpen={showCreateModal}
+          onClose={handleModalClose}
+          editingPO={selectedPO}
+          onRefresh={fetchPurchaseOrders}
+        />
+      )}
     </div>
   );
 };
