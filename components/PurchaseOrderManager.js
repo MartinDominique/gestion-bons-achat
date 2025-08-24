@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search, Plus, Minus, Package, Truck, Printer, CheckCircle } from 'lucide-react';
 import { Building2, FileUp, ShoppingCart } from 'lucide-react';
 import DeliverySlipModal from './DeliverySlipModal';
+import DeliveryDashboard from './DeliveryDashboard';
 
 export default function PurchaseOrderManager() {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
@@ -16,6 +17,7 @@ export default function PurchaseOrderManager() {
   const [sendingReport, setSendingReport] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [activeTab, setActiveTab] = useState('orders');
   
   // États pour les achats fournisseurs
   const [supplierPurchases, setSupplierPurchases] = useState([]);
@@ -1274,1233 +1276,1263 @@ export default function PurchaseOrderManager() {
   const totalAmount = filteredPurchaseOrders.reduce((sum, po) => sum + (po.amount || 0), 0);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="ml-4 text-indigo-600 font-medium">Chargement des bons d'achat...</p>
-      </div>
-    );
-  }
+  return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <p className="ml-4 text-indigo-600 font-medium">Chargement des bons d'achat...</p>
+    </div>
+  );
+}
 
-  if (showForm) {
-    return (
-      <div className="max-w-6xl mx-auto p-4">
-        <div className="bg-white rounded-xl shadow-lg border border-indigo-200 overflow-hidden">
-          
-          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold">
-                  {editingPO ? '✏️ Modifier le Bon d\'Achat' : '➕ Nouveau Bon d\'Achat'}
-                </h2>
-                <p className="text-indigo-100 text-sm mt-1">
-                  {editingPO ? 'Modifiez les informations' : 'Créez un nouveau bon d\'achat'}
-                </p>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingPO(null);
-                    setLinkedPurchases([]);
-                    setAvailablePurchases([]);
-                    setFormData({
-                      client_name: '',
-                      po_number: '',
-                      submission_no: '',
-                      date: new Date().toISOString().split('T')[0],
-                      amount: '',
-                      status: 'pending',
-                      notes: '',
-                      additionalNotes: '',
-                      files: [],
-                      items: []
-                    });
-                  }}
-                  className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-sm font-medium"
-                >
-                  ❌ Annuler
-                </button>
-                <button
-                  type="submit"
-                  form="po-form"
-                  className="w-full sm:w-auto px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-100 text-sm font-medium"
-                >
-                  {editingPO ? '💾 Mettre à jour' : '✨ Créer'}
-                </button>
-              </div>
+if (showForm) {
+  return (
+    <div className="max-w-6xl mx-auto p-4">
+      <div className="bg-white rounded-xl shadow-lg border border-indigo-200 overflow-hidden">
+        
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold">
+                {editingPO ? 'Modifier le Bon d\'Achat' : 'Nouveau Bon d\'Achat'}
+              </h2>
+              <p className="text-indigo-100 text-sm mt-1">
+                {editingPO ? 'Modifiez les informations' : 'Créez un nouveau bon d\'achat'}
+              </p>
             </div>
-          </div>
-          
-          <div className="p-4 sm:p-6">
-            <form id="po-form" onSubmit={handleSubmit} className="space-y-6">
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <label className="block text-sm font-semibold text-blue-800 mb-2">
-                    👤 Client *
-                  </label>
-                  <select
-                    value={formData.client_name}
-                    onChange={(e) => setFormData({...formData, client_name: e.target.value})}
-                    className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
-                    required
-                  >
-                    <option value="">Sélectionner un client...</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.name}>
-                        {client.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <label className="block text-sm font-semibold text-green-800 mb-2">
-                    📝 Description *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
-                    placeholder="Description du bon d'achat..."
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                  <label className="block text-sm font-semibold text-indigo-800 mb-2">
-                    📄 No. Bon Achat Client *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.po_number}
-                    onChange={(e) => setFormData({...formData, po_number: e.target.value})}
-                    className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
-                    placeholder="Ex: PO-2025-001"
-                    required
-                  />
-                </div>
-
-                <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
-                  <label className="block text-sm font-semibold text-cyan-800 mb-2">
-                    📋 No. Soumission
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <select
-                        value={formData.submission_no}
-                        onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
-                        className="block flex-1 rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
-                      >
-                        <option value="">Sélectionner ou entrer manuellement...</option>
-                        {submissions.map((submission) => (
-                          <option key={submission.id} value={submission.submission_number}>
-                            {submission.submission_number} - {submission.client_name}
-                          </option>
-                        ))}
-                      </select>
-                      
-                      {formData.submission_no && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const selectedSubmission = submissions.find(s => s.submission_number === formData.submission_no);
-                            if (selectedSubmission) {
-                              try {
-                                const { data: submissionDetails, error } = await supabase
-                                  .from('submissions')
-                                  .select('*')
-                                  .eq('id', selectedSubmission.id)
-                                  .single();
-
-                                if (error) throw error;
-
-                                const totalVente = submissionDetails.items?.reduce((sum, item) => 
-                                  sum + ((item.selling_price || item.sale_price || item.unit_price || 0) * (item.quantity || 0)), 0) || 0;
-                                const totalCost = submissionDetails.items?.reduce((sum, item) => 
-                                  sum + ((item.cost_price || item.unit_cost || 0) * (item.quantity || 0)), 0) || 0;
-                                
-                                const printWindow = window.open('', '_blank', 'width=800,height=600');
-                                
-                                const printContent = `
-                                  <!DOCTYPE html>
-                                  <html>
-                                  <head>
-                                    <title>Soumission ${submissionDetails.submission_number}</title>
-                                    <style>
-                                      body { font-family: Arial, sans-serif; margin: 20px; }
-                                      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-                                      .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
-                                      .client-info, .submission-info { width: 48%; }
-                                      table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                                      th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-                                      th { background-color: #f0f0f0; }
-                                      .total-row { font-weight: bold; background-color: #f9f9f9; }
-                                      @media print { body { margin: 0; } }
-                                    </style>
-                                  </head>
-                                  <body>
-                                    <div class="header">
-                                      <h1>SOUMISSION</h1>
-                                      <h2>N°: ${submissionDetails.submission_number}</h2>
-                                      <p>Date: ${formatDate(submissionDetails.created_at)}</p>
-                                    </div>
-                                    
-                                    <div class="info-section">
-                                      <div class="client-info">
-                                        <h3>CLIENT:</h3>
-                                        <p><strong>${submissionDetails.client_name || 'N/A'}</strong></p>
-                                        <p>DESCRIPTION: ${submissionDetails.description || 'N/A'}</p>
-                                      </div>
-                                      <div class="submission-info">
-                                        <p><strong>Date:</strong> ${formatDate(submissionDetails.created_at)}</p>
-                                        <p><strong>Statut:</strong> ${submissionDetails.status || 'N/A'}</p>
-                                      </div>
-                                    </div>
-
-                                    ${submissionDetails.items && submissionDetails.items.length > 0 ? `
-                                      <table>
-                                        <thead>
-                                          <tr>
-                                            <th>Code</th>
-                                            <th>Description</th>
-                                            <th>Qté</th>
-                                            <th>Unité</th>
-                                            <th>Prix Unit.</th>
-                                            <th>Coût Unit.</th>
-                                            <th>Total Vente</th>
-                                            <th>Total Coût</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          ${submissionDetails.items.map(item => `
-                                            <tr>
-                                              <td>${item.product_id || item.code || item.item_code || item.product_code || ''}</td>
-                                              <td>${item.description || ''}</td>
-                                              <td>${item.quantity || 0}</td>
-                                              <td>${item.unit || ''}</td>
-                                              <td>${formatCurrency(item.selling_price || item.sale_price || item.unit_price || 0)}</td>
-                                              <td>${formatCurrency(item.cost_price || item.unit_cost || 0)}</td>
-                                              <td>${formatCurrency((item.selling_price || item.sale_price || item.unit_price || 0) * (item.quantity || 0))}</td>
-                                              <td>${formatCurrency((item.cost_price || item.unit_cost || 0) * (item.quantity || 0))}</td>
-                                            </tr>
-                                          `).join('')}
-                                        </tbody>
-                                        <tfoot>
-                                          <tr class="total-row">
-                                            <td colspan="6"><strong>TOTAL SOUMISSION:</strong></td>
-                                            <td><strong>${formatCurrency(totalVente)}</strong></td>
-                                            <td><strong>${formatCurrency(totalCost)}</strong></td>
-                                          </tr>
-                                        </tfoot>
-                                      </table>
-                                    ` : '<p>Aucun item dans cette soumission</p>'}
-
-                                    ${submissionDetails.notes ? `
-                                      <div style="margin-top: 30px;">
-                                        <h3>Notes:</h3>
-                                        <p>${submissionDetails.notes}</p>
-                                      </div>
-                                    ` : ''}
-                                  </body>
-                                  </html>
-                                `;
-
-                                printWindow.document.write(printContent);
-                                printWindow.document.close();
-
-                              } catch (error) {
-                                console.error('Erreur récupération soumission:', error);
-                                alert('❌ Erreur lors de la récupération de la soumission');
-                              }
-                            } else {
-                              alert('⚠️ Soumission non trouvée dans le système');
-                            }
-                          }}
-                          className="px-3 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 flex-shrink-0 text-sm font-medium"
-                          title="Visualiser la soumission"
-                        >
-                          👁️ Visualiser
-                        </button>
-                      )}
-                    </div>
-                    
-                    <input
-                      type="text"
-                      value={formData.submission_no}
-                      onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
-                      className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
-                      placeholder="Ou entrer manuellement..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
-                  <label className="block text-sm font-semibold text-pink-800 mb-2">
-                    📅 Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({...formData, date: e.target.value})}
-                    className="block w-full rounded-lg border-pink-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-base p-3"
-                  />
-                </div>
-
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                  <label className="block text-sm font-semibold text-yellow-800 mb-2">
-                    💰 Montant *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                    className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    🏷️ Statut
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
-                  >
-                    <option value="pending">⏳ En attente</option>
-                    <option value="approved">✅ Approuvé</option>
-                    <option value="rejected">❌ Rejeté</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <label className="block text-sm font-semibold text-purple-800 mb-2">
-                  📝 Notes complémentaires (optionnel)
-                </label>
-                <textarea
-                  value={formData.additionalNotes || ''}
-                  onChange={(e) => setFormData({...formData, additionalNotes: e.target.value})}
-                  className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
-                  placeholder="Notes additionnelles, instructions spéciales..."
-                  rows="3"
-                />
-              </div>
-
-              {editingPO && (
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
-                  <label className="block text-sm font-semibold text-orange-800 mb-2">
-                    🛒 Achats Fournisseurs Liés
-                  </label>
-                  
-                  {loadingPurchases ? (
-                    <div className="flex items-center justify-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-2"></div>
-                      <span className="text-orange-600">Chargement des achats fournisseurs...</span>
-                    </div>
-                  ) : (
-                    <>
-                      {linkedPurchases.length > 0 ? (
-                        <div className="mb-4">
-                          <p className="text-sm font-medium text-orange-700 mb-3">
-                            🔗 Achats fournisseurs liés à ce bon d'achat ({linkedPurchases.length})
-                          </p>
-                          <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {linkedPurchases.map((purchase) => (
-                              <div key={purchase.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                    <span className="text-xl flex-shrink-0">🛒</span>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-gray-900">
-                                        {purchase.purchase_number}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
-                                        {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex space-x-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => visualizeSupplierPurchase(purchase)}
-                                      className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
-                                      title="Visualiser cet achat fournisseur"
-                                    >
-                                      👁️ Voir
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-orange-600 italic text-center py-4">
-                          Aucun achat fournisseur lié à ce bon d'achat
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                <label className="block text-sm font-semibold text-indigo-800 mb-2">
-                  📎 Documents (PDF, XLS, DOC, etc.)
-                </label>
-                
-                <div className="mb-4">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <input
-                      type="file"
-                      multiple
-                      accept=".pdf,.xls,.xlsx,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                      onChange={handleFileUpload}
-                      disabled={uploadingFiles}
-                      className="block w-full text-sm text-indigo-600 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 disabled:opacity-50"
-                    />
-                  </div>
-                  {uploadingFiles && (
-                    <p className="text-sm text-indigo-600 mt-2 flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-                      📤 Upload en cours... Veuillez patienter.
-                    </p>
-                  )}
-                </div>
-
-                {formData.files && formData.files.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-indigo-700">
-                      📁 Documents joints ({formData.files.length})
-                    </p>
-                    <div className="space-y-2">
-                      {formData.files.map((file, index) => (
-                        <div key={index} className="bg-white p-3 rounded border border-indigo-200 shadow-sm">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div className="flex items-center space-x-3 flex-1 min-w-0">
-                              <span className="text-xl flex-shrink-0">{getFileIcon(file.type)}</span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {file.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {formatFileSize(file.size)} • {file.type}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-                              {file.url ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => openFile(file)}
-                                    className="flex-1 sm:flex-none px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors"
-                                    title="Ouvrir le fichier"
-                                  >
-                                    👁️ Voir
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => downloadFile(file)}
-                                    className="flex-1 sm:flex-none px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded border border-green-300 transition-colors"
-                                    title="Télécharger le fichier"
-                                  >
-                                    💾 Télécharger
-                                  </button>
-                                </>
-                              ) : (
-                                <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
-                                  🔄 En cours...
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => removeFile(index)}
-                                className="flex-1 sm:flex-none px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-300 transition-colors"
-                                title="Supprimer le fichier"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </form>
+            
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingPO(null);
+                  setLinkedPurchases([]);
+                  setAvailablePurchases([]);
+                  setFormData({
+                    client_name: '',
+                    po_number: '',
+                    submission_no: '',
+                    date: new Date().toISOString().split('T')[0],
+                    amount: '',
+                    status: 'pending',
+                    notes: '',
+                    additionalNotes: '',
+                    files: [],
+                    items: []
+                  });
+                }}
+                className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-sm font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                form="po-form"
+                className="w-full sm:w-auto px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-100 text-sm font-medium"
+              >
+                {editingPO ? 'Mettre à jour' : 'Créer'}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6 p-4">
-      {/* Modal de Livraison AMÉLIORÉ avec Checkboxes */}
-      {showDeliveryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            {/* Header du Modal */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-bold">🚚 Créer un Bon de Livraison</h2>
-                  <p className="text-blue-100 mt-1">
-                    BA Client: {selectedPOForDelivery?.po_number} • {selectedPOForDelivery?.client_name}
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowDeliveryModal(false);
-                    setSelectedPOForDelivery(null);
-                    setDeliveryFormData({
-                      delivery_date: new Date().toISOString().split('T')[0],
-                      transport_company: '',
-                      transport_number: '',
-                      delivery_contact: '',
-                      special_instructions: '',
-                      items: []
-                    });
-                  }}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+        
+        <div className="p-4 sm:p-6">
+          <form id="po-form" onSubmit={handleSubmit} className="space-y-6">
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <label className="block text-sm font-semibold text-blue-800 mb-2">
+                  Client *
+                </label>
+                <select
+                  value={formData.client_name}
+                  onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+                  className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+                  required
                 >
-                  <X className="w-6 h-6" />
-                </button>
+                  <option value="">Sélectionner un client...</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.name}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <label className="block text-sm font-semibold text-green-800 mb-2">
+                  Description *
+                </label>
+                <input
+                  type="text"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+                  placeholder="Description du bon d'achat..."
+                  required
+                />
               </div>
             </div>
 
-            {/* Contenu du Modal */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-              {/* Informations de livraison */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    📅 Date de livraison *
-                  </label>
-                  <input
-                    type="date"
-                    value={deliveryFormData.delivery_date}
-                    onChange={(e) => setDeliveryFormData({...deliveryFormData, delivery_date: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    👤 Contact de livraison
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryFormData.delivery_contact}
-                    onChange={(e) => setDeliveryFormData({...deliveryFormData, delivery_contact: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nom du contact sur place"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    🚚 Transporteur
-                  </label>
-                  <select
-                    value={deliveryFormData.transport_company}
-                    onChange={(e) => setDeliveryFormData({...deliveryFormData, transport_company: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Sélectionner...</option>
-                    <option value="Purolator">Purolator</option>
-                    <option value="Dicom">Dicom</option>
-                    <option value="FedEx">FedEx</option>
-                    <option value="UPS">UPS</option>
-                    <option value="Postes Canada">Postes Canada</option>
-                    <option value="Transport TMT">Transport TMT</option>
-                    <option value="Client">Ramassage Client</option>
-                    <option value="Autre">Autre</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    📦 N° de suivi
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryFormData.transport_number}
-                    onChange={(e) => setDeliveryFormData({...deliveryFormData, transport_number: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="Numéro de tracking"
-                  />
-                </div>
-              </div>
-
-              {/* Instructions spéciales */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  📝 Instructions spéciales
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                <label className="block text-sm font-semibold text-indigo-800 mb-2">
+                  No. Bon Achat Client *
                 </label>
-                <textarea
-                  value={deliveryFormData.special_instructions}
-                  onChange={(e) => setDeliveryFormData({...deliveryFormData, special_instructions: e.target.value})}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  rows="3"
-                  placeholder="Instructions de livraison, notes importantes..."
+                <input
+                  type="text"
+                  value={formData.po_number}
+                  onChange={(e) => setFormData({...formData, po_number: e.target.value})}
+                  className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                  placeholder="Ex: PO-2025-001"
+                  required
                 />
               </div>
 
-              {/* Articles à livrer AVEC CHECKBOXES */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">📦 Articles à livrer</h3>
-                
-                {/* Historique des livraisons */}
-                {deliverySlips.length > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-blue-700 font-medium mb-2">
-                      📋 Historique: {deliverySlips.length} livraison(s) effectuée(s)
-                    </p>
-                    <div className="space-y-1">
-                      {deliverySlips.slice(0, 3).map(slip => (
-                        <div key={slip.id} className="text-xs text-blue-600">
-                          • {slip.delivery_number} - {formatDate(slip.delivery_date)}
-                        </div>
+              <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
+                <label className="block text-sm font-semibold text-cyan-800 mb-2">
+                  No. Soumission
+                </label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.submission_no}
+                      onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
+                      className="block flex-1 rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
+                    >
+                      <option value="">Sélectionner ou entrer manuellement...</option>
+                      {submissions.map((submission) => (
+                        <option key={submission.id} value={submission.submission_number}>
+                          {submission.submission_number} - {submission.client_name}
+                        </option>
                       ))}
-                    </div>
-                  </div>
-                )}
+                    </select>
+                    
+                    {formData.submission_no && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const selectedSubmission = submissions.find(s => s.submission_number === formData.submission_no);
+                          if (selectedSubmission) {
+                            try {
+                              const { data: submissionDetails, error } = await supabase
+                                .from('submissions')
+                                .select('*')
+                                .eq('id', selectedSubmission.id)
+                                .single();
 
-                <div className="bg-gray-50 rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-200">
-                      <tr>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">
-                          <input
-                            type="checkbox"
-                            onChange={(e) => {
-                              const newItems = deliveryFormData.items.map(item => ({
-                                ...item,
-                                selected: e.target.checked && (item.quantity - item.delivered_quantity) > 0,
-                                quantity_to_deliver: e.target.checked ? (item.quantity - item.delivered_quantity) : 0
-                              }));
-                              setDeliveryFormData({...deliveryFormData, items: newItems});
-                            }}
-                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                          />
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Article</th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Qté Totale</th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Déjà Livré</th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Restant</th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">À Livrer</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {deliveryFormData.items.map((item, index) => {
-                        const remaining = (item.quantity || 0) - (item.delivered_quantity || 0);
-                        return (
-                          <tr key={index} className={remaining <= 0 ? 'bg-green-50' : ''}>
-                            <td className="px-4 py-3 text-center">
-                              {remaining > 0 ? (
-                                <input
-                                  type="checkbox"
-                                  checked={item.selected || false}
-                                  onChange={(e) => {
-                                    const newItems = [...deliveryFormData.items];
-                                    newItems[index].selected = e.target.checked;
-                                    newItems[index].quantity_to_deliver = e.target.checked ? remaining : 0;
-                                    setDeliveryFormData({...deliveryFormData, items: newItems});
-                                  }}
-                                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                                />
-                              ) : (
-                                <CheckCircle className="w-4 h-4 text-green-600" />
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="text-sm font-medium text-gray-900">{item.product_id || 'N/A'}</div>
-                              <div className="text-xs text-gray-500">{item.description}</div>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className="text-sm font-medium">{item.quantity || 0}</span>
-                              <span className="text-xs text-gray-500 ml-1">{item.unit}</span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className="text-sm">{item.delivered_quantity || 0}</span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`text-sm font-medium ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                                {remaining}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              {remaining > 0 ? (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={remaining}
-                                  value={item.quantity_to_deliver || 0}
-                                  onChange={(e) => {
-                                    const newItems = [...deliveryFormData.items];
-                                    const newValue = Math.min(
-                                      parseFloat(e.target.value) || 0,
-                                      remaining
-                                    );
-                                    newItems[index].quantity_to_deliver = newValue;
-                                    newItems[index].selected = newValue > 0;
-                                    setDeliveryFormData({...deliveryFormData, items: newItems});
-                                  }}
-                                  disabled={!item.selected}
-                                  className="w-20 p-1 border border-gray-300 rounded text-center disabled:bg-gray-100"
-                                />
-                              ) : (
-                                <span className="text-green-600 text-sm">✅ Complet</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              if (error) throw error;
+
+                              const totalVente = submissionDetails.items?.reduce((sum, item) => 
+                                sum + ((item.selling_price || item.sale_price || item.unit_price || 0) * (item.quantity || 0)), 0) || 0;
+                              const totalCost = submissionDetails.items?.reduce((sum, item) => 
+                                sum + ((item.cost_price || item.unit_cost || 0) * (item.quantity || 0)), 0) || 0;
+                              
+                              const printWindow = window.open('', '_blank', 'width=800,height=600');
+                              
+                              const printContent = `
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                  <title>Soumission ${submissionDetails.submission_number}</title>
+                                  <style>
+                                    body { font-family: Arial, sans-serif; margin: 20px; }
+                                    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                                    .info-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                                    .client-info, .submission-info { width: 48%; }
+                                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                                    th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                                    th { background-color: #f0f0f0; }
+                                    .total-row { font-weight: bold; background-color: #f9f9f9; }
+                                    @media print { body { margin: 0; } }
+                                  </style>
+                                </head>
+                                <body>
+                                  <div class="header">
+                                    <h1>SOUMISSION</h1>
+                                    <h2>N°: ${submissionDetails.submission_number}</h2>
+                                    <p>Date: ${formatDate(submissionDetails.created_at)}</p>
+                                  </div>
+                                  
+                                  <div class="info-section">
+                                    <div class="client-info">
+                                      <h3>CLIENT:</h3>
+                                      <p><strong>${submissionDetails.client_name || 'N/A'}</strong></p>
+                                      <p>DESCRIPTION: ${submissionDetails.description || 'N/A'}</p>
+                                    </div>
+                                    <div class="submission-info">
+                                      <p><strong>Date:</strong> ${formatDate(submissionDetails.created_at)}</p>
+                                      <p><strong>Statut:</strong> ${submissionDetails.status || 'N/A'}</p>
+                                    </div>
+                                  </div>
+
+                                  ${submissionDetails.items && submissionDetails.items.length > 0 ? `
+                                    <table>
+                                      <thead>
+                                        <tr>
+                                          <th>Code</th>
+                                          <th>Description</th>
+                                          <th>Qté</th>
+                                          <th>Unité</th>
+                                          <th>Prix Unit.</th>
+                                          <th>Coût Unit.</th>
+                                          <th>Total Vente</th>
+                                          <th>Total Coût</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        ${submissionDetails.items.map(item => `
+                                          <tr>
+                                            <td>${item.product_id || item.code || item.item_code || item.product_code || ''}</td>
+                                            <td>${item.description || ''}</td>
+                                            <td>${item.quantity || 0}</td>
+                                            <td>${item.unit || ''}</td>
+                                            <td>${formatCurrency(item.selling_price || item.sale_price || item.unit_price || 0)}</td>
+                                            <td>${formatCurrency(item.cost_price || item.unit_cost || 0)}</td>
+                                            <td>${formatCurrency((item.selling_price || item.sale_price || item.unit_price || 0) * (item.quantity || 0))}</td>
+                                            <td>${formatCurrency((item.cost_price || item.unit_cost || 0) * (item.quantity || 0))}</td>
+                                          </tr>
+                                        `).join('')}
+                                      </tbody>
+                                      <tfoot>
+                                        <tr class="total-row">
+                                          <td colspan="6"><strong>TOTAL SOUMISSION:</strong></td>
+                                          <td><strong>${formatCurrency(totalVente)}</strong></td>
+                                          <td><strong>${formatCurrency(totalCost)}</strong></td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  ` : '<p>Aucun item dans cette soumission</p>'}
+
+                                  ${submissionDetails.notes ? `
+                                    <div style="margin-top: 30px;">
+                                      <h3>Notes:</h3>
+                                      <p>${submissionDetails.notes}</p>
+                                    </div>
+                                  ` : ''}
+                                </body>
+                                </html>
+                              `;
+
+                              printWindow.document.write(printContent);
+                              printWindow.document.close();
+
+                            } catch (error) {
+                              console.error('Erreur récupération soumission:', error);
+                              alert('Erreur lors de la récupération de la soumission');
+                            }
+                          } else {
+                            alert('Soumission non trouvée dans le système');
+                          }
+                        }}
+                        className="px-3 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 flex-shrink-0 text-sm font-medium"
+                        title="Visualiser la soumission"
+                      >
+                        Visualiser
+                      </button>
+                    )}
+                  </div>
+                  
+                  <input
+                    type="text"
+                    value={formData.submission_no}
+                    onChange={(e) => setFormData({...formData, submission_no: e.target.value})}
+                    className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
+                    placeholder="Ou entrer manuellement..."
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Footer du Modal */}
-            <div className="bg-gray-50 px-6 py-4 border-t">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-600">
-                  {deliveryFormData.items.filter(i => i.selected && i.quantity_to_deliver > 0).length} article(s) sélectionné(s)
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="bg-pink-50 p-4 rounded-lg border border-pink-200">
+                <label className="block text-sm font-semibold text-pink-800 mb-2">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  className="block w-full rounded-lg border-pink-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-base p-3"
+                />
+              </div>
+
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <label className="block text-sm font-semibold text-yellow-800 mb-2">
+                  Montant *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                  className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Statut
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                >
+                  <option value="pending">En attente</option>
+                  <option value="approved">Approuvé</option>
+                  <option value="rejected">Rejeté</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+              <label className="block text-sm font-semibold text-purple-800 mb-2">
+                Notes complémentaires (optionnel)
+              </label>
+              <textarea
+                value={formData.additionalNotes || ''}
+                onChange={(e) => setFormData({...formData, additionalNotes: e.target.value})}
+                className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                placeholder="Notes additionnelles, instructions spéciales..."
+                rows="3"
+              />
+            </div>
+
+            {editingPO && (
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mb-4">
+                <label className="block text-sm font-semibold text-orange-800 mb-2">
+                  Achats Fournisseurs Liés
+                </label>
+                
+                {loadingPurchases ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-2"></div>
+                    <span className="text-orange-600">Chargement des achats fournisseurs...</span>
+                  </div>
+                ) : (
+                  <>
+                    {linkedPurchases.length > 0 ? (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-orange-700 mb-3">
+                          Achats fournisseurs liés à ce bon d'achat ({linkedPurchases.length})
+                        </p>
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                          {linkedPurchases.map((purchase) => (
+                            <div key={purchase.id} className="bg-white p-3 rounded border border-orange-200 shadow-sm">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                  <span className="text-xl flex-shrink-0">🛒</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      {purchase.purchase_number}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {purchase.supplier_name} • {formatCurrency(purchase.total_amount)}
+                                      {purchase.delivery_date && ` • ${formatDate(purchase.delivery_date)}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex space-x-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => visualizeSupplierPurchase(purchase)}
+                                    className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+                                    title="Visualiser cet achat fournisseur"
+                                  >
+                                    Voir
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-orange-600 italic text-center py-4">
+                        Aucun achat fournisseur lié à ce bon d'achat
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+              <label className="block text-sm font-semibold text-indigo-800 mb-2">
+                Documents (PDF, XLS, DOC, etc.)
+              </label>
+              
+              <div className="mb-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.xls,.xlsx,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                    onChange={handleFileUpload}
+                    disabled={uploadingFiles}
+                    className="block w-full text-sm text-indigo-600 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 disabled:opacity-50"
+                  />
                 </div>
-                <div className="flex gap-3">
+                {uploadingFiles && (
+                  <p className="text-sm text-indigo-600 mt-2 flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                    Upload en cours... Veuillez patienter.
+                  </p>
+                )}
+              </div>
+
+              {formData.files && formData.files.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-indigo-700">
+                    Documents joints ({formData.files.length})
+                  </p>
+                  <div className="space-y-2">
+                    {formData.files.map((file, index) => (
+                      <div key={index} className="bg-white p-3 rounded border border-indigo-200 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <span className="text-xl flex-shrink-0">{getFileIcon(file.type)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {file.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatFileSize(file.size)} • {file.type}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+                            {file.url ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => openFile(file)}
+                                  className="flex-1 sm:flex-none px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors"
+                                  title="Ouvrir le fichier"
+                                >
+                                  Voir
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => downloadFile(file)}
+                                  className="flex-1 sm:flex-none px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded border border-green-300 transition-colors"
+                                  title="Télécharger le fichier"
+                                >
+                                  Télécharger
+                                </button>
+                              </>
+                            ) : (
+                              <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
+                                En cours...
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="flex-1 sm:flex-none px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-300 transition-colors"
+                              title="Supprimer le fichier"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+return (
+  <div className="space-y-6 p-4">
+    {/* Onglets */}
+    <div className="bg-white rounded-lg shadow-lg p-1 border border-gray-200 flex">
+      <button
+        onClick={() => setActiveTab('orders')}
+        className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+          activeTab === 'orders' 
+            ? 'bg-blue-600 text-white' 
+            : 'text-gray-600 hover:bg-gray-100'
+        }`}
+      >
+        Bons d'Achat
+      </button>
+      <button
+        onClick={() => setActiveTab('dashboard')}
+        className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+          activeTab === 'dashboard' 
+            ? 'bg-blue-600 text-white' 
+            : 'text-gray-600 hover:bg-gray-100'
+        }`}
+      >
+        Dashboard Livraisons
+      </button>
+    </div>
+
+    {/* Contenu conditionnel */}
+    {activeTab === 'orders' && (
+      <>
+        {/* Modal de Livraison AMÉLIORÉ avec Checkboxes */}
+        {showDeliveryModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              {/* Header du Modal */}
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold">Créer un Bon de Livraison</h2>
+                    <p className="text-blue-100 mt-1">
+                      BA Client: {selectedPOForDelivery?.po_number} • {selectedPOForDelivery?.client_name}
+                    </p>
+                  </div>
                   <button
                     onClick={() => {
                       setShowDeliveryModal(false);
                       setSelectedPOForDelivery(null);
+                      setDeliveryFormData({
+                        delivery_date: new Date().toISOString().split('T')[0],
+                        transport_company: '',
+                        transport_number: '',
+                        delivery_contact: '',
+                        special_instructions: '',
+                        items: []
+                      });
                     }}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
                   >
-                    Annuler
+                    <X className="w-6 h-6" />
                   </button>
-                  <button
-                    onClick={createDeliverySlip}
-                    disabled={!deliveryFormData.items.some(i => i.selected && i.quantity_to_deliver > 0)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Créer et Imprimer BL
-                  </button>
+                </div>
+              </div>
+
+              {/* Contenu du Modal */}
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                {/* Informations de livraison */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Date de livraison *
+                    </label>
+                    <input
+                      type="date"
+                      value={deliveryFormData.delivery_date}
+                      onChange={(e) => setDeliveryFormData({...deliveryFormData, delivery_date: e.target.value})}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Contact de livraison
+                    </label>
+                    <input
+                      type="text"
+                      value={deliveryFormData.delivery_contact}
+                      onChange={(e) => setDeliveryFormData({...deliveryFormData, delivery_contact: e.target.value})}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="Nom du contact sur place"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Transporteur
+                    </label>
+                    <select
+                      value={deliveryFormData.transport_company}
+                      onChange={(e) => setDeliveryFormData({...deliveryFormData, transport_company: e.target.value})}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Sélectionner...</option>
+                      <option value="Purolator">Purolator</option>
+                      <option value="Dicom">Dicom</option>
+                      <option value="FedEx">FedEx</option>
+                      <option value="UPS">UPS</option>
+                      <option value="Postes Canada">Postes Canada</option>
+                      <option value="Transport TMT">Transport TMT</option>
+                      <option value="Client">Ramassage Client</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      N° de suivi
+                    </label>
+                    <input
+                      type="text"
+                      value={deliveryFormData.transport_number}
+                      onChange={(e) => setDeliveryFormData({...deliveryFormData, transport_number: e.target.value})}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="Numéro de tracking"
+                    />
+                  </div>
+                </div>
+
+                {/* Instructions spéciales */}
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Instructions spéciales
+                  </label>
+                  <textarea
+                    value={deliveryFormData.special_instructions}
+                    onChange={(e) => setDeliveryFormData({...deliveryFormData, special_instructions: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    rows="3"
+                    placeholder="Instructions de livraison, notes importantes..."
+                  />
+                </div>
+
+                {/* Articles à livrer AVEC CHECKBOXES */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Articles à livrer</h3>
+                  
+                  {/* Historique des livraisons */}
+                  {deliverySlips.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <p className="text-sm text-blue-700 font-medium mb-2">
+                        Historique: {deliverySlips.length} livraison(s) effectuée(s)
+                      </p>
+                      <div className="space-y-1">
+                        {deliverySlips.slice(0, 3).map(slip => (
+                          <div key={slip.id} className="text-xs text-blue-600">
+                            • {slip.delivery_number} - {formatDate(slip.delivery_date)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-gray-50 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-200">
+                        <tr>
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">
+                            <input
+                              type="checkbox"
+                              onChange={(e) => {
+                                const newItems = deliveryFormData.items.map(item => ({
+                                  ...item,
+                                  selected: e.target.checked && (item.quantity - item.delivered_quantity) > 0,
+                                  quantity_to_deliver: e.target.checked ? (item.quantity - item.delivered_quantity) : 0
+                                }));
+                                setDeliveryFormData({...deliveryFormData, items: newItems});
+                              }}
+                              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                            />
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Article</th>
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Qté Totale</th>
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Déjà Livré</th>
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">Restant</th>
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-700 uppercase">À Livrer</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {deliveryFormData.items.map((item, index) => {
+                          const remaining = (item.quantity || 0) - (item.delivered_quantity || 0);
+                          return (
+                            <tr key={index} className={remaining <= 0 ? 'bg-green-50' : ''}>
+                              <td className="px-4 py-3 text-center">
+                                {remaining > 0 ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={item.selected || false}
+                                    onChange={(e) => {
+                                      const newItems = [...deliveryFormData.items];
+                                      newItems[index].selected = e.target.checked;
+                                      newItems[index].quantity_to_deliver = e.target.checked ? remaining : 0;
+                                      setDeliveryFormData({...deliveryFormData, items: newItems});
+                                    }}
+                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                  />
+                                ) : (
+                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="text-sm font-medium text-gray-900">{item.product_id || 'N/A'}</div>
+                                <div className="text-xs text-gray-500">{item.description}</div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="text-sm font-medium">{item.quantity || 0}</span>
+                                <span className="text-xs text-gray-500 ml-1">{item.unit}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="text-sm">{item.delivered_quantity || 0}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`text-sm font-medium ${remaining > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                                  {remaining}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {remaining > 0 ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={remaining}
+                                    value={item.quantity_to_deliver || 0}
+                                    onChange={(e) => {
+                                      const newItems = [...deliveryFormData.items];
+                                      const newValue = Math.min(
+                                        parseFloat(e.target.value) || 0,
+                                        remaining
+                                      );
+                                      newItems[index].quantity_to_deliver = newValue;
+                                      newItems[index].selected = newValue > 0;
+                                      setDeliveryFormData({...deliveryFormData, items: newItems});
+                                    }}
+                                    disabled={!item.selected}
+                                    className="w-20 p-1 border border-gray-300 rounded text-center disabled:bg-gray-100"
+                                  />
+                                ) : (
+                                  <span className="text-green-600 text-sm">Complet</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer du Modal */}
+              <div className="bg-gray-50 px-6 py-4 border-t">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-600">
+                    {deliveryFormData.items.filter(i => i.selected && i.quantity_to_deliver > 0).length} article(s) sélectionné(s)
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowDeliveryModal(false);
+                        setSelectedPOForDelivery(null);
+                      }}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={createDeliverySlip}
+                      disabled={!deliveryFormData.items.some(i => i.selected && i.quantity_to_deliver > 0)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Créer et Imprimer BL
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* HEADER PRINCIPAL - TOUJOURS VISIBLE */}
+        <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold">Gestion des Bons d'Achat</h2>
+              <p className="text-white/90 text-sm sm:text-base mt-1">
+                Gérez vos bons d'achat et commandes clients
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button
+                onClick={handleSendReport}
+                disabled={sendingReport}
+                className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm"
+              >
+                {sendingReport ? 'Envoi...' : 'Rapport'}
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full sm:w-auto px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-100 text-sm font-medium"
+              >
+                Nouveau Bon d'Achat
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+              <div className="flex items-center">
+                <span className="text-2xl sm:text-3xl mr-3">📊</span>
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-white/90">Total</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{purchaseOrders.length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+              <div className="flex items-center">
+                <span className="text-2xl sm:text-3xl mr-3">✅</span>
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-white/90">Approuvés</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">
+                    {purchaseOrders.filter(po => po.status?.toLowerCase() === 'approved').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+              <div className="flex items-center">
+                <span className="text-2xl sm:text-3xl mr-3">⏳</span>
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-white/90">En Attente</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">
+                    {purchaseOrders.filter(po => po.status?.toLowerCase() === 'pending').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+              <div className="flex items-center">
+                <span className="text-2xl sm:text-3xl mr-3">💰</span>
+                <div>
+                  <p className="text-xs sm:text-sm font-medium text-white/90">Montant Total</p>
+                  <p className="text-lg sm:text-2xl font-bold text-white">{formatCurrency(totalAmount)}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* HEADER PRINCIPAL - TOUJOURS VISIBLE */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold">💼 Gestion des Bons d'Achat</h2>
-            <p className="text-white/90 text-sm sm:text-base mt-1">
-              Gérez vos bons d'achat et commandes clients
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <button
-              onClick={handleSendReport}
-              disabled={sendingReport}
-              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm"
-            >
-              📧 {sendingReport ? 'Envoi...' : 'Rapport'}
-            </button>
-            <button
-              onClick={() => setShowForm(true)}
-              className="w-full sm:w-auto px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-gray-100 text-sm font-medium"
-            >
-              ➕ Nouveau Bon d'Achat
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-            <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">📊</span>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Total</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">{purchaseOrders.length}</p>
+        {/* BARRE DE RECHERCHE - TOUJOURS VISIBLE */}
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par numéro PO, client, soumission..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                />
               </div>
             </div>
-          </div>
-
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-            <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">✅</span>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Approuvés</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">
-                  {purchaseOrders.filter(po => po.status?.toLowerCase() === 'approved').length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-            <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">⏳</span>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">En Attente</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">
-                  {purchaseOrders.filter(po => po.status?.toLowerCase() === 'pending').length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-            <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">💰</span>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Montant Total</p>
-                <p className="text-lg sm:text-2xl font-bold text-white">{formatCurrency(totalAmount)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* BARRE DE RECHERCHE - TOUJOURS VISIBLE */}
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200">
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="🔍 Rechercher par numéro PO, client, soumission..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
-              />
-            </div>
-          </div>
-          <div className="w-full sm:w-auto">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="pending">⏳ En attente</option>
-              <option value="approved">✅ Approuvé</option>
-              <option value="rejected">❌ Rejeté</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* TABLEAU DESKTOP MODIFIÉ */}
-      <div className="hidden lg:block bg-white shadow-lg overflow-hidden rounded-lg border border-gray-200">
-        {filteredPurchaseOrders.length === 0 ? (
-          <div className="text-center py-12">
-            <span className="text-6xl mb-4 block">📋</span>
-            <p className="text-gray-500 text-lg">
-              {purchaseOrders.length === 0 ? 'Aucun bon d\'achat créé' : 'Aucun bon d\'achat trouvé avec ces filtres'}
-            </p>
-            {purchaseOrders.length === 0 && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+            <div className="w-full sm:w-auto">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
               >
-                ➕ Créer le premier bon d'achat
-              </button>
-            )}
+                <option value="all">Tous les statuts</option>
+                <option value="pending">⏳ En attente</option>
+                <option value="approved">✅ Approuvé</option>
+                <option value="rejected">❌ Rejeté</option>
+              </select>
+            </div>
           </div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Bon d'achat
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client & Description
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Montant
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Statut
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Livraison
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fichiers
-                </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPurchaseOrders.map((po) => (
-                <tr key={po.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    <div className="text-sm space-y-1">
-                      <div className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-medium inline-block">
-                        📄 {po.po_number || 'N/A'}
+        </div>
+
+        {/* TABLEAU DESKTOP MODIFIÉ */}
+        <div className="hidden lg:block bg-white shadow-lg overflow-hidden rounded-lg border border-gray-200">
+          {filteredPurchaseOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <span className="text-6xl mb-4 block">📋</span>
+              <p className="text-gray-500 text-lg">
+                {purchaseOrders.length === 0 ? 'Aucun bon d\'achat créé' : 'Aucun bon d\'achat trouvé avec ces filtres'}
+              </p>
+              {purchaseOrders.length === 0 && (
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Créer le premier bon d'achat
+                </button>
+              )}
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Bon d'achat
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client & Description
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Montant
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Statut
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Livraison
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fichiers
+                  </th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredPurchaseOrders.map((po) => (
+                  <tr key={po.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-3 py-4 whitespace-nowrap">
+                      <div className="text-sm space-y-1">
+                        <div className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-medium inline-block">
+                          📄 {po.po_number || 'N/A'}
+                        </div>
+                        {po.submission_no && (
+                          <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium inline-block ml-1">
+                            📋 {po.submission_no}
+                          </div>
+                        )}
                       </div>
-                      {po.submission_no && (
-                        <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium inline-block ml-1">
-                          📋 {po.submission_no}
+                    </td>
+                    <td className="px-3 py-4">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">{po.client_name || po.client || 'N/A'}</div>
+                        <div className="text-gray-500 truncate max-w-xs" title={po.notes || po.description}>
+                          {po.notes || po.description || 'Aucune description'}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                      {formatDate(po.date || po.created_at)}
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap text-center">
+                      <div className="text-sm font-medium text-green-600">
+                        {formatCurrency(po.amount)}
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        po.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                        po.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        po.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                        po.status?.toLowerCase() === 'partially_delivered' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {po.status?.toLowerCase() === 'approved' ? '✅' :
+                         po.status?.toLowerCase() === 'pending' ? '⏳' :
+                         po.status?.toLowerCase() === 'rejected' ? '❌' :
+                         po.status?.toLowerCase() === 'partially_delivered' ? '📦' : '❓'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap text-center">
+                      {getDeliveryBadge(getDeliveryStatus(po))}
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                      {po.files && po.files.length > 0 ? (
+                        <div className="flex items-center justify-center">
+                          <FileText className="w-4 h-4 mr-1" />
+                          {po.files.length}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap text-center">
+                      <div className="flex justify-center space-x-1">
+                        {(['approved', 'partially_delivered'].includes(po.status?.toLowerCase())) && (
+                          <button
+                            onClick={() => openDeliveryModal(po)}
+                            className="bg-purple-100 text-purple-700 hover:bg-purple-200 p-2 rounded-lg transition-colors"
+                            title="Gérer les livraisons"
+                          >
+                            <Truck className="w-4 h-4" />
+                          </button>
+                        )}
+                        {po.status?.toLowerCase() === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(po.id, 'approved')}
+                              className="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg transition-colors"
+                              title="Approuver"
+                            >
+                              ✅
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(po.id, 'rejected')}
+                              className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
+                              title="Rejeter"
+                            >
+                              ❌
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleEdit(po)}
+                          className="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition-colors"
+                          title="Modifier"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(po.id)}
+                          className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* VUE MOBILE MODIFIÉE */}
+        <div className="lg:hidden space-y-4">
+          {filteredPurchaseOrders.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <span className="text-6xl mb-4 block">📋</span>
+              <p className="text-gray-500 text-lg mb-4">
+                {purchaseOrders.length === 0 ? 'Aucun bon d\'achat créé' : 'Aucun bon d\'achat trouvé'}
+              </p>
+              {purchaseOrders.length === 0 && (
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                >
+                  Créer le premier bon d'achat
+                </button>
+              )}
+            </div>
+          ) : (
+            filteredPurchaseOrders.map((po) => (
+              <div key={po.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">{getStatusEmoji(po.status)}</span>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 text-base">
+                          📄 {po.po_number || 'N/A'}
+                        </h3>
+                        <p className="text-sm text-gray-600">{po.client_name || po.client || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="relative">
+                      <button
+                        onClick={() => setSelectedOrderId(selectedOrderId === po.id ? null : po.id)}
+                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-white/50"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                      
+                      {selectedOrderId === po.id && (
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                handleEdit(po);
+                                setSelectedOrderId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Modifier
+                            </button>
+                            {po.status?.toLowerCase() === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    handleStatusChange(po.id, 'approved');
+                                    setSelectedOrderId(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center"
+                                >
+                                  ✅ Approuver
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleStatusChange(po.id, 'rejected');
+                                    setSelectedOrderId(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center"
+                                >
+                                  ❌ Rejeter
+                                </button>
+                              </>
+                            )}
+                            <hr className="my-1" />
+                            <button
+                              onClick={() => {
+                                handleDelete(po.id);
+                                setSelectedOrderId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Supprimer
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
-                  </td>
-                  <td className="px-3 py-4">
+                  </div>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  
+                  <div>
+                    <span className="text-gray-500 text-sm block">📝 Description</span>
+                    <p className="text-gray-900 font-medium">{po.notes || po.description || 'Aucune description'}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500 block">📅 Date</span>
+                      <span className="font-medium text-gray-900">{formatDate(po.date || po.created_at)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">💰 Montant</span>
+                      <span className="font-bold text-green-600 text-base">{formatCurrency(po.amount)}</span>
+                    </div>
+                  </div>
+
+                  {po.submission_no && (
                     <div className="text-sm">
-                      <div className="font-medium text-gray-900">{po.client_name || po.client || 'N/A'}</div>
-                      <div className="text-gray-500 truncate max-w-xs" title={po.notes || po.description}>
-                        {po.notes || po.description || 'Aucune description'}
-                      </div>
+                      <span className="text-gray-500">📋 Soumission</span>
+                      <span className="ml-2 text-blue-600 font-medium">{po.submission_no}</span>
                     </div>
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                    {formatDate(po.date || po.created_at)}
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
-                    <div className="text-sm font-medium text-green-600">
-                      {formatCurrency(po.amount)}
-                    </div>
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  )}
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500 text-sm">Statut</span>
+                    <span className={`px-2 py-1 rounded text-xs ${
                       po.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
                       po.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                       po.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                      po.status?.toLowerCase() === 'partially_delivered' ? 'bg-blue-100 text-blue-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {po.status?.toLowerCase() === 'approved' ? '✅' :
-                       po.status?.toLowerCase() === 'pending' ? '⏳' :
-                       po.status?.toLowerCase() === 'rejected' ? '❌' :
-                       po.status?.toLowerCase() === 'partially_delivered' ? '📦' : '❓'}
+                      {po.status?.toLowerCase() === 'approved' ? '✅ Approuvé' : 
+                       po.status?.toLowerCase() === 'pending' ? '⏳ En attente' : 
+                       po.status?.toLowerCase() === 'rejected' ? '❌ Rejeté' :
+                       po.status?.toLowerCase() === 'partially_delivered' ? '📦 Partiel' : (po.status || 'Inconnu')}
                     </span>
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
-                    {getDeliveryBadge(getDeliveryStatus(po))}
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                    {po.files && po.files.length > 0 ? (
-                      <div className="flex items-center justify-center">
-                        <FileText className="w-4 h-4 mr-1" />
-                        {po.files.length}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
-                    <div className="flex justify-center space-x-1">
-                      {(['approved', 'partially_delivered'].includes(po.status?.toLowerCase())) && (
-                        <button
-                          onClick={() => openDeliveryModal(po)}
-                          className="bg-purple-100 text-purple-700 hover:bg-purple-200 p-2 rounded-lg transition-colors"
-                          title="Gérer les livraisons"
-                        >
-                          <Truck className="w-4 h-4" />
-                        </button>
-                      )}
-                      {po.status?.toLowerCase() === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleStatusChange(po.id, 'approved')}
-                            className="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg transition-colors"
-                            title="Approuver"
-                          >
-                            ✅
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange(po.id, 'rejected')}
-                            className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
-                            title="Rejeter"
-                          >
-                            ❌
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => handleEdit(po)}
-                        className="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition-colors"
-                        title="Modifier"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(po.id)}
-                        className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* VUE MOBILE MODIFIÉE */}
-      <div className="lg:hidden space-y-4">
-        {filteredPurchaseOrders.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <span className="text-6xl mb-4 block">📋</span>
-            <p className="text-gray-500 text-lg mb-4">
-              {purchaseOrders.length === 0 ? 'Aucun bon d\'achat créé' : 'Aucun bon d\'achat trouvé'}
-            </p>
-            {purchaseOrders.length === 0 && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-              >
-                ➕ Créer le premier bon d'achat
-              </button>
-            )}
-          </div>
-        ) : (
-          filteredPurchaseOrders.map((po) => (
-            <div key={po.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-              
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">{getStatusEmoji(po.status)}</span>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-base">
-                        📄 {po.po_number || 'N/A'}
-                      </h3>
-                      <p className="text-sm text-gray-600">{po.client_name || po.client || 'N/A'}</p>
-                    </div>
                   </div>
-                  
-                  <div className="relative">
-                    <button
-                      onClick={() => setSelectedOrderId(selectedOrderId === po.id ? null : po.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-white/50"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                    
-                    {selectedOrderId === po.id && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                        <div className="py-1">
-                          <button
-                            onClick={() => {
-                              handleEdit(po);
-                              setSelectedOrderId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Modifier
-                          </button>
-                          {po.status?.toLowerCase() === 'pending' && (
-                            <>
+
+                  {po.additionalNotes && (
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <span className="text-gray-500 text-sm block mb-1">📝 Notes complémentaires</span>
+                      <p className="text-gray-700 text-sm">{po.additionalNotes}</p>
+                    </div>
+                  )}
+
+                  {po.files && po.files.length > 0 && (
+                    <div className="border-t pt-3">
+                      <span className="text-gray-500 text-sm block mb-2">📎 Fichiers ({po.files.length})</span>
+                      <div className="space-y-2">
+                        {po.files.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-2">
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              <span className="text-lg">{getFileIcon(file.type)}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-blue-800 truncate">{file.name}</p>
+                                <p className="text-xs text-blue-600">{formatFileSize(file.size)}</p>
+                              </div>
+                            </div>
+                            <div className="flex space-x-1">
                               <button
-                                onClick={() => {
-                                  handleStatusChange(po.id, 'approved');
-                                  setSelectedOrderId(null);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center"
+                                onClick={() => openFile(file)}
+                                className="p-1 text-blue-600 hover:bg-blue-200 rounded"
+                                title="Ouvrir"
                               >
-                                ✅ Approuver
+                                <Eye className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => {
-                                  handleStatusChange(po.id, 'rejected');
-                                  setSelectedOrderId(null);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center"
+                                onClick={() => downloadFile(file)}
+                                className="p-1 text-green-600 hover:bg-green-200 rounded"
+                                title="Télécharger"
                               >
-                                ❌ Rejeter
+                                <Download className="w-4 h-4" />
                               </button>
-                            </>
-                          )}
-                          <hr className="my-1" />
-                          <button
-                            onClick={() => {
-                              handleDelete(po.id);
-                              setSelectedOrderId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 space-y-3">
-                
-                <div>
-                  <span className="text-gray-500 text-sm block">📝 Description</span>
-                  <p className="text-gray-900 font-medium">{po.notes || po.description || 'Aucune description'}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-500 block">📅 Date</span>
-                    <span className="font-medium text-gray-900">{formatDate(po.date || po.created_at)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">💰 Montant</span>
-                    <span className="font-bold text-green-600 text-base">{formatCurrency(po.amount)}</span>
-                  </div>
-                </div>
-
-                {po.submission_no && (
-                  <div className="text-sm">
-                    <span className="text-gray-500">📋 Soumission</span>
-                    <span className="ml-2 text-blue-600 font-medium">{po.submission_no}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm">Statut</span>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    po.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
-                    po.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    po.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {po.status?.toLowerCase() === 'approved' ? '✅ Approuvé' : 
-                     po.status?.toLowerCase() === 'pending' ? '⏳ En attente' : 
-                     po.status?.toLowerCase() === 'rejected' ? '❌ Rejeté' : (po.status || 'Inconnu')}
-                  </span>
-                </div>
-
-                {po.additionalNotes && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <span className="text-gray-500 text-sm block mb-1">📝 Notes complémentaires</span>
-                    <p className="text-gray-700 text-sm">{po.additionalNotes}</p>
-                  </div>
-                )}
-
-                {po.files && po.files.length > 0 && (
-                  <div className="border-t pt-3">
-                    <span className="text-gray-500 text-sm block mb-2">📎 Fichiers ({po.files.length})</span>
-                    <div className="space-y-2">
-                      {po.files.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-2">
-                          <div className="flex items-center space-x-2 flex-1 min-w-0">
-                            <span className="text-lg">{getFileIcon(file.type)}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-blue-800 truncate">{file.name}</p>
-                              <p className="text-xs text-blue-600">{formatFileSize(file.size)}</p>
                             </div>
                           </div>
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => openFile(file)}
-                              className="p-1 text-blue-600 hover:bg-blue-200 rounded"
-                              title="Ouvrir"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => downloadFile(file)}
-                              className="p-1 text-green-600 hover:bg-green-200 rounded"
-                              title="Télécharger"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              <div className="bg-gray-50 px-4 py-3 flex gap-2">
-                <button
-                  onClick={() => handleEdit(po)}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  ✏️ Modifier
-                </button>
-                {(['approved', 'partially_delivered'].includes(po.status?.toLowerCase())) && (
-  <button
-    onClick={() => openDeliveryModal(po)}
-    className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
-  >
-    🚚 Livraison
-  </button>
-)}
-                {po.status?.toLowerCase() === 'pending' && (
+                <div className="bg-gray-50 px-4 py-3 flex gap-2">
                   <button
-                    onClick={() => handleStatusChange(po.id, 'approved')}
-                    className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                    onClick={() => handleEdit(po)}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                   >
-                    ✅ Approuver
+                    ✏️ Modifier
                   </button>
-                )}
+                  {(['approved', 'partially_delivered'].includes(po.status?.toLowerCase())) && (
+                    <button
+                      onClick={() => openDeliveryModal(po)}
+                      className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
+                    >
+                      🚚 Livraison
+                    </button>
+                  )}
+                  {po.status?.toLowerCase() === 'pending' && (
+                    <button
+                      onClick={() => handleStatusChange(po.id, 'approved')}
+                      className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                    >
+                      ✅ Approuver
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            ))
+          )}
+        </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-700">
-          📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
-        </p>
-      </div>
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-700">
-          📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
-        </p>
-      </div>
-      
-      {/* 👇 AJOUTEZ CES LIGNES ICI */}
-      <DeliverySlipModal
-        isOpen={showDeliveryModal}
-        onClose={() => {
-          setShowDeliveryModal(false);
-          setSelectedPOForDelivery(null);
-        }}
-        clientPO={selectedPOForDelivery}
-        onRefresh={() => {
-          fetchPurchaseOrders();
-          setShowDeliveryModal(false);
-        }}
-      />      
-    </div>
-  );
-}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-700">
+            📊 {purchaseOrders.length} bons d'achat • {submissions.length} soumissions disponibles
+          </p>
+        </div>
+      </>
+    )}
+
+    {activeTab === 'dashboard' && (
+      <DeliveryDashboard />
+    )}
+
+    {/* Modals qui restent visibles sur tous les onglets */}
+    <DeliverySlipModal
+      isOpen={showDeliveryModal}
+      onClose={() => {
+        setShowDeliveryModal(false);
+        setSelectedPOForDelivery(null);
+      }}
+      clientPO={selectedPOForDelivery}
+      onRefresh={() => {
+        fetchPurchaseOrders();
+        setShowDeliveryModal(false);
+      }}
+    />      
+  </div>
+);
