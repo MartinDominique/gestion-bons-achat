@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Package, Clock, CheckCircle, AlertTriangle, Eye, Truck, Calendar, Filter } from 'lucide-react';
