@@ -1,6 +1,6 @@
-
 // ========================================
 // FICHIER 1: hooks/usePurchaseOrders.js
+// (Nouveau - Logique CRUD des BAs)
 // ========================================
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -45,6 +45,36 @@ const usePurchaseOrders = () => {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  // Charger la liste des clients depuis les soumissions
+  const fetchClients = useCallback(async () => {
+    try {
+      const { data, error: clientsError } = await supabase
+        .from('submissions')
+        .select('client_name, client_email, client_phone, client_address')
+        .not('client_name', 'is', null);
+
+      if (clientsError) {
+        console.error('Erreur chargement clients:', clientsError);
+        return;
+      }
+
+      // Supprimer les doublons basés sur client_name
+      const uniqueClients = data?.reduce((acc, client) => {
+        const existing = acc.find(c => c.client_name === client.client_name);
+        if (!existing) {
+          acc.push(client);
+        }
+        return acc;
+      }, []) || [];
+
+      setClients(uniqueClients);
+      console.log(`✅ ${uniqueClients.length} clients uniques chargés`);
+      
+    } catch (err) {
+      console.error('Erreur fetchClients:', err);
     }
   }, []);
 
@@ -101,6 +131,46 @@ const usePurchaseOrders = () => {
     }
   }, [fetchPurchaseOrders]);
 
+  // Ajouter des articles à un BA
+  const addItemsToPO = useCallback(async (purchaseOrderId, items) => {
+    try {
+      const itemsData = items.map(item => ({
+        purchase_order_id: purchaseOrderId,
+        product_id: item.product_id || item.code,
+        description: item.description || item.name,
+        quantity: parseFloat(item.quantity) || 0,
+        unit: item.unit || 'unité',
+        cost_price: parseFloat(item.cost_price) || 0,
+        selling_price: parseFloat(item.price) || parseFloat(item.selling_price) || 0,
+        delivered_quantity: 0
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('client_po_items')
+        .insert(itemsData);
+
+      if (itemsError) {
+        throw new Error(`Erreur ajout articles: ${itemsError.message}`);
+      }
+
+      // Calculer et mettre à jour le total
+      const totalAmount = itemsData.reduce((sum, item) => 
+        sum + (item.quantity * item.selling_price), 0
+      );
+
+      await supabase
+        .from('purchase_orders')
+        .update({ total_amount: totalAmount })
+        .eq('id', purchaseOrderId);
+
+      console.log(`✅ ${items.length} articles ajoutés au BA`);
+      
+    } catch (err) {
+      console.error('Erreur addItemsToPO:', err);
+      throw err;
+    }
+  }, []);
+
   // Générer un numéro de BA automatique
   const generatePONumber = useCallback(async () => {
     const now = new Date();
@@ -123,17 +193,51 @@ const usePurchaseOrders = () => {
     return `${prefix}-${String(lastNum + 1).padStart(3, '0')}`;
   }, []);
 
+  // Filtrer les BAs selon les critères de recherche
+  useEffect(() => {
+    let filtered = purchaseOrders;
+
+    // Filtre par terme de recherche
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(po => 
+        po.po_number?.toLowerCase().includes(term) ||
+        po.client_name?.toLowerCase().includes(term) ||
+        po.submission_no?.toLowerCase().includes(term)
+      );
+    }
+
+    // Filtre par statut
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(po => po.status === statusFilter);
+    }
+
+    setFilteredPOs(filtered);
+  }, [purchaseOrders, searchTerm, statusFilter]);
+
+  // Charger les données au montage du hook
+  useEffect(() => {
+    fetchPurchaseOrders();
+    fetchClients();
+  }, [fetchPurchaseOrders, fetchClients]);
+
   return {
+    // État
     purchaseOrders: filteredPOs,
     clients,
     isLoading,
     error,
     searchTerm,
     statusFilter,
+    
+    // Actions
     setSearchTerm,
     setStatusFilter,
     fetchPurchaseOrders,
     createPurchaseOrder,
+    addItemsToPO,
+    
+    // Utilitaires
     generatePONumber
   };
 };
