@@ -9,10 +9,13 @@ import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 import DeliveryDashboard from './components/DeliveryDashboard';
 
+import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck } from 'lucide-react';
+
 const pages = [
   { id: 'bons-achat', name: "Bons d'achat Clients", icon: Package },
   { id: 'soumissions', name: 'Soumissions', icon: FileText },
-  { id: 'achat-materiels', name: 'Achat Matériels', icon: ShoppingCart }
+  { id: 'achat-materiels', name: 'Achat MatÃ©riels', icon: ShoppingCart },
+  { id: 'dashboard-livraisons', name: 'Dashboard Livraisons', icon: Truck }
 ];
 
 export default function Navigation() {
