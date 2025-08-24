@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
+import DeliveryDashboard from './components/DeliveryDashboard';
 
 const pages = [
   { id: 'bons-achat', name: "Bons d'achat Clients", icon: Package },
