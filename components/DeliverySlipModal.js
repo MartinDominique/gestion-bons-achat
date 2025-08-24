@@ -20,15 +20,16 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
     if (!poId) return false;
     
     try {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('id, submission_number, status')
-        .eq('linked_po_id', poId)
-        .eq('status', 'accepted');
+      // Récupérer le BA pour voir s'il a un submission_no
+      const { data: poData, error } = await supabase
+        .from('purchase_orders')
+        .select('submission_no')
+        .eq('id', poId)
+        .single();
       
       if (error) throw error;
       
-      const hasSubmission = data && data.length > 0;
+      const hasSubmission = poData?.submission_no && poData.submission_no.trim() !== '';
       setHasExistingSubmission(hasSubmission);
       return hasSubmission;
       
