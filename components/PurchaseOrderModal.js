@@ -45,12 +45,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     const { data, error } = await supabase
       .from('clients')
       .select('*')
-      .order('client_name');
+      .order('name'); // 'name' au lieu de 'client_name'
     
     if (error) throw new Error(error.message);
     
     setClients(data || []);
-    console.log(`✅ ${data?.length || 0} clients chargés`);
+    console.log(`${data?.length || 0} clients chargés`);
     
   } catch (err) {
     console.error('Erreur chargement clients:', err);
@@ -60,15 +60,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
   // Sélectionner un client
   const selectClient = (client) => {
-    setFormData(prev => ({
-      ...prev,
-      client_name: client.client_name || '',
-      client_email: client.client_email || '',
-      client_phone: client.client_phone || '',
-      client_address: client.client_address || ''
-    }));
-    setShowClientModal(false);
-  };
+  setFormData(prev => ({
+    ...prev,
+    client_name: client.name || '', // 'name' au lieu de 'client_name'
+    client_email: client.email || '', // 'email' au lieu de 'client_email'
+    client_phone: client.phone || '', // 'phone' au lieu de 'client_phone'
+    client_address: client.address || '' // 'address' au lieu de 'client_address'
+  }));
+  setShowClientModal(false);
+};
 
   // Charger les données si édition
   useEffect(() => {
@@ -833,23 +833,26 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 <div className="grid gap-4">
                   {clients.map((client) => (
                     <div key={client.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-semibold">{client.client_name}</h4>
-                          <p className="text-gray-600">{client.client_email}</p>
-                          <p className="text-sm text-gray-500">{client.client_phone}</p>
-                          {client.client_address && (
-                            <p className="text-sm text-gray-500">{client.client_address}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => selectClient(client)}
-                          className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
-                        >
-                          Sélectionner
-                        </button>
-                      </div>
-                    </div>
+  <div className="flex justify-between items-start">
+    <div>
+      <h4 className="font-semibold">{client.name}</h4> {/* name */}
+      <p className="text-gray-600">{client.email}</p> {/* email */}
+      <p className="text-sm text-gray-500">{client.phone}</p> {/* phone */}
+      {client.company && (
+        <p className="text-sm text-gray-500">{client.company}</p>
+      )}
+      {client.address && (
+        <p className="text-sm text-gray-500">{client.address}</p>
+      )}
+    </div>
+    <button
+      onClick={() => selectClient(client)}
+      className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
+    >
+      Sélectionner
+    </button>
+  </div>
+</div>
                   ))}
                 </div>
               )}
