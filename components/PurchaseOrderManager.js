@@ -289,7 +289,7 @@ const PurchaseOrderManager = () => {
                         </div>
                         <div>
                           <div className="font-medium text-gray-700">Date</div>
-                          <div className="text-gray-900">{formatDate(po.po_date)}</div>
+                          <div className="text-gray-900">{formatDate(po.date)}</div>
                         </div>
                         <div>
                           <div className="font-medium text-gray-700">Montant</div>
