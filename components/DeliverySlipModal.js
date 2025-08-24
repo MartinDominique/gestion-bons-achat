@@ -161,110 +161,258 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
     }));
   };
 
-  // Générer l'impression du bon de livraison
-  const generateDeliveryPrint = (deliverySlip, selectedItems, formData, purchaseOrder) => {
-    const printContent = `
-      <html>
-        <head>
-          <title>Bon de Livraison ${deliverySlip.delivery_number}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .company-info { margin-bottom: 30px; }
-            .po-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
-            .items-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            .items-table th { background-color: #f2f2f2; }
-            .footer { margin-top: 40px; }
-            .signature-section { display: flex; justify-content: space-between; margin-top: 50px; }
-            .signature-box { width: 200px; text-align: center; }
-            .signature-line { border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px; }
-            @media print { body { margin: 0; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>SERVICES TMT INC.</h1>
-            <p>195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</p>
-            <p>Téléphone: (418) 225-3875 | Email: info.servicestmt@gmail.com</p>
-            <hr>
-            <h2>BON DE LIVRAISON</h2>
-            <h3>${deliverySlip.delivery_number}</h3>
+  // Générer le PDF complet avec votre template TMT
+  const generatePDF = async (deliverySlip, selectedItems) => {
+    console.log('Génération PDF avec 2 copies pour:', deliverySlip);
+    
+    // Récupérer les informations du BO associé
+    let purchaseOrderInfo = '';
+    if (purchaseOrder.purchase_order_number) {
+      const { data: poData } = await supabase
+        .from('purchase_orders')
+        .select('po_number, supplier_name, order_date')
+        .eq('po_number', purchaseOrder.purchase_order_number)
+        .single();
+      
+      if (poData) {
+        purchaseOrderInfo = `BO #${poData.po_number} - ${poData.supplier_name}`;
+      }
+    }
+
+    // Récupérer les livraisons antérieures
+    const { data: previousDeliveries } = await supabase
+      .from('delivery_slip_items')
+      .select(`
+        quantity_delivered,
+        notes,
+        delivery_slips!inner(delivery_number, delivery_date, purchase_order_id)
+      `)
+      .eq('delivery_slips.purchase_order_id', purchaseOrder.id)
+      .neq('delivery_slips.delivery_number', deliverySlip.delivery_number);
+
+    // Nettoyer les notes une seule fois
+    let cleanNotes = purchaseOrder.notes || '';
+    cleanNotes = cleanNotes.split('\n')
+      .filter(line => !line.includes('[LIVRAISON'))
+      .join('\n');
+    cleanNotes = cleanNotes.split('\n')
+      .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
+      .join('\n');
+    cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
+
+    // Template d'impression avec votre design TMT
+    const generateCopyContent = (copyType, items, isLastCopy = false) => {
+      const ITEMS_PER_PAGE = 30; // Ajusté par Martin
+      
+      // Diviser les articles en groupes par page
+      const pageGroups = [];
+      for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
+        pageGroups.push(items.slice(i, i + ITEMS_PER_PAGE));
+      }
+      
+      // Fonction pour générer UNE page avec hauteur contrôlée
+      const generateSinglePage = (pageItems, pageNumber, totalPages) => {
+        // LOGIQUE : Éviter page-break sur la toute dernière page du document
+        const isVeryLastPage = isLastCopy && (pageNumber === totalPages);
+        
+        return `
+          <!-- PAGE ${pageNumber} ${copyType} -->
+          <div class="print-page" style="height: 10.5in; display: block; position: relative; ${isVeryLastPage ? 'page-break-after: avoid;' : ''}">
+            
+            <!-- HEADER FIXE (2.2 inches - ajusté par Martin) -->
+            <div style="height: 2.2in; overflow: hidden;">
+              <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: start; gap: 20px;">
+                  <div style="width: 120px; height: 80px;">
+                    <img src="/logo.png" alt="Services TMT" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'">
+                  </div>
+                  <div style="font-size: 11px; line-height: 1.2;">
+                    <div style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">Services TMT Inc.</div>
+                    3195, 42e Rue Nord<br>
+                    Saint-Georges, QC G5Z 0V9<br>
+                    Tél: (418) 225-3875<br>
+                    info.servicestmt@gmail.com
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">BON DE LIVRAISON</div>
+                  <div style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">${deliverySlip.delivery_number}</div>
+                  <div style="font-size: 10px; line-height: 1.2;">
+                    Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
+                    BA Client: ${purchaseOrder.po_number}<br>
+                    ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
+                    ${purchaseOrder.submission_no ? `Soumission: #${purchaseOrder.submission_no}` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
+                  <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Livrer à :</div>
+                  <div style="font-size: 10px; line-height: 1.2;">
+                    <strong>${purchaseOrder.client_name}</strong><br>
+                    ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
+                    ${purchaseOrder.delivery_address || purchaseOrder.client_address || 'Adresse de livraison à confirmer'}
+                  </div>
+                </div>
+                <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
+                  <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Informations de transport:</div>
+                  <div style="font-size: 10px; line-height: 1.2;">
+                    Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
+                    N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
+                    Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
+                  </div>
+                </div>
+              </div>
+
+              ${cleanNotes ? `
+              <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin-bottom: 8px; border-left: 3px solid #000; font-size: 10px;">
+              <strong>NOTES:</strong> ${cleanNotes.replace(/[^\x00-\x7F]/g, "")}
+            </div>
+            ` : ''}
+            </div>
+
+            <!-- BODY - TABLEAU (6.8 inches - ajusté par Martin) -->
+            <div style="height: 6.8in; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
+              <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
+                <thead>
+                  <tr>
+                    <th style="width: 15%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Code</th>
+                    <th style="width: 65%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Description</th>
+                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Unité</th>
+                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Cmd</th>
+                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Liv.</th>
+                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté Souff.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${pageItems.map(item => `
+                    <tr style="height: 20px;">
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; vertical-align: top; overflow: hidden;">
+                        ${item.description}
+                      </td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.quantity}</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;"><strong>${item.quantity_delivered_now}</strong></td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+                    </tr>
+                  `).join('')}
+                  
+                  <!-- Remplir l'espace vide si moins de 30 articles -->
+                  ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
+                    <tr style="height: 20px;">
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000;">&nbsp;</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- FOOTER FIXE (1.3 inches - ajusté par Martin) -->
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.3in; border-top: 1px solid #000; padding-top: 10px;">
+              <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
+                ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
+              </div>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="text-align: center;">
+                  <div style="border-top: 2px solid #000; width: 120px; margin: 10px auto 3px auto;"></div>
+                  <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
+                </div>
+                <div style="font-size: 10px;">
+                  Date de réception: ___________________
+                </div>
+              </div>
+
+              ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+                <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 8px;">
+                  <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
+                </div>
+              ` : ''}
+
+              <div style="font-size: 7px; text-align: center; font-style: italic; line-height: 1.1;">
+                La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
+                Toute réclamation doit être faite dans les 48 heures suivant la réception.
+              </div>
+            </div>
           </div>
-          
-          <div class="po-info">
-            <div>
-              <strong>Client:</strong><br>
-              ${purchaseOrder.client_name}<br>
-              ${purchaseOrder.client_email || ''}<br>
-              ${purchaseOrder.client_phone || ''}<br>
-              ${purchaseOrder.client_address || ''}
-            </div>
-            <div style="text-align: right;">
-              <strong>Date de livraison:</strong> ${new Date(formData.delivery_date).toLocaleDateString()}<br>
-              <strong>Bon d'achat:</strong> ${purchaseOrder.po_number}<br>
-              ${formData.transport_company ? `<strong>Transporteur:</strong> ${formData.transport_company}<br>` : ''}
-              ${formData.tracking_number ? `<strong>N° Transport:</strong> ${formData.tracking_number}<br>` : ''}
-              ${formData.delivery_contact ? `<strong>Contact:</strong> ${formData.delivery_contact}<br>` : ''}
-            </div>
-          </div>
-          
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Code Produit</th>
-                <th>Description</th>
-                <th>Quantité Livrée</th>
-                <th>Unité</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${selectedItems.map(item => `
-                <tr>
-                  <td>${item.product_id}</td>
-                  <td>${item.description}</td>
-                  <td>${item.quantity_to_deliver}</td>
-                  <td>${item.unit}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          
-          ${formData.special_instructions ? `
-            <div class="footer">
-              <strong>Instructions spéciales:</strong><br>
-              ${formData.special_instructions}
-            </div>
-          ` : ''}
-          
-          <div class="signature-section">
-            <div class="signature-box">
-              <div class="signature-line"></div>
-              <div>Signature du livreur</div>
-              <div>Date: ________________</div>
-            </div>
-            <div class="signature-box">
-              <div class="signature-line"></div>
-              <div>Signature du réceptionnaire</div>
-              <div>Date: ________________</div>
-            </div>
-          </div>
-          
-          <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #666;">
-            Document généré le ${new Date().toLocaleString()}
-          </div>
-        </body>
+        `;
+      };
+      
+      // Générer toutes les pages pour cette copie
+      return pageGroups.map((pageItems, index) => 
+        generateSinglePage(pageItems, index + 1, pageGroups.length)
+      ).join('');
+    };
+
+    // Préparer les données des articles
+    const allOrderItems = formData.items.map(item => {
+      const deliveredItem = selectedItems.find(si => si.product_id === item.product_id);
+      const quantityDeliveredNow = deliveredItem ? deliveredItem.quantity_to_deliver : 0;
+      const remainingAfterDelivery = item.remaining_quantity - quantityDeliveredNow;
+      
+      const previousDeliveryInfo = previousDeliveries
+        ?.filter(d => d.notes && d.notes.includes(item.product_id))
+        ?.map(d => `[${d.delivery_slips.delivery_number}] - ${new Date(d.delivery_slips.delivery_date).toLocaleDateString('fr-CA')}`)
+        ?.join('<br>') || '';
+      
+      return {
+        ...item,
+        quantity_delivered_now: quantityDeliveredNow,
+        remaining_after_delivery: Math.max(0, remainingAfterDelivery),
+        previousDeliveryInfo: previousDeliveryInfo
+      };
+    });
+
+    const printWindow = window.open('', '_blank');
+    
+    const fullHTML = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>${deliverySlip.delivery_number}.pdf</title>
+        <style>
+          @page { size: letter; margin: 0.25in; }
+          body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #000; font-size: 11px; line-height: 1.2; }
+          .copy-container { margin-bottom: 20px; page-break-inside: avoid; page-break-after: always; }
+          @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        ${generateCopyContent('CLIENT', allOrderItems, false)}
+        ${generateCopyContent('STMT', allOrderItems, true)}
+      </body>
       </html>
     `;
-
-    // Ouvrir une nouvelle fenêtre pour l'impression
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(printContent);
+    
+    printWindow.document.write(fullHTML);
     printWindow.document.close();
     
-    // Déclencher l'impression après chargement
-    printWindow.onload = () => {
-      printWindow.print();
+    // IMPRESSION DIRECTE
+    printWindow.onload = function() {
+      setTimeout(() => {
+        printWindow.print();
+        
+        const closeAttempts = [1000, 3000, 5000];
+        closeAttempts.forEach(delay => {
+          setTimeout(() => {
+            if (!printWindow.closed) {
+              printWindow.close();
+            }
+          }, delay);
+        });
+        
+      }, 100);
     };
   };
 
@@ -380,8 +528,8 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
       console.log(`Bon de livraison ${deliveryNumber} créé avec succès!`);
       
-      // Générer et ouvrir l'impression du bon de livraison
-      generateDeliveryPrint(deliverySlip, selectedItems, formData, purchaseOrder);
+      // Générer le PDF complet avec votre template TMT
+      await generatePDF(deliverySlip, selectedItems);
       
       if (onRefresh) onRefresh();
       onClose();
