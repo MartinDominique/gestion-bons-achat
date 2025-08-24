@@ -208,7 +208,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
           purchase_order_id: purchaseOrder.id,
           delivery_date: formData.delivery_date,
           transport_company: formData.transport_company || null,
-          tracking_number: formData.tracking_number || null,
+          transport_number: formData.tracking_number || null, // Correction: transport_number au lieu de tracking_number
           delivery_contact: formData.delivery_contact || null,
           special_instructions: formData.special_instructions || null,
           status: 'prepared'
@@ -359,14 +359,14 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Numéro de suivi
+                  Numéro de transport
                 </label>
                 <input
                   type="text"
                   value={formData.tracking_number}
                   onChange={(e) => setFormData(prev => ({ ...prev, tracking_number: e.target.value }))}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Numéro de suivi du transporteur"
+                  placeholder="Numéro de transport du transporteur"
                 />
               </div>
 
