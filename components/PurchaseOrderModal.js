@@ -425,6 +425,214 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     setShowDeliveryModal(true);
   };
 
+  // Ajouter un nouvel article manuellement
+  const addNewItem = () => {
+    const newItem = {
+      id: `new-${Date.now()}`,
+      product_id: '',
+      description: '',
+      quantity: 0,
+      unit: 'unité',
+      selling_price: 0,
+      delivered_quantity: 0,
+      from_manual: true
+    };
+    setItems([...items, newItem]);
+    setActiveTab('articles');
+  };
+
+  // Mettre à jour un article
+  const updateItem = (index, updatedItem) => {
+    const newItems = [...items];
+    newItems[index] = updatedItem;
+    setItems(newItems);
+    
+    // Mettre à jour le montant total
+    const totalAmount = newItems.reduce((sum, item) => 
+      sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+    );
+    setFormData(prev => ({ ...prev, amount: totalAmount }));
+  };
+
+  // Supprimer un article
+  const deleteItem = (index) => {
+    const newItems = items.filter((_, i) => i !== index);
+    setItems(newItems);
+    
+    // Mettre à jour le montant total
+    const totalAmount = newItems.reduce((sum, item) => 
+      sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+    );
+    setFormData(prev => ({ ...prev, amount: totalAmount }));
+  };
+
+  // Composant pour éditer une ligne d'article
+  const ItemRow = ({ item, onUpdate, onDelete }) => {
+    const [editMode, setEditMode] = useState(item.from_manual && !item.product_id);
+    const [localItem, setLocalItem] = useState(item);
+
+    const handleSave = () => {
+      onUpdate(localItem);
+      setEditMode(false);
+    };
+
+    const handleCancel = () => {
+      setLocalItem(item);
+      setEditMode(false);
+      // Si c'est un nouvel article vide, le supprimer
+      if (item.from_manual && !item.product_id) {
+        onDelete();
+      }
+    };
+
+    if (editMode) {
+      return (
+        <tr className="bg-yellow-50">
+          <td className="px-2 py-2">
+            <input
+              type="text"
+              value={localItem.product_id}
+              onChange={(e) => setLocalItem({...localItem, product_id: e.target.value})}
+              placeholder="Code produit"
+              className="w-full px-2 py-1 text-sm border rounded"
+            />
+          </td>
+          <td className="px-2 py-2">
+            <input
+              type="text"
+              value={localItem.description}
+              onChange={(e) => setLocalItem({...localItem, description: e.target.value})}
+              placeholder="Description"
+              className="w-full px-2 py-1 text-sm border rounded"
+            />
+          </td>
+          <td className="px-2 py-2">
+            <input
+              type="number"
+              value={localItem.quantity}
+              onChange={(e) => setLocalItem({...localItem, quantity: parseFloat(e.target.value) || 0})}
+              placeholder="Qté"
+              className="w-16 px-2 py-1 text-sm border rounded text-center"
+              step="0.01"
+            />
+          </td>
+          <td className="px-2 py-2">
+            <select
+              value={localItem.unit}
+              onChange={(e) => setLocalItem({...localItem, unit: e.target.value})}
+              className="w-20 px-2 py-1 text-sm border rounded"
+            >
+              <option value="unité">UN</option>
+              <option value="mètre">M</option>
+              <option value="pied">FT</option>
+              <option value="kilogramme">KG</option>
+              <option value="litre">L</option>
+              <option value="heure">H</option>
+            </select>
+          </td>
+          <td className="px-2 py-2">
+            <input
+              type="number"
+              value={localItem.selling_price}
+              onChange={(e) => setLocalItem({...localItem, selling_price: parseFloat(e.target.value) || 0})}
+              placeholder="Prix"
+              className="w-20 px-2 py-1 text-sm border rounded text-center"
+              step="0.01"
+            />
+          </td>
+          <td className="px-2 py-2 text-center text-sm">
+            {parseFloat(localItem.delivered_quantity || 0)}
+          </td>
+          <td className="px-2 py-2 text-right text-sm font-medium">
+            ${(parseFloat(localItem.quantity || 0) * parseFloat(localItem.selling_price || 0)).toFixed(2)}
+          </td>
+          <td className="px-2 py-2">
+            <div className="flex gap-1">
+              <button
+                onClick={handleSave}
+                className="text-green-600 hover:text-green-800 text-sm px-2 py-1 border border-green-300 rounded"
+                disabled={!localItem.product_id || !localItem.description}
+              >
+                ✓
+              </button>
+              <button
+                onClick={handleCancel}
+                className="text-red-600 hover:text-red-800 text-sm px-2 py-1 border border-red-300 rounded"
+              >
+                ✕
+              </button>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+
+    const deliveredQty = parseFloat(item.delivered_quantity) || 0;
+    const totalQty = parseFloat(item.quantity) || 0;
+    const deliveryPercentage = totalQty > 0 ? (deliveredQty / totalQty) * 100 : 0;
+
+    return (
+      <tr className="hover:bg-gray-50">
+        <td className="px-4 py-3">
+          <div className="font-medium text-gray-900">{item.product_id}</div>
+        </td>
+        <td className="px-4 py-3">
+          <div className="text-sm text-gray-900">{item.description}</div>
+          {item.from_manual && (
+            <div className="text-xs text-blue-600">Article ajouté manuellement</div>
+          )}
+        </td>
+        <td className="px-4 py-3 text-center">
+          <div className="font-medium">{item.quantity}</div>
+        </td>
+        <td className="px-4 py-3 text-center">
+          <div className="text-sm">{item.unit}</div>
+        </td>
+        <td className="px-4 py-3 text-center">
+          ${parseFloat(item.selling_price || 0).toFixed(2)}
+        </td>
+        <td className="px-4 py-3 text-center">
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-sm font-medium">{deliveredQty}</span>
+            {deliveryPercentage > 0 && (
+              <div className="w-16 bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full ${
+                    deliveryPercentage === 100 ? 'bg-green-500' : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${Math.min(deliveryPercentage, 100)}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
+        </td>
+        <td className="px-4 py-3 text-right font-medium">
+          ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex gap-1">
+            <button
+              onClick={() => setEditMode(true)}
+              className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1"
+              title="Modifier"
+            >
+              ✏️
+            </button>
+            {item.from_manual && (
+              <button
+                onClick={onDelete}
+                className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
+                title="Supprimer"
+              >
+                🗑️
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   // Calculer le statut de livraison
   const getDeliveryStatus = () => {
     if (items.length === 0) return 'not_started';
