@@ -224,10 +224,8 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
       const deliveryItems = selectedItems.map(item => ({
         delivery_slip_id: deliverySlip.id,
         client_po_item_id: item.id,
-        product_id: item.product_id,
-        description: item.description,
         quantity_delivered: item.quantity_to_deliver,
-        unit: item.unit
+        notes: `${item.product_id} - ${item.description}` // Stocker les détails dans notes
       }));
 
       const { error: itemsError } = await supabase
