@@ -2221,7 +2221,7 @@ export default function PurchaseOrderManager() {
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-center">
                     <div className="flex justify-center space-x-1">
-                      {po.status?.toLowerCase() === 'approved' && (
+                      {(['approved', 'partially_delivered'].includes(po.status?.toLowerCase())) && (
                         <button
                           onClick={() => openDeliveryModal(po)}
                           className="bg-purple-100 text-purple-700 hover:bg-purple-200 p-2 rounded-lg transition-colors"
