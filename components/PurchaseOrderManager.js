@@ -293,7 +293,7 @@ const PurchaseOrderManager = () => {
                         </div>
                         <div>
                           <div className="font-medium text-gray-700">Montant</div>
-                          <div className="text-gray-900 font-semibold">{formatCurrency(po.total_amount)}</div>
+                          <div className="text-gray-900 font-semibold">{formatCurrency(po.amount)}</div>
                         </div>
                       </div>
 
