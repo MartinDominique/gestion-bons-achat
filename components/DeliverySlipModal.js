@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { generateDeliveryNumber, generatePDF } from './utils/pdfGeneration';
 
 const DeliverySlipModal = ({ isOpen, onClose, clientPO, onRefresh }) => {
   console.log('ClientPO reçu:', clientPO);
