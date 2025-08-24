@@ -161,6 +161,113 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
     }));
   };
 
+  // Générer l'impression du bon de livraison
+  const generateDeliveryPrint = (deliverySlip, selectedItems, formData, purchaseOrder) => {
+    const printContent = `
+      <html>
+        <head>
+          <title>Bon de Livraison ${deliverySlip.delivery_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .company-info { margin-bottom: 30px; }
+            .po-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .items-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .items-table th { background-color: #f2f2f2; }
+            .footer { margin-top: 40px; }
+            .signature-section { display: flex; justify-content: space-between; margin-top: 50px; }
+            .signature-box { width: 200px; text-align: center; }
+            .signature-line { border-bottom: 1px solid #000; margin-bottom: 5px; height: 40px; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>SERVICES TMT INC.</h1>
+            <p>195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</p>
+            <p>Téléphone: (418) 225-3875 | Email: info.servicestmt@gmail.com</p>
+            <hr>
+            <h2>BON DE LIVRAISON</h2>
+            <h3>${deliverySlip.delivery_number}</h3>
+          </div>
+          
+          <div class="po-info">
+            <div>
+              <strong>Client:</strong><br>
+              ${purchaseOrder.client_name}<br>
+              ${purchaseOrder.client_email || ''}<br>
+              ${purchaseOrder.client_phone || ''}<br>
+              ${purchaseOrder.client_address || ''}
+            </div>
+            <div style="text-align: right;">
+              <strong>Date de livraison:</strong> ${new Date(formData.delivery_date).toLocaleDateString()}<br>
+              <strong>Bon d'achat:</strong> ${purchaseOrder.po_number}<br>
+              ${formData.transport_company ? `<strong>Transporteur:</strong> ${formData.transport_company}<br>` : ''}
+              ${formData.tracking_number ? `<strong>N° Transport:</strong> ${formData.tracking_number}<br>` : ''}
+              ${formData.delivery_contact ? `<strong>Contact:</strong> ${formData.delivery_contact}<br>` : ''}
+            </div>
+          </div>
+          
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Code Produit</th>
+                <th>Description</th>
+                <th>Quantité Livrée</th>
+                <th>Unité</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${selectedItems.map(item => `
+                <tr>
+                  <td>${item.product_id}</td>
+                  <td>${item.description}</td>
+                  <td>${item.quantity_to_deliver}</td>
+                  <td>${item.unit}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          ${formData.special_instructions ? `
+            <div class="footer">
+              <strong>Instructions spéciales:</strong><br>
+              ${formData.special_instructions}
+            </div>
+          ` : ''}
+          
+          <div class="signature-section">
+            <div class="signature-box">
+              <div class="signature-line"></div>
+              <div>Signature du livreur</div>
+              <div>Date: ________________</div>
+            </div>
+            <div class="signature-box">
+              <div class="signature-line"></div>
+              <div>Signature du réceptionnaire</div>
+              <div>Date: ________________</div>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #666;">
+            Document généré le ${new Date().toLocaleString()}
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Ouvrir une nouvelle fenêtre pour l'impression
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Déclencher l'impression après chargement
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  };
+
   // Générer le numéro de bon de livraison
   const generateDeliveryNumber = async () => {
     const now = new Date();
@@ -272,6 +379,9 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
         .eq('id', purchaseOrder.id);
 
       console.log(`Bon de livraison ${deliveryNumber} créé avec succès!`);
+      
+      // Générer et ouvrir l'impression du bon de livraison
+      generateDeliveryPrint(deliverySlip, selectedItems, formData, purchaseOrder);
       
       if (onRefresh) onRefresh();
       onClose();
