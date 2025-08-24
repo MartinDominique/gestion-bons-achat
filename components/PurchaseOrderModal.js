@@ -185,23 +185,29 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
   // SECTION 2: IMPORT SOUMISSION
   const loadSubmissions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('*')
-        .eq('status', 'accepted')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw new Error(error.message);
-      
-      setSubmissions(data || []);
-      setShowSubmissionModal(true);
-      
-    } catch (err) {
-      console.error('Erreur chargement soumissions:', err);
-      setError(err.message);
-    }
-  };
+  try {
+    console.log('Chargement des soumissions...');
+    
+    // Charger TOUTES les soumissions d'abord pour voir ce qu'il y a
+    const { data, error } = await supabase
+      .from('submissions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    console.log('Soumissions trouvées:', data);
+    console.log('Erreur Supabase:', error);
+    
+    if (error) throw new Error(error.message);
+    
+    setSubmissions(data || []);
+    setShowSubmissionModal(true);
+    
+  } catch (err) {
+    console.error('Erreur chargement soumissions:', err);
+    setError(`Erreur soumissions: ${err.message}`);
+  }
+};
 
   // Importer une soumission sélectionnée
   const importSubmission = async (submission) => {
