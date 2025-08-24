@@ -47,21 +47,29 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
     
     try {
-      const { data, error } = await supabase
-        .from('submissions')
-        .select('id, submission_number, status, client_name')
-        .eq('linked_po_id', purchaseOrderId)
-        .eq('status', 'accepted');
+      // Récupérer le BA pour voir s'il a un submission_no
+      const { data: poData, error: poError } = await supabase
+        .from('purchase_orders')
+        .select('submission_no')
+        .eq('id', purchaseOrderId)
+        .single();
       
-      if (error) throw error;
+      if (poError) throw poError;
       
-      if (data && data.length > 0) {
+      if (poData?.submission_no) {
+        // Récupérer les détails de la soumission
+        const { data: submissionData, error: subError } = await supabase
+          .from('submissions')
+          .select('id, submission_number, status, client_name')
+          .eq('submission_number', poData.submission_no)
+          .single();
+        
+        if (subError) {
+          console.error('Erreur récupération soumission:', subError);
+        }
+        
         setHasExistingSubmission(true);
-        setExistingSubmissionData(data[0]);
-        setFormData(prev => ({
-          ...prev,
-          submission_no: data[0].submission_number
-        }));
+        setExistingSubmissionData(submissionData || { submission_number: poData.submission_no });
       } else {
         setHasExistingSubmission(false);
         setExistingSubmissionData(null);
@@ -201,18 +209,36 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     try {
       console.log('Chargement des soumissions...');
       
-      const { data, error } = await supabase
+      // Récupérer toutes les soumissions acceptées
+      const { data: allSubmissions, error } = await supabase
         .from('submissions')
         .select('*')
         .eq('status', 'accepted')
-        .is('linked_po_id', null) // Seulement les soumissions non liées
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
       
       if (error) throw new Error(error.message);
       
-      setSubmissions(data || []);
+      // Récupérer tous les submission_no déjà utilisés dans purchase_orders
+      const { data: usedSubmissions, error: usedError } = await supabase
+        .from('purchase_orders')
+        .select('submission_no')
+        .not('submission_no', 'is', null);
+      
+      if (usedError) {
+        console.error('Erreur récupération soumissions utilisées:', usedError);
+      }
+      
+      // Filtrer les soumissions non encore liées à un BA
+      const usedSubmissionNumbers = new Set((usedSubmissions || []).map(p => p.submission_no));
+      const availableSubmissions = (allSubmissions || []).filter(sub => 
+        !usedSubmissionNumbers.has(sub.submission_number)
+      );
+      
+      setSubmissions(availableSubmissions);
       setShowSubmissionModal(true);
+      
+      console.log(`${availableSubmissions.length} soumissions disponibles sur ${allSubmissions?.length || 0} total`);
       
     } catch (err) {
       console.error('Erreur chargement soumissions:', err);
@@ -375,17 +401,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           .eq('id', poData.id);
       }
 
-      // Lier la soumission au BA si nécessaire
-      if (formData.submission_no && !editingPO) {
-        const { error: linkError } = await supabase
-          .from('submissions')
-          .update({ linked_po_id: poData.id })
-          .eq('submission_number', formData.submission_no);
-        
-        if (linkError) {
-          console.error('Erreur liaison soumission:', linkError);
-        }
-      }
+
       
       console.log(`BA ${poData.po_number} sauvegardé avec succès`);
       
