@@ -91,26 +91,27 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
 
     try {
-      // Cette requête devra être adaptée selon votre structure de données
-      // Supposons qu'il y a une relation entre purchase_orders et les achats fournisseurs
       const { data, error } = await supabase
-        .from('supplier_purchases') // Remplacer par le nom de votre table d'achats fournisseurs
+        .from('supplier_purchases')
         .select(`
           id,
           purchase_number,
           supplier_name,
-          amount,
-          date,
-          status
+          linked_po_number,
+          total_amount,
+          created_at,
+          status,
+          delivery_date
         `)
-        .eq('linked_po_id', purchaseOrderId) // Remplacer par la colonne de liaison appropriée
-        .order('date', { ascending: false });
+        .eq('linked_po_id', purchaseOrderId)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Erreur chargement achats fournisseurs:', error);
         setSupplierPurchases([]);
       } else {
         setSupplierPurchases(data || []);
+        console.log(`${data?.length || 0} achats fournisseurs chargés pour le BA ${purchaseOrderId}`);
       }
     } catch (error) {
       console.error('Erreur chargement achats fournisseurs:', error);
@@ -1537,12 +1538,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <div className="font-medium text-green-600">
-                                  ${parseFloat(purchase.amount || 0).toFixed(2)}
+                                  ${parseFloat(purchase.total_amount || 0).toFixed(2)}
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <div className="text-sm text-gray-600">
-                                  {new Date(purchase.date).toLocaleDateString()}
+                                  {new Date(purchase.created_at).toLocaleDateString()}
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-center">
