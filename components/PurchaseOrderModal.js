@@ -730,40 +730,53 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setIsLoading(true);
       setError('');
 
-      // 1. Supprimer les articles de livraison liés
-      const { error: deliveryItemsError } = await supabase
-        .from('delivery_slip_items')
-        .delete()
-        .in('delivery_slip_id', 
-          deliverySlips.map(slip => slip.id)
-        );
+      console.log('Début suppression BA:', editingPO.id);
 
-      if (deliveryItemsError) {
-        console.error('Erreur suppression articles livraison:', deliveryItemsError);
+      // 1. Supprimer les articles de livraison d'abord
+      if (deliverySlips.length > 0) {
+        console.log('Suppression articles livraison...');
+        const { error: deliveryItemsError } = await supabase
+          .from('delivery_slip_items')
+          .delete()
+          .in('delivery_slip_id', deliverySlips.map(slip => slip.id));
+
+        if (deliveryItemsError) {
+          console.error('Erreur suppression articles livraison:', deliveryItemsError);
+          throw new Error(`Erreur suppression articles livraison: ${deliveryItemsError.message}`);
+        }
       }
 
       // 2. Supprimer les bons de livraison
-      const { error: deliverySlipsError } = await supabase
-        .from('delivery_slips')
-        .delete()
-        .eq('purchase_order_id', editingPO.id);
+      if (deliverySlips.length > 0) {
+        console.log('Suppression bons de livraison...');
+        const { error: deliverySlipsError } = await supabase
+          .from('delivery_slips')
+          .delete()
+          .eq('purchase_order_id', editingPO.id);
 
-      if (deliverySlipsError) {
-        console.error('Erreur suppression bons livraison:', deliverySlipsError);
+        if (deliverySlipsError) {
+          console.error('Erreur suppression bons livraison:', deliverySlipsError);
+          throw new Error(`Erreur suppression bons livraison: ${deliverySlipsError.message}`);
+        }
       }
 
-      // 3. Supprimer les articles du BA
-      const { error: itemsError } = await supabase
+      // 3. Supprimer TOUS les articles du BA (vérification explicite)
+      console.log('Suppression articles BA...');
+      const { error: itemsError, count } = await supabase
         .from('client_po_items')
         .delete()
         .eq('purchase_order_id', editingPO.id);
 
       if (itemsError) {
         console.error('Erreur suppression articles BA:', itemsError);
+        throw new Error(`Erreur suppression articles BA: ${itemsError.message}`);
       }
+
+      console.log(`${count || 'Tous les'} articles supprimés`);
 
       // 4. Délier la soumission si elle existe
       if (editingPO.submission_no) {
+        console.log('Déliage soumission...');
         const { error: unlinkError } = await supabase
           .from('submissions')
           .update({ linked_po_id: null })
@@ -771,17 +784,29 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
         if (unlinkError) {
           console.error('Erreur déliage soumission:', unlinkError);
+          // Ne pas arrêter pour cette erreur, juste la logger
         }
       }
 
-      // 5. Supprimer le bon d'achat principal
+      // 5. Vérifier qu'il n'y a plus d'articles liés avant suppression finale
+      const { data: remainingItems } = await supabase
+        .from('client_po_items')
+        .select('id')
+        .eq('purchase_order_id', editingPO.id);
+
+      if (remainingItems && remainingItems.length > 0) {
+        throw new Error(`Il reste ${remainingItems.length} articles liés. Suppression annulée.`);
+      }
+
+      // 6. Supprimer le bon d'achat principal
+      console.log('Suppression BA principal...');
       const { error: poError } = await supabase
         .from('purchase_orders')
         .delete()
         .eq('id', editingPO.id);
 
       if (poError) {
-        throw new Error(`Erreur suppression BA: ${poError.message}`);
+        throw new Error(`Erreur suppression BA principal: ${poError.message}`);
       }
 
       console.log(`BA ${editingPO.po_number} supprimé avec succès`);
