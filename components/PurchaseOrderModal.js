@@ -286,9 +286,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       // Ouvrir en base64
       const newWindow = window.open();
       if (file.type.includes('pdf')) {
-        newWindow.document.write(`<iframe src="${file.data}" width="100%" height="100%"></iframe>`);
+        newWindow.document.write('<iframe src="' + file.data + '" width="100%" height="100%"></iframe>');
       } else if (file.type.includes('image')) {
-        newWindow.document.write(`<img src="${file.data}" style="max-width: 100%; height: auto;">`);
+        newWindow.document.write('<img src="' + file.data + '" style="max-width: 100%; height: auto;">');
       } else {
         downloadFile(file);
       }
@@ -308,7 +308,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     // 2. Ouvrir un modal dédié
     // 3. Naviguer vers la page des achats fournisseurs
     // Exemple temporaire:
-    alert(`Voir achat ${purchase.purchase_number} de ${purchase.supplier_name} - ${purchase.total_amount}import React, { useState, useEffect } from 'react';
+    alert('Voir achat ' + purchase.purchase_number + ' de ' + purchase.supplier_name + ' - ' + purchase.total_amount + '$');
 import { supabase } from '../lib/supabase';
 import DeliverySlipModal from './DeliverySlipModal';
 
@@ -507,28 +507,28 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         ];
         
         if (!allowedTypes.includes(file.type)) {
-          throw new Error(`Type de fichier non supporté: ${file.name}`);
+          throw new Error('Type de fichier non supporté: ' + file.name);
         }
         
         // Vérifier la taille (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
-          throw new Error(`Fichier trop volumineux: ${file.name} (max 10MB)`);
+           throw new Error('Fichier trop volumineux: ' + file.name + ' (max 10MB)');
         }
         
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
-        const fileName = `${Date.now()}_${file.name}`;
+        const fileName = Date.now() + '_' + file.name;
         
         // Option 1: Upload vers Supabase Storage
         /*
         const { data, error } = await supabase.storage
           .from('purchase-orders')
-          .upload(`${editingPO?.id || 'temp'}/${fileName}`, file);
+          .upload((editingPO?.id || 'temp') + '/' + fileName, file);
         
         if (error) throw error;
         
         const { data: { publicUrl } } = supabase.storage
           .from('purchase-orders')
-          .getPublicUrl(`${editingPO?.id || 'temp'}/${fileName}`);
+          .getPublicUrl((editingPO?.id || 'temp') + '/' + fileName);
         */
         
         // Option 2: Stockage en base64 (pour cette demo)
@@ -554,11 +554,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setAttachedFiles(newFiles);
       setFormData(prev => ({ ...prev, files: newFiles }));
       
-      console.log(`${uploadedFiles.length} fichier(s) ajouté(s)`);
+      console.log(uploadedFiles.length + ' fichier(s) ajouté(s)');
       
     } catch (error) {
       console.error('Erreur upload fichiers:', error);
-      setError(`Erreur upload: ${error.message}`);
+      setError('Erreur upload: ' + error.message);
     } finally {
       setIsUploadingFiles(false);
       setUploadProgress(0);
@@ -594,9 +594,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       // Ouvrir en base64
       const newWindow = window.open();
       if (file.type.includes('pdf')) {
-        newWindow.document.write(`<iframe src="${file.data}" width="100%" height="100%"></iframe>`);
+        newWindow.document.write('<iframe src="' + file.data + '" width="100%" height="100%"></iframe>');
       } else if (file.type.includes('image')) {
-        newWindow.document.write(`<img src="${file.data}" style="max-width: 100%; height: auto;">`);
+        newWindow.document.write('<img src="' + file.data + '" style="max-width: 100%; height: auto;">');
       } else {
         downloadFile(file);
       }
@@ -646,7 +646,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       if (error) throw new Error(error.message);
       
       setClients(data || []);
-      console.log(`${data?.length || 0} clients chargés`);
+      console.log((data?.length || 0) + ' clients chargés');
       
     } catch (err) {
       console.error('Erreur chargement clients:', err);
@@ -795,7 +795,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         const { data, error } = await supabase
           .from('products')
           .select('*')
-          .or(`product_id.ilike.%${term}%,description.ilike.%${term}%`)
+          .or('product_id.ilike.%' + term + '%,description.ilike.%' + term + '%')
           .order('product_id')
           .limit(10);
 
@@ -1085,7 +1085,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
     } catch (err) {
       console.error('Erreur suppression BA:', err);
-      setError(`Erreur lors de la suppression: ${err.message}`);
+      setError('Erreur lors de la suppression: ' + err.message);
     } finally {
       setIsLoading(false);
     }
