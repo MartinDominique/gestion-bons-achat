@@ -470,7 +470,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setDeliverySlips(slips || []);
       setAttachedFiles(po.files || []);
       
-      console.log(`BA ${po.po_number} chargé avec ${poItems?.length || 0} articles et ${po.files?.length || 0} fichiers`);
+      console.log('BA ' + po.po_number + ' chargé avec ' + (poItems?.length || 0) + ' articles et ' + (po.files?.length || 0) + ' fichiers');
       
     } catch (err) {
       console.error('Erreur chargement BA:', err);
