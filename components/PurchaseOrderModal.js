@@ -956,9 +956,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-        <div className="bg-white rounded-xl max-w-6xl w-full max-h-[95vh] overflow-hidden">
+        <div className="bg-white rounded-xl max-w-6xl w-full h-[95vh] flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 flex-shrink-0">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold">
@@ -978,7 +978,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           </div>
 
           {/* Navigation par onglets */}
-          <div className="bg-gray-50 border-b border-gray-200">
+          <div className="bg-gray-50 border-b border-gray-200 flex-shrink-0">
             <nav className="flex space-x-0">
               <button
                 onClick={() => setActiveTab('info')}
@@ -1046,14 +1046,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
           {/* Message d'erreur */}
           {error && (
-            <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex-shrink-0">
               {error}
             </div>
           )}
 
           {/* Alerte soumission existante */}
           {hasExistingSubmission && existingSubmissionData && (
-            <div className="mx-6 mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="mx-6 mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 flex-shrink-0">
               <div className="flex">
                 <div className="flex-shrink-0">⚠️</div>
                 <div className="ml-3">
@@ -1067,7 +1067,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           )}
 
           {/* Contenu des onglets */}
-          <div className="p-6 overflow-y-auto max-h-[calc(95vh-250px)]">
+          <div className="flex-1 p-6 overflow-y-auto min-h-0">
             
             {/* ONGLET INFORMATIONS */}
             {activeTab === 'info' && (
@@ -1564,7 +1564,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           </div>
 
           {/* Footer */}
-          <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
+          <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t flex-shrink-0">
             <div className="flex items-center gap-4">
               {editingPO && (
                 <button
