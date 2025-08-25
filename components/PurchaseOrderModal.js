@@ -512,7 +512,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         
         // Vérifier la taille (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
-          throw new Error(`Fichier trop volumineux: ${file.name} (max 10MB)`);
+          throw new Error('Fichier trop volumineux: ' + file.name + ' (max 10MB)');
         }
         
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
