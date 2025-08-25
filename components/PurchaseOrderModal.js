@@ -149,10 +149,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       
       const { data: slips, error: slipsError } = await supabase
         .from('delivery_slips')
-        .select(`
-          *,
-          delivery_slip_items (*)
-        `)
+        .select('*, delivery_slip_items (*)')
         .eq('purchase_order_id', poId)
         .order('created_at', { ascending: false });
       
