@@ -104,7 +104,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         setSupplierPurchases([]);
       } else {
         setSupplierPurchases(data || []);
-        console.log(`${data?.length || 0} achats fournisseurs chargés pour le BA ${purchaseOrderId}`);
+        console.log(data?.length || 0, 'achats fournisseurs chargés pour le BA', purchaseOrderId);
       }
     } catch (error) {
       console.error('Erreur chargement achats fournisseurs:', error);
