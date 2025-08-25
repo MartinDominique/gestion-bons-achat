@@ -828,6 +828,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             special_instructions: formData.special_instructions || null,
             submission_no: formData.submission_no || null,
             amount: formData.amount || 0,
+            status: formData.status,
             files: attachedFiles,
             updated_at: new Date().toISOString()
           })
@@ -1594,9 +1595,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 onClick={onClose}
                 className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
               >
-                {activeTab === 'livraisons' || activeTab === 'documents' ? 'Fermer' : 'Annuler'}
+                Annuler
               </button>
-              {activeTab !== 'livraisons' && activeTab !== 'documents' && (
+              {(activeTab === 'info' || activeTab === 'articles') && (
                 <button
                   onClick={savePurchaseOrder}
                   disabled={isLoading || !formData.client_name || !formData.po_number}
