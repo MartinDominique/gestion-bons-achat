@@ -309,8 +309,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     // 3. Naviguer vers la page des achats fournisseurs
     // Exemple temporaire:
     alert('Voir achat ' + purchase.purchase_number + ' de ' + purchase.supplier_name + ' - ' + purchase.total_amount + '$');
-import { supabase } from '../lib/supabase';
-import DeliverySlipModal from './DeliverySlipModal';
 
 const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) => {
   // État principal du formulaire
