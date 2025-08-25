@@ -25,7 +25,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [activeTab, setActiveTab] = useState('info');
   
   // États pour les modals
-  const [showClientModal, setShowClientModal] = useState(false);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   
@@ -47,7 +46,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
     
     try {
-      // Récupérer le BA pour voir s'il a un submission_no
       const { data: poData, error: poError } = await supabase
         .from('purchase_orders')
         .select('submission_no')
@@ -57,7 +55,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       if (poError) throw poError;
       
       if (poData?.submission_no) {
-        // Récupérer les détails de la soumission
         const { data: submissionData, error: subError } = await supabase
           .from('submissions')
           .select('id, submission_number, status, client_name')
@@ -95,7 +92,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     try {
       setIsLoading(true);
       
-      // Charger le BA principal
       const { data: po, error: poError } = await supabase
         .from('purchase_orders')
         .select('*')
@@ -104,7 +100,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       
       if (poError) throw new Error(poError.message);
       
-      // Charger les articles
       const { data: poItems, error: itemsError } = await supabase
         .from('client_po_items')
         .select('*')
@@ -115,7 +110,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         console.error('Erreur chargement articles:', itemsError);
       }
       
-      // Charger les bons de livraison
       const { data: slips, error: slipsError } = await supabase
         .from('delivery_slips')
         .select(`
@@ -129,7 +123,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         console.error('Erreur chargement livraisons:', slipsError);
       }
 
-      // Mettre à jour les états
       setFormData(po);
       setItems(poItems || []);
       setDeliverySlips(slips || []);
@@ -187,18 +180,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
   };
 
-  // Sélectionner un client
-  const selectClient = (client) => {
-    setFormData(prev => ({
-      ...prev,
-      client_name: client.name || '',
-      client_email: client.email || '',
-      client_phone: client.phone || '',
-      client_address: client.address || ''
-    }));
-    setShowClientModal(false);
-  };
-
   // Charger les soumissions disponibles
   const loadSubmissions = async () => {
     if (hasExistingSubmission) {
@@ -209,7 +190,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     try {
       console.log('Chargement des soumissions...');
       
-      // Récupérer toutes les soumissions acceptées
       const { data: allSubmissions, error } = await supabase
         .from('submissions')
         .select('*')
@@ -219,7 +199,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       
       if (error) throw new Error(error.message);
       
-      // Récupérer tous les submission_no déjà utilisés dans purchase_orders
       const { data: usedSubmissions, error: usedError } = await supabase
         .from('purchase_orders')
         .select('submission_no')
@@ -229,7 +208,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         console.error('Erreur récupération soumissions utilisées:', usedError);
       }
       
-      // Filtrer les soumissions non encore liées à un BA
       const usedSubmissionNumbers = new Set((usedSubmissions || []).map(p => p.submission_no));
       const availableSubmissions = (allSubmissions || []).filter(sub => 
         !usedSubmissionNumbers.has(sub.submission_number)
@@ -251,7 +229,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     try {
       console.log('Import soumission:', submission.submission_number);
       
-      // Copier les infos client
       setFormData(prev => ({
         ...prev,
         client_name: submission.client_name || prev.client_name,
@@ -262,7 +239,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         amount: parseFloat(submission.amount) || 0
       }));
       
-      // Copier les articles
       const submissionItems = submission.items || [];
       const importedItems = submissionItems.map((item, index) => ({
         id: `temp-${index}`,
@@ -287,144 +263,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
   };
 
-  // Sauvegarder le BA
-  const savePurchaseOrder = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-      
-      // Validations
-      if (!formData.po_number.trim()) {
-        throw new Error('Le numéro de bon d\'achat est requis');
-      }
-      
-      if (!formData.client_name.trim()) {
-        throw new Error('Le nom du client est requis');
-      }
-      
-      // Vérifier que le numéro de BA n'existe pas déjà (sauf en édition)
-      const { data: existingPO } = await supabase
-        .from('purchase_orders')
-        .select('id')
-        .eq('po_number', formData.po_number)
-        .not('id', 'eq', editingPO?.id || 0)
-        .single();
-      
-      if (existingPO) {
-        throw new Error(`Le numéro de BA "${formData.po_number}" existe déjà`);
-      }
-      
-      let poData;
-      
-      if (editingPO) {
-        // Mise à jour BA existant
-        const { data, error } = await supabase
-          .from('purchase_orders')
-          .update({
-            po_number: formData.po_number,
-            client_name: formData.client_name,
-            client_email: formData.client_email || null,
-            client_phone: formData.client_phone || null,
-            client_address: formData.client_address || null,
-            date: formData.date,
-            delivery_date: formData.delivery_date || null,
-            payment_terms: formData.payment_terms || null,
-            special_instructions: formData.special_instructions || null,
-            submission_no: formData.submission_no || null,
-            amount: formData.amount || 0,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingPO.id)
-          .select()
-          .single();
-        
-        if (error) throw new Error(error.message);
-        poData = data;
-        
-      } else {
-        // Création nouveau BA
-        const { data, error } = await supabase
-          .from('purchase_orders')
-          .insert({
-            po_number: formData.po_number,
-            client_name: formData.client_name,
-            client_email: formData.client_email || null,
-            client_phone: formData.client_phone || null,
-            client_address: formData.client_address || null,
-            date: formData.date,
-            delivery_date: formData.delivery_date || null,
-            payment_terms: formData.payment_terms || null,
-            special_instructions: formData.special_instructions || null,
-            submission_no: formData.submission_no || null, // Permettre null
-            status: 'draft',
-            amount: formData.amount || 0
-          })
-          .select()
-          .single();
-        
-        if (error) throw new Error(error.message);
-        poData = data;
-      }
-      
-      // Sauvegarder les articles dans client_po_items
-      if (items.length > 0) {
-        if (editingPO) {
-          // Supprimer les anciens articles
-          await supabase
-            .from('client_po_items')
-            .delete()
-            .eq('purchase_order_id', editingPO.id);
-        }
-        
-        const itemsData = items.map(item => ({
-          purchase_order_id: poData.id,
-          product_id: item.product_id,
-          description: item.description,
-          quantity: parseFloat(item.quantity) || 0,
-          unit: item.unit || 'unité',
-          selling_price: parseFloat(item.selling_price) || 0,
-          delivered_quantity: parseFloat(item.delivered_quantity) || 0
-        }));
-        
-        const { error: itemsError } = await supabase
-          .from('client_po_items')
-          .insert(itemsData);
-        
-        if (itemsError) throw new Error(`Erreur sauvegarde articles: ${itemsError.message}`);
-        
-        // Mettre à jour le montant total
-        const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
-        
-        await supabase
-          .from('purchase_orders')
-          .update({ amount: totalAmount })
-          .eq('id', poData.id);
-      }
-
-
-      
-      console.log(`BA ${poData.po_number} sauvegardé avec succès`);
-      
-      if (onRefresh) onRefresh();
-      onClose();
-      
-    } catch (err) {
-      console.error('Erreur sauvegarde BA:', err);
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Ouvrir le modal de livraison
-  const openDeliveryModal = () => {
-    if (!hasExistingSubmission) {
-      setError('Ce bon d\'achat doit avoir une soumission attribuée avant de pouvoir créer une livraison.');
-      return;
-    }
-    setShowDeliveryModal(true);
-  };
-
   // Ajouter un nouvel article manuellement
   const addNewItem = () => {
     const newItem = {
@@ -447,7 +285,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     newItems[index] = updatedItem;
     setItems(newItems);
     
-    // Mettre à jour le montant total
     const totalAmount = newItems.reduce((sum, item) => 
       sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
     );
@@ -459,7 +296,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     const newItems = items.filter((_, i) => i !== index);
     setItems(newItems);
     
-    // Mettre à jour le montant total
     const totalAmount = newItems.reduce((sum, item) => 
       sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
     );
@@ -474,7 +310,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Rechercher des produits dans la base
     const searchProducts = async (term) => {
       if (!term || term.length < 2) {
         setSearchResults([]);
@@ -499,7 +334,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       }
     };
 
-    // Sélectionner un produit depuis les suggestions
     const selectProduct = (product) => {
       setLocalItem({
         ...localItem,
@@ -512,7 +346,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setShowSuggestions(false);
     };
 
-    // Gérer le changement dans le champ product_id
     const handleProductIdChange = (value) => {
       setSearchTerm(value);
       setLocalItem({...localItem, product_id: value});
@@ -528,7 +361,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setLocalItem(item);
       setEditMode(false);
       setShowSuggestions(false);
-      // Si c'est un nouvel article vide, le supprimer
       if (item.from_manual && !item.product_id) {
         onDelete();
       }
@@ -549,7 +381,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               className="w-full px-2 py-1 text-sm border rounded"
             />
             
-            {/* Suggestions dropdown */}
             {showSuggestions && searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-b shadow-lg z-10 max-h-48 overflow-y-auto">
                 {searchResults.map((product) => (
@@ -732,74 +563,37 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
       console.log('Début suppression BA:', editingPO.id);
 
-      // 1. Supprimer les articles de livraison d'abord
       if (deliverySlips.length > 0) {
-        console.log('Suppression articles livraison...');
         const { error: deliveryItemsError } = await supabase
           .from('delivery_slip_items')
           .delete()
           .in('delivery_slip_id', deliverySlips.map(slip => slip.id));
 
         if (deliveryItemsError) {
-          console.error('Erreur suppression articles livraison:', deliveryItemsError);
           throw new Error(`Erreur suppression articles livraison: ${deliveryItemsError.message}`);
         }
       }
 
-      // 2. Supprimer les bons de livraison
       if (deliverySlips.length > 0) {
-        console.log('Suppression bons de livraison...');
         const { error: deliverySlipsError } = await supabase
           .from('delivery_slips')
           .delete()
           .eq('purchase_order_id', editingPO.id);
 
         if (deliverySlipsError) {
-          console.error('Erreur suppression bons livraison:', deliverySlipsError);
           throw new Error(`Erreur suppression bons livraison: ${deliverySlipsError.message}`);
         }
       }
 
-      // 3. Supprimer TOUS les articles du BA (vérification explicite)
-      console.log('Suppression articles BA...');
-      const { error: itemsError, count } = await supabase
+      const { error: itemsError } = await supabase
         .from('client_po_items')
         .delete()
         .eq('purchase_order_id', editingPO.id);
 
       if (itemsError) {
-        console.error('Erreur suppression articles BA:', itemsError);
         throw new Error(`Erreur suppression articles BA: ${itemsError.message}`);
       }
 
-      console.log(`${count || 'Tous les'} articles supprimés`);
-
-      // 4. Délier la soumission si elle existe
-      if (editingPO.submission_no) {
-        console.log('Déliage soumission...');
-        const { error: unlinkError } = await supabase
-          .from('submissions')
-          .update({ linked_po_id: null })
-          .eq('submission_number', editingPO.submission_no);
-
-        if (unlinkError) {
-          console.error('Erreur déliage soumission:', unlinkError);
-          // Ne pas arrêter pour cette erreur, juste la logger
-        }
-      }
-
-      // 5. Vérifier qu'il n'y a plus d'articles liés avant suppression finale
-      const { data: remainingItems } = await supabase
-        .from('client_po_items')
-        .select('id')
-        .eq('purchase_order_id', editingPO.id);
-
-      if (remainingItems && remainingItems.length > 0) {
-        throw new Error(`Il reste ${remainingItems.length} articles liés. Suppression annulée.`);
-      }
-
-      // 6. Supprimer le bon d'achat principal
-      console.log('Suppression BA principal...');
       const { error: poError } = await supabase
         .from('purchase_orders')
         .delete()
@@ -820,6 +614,135 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Sauvegarder le BA
+  const savePurchaseOrder = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      if (!formData.po_number.trim()) {
+        throw new Error('Le numéro de bon d\'achat est requis');
+      }
+      
+      if (!formData.client_name.trim()) {
+        throw new Error('Le nom du client est requis');
+      }
+      
+      const { data: existingPO } = await supabase
+        .from('purchase_orders')
+        .select('id')
+        .eq('po_number', formData.po_number)
+        .not('id', 'eq', editingPO?.id || 0)
+        .single();
+      
+      if (existingPO) {
+        throw new Error(`Le numéro de BA "${formData.po_number}" existe déjà`);
+      }
+      
+      let poData;
+      
+      if (editingPO) {
+        const { data, error } = await supabase
+          .from('purchase_orders')
+          .update({
+            po_number: formData.po_number,
+            client_name: formData.client_name,
+            client_email: formData.client_email || null,
+            client_phone: formData.client_phone || null,
+            client_address: formData.client_address || null,
+            date: formData.date,
+            delivery_date: formData.delivery_date || null,
+            payment_terms: formData.payment_terms || null,
+            special_instructions: formData.special_instructions || null,
+            submission_no: formData.submission_no || null,
+            amount: formData.amount || 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingPO.id)
+          .select()
+          .single();
+        
+        if (error) throw new Error(error.message);
+        poData = data;
+        
+      } else {
+        const { data, error } = await supabase
+          .from('purchase_orders')
+          .insert({
+            po_number: formData.po_number,
+            client_name: formData.client_name,
+            client_email: formData.client_email || null,
+            client_phone: formData.client_phone || null,
+            client_address: formData.client_address || null,
+            date: formData.date,
+            delivery_date: formData.delivery_date || null,
+            payment_terms: formData.payment_terms || null,
+            special_instructions: formData.special_instructions || null,
+            submission_no: formData.submission_no || null,
+            status: 'draft',
+            amount: formData.amount || 0
+          })
+          .select()
+          .single();
+        
+        if (error) throw new Error(error.message);
+        poData = data;
+      }
+      
+      if (items.length > 0) {
+        if (editingPO) {
+          await supabase
+            .from('client_po_items')
+            .delete()
+            .eq('purchase_order_id', editingPO.id);
+        }
+        
+        const itemsData = items.map(item => ({
+          purchase_order_id: poData.id,
+          product_id: item.product_id,
+          description: item.description,
+          quantity: parseFloat(item.quantity) || 0,
+          unit: item.unit || 'unité',
+          selling_price: parseFloat(item.selling_price) || 0,
+          delivered_quantity: parseFloat(item.delivered_quantity) || 0
+        }));
+        
+        const { error: itemsError } = await supabase
+          .from('client_po_items')
+          .insert(itemsData);
+        
+        if (itemsError) throw new Error(`Erreur sauvegarde articles: ${itemsError.message}`);
+        
+        const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
+        
+        await supabase
+          .from('purchase_orders')
+          .update({ amount: totalAmount })
+          .eq('id', poData.id);
+      }
+      
+      console.log(`BA ${poData.po_number} sauvegardé avec succès`);
+      
+      if (onRefresh) onRefresh();
+      onClose();
+      
+    } catch (err) {
+      console.error('Erreur sauvegarde BA:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Ouvrir le modal de livraison
+  const openDeliveryModal = () => {
+    if (!hasExistingSubmission) {
+      setError('Ce bon d\'achat doit avoir une soumission attribuée avant de pouvoir créer une livraison.');
+      return;
+    }
+    setShowDeliveryModal(true);
   };
 
   // Calculer le statut de livraison
@@ -965,7 +888,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Client - Menu déroulant */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Client *
@@ -996,7 +918,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     </select>
                   </div>
 
-                  {/* No. Bon Achat Client */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       No. Bon Achat Client *
@@ -1012,7 +933,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     />
                   </div>
 
-                  {/* No Soumission */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       No Soumission
@@ -1028,7 +948,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     />
                   </div>
 
-                  {/* Date */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Date *
@@ -1043,7 +962,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     />
                   </div>
 
-                  {/* Montant */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Montant
@@ -1060,7 +978,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     />
                   </div>
 
-                  {/* Statut */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Statut
@@ -1079,7 +996,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   </div>
                 </div>
 
-                {/* Notes - Ligne unique */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Notes complémentaires (optionnel)
@@ -1094,7 +1010,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   />
                 </div>
 
-                {/* Affichage soumission liée */}
                 {formData.submission_no && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <p className="text-green-800">
@@ -1103,7 +1018,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   </div>
                 )}
 
-                {/* Informations client affichées */}
                 {formData.client_name && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h4 className="font-semibold text-blue-800 mb-2">Informations Client:</h4>
@@ -1164,7 +1078,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Tableau des articles */}
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full">
                         <thead className="bg-gray-50">
@@ -1220,9 +1133,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                       deliveryStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {deliveryStatus === 'completed' && '✅ Livraison Complète'}
-                      {deliveryStatus === 'partial' && '📦 Livraison Partielle'}
-                      {deliveryStatus === 'not_started' && '⏳ Non Commencé'}
+                      {deliveryStatus === 'completed' && 'Livraison Complète'}
+                      {deliveryStatus === 'partial' && 'Livraison Partielle'}
+                      {deliveryStatus === 'not_started' && 'Non Commencé'}
                     </div>
                     <button
                       onClick={openDeliveryModal}
@@ -1233,19 +1146,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     </button>
                   </div>
                 </div>
-
-                {!hasExistingSubmission && (
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                    <div className="flex">
-                      <div className="flex-shrink-0">⚠️</div>
-                      <div className="ml-3">
-                        <p className="text-sm text-yellow-700">
-                          Ce bon d'achat doit avoir une soumission attribuée avant de pouvoir créer des livraisons.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {deliverySlips.length === 0 ? (
                   <div className="text-center py-12">
@@ -1301,13 +1201,26 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
           {/* Footer */}
           <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
-            <div className="text-sm text-gray-600">
-              {items.length > 0 && (
-                <span>
-                  Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
-                </span>
+            <div className="flex items-center gap-4">
+              {editingPO && (
+                <button
+                  onClick={deletePurchaseOrder}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center gap-2"
+                >
+                  🗑️ Supprimer BA
+                </button>
               )}
+              
+              <div className="text-sm text-gray-600">
+                {items.length > 0 && (
+                  <span>
+                    Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                  </span>
+                )}
+              </div>
             </div>
+
             <div className="flex gap-3">
               <button
                 onClick={onClose}
@@ -1328,56 +1241,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           </div>
         </div>
       </div>
-
-      {/* Modal sélection client */}
-      {showClientModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
-            <div className="bg-green-600 text-white px-6 py-4 flex justify-between items-center">
-              <h3 className="text-xl font-semibold">👤 Sélectionner un Client</h3>
-              <button
-                onClick={() => setShowClientModal(false)}
-                className="text-white hover:bg-white/20 rounded-lg p-2"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
-              {clients.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">Aucun client disponible</p>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {clients.map((client) => (
-                    <div key={client.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-semibold">{client.name}</h4>
-                          <p className="text-gray-600">{client.email}</p>
-                          <p className="text-sm text-gray-500">{client.phone}</p>
-                          {client.company && (
-                            <p className="text-sm text-gray-500">{client.company}</p>
-                          )}
-                          {client.address && (
-                            <p className="text-sm text-gray-500">{client.address}</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => selectClient(client)}
-                          className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700"
-                        >
-                          Sélectionner
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal import soumissions */}
       {showSubmissionModal && (
@@ -1445,7 +1308,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           onClose={() => {
             setShowDeliveryModal(false);
             if (editingPO) {
-              loadPOData(editingPO.id); // Recharger les données après création d'une livraison
+              loadPOData(editingPO.id);
             }
           }}
           purchaseOrder={editingPO}
