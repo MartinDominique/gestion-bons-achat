@@ -199,12 +199,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         ];
         
         if (!allowedTypes.includes(file.type)) {
-          throw new Error(`Type de fichier non supporté: ${file.name}`);
+          throw new Error('Type de fichier non supporté: ' + file.name);
         }
         
         // Vérifier la taille (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
-          throw new Error(`Fichier trop volumineux: ${file.name} (max 10MB)`);
+          throw new Error('Fichier trop volumineux: ' + file.name + ' (max 10MB)');
         }
         
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
@@ -246,11 +246,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setAttachedFiles(newFiles);
       setFormData(prev => ({ ...prev, files: newFiles }));
       
-      console.log(`${uploadedFiles.length} fichier(s) ajouté(s)`);
+      console.log((uploadedFiles.length) + ' fichier(s) ajouté(s)');
       
     } catch (error) {
       console.error('Erreur upload fichiers:', error);
-      setError(`Erreur upload: ${error.message}`);
+      setError('Erreur upload: ' + error.message);
     } finally {
       setIsUploadingFiles(false);
       setUploadProgress(0);
@@ -690,11 +690,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setSubmissions(availableSubmissions);
       setShowSubmissionModal(true);
       
-      console.log(`${availableSubmissions.length} soumissions disponibles sur ${allSubmissions?.length || 0} total`);
+      console.log((availableSubmissions.length) + ' soumissions disponibles sur ' + (allSubmissions?.length || 0) + ' total');
       
     } catch (err) {
       console.error('Erreur chargement soumissions:', err);
-      setError(`Erreur soumissions: ${err.message}`);
+              setError('Erreur soumissions: ' + err.message);
     }
   };
 
@@ -729,7 +729,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setShowSubmissionModal(false);
       setActiveTab('articles');
       
-      console.log(`Soumission ${submission.submission_number} importée avec ${importedItems.length} articles`);
+      console.log('Soumission ' + submission.submission_number + ' importée avec ' + importedItems.length + ' articles');
       
     } catch (err) {
       console.error('Erreur import soumission:', err);
@@ -1045,7 +1045,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           .in('delivery_slip_id', deliverySlips.map(slip => slip.id));
 
         if (deliveryItemsError) {
-          throw new Error(`Erreur suppression articles livraison: ${deliveryItemsError.message}`);
+          throw new Error('Erreur suppression articles livraison: ' + deliveryItemsError.message);
         }
       }
 
@@ -1056,7 +1056,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           .eq('purchase_order_id', editingPO.id);
 
         if (deliverySlipsError) {
-          throw new Error(`Erreur suppression bons livraison: ${deliverySlipsError.message}`);
+          throw new Error('Erreur suppression bons livraison: ' + deliverySlipsError.message);
         }
       }
 
@@ -1066,7 +1066,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         .eq('purchase_order_id', editingPO.id);
 
       if (itemsError) {
-        throw new Error(`Erreur suppression articles BA: ${itemsError.message}`);
+        throw new Error('Erreur suppression articles BA: ' + itemsError.message);
       }
 
       const { error: poError } = await supabase
@@ -1075,10 +1075,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         .eq('id', editingPO.id);
 
       if (poError) {
-        throw new Error(`Erreur suppression BA principal: ${poError.message}`);
+        throw new Error('Erreur suppression BA principal: ' + poError.message);
       }
 
-      console.log(`BA ${editingPO.po_number} supprimé avec succès`);
+      console.log('BA ' + editingPO.po_number + ' supprimé avec succès');
       
       if (onRefresh) onRefresh();
       onClose();
@@ -1113,7 +1113,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         .single();
       
       if (existingPO) {
-        throw new Error(`Le numéro de BA "${formData.po_number}" existe déjà`);
+        throw new Error('Le numéro de BA "' + formData.po_number + '" existe déjà');
       }
       
       let poData;
@@ -1190,7 +1190,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           .from('client_po_items')
           .insert(itemsData);
         
-        if (itemsError) throw new Error(`Erreur sauvegarde articles: ${itemsError.message}`);
+        if (itemsError)         throw new Error('Erreur sauvegarde articles: ' + itemsError.message);
         
         const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
         
@@ -1200,7 +1200,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           .eq('id', poData.id);
       }
       
-      console.log(`BA ${poData.po_number} sauvegardé avec succès`);
+      console.log('BA ' + poData.po_number + ' sauvegardé avec succès');
       
       if (onRefresh) onRefresh();
       onClose();
