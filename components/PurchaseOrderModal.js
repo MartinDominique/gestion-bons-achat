@@ -507,7 +507,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         ];
         
         if (!allowedTypes.includes(file.type)) {
-          throw new Error(`Type de fichier non supporté: ${file.name}`);
+          throw new Error('Type de fichier non supporté: ' + file.name);
         }
         
         // Vérifier la taille (max 10MB)
