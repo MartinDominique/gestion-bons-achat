@@ -406,16 +406,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     try {
       const { data, error } = await supabase
         .from('supplier_purchases')
-        .select(`
-          id,
-          purchase_number,
-          supplier_name,
-          linked_po_number,
-          total_amount,
-          created_at,
-          status,
-          delivery_date
-        `)
+        .select('id, purchase_number, supplier_name, linked_po_number, total_amount, created_at, status, delivery_date, subtotal, taxes, shipping_cost, items, notes')
         .eq('linked_po_id', purchaseOrderId)
         .order('created_at', { ascending: false });
 
