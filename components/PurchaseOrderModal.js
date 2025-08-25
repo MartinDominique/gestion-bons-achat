@@ -16,7 +16,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     special_instructions: '',
     submission_no: '',
     amount: 0,
-    status: 'draft'
+    status: 'draft',
+    files: []
   });
 
   // États de l'interface
@@ -33,10 +34,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [submissions, setSubmissions] = useState([]);
   const [items, setItems] = useState([]);
   const [deliverySlips, setDeliverySlips] = useState([]);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [supplierPurchases, setSupplierPurchases] = useState([]);
   
   // Vérification soumission existante
   const [hasExistingSubmission, setHasExistingSubmission] = useState(false);
   const [existingSubmissionData, setExistingSubmissionData] = useState(null);
+
+  // États pour upload de fichiers
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Vérifier si le BA a déjà une soumission attribuée
   const checkExistingSubmission = async (purchaseOrderId) => {
@@ -76,11 +83,47 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
   };
 
+  // Charger les achats fournisseurs liés
+  const loadSupplierPurchases = async (purchaseOrderId) => {
+    if (!purchaseOrderId) {
+      setSupplierPurchases([]);
+      return;
+    }
+
+    try {
+      // Cette requête devra être adaptée selon votre structure de données
+      // Supposons qu'il y a une relation entre purchase_orders et les achats fournisseurs
+      const { data, error } = await supabase
+        .from('supplier_purchases') // Remplacer par le nom de votre table d'achats fournisseurs
+        .select(`
+          id,
+          purchase_number,
+          supplier_name,
+          amount,
+          date,
+          status
+        `)
+        .eq('linked_po_id', purchaseOrderId) // Remplacer par la colonne de liaison appropriée
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Erreur chargement achats fournisseurs:', error);
+        setSupplierPurchases([]);
+      } else {
+        setSupplierPurchases(data || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement achats fournisseurs:', error);
+      setSupplierPurchases([]);
+    }
+  };
+
   // Charger les données si édition
   useEffect(() => {
     if (isOpen && editingPO) {
       loadPOData(editingPO.id);
       checkExistingSubmission(editingPO.id);
+      loadSupplierPurchases(editingPO.id);
     } else if (isOpen) {
       resetForm();
       loadClients();
@@ -126,8 +169,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setFormData(po);
       setItems(poItems || []);
       setDeliverySlips(slips || []);
+      setAttachedFiles(po.files || []);
       
-      console.log(`BA ${po.po_number} chargé avec ${poItems?.length || 0} articles`);
+      console.log(`BA ${po.po_number} chargé avec ${poItems?.length || 0} articles et ${po.files?.length || 0} fichiers`);
       
     } catch (err) {
       console.error('Erreur chargement BA:', err);
@@ -135,6 +179,139 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fonctions pour la gestion des fichiers
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    setIsUploadingFiles(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadedFiles = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Vérifier le type de fichier
+        const allowedTypes = [
+          'application/pdf',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/csv',
+          'image/jpeg',
+          'image/png'
+        ];
+        
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error(`Type de fichier non supporté: ${file.name}`);
+        }
+        
+        // Vérifier la taille (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`Fichier trop volumineux: ${file.name} (max 10MB)`);
+        }
+        
+        // Upload vers Supabase Storage (si configuré) ou stocker en base64
+        const fileName = `${Date.now()}_${file.name}`;
+        
+        // Option 1: Upload vers Supabase Storage
+        /*
+        const { data, error } = await supabase.storage
+          .from('purchase-orders')
+          .upload(`${editingPO?.id || 'temp'}/${fileName}`, file);
+        
+        if (error) throw error;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('purchase-orders')
+          .getPublicUrl(`${editingPO?.id || 'temp'}/${fileName}`);
+        */
+        
+        // Option 2: Stockage en base64 (pour cette demo)
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+        
+        uploadedFiles.push({
+          id: Date.now() + i,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          uploadDate: new Date().toISOString(),
+          data: base64 // En production, utiliser l'URL du storage
+        });
+        
+        setUploadProgress(((i + 1) / files.length) * 100);
+      }
+      
+      const newFiles = [...attachedFiles, ...uploadedFiles];
+      setAttachedFiles(newFiles);
+      setFormData(prev => ({ ...prev, files: newFiles }));
+      
+      console.log(`${uploadedFiles.length} fichier(s) ajouté(s)`);
+      
+    } catch (error) {
+      console.error('Erreur upload fichiers:', error);
+      setError(`Erreur upload: ${error.message}`);
+    } finally {
+      setIsUploadingFiles(false);
+      setUploadProgress(0);
+      event.target.value = ''; // Reset input
+    }
+  };
+
+  const deleteFile = (fileId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) return;
+    
+    const newFiles = attachedFiles.filter(file => file.id !== fileId);
+    setAttachedFiles(newFiles);
+    setFormData(prev => ({ ...prev, files: newFiles }));
+  };
+
+  const downloadFile = (file) => {
+    if (file.data && file.data.startsWith('data:')) {
+      // Télécharger depuis base64
+      const link = document.createElement('a');
+      link.href = file.data;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (file.url) {
+      // Télécharger depuis URL
+      window.open(file.url, '_blank');
+    }
+  };
+
+  const viewFile = (file) => {
+    if (file.data && file.data.startsWith('data:')) {
+      // Ouvrir en base64
+      const newWindow = window.open();
+      if (file.type.includes('pdf')) {
+        newWindow.document.write(`<iframe src="${file.data}" width="100%" height="100%"></iframe>`);
+      } else if (file.type.includes('image')) {
+        newWindow.document.write(`<img src="${file.data}" style="max-width: 100%; height: auto;">`);
+      } else {
+        downloadFile(file);
+      }
+    } else if (file.url) {
+      window.open(file.url, '_blank');
+    }
+  };
+
+  // Fonction pour voir les détails d'un achat fournisseur
+  const viewSupplierPurchase = (purchaseId) => {
+    // Rediriger vers le module SupplierPurchaseManager ou ouvrir un modal
+    console.log('Voir achat fournisseur:', purchaseId);
+    // Vous pouvez implémenter la navigation ou l'ouverture d'un modal ici
+    // Exemple: window.open(`/supplier-purchases/${purchaseId}`, '_blank');
   };
 
   // Reset form
@@ -151,10 +328,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       special_instructions: '',
       submission_no: '',
       amount: 0,
-      status: 'draft'
+      status: 'draft',
+      files: []
     });
     setItems([]);
     setDeliverySlips([]);
+    setAttachedFiles([]);
+    setSupplierPurchases([]);
     setActiveTab('info');
     setError('');
     setHasExistingSubmission(false);
@@ -551,6 +731,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       `Cette action supprimera également :\n` +
       `- Tous les articles du BA\n` +
       `- Tous les bons de livraison associés\n` +
+      `- Tous les fichiers joints\n` +
       `- Toutes les données liées\n\n` +
       `Cette action est IRRÉVERSIBLE.`
     );
@@ -658,6 +839,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             special_instructions: formData.special_instructions || null,
             submission_no: formData.submission_no || null,
             amount: formData.amount || 0,
+            files: attachedFiles,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingPO.id)
@@ -682,7 +864,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             special_instructions: formData.special_instructions || null,
             submission_no: formData.submission_no || null,
             status: 'draft',
-            amount: formData.amount || 0
+            amount: formData.amount || 0,
+            files: attachedFiles
           })
           .select()
           .single();
@@ -760,6 +943,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     if (fullyDeliveredItems === totalItems) return 'completed';
     if (partiallyDeliveredItems > 0 || fullyDeliveredItems > 0) return 'partial';
     return 'not_started';
+  };
+
+  // Formater la taille des fichiers
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const handleChange = (e) => {
@@ -843,6 +1035,22 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   )}
                 </button>
               )}
+              <button
+                onClick={() => setActiveTab('documents')}
+                className={`px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === 'documents'
+                    ? 'border-blue-500 text-blue-600 bg-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span>📎</span>
+                Documents & Achats
+                {attachedFiles.length > 0 && (
+                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+                    {attachedFiles.length}
+                  </span>
+                )}
+              </button>
             </nav>
           </div>
 
@@ -1197,6 +1405,172 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 )}
               </div>
             )}
+
+            {/* ONGLET DOCUMENTS & ACHATS */}
+            {activeTab === 'documents' && (
+              <div className="space-y-8">
+                
+                {/* Section Documents */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold">Documents Joints ({attachedFiles.length})</h3>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="file"
+                        id="fileUpload"
+                        multiple
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="fileUpload"
+                        className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer flex items-center gap-2 ${
+                          isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        📎 Choisir Fichiers
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Progress bar pour upload */}
+                  {isUploadingFiles && (
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  )}
+
+                  {/* Types de fichiers acceptés */}
+                  <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                    <strong>Types acceptés:</strong> PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG (Max: 10MB par fichier)
+                  </div>
+
+                  {/* Liste des documents */}
+                  {attachedFiles.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                      <p className="text-gray-500 mb-2">Aucun document joint</p>
+                      <p className="text-sm text-gray-400">Glissez des fichiers ici ou cliquez sur "Choisir Fichiers"</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {attachedFiles.map((file) => (
+                        <div key={file.id} className="border rounded-lg p-4 flex items-center justify-between hover:bg-gray-50">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0">
+                              {file.type.includes('pdf') ? '📄' :
+                               file.type.includes('excel') || file.type.includes('sheet') ? '📊' :
+                               file.type.includes('word') || file.type.includes('doc') ? '📝' :
+                               file.type.includes('image') ? '🖼️' : '📎'}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{file.name}</p>
+                              <p className="text-sm text-gray-500">
+                                {formatFileSize(file.size)} • Ajouté le {new Date(file.uploadDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => viewFile(file)}
+                              className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
+                              title="Voir"
+                            >
+                              Voir
+                            </button>
+                            <button
+                              onClick={() => downloadFile(file)}
+                              className="text-green-600 hover:text-green-800 px-3 py-1 border border-green-300 rounded text-sm"
+                              title="Télécharger"
+                            >
+                              Télécharger
+                            </button>
+                            <button
+                              onClick={() => deleteFile(file.id)}
+                              className="text-red-600 hover:text-red-800 px-3 py-1 border border-red-300 rounded text-sm"
+                              title="Supprimer"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Section Achats Fournisseurs */}
+                <div className="space-y-4 border-t pt-6">
+                  <h3 className="text-lg font-semibold">Achats Fournisseurs Liés ({supplierPurchases.length})</h3>
+                  
+                  {supplierPurchases.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-500">Aucun achat fournisseur lié à ce BA</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Les achats fournisseurs apparaîtront ici automatiquement s'ils sont liés à ce bon d'achat
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {supplierPurchases.map((purchase) => (
+                            <tr key={purchase.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-gray-900">{purchase.purchase_number}</div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="text-gray-900">{purchase.supplier_name}</div>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="font-medium text-green-600">
+                                  ${parseFloat(purchase.amount || 0).toFixed(2)}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="text-sm text-gray-600">
+                                  {new Date(purchase.date).toLocaleDateString()}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                  purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {purchase.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <button
+                                  onClick={() => viewSupplierPurchase(purchase.id)}
+                                  className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
+                                >
+                                  Voir
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -1218,6 +1592,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
                   </span>
                 )}
+                {attachedFiles.length > 0 && (
+                  <span className="ml-4">
+                    {attachedFiles.length} document(s)
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1226,9 +1605,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 onClick={onClose}
                 className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
               >
-                {activeTab === 'livraisons' ? 'Fermer' : 'Annuler'}
+                {activeTab === 'livraisons' || activeTab === 'documents' ? 'Fermer' : 'Annuler'}
               </button>
-              {activeTab !== 'livraisons' && (
+              {activeTab !== 'livraisons' && activeTab !== 'documents' && (
                 <button
                   onClick={savePurchaseOrder}
                   disabled={isLoading || !formData.client_name || !formData.po_number}
