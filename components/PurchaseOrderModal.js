@@ -1595,9 +1595,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 onClick={onClose}
                 className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
               >
-                Annuler
+                {activeTab === 'livraisons' || activeTab === 'documents' ? 'Fermer' : 'Annuler'}
               </button>
-              {(activeTab === 'info' || activeTab === 'articles') && (
+              {activeTab !== 'livraisons' && activeTab !== 'documents' && (
                 <button
                   onClick={savePurchaseOrder}
                   disabled={isLoading || !formData.client_name || !formData.po_number}
