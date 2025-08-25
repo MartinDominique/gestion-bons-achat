@@ -601,9 +601,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     } else if (file.url) {
       window.open(file.url, '_blank');
     }
-  };
-
-);
+   };
   };
 
   // Reset form
