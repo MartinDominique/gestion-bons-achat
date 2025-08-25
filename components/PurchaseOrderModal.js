@@ -208,7 +208,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         }
         
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
-        const fileName = Date.now() + '_' + file.name;
+        const fileName = `${Date.now()}_${file.name}`;
         
         // Option 1: Upload vers Supabase Storage
         /*
@@ -507,16 +507,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         ];
         
         if (!allowedTypes.includes(file.type)) {
-          throw new Error('Type de fichier non supporté: ' + file.name);
+          throw new Error(`Type de fichier non supporté: ${file.name}`);
         }
         
         // Vérifier la taille (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
-          throw new Error('Fichier trop volumineux: ' + file.name + ' (max 10MB)');
+          throw new Error(`Fichier trop volumineux: ${file.name} (max 10MB)`);
         }
         
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
-        const fileName = Date.now() + '_' + file.name;
+        const fileName = `${Date.now()}_${file.name}`;
         
         // Option 1: Upload vers Supabase Storage
         /*
