@@ -516,7 +516,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         }
         
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
-        const fileName = `${Date.now()}_${file.name}`;
+        const fileName = Date.now() + '_' + file.name;
         
         // Option 1: Upload vers Supabase Storage
         /*
