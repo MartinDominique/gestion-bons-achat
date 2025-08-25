@@ -28,6 +28,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   // États pour les modals
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [showSupplierPurchaseModal, setShowSupplierPurchaseModal] = useState(false);
+  const [selectedSupplierPurchase, setSelectedSupplierPurchase] = useState(null);
   
   // Données pour les sélections
   const [clients, setClients] = useState([]);
@@ -308,11 +310,326 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   };
 
   // Fonction pour voir les détails d'un achat fournisseur
-  const viewSupplierPurchase = (purchaseId) => {
-    // Rediriger vers le module SupplierPurchaseManager ou ouvrir un modal
-    console.log('Voir achat fournisseur:', purchaseId);
-    // Vous pouvez implémenter la navigation ou l'ouverture d'un modal ici
-    // Exemple: window.open(`/supplier-purchases/${purchaseId}`, '_blank');
+  const visualizeSupplierPurchase = (purchase) => {
+    // Cette fonction devrait déjà exister dans votre codebase
+    // Si elle n'est pas disponible dans ce composant, vous devez l'importer ou la passer en props
+    console.log('Visualisation achat fournisseur:', purchase);
+    
+    // Solutions possibles:
+    // 1. Si la fonction existe ailleurs, l'importer: import { visualizeSupplierPurchase } from '../path/to/supplier-functions';
+    // 2. Ouvrir un modal dédié
+    // 3. Naviguer vers la page des achats fournisseurs
+    // Exemple temporaire:
+    alert(`Voir achat ${purchase.purchase_number} de ${purchase.supplier_name} - ${purchase.total_amount}import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import DeliverySlipModal from './DeliverySlipModal';
+
+const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) => {
+  // État principal du formulaire
+  const [formData, setFormData] = useState({
+    po_number: '',
+    client_name: '',
+    client_email: '',
+    client_phone: '',
+    client_address: '',
+    date: new Date().toISOString().split('T')[0],
+    delivery_date: '',
+    payment_terms: '',
+    special_instructions: '',
+    submission_no: '',
+    amount: 0,
+    status: 'draft',
+    files: []
+  });
+
+  // États de l'interface
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('info');
+  
+  // États pour les modals
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  
+  // Données pour les sélections
+  const [clients, setClients] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [items, setItems] = useState([]);
+  const [deliverySlips, setDeliverySlips] = useState([]);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [supplierPurchases, setSupplierPurchases] = useState([]);
+  
+  // Vérification soumission existante
+  const [hasExistingSubmission, setHasExistingSubmission] = useState(false);
+  const [existingSubmissionData, setExistingSubmissionData] = useState(null);
+
+  // États pour upload de fichiers
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Vérifier si le BA a déjà une soumission attribuée
+  const checkExistingSubmission = async (purchaseOrderId) => {
+    if (!purchaseOrderId) {
+      setHasExistingSubmission(false);
+      return;
+    }
+    
+    try {
+      const { data: poData, error: poError } = await supabase
+        .from('purchase_orders')
+        .select('submission_no')
+        .eq('id', purchaseOrderId)
+        .single();
+      
+      if (poError) throw poError;
+      
+      if (poData?.submission_no) {
+        const { data: submissionData, error: subError } = await supabase
+          .from('submissions')
+          .select('id, submission_number, status, client_name')
+          .eq('submission_number', poData.submission_no)
+          .single();
+        
+        if (subError) {
+          console.error('Erreur récupération soumission:', subError);
+        }
+        
+        setHasExistingSubmission(true);
+        setExistingSubmissionData(submissionData || { submission_number: poData.submission_no });
+      } else {
+        setHasExistingSubmission(false);
+        setExistingSubmissionData(null);
+      }
+    } catch (error) {
+      console.error('Erreur vérification soumission:', error);
+    }
+  };
+
+  // Charger les achats fournisseurs liés
+  const loadSupplierPurchases = async (purchaseOrderId) => {
+    if (!purchaseOrderId) {
+      setSupplierPurchases([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .select(`
+          id,
+          purchase_number,
+          supplier_name,
+          linked_po_number,
+          total_amount,
+          created_at,
+          status,
+          delivery_date
+        `)
+        .eq('linked_po_id', purchaseOrderId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erreur chargement achats fournisseurs:', error);
+        setSupplierPurchases([]);
+      } else {
+        setSupplierPurchases(data || []);
+        console.log(`${data?.length || 0} achats fournisseurs chargés pour le BA ${purchaseOrderId}`);
+      }
+    } catch (error) {
+      console.error('Erreur chargement achats fournisseurs:', error);
+      setSupplierPurchases([]);
+    }
+  };
+
+  // Charger les données si édition
+  useEffect(() => {
+    if (isOpen && editingPO) {
+      loadPOData(editingPO.id);
+      checkExistingSubmission(editingPO.id);
+      loadSupplierPurchases(editingPO.id);
+    } else if (isOpen) {
+      resetForm();
+      loadClients();
+    }
+  }, [isOpen, editingPO]);
+
+  // Charger les données complètes d'un BA existant
+  const loadPOData = async (poId) => {
+    try {
+      setIsLoading(true);
+      
+      const { data: po, error: poError } = await supabase
+        .from('purchase_orders')
+        .select('*')
+        .eq('id', poId)
+        .single();
+      
+      if (poError) throw new Error(poError.message);
+      
+      const { data: poItems, error: itemsError } = await supabase
+        .from('client_po_items')
+        .select('*')
+        .eq('purchase_order_id', poId)
+        .order('product_id');
+      
+      if (itemsError) {
+        console.error('Erreur chargement articles:', itemsError);
+      }
+      
+      const { data: slips, error: slipsError } = await supabase
+        .from('delivery_slips')
+        .select(`
+          *,
+          delivery_slip_items (*)
+        `)
+        .eq('purchase_order_id', poId)
+        .order('created_at', { ascending: false });
+      
+      if (slipsError) {
+        console.error('Erreur chargement livraisons:', slipsError);
+      }
+
+      setFormData(po);
+      setItems(poItems || []);
+      setDeliverySlips(slips || []);
+      setAttachedFiles(po.files || []);
+      
+      console.log(`BA ${po.po_number} chargé avec ${poItems?.length || 0} articles et ${po.files?.length || 0} fichiers`);
+      
+    } catch (err) {
+      console.error('Erreur chargement BA:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonctions pour la gestion des fichiers
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    setIsUploadingFiles(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadedFiles = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Vérifier le type de fichier
+        const allowedTypes = [
+          'application/pdf',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/csv',
+          'image/jpeg',
+          'image/png'
+        ];
+        
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error(`Type de fichier non supporté: ${file.name}`);
+        }
+        
+        // Vérifier la taille (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`Fichier trop volumineux: ${file.name} (max 10MB)`);
+        }
+        
+        // Upload vers Supabase Storage (si configuré) ou stocker en base64
+        const fileName = `${Date.now()}_${file.name}`;
+        
+        // Option 1: Upload vers Supabase Storage
+        /*
+        const { data, error } = await supabase.storage
+          .from('purchase-orders')
+          .upload(`${editingPO?.id || 'temp'}/${fileName}`, file);
+        
+        if (error) throw error;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('purchase-orders')
+          .getPublicUrl(`${editingPO?.id || 'temp'}/${fileName}`);
+        */
+        
+        // Option 2: Stockage en base64 (pour cette demo)
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+        
+        uploadedFiles.push({
+          id: Date.now() + i,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          uploadDate: new Date().toISOString(),
+          data: base64 // En production, utiliser l'URL du storage
+        });
+        
+        setUploadProgress(((i + 1) / files.length) * 100);
+      }
+      
+      const newFiles = [...attachedFiles, ...uploadedFiles];
+      setAttachedFiles(newFiles);
+      setFormData(prev => ({ ...prev, files: newFiles }));
+      
+      console.log(`${uploadedFiles.length} fichier(s) ajouté(s)`);
+      
+    } catch (error) {
+      console.error('Erreur upload fichiers:', error);
+      setError(`Erreur upload: ${error.message}`);
+    } finally {
+      setIsUploadingFiles(false);
+      setUploadProgress(0);
+      event.target.value = ''; // Reset input
+    }
+  };
+
+  const deleteFile = (fileId) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) return;
+    
+    const newFiles = attachedFiles.filter(file => file.id !== fileId);
+    setAttachedFiles(newFiles);
+    setFormData(prev => ({ ...prev, files: newFiles }));
+  };
+
+  const downloadFile = (file) => {
+    if (file.data && file.data.startsWith('data:')) {
+      // Télécharger depuis base64
+      const link = document.createElement('a');
+      link.href = file.data;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (file.url) {
+      // Télécharger depuis URL
+      window.open(file.url, '_blank');
+    }
+  };
+
+  const viewFile = (file) => {
+    if (file.data && file.data.startsWith('data:')) {
+      // Ouvrir en base64
+      const newWindow = window.open();
+      if (file.type.includes('pdf')) {
+        newWindow.document.write(`<iframe src="${file.data}" width="100%" height="100%"></iframe>`);
+      } else if (file.type.includes('image')) {
+        newWindow.document.write(`<img src="${file.data}" style="max-width: 100%; height: auto;">`);
+      } else {
+        downloadFile(file);
+      }
+    } else if (file.url) {
+      window.open(file.url, '_blank');
+    }
+  };
+
+);
   };
 
   // Reset form
@@ -1557,7 +1874,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <button
-                                  onClick={() => viewSupplierPurchase(purchase.id)}
+                                  onClick={() => visualizeSupplierPurchase(purchase)}
                                   className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
                                 >
                                   Voir
@@ -1699,6 +2016,153 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             }
           }}
         />
+      )}
+      {/* Modal visualisation achat fournisseur */}
+      {showSupplierPurchaseModal && selectedSupplierPurchase && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header du modal */}
+            <div className="bg-white px-6 py-4 flex justify-between items-center border-b">
+              <h3 className="text-xl font-semibold">Achat Fournisseur {selectedSupplierPurchase.purchase_number}</h3>
+              <button
+                onClick={() => setShowSupplierPurchaseModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Contenu du modal - Format d'impression */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="max-w-3xl mx-auto bg-white">
+                {/* En-tête du document */}
+                <div className="text-center mb-6">
+                  <h1 className="text-2xl font-bold mb-4">ACHAT FOURNISSEUR</h1>
+                  <h2 className="text-xl font-semibold">N°: {selectedSupplierPurchase.purchase_number}</h2>
+                  <p className="mt-2">Date: {new Date(selectedSupplierPurchase.created_at).toLocaleDateString()}</p>
+                </div>
+                
+                <hr className="my-6 border-black" />
+                
+                {/* Informations principales */}
+                <div className="grid grid-cols-2 gap-8 mb-6">
+                  <div>
+                    <h3 className="font-bold text-lg mb-2">FOURNISSEUR:</h3>
+                    <p className="text-lg">{selectedSupplierPurchase.supplier_name}</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p><strong>Date création:</strong> {new Date(selectedSupplierPurchase.created_at).toLocaleDateString()}</p>
+                    {selectedSupplierPurchase.delivery_date && (
+                      <p><strong>Date livraison:</strong> {new Date(selectedSupplierPurchase.delivery_date).toLocaleDateString()}</p>
+                    )}
+                    <p><strong>Statut:</strong> {selectedSupplierPurchase.status}</p>
+                  </div>
+                </div>
+                
+                {/* Lien avec bon d'achat client */}
+                {selectedSupplierPurchase.linked_po_number && (
+                  <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                    <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                      🔗 LIEN AVEC BON D'ACHAT CLIENT:
+                    </h3>
+                    <p><strong>N° Bon d'achat:</strong> {selectedSupplierPurchase.linked_po_number}</p>
+                    <p className="italic text-sm mt-1">Cet achat fournisseur est lié au bon d'achat client ci-dessus</p>
+                  </div>
+                )}
+                
+                {/* Détail des articles */}
+                <div className="mb-6">
+                  <h3 className="font-bold text-lg mb-4">DÉTAIL DES ARTICLES:</h3>
+                  
+                  {selectedSupplierPurchase.items && selectedSupplierPurchase.items.length > 0 ? (
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-300 px-3 py-2 text-left">Code</th>
+                          <th className="border border-gray-300 px-3 py-2 text-left">Description</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">Qté</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">Unité</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">Prix Unit.</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedSupplierPurchase.items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="border border-gray-300 px-3 py-2">{item.product_id || item.code || '-'}</td>
+                            <td className="border border-gray-300 px-3 py-2">{item.description || item.name || '-'}</td>
+                            <td className="border border-gray-300 px-3 py-2 text-center">{item.quantity || 1}</td>
+                            <td className="border border-gray-300 px-3 py-2 text-center">{item.unit || 'UN'}</td>
+                            <td className="border border-gray-300 px-3 py-2 text-center">${parseFloat(item.price || 0).toFixed(2)}</td>
+                            <td className="border border-gray-300 px-3 py-2 text-center">${((item.quantity || 1) * parseFloat(item.price || 0)).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-gray-500 italic">Aucun détail d'article disponible</p>
+                  )}
+                </div>
+                
+                {/* Totaux */}
+                <div className="border-t-2 border-black pt-4">
+                  <div className="flex justify-end">
+                    <div className="w-64">
+                      <div className="flex justify-between py-1">
+                        <span className="font-semibold">Sous-total:</span>
+                        <span className="font-semibold">${parseFloat(selectedSupplierPurchase.subtotal || 0).toFixed(2)}</span>
+                      </div>
+                      {parseFloat(selectedSupplierPurchase.taxes || 0) > 0 && (
+                        <div className="flex justify-between py-1">
+                          <span>Taxes:</span>
+                          <span>${parseFloat(selectedSupplierPurchase.taxes || 0).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {parseFloat(selectedSupplierPurchase.shipping_cost || 0) > 0 && (
+                        <div className="flex justify-between py-1">
+                          <span>Livraison:</span>
+                          <span>${parseFloat(selectedSupplierPurchase.shipping_cost || 0).toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between py-2 border-t border-gray-300 font-bold text-lg">
+                        <span>TOTAL GÉNÉRAL:</span>
+                        <span>${parseFloat(selectedSupplierPurchase.total_amount || 0).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Notes si présentes */}
+                {selectedSupplierPurchase.notes && (
+                  <div className="mt-6 p-4 bg-gray-50 rounded">
+                    <h4 className="font-semibold mb-2">Notes:</h4>
+                    <p className="text-sm">{selectedSupplierPurchase.notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Footer avec bouton imprimer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
+              <div></div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Imprimer
+                </button>
+                <button
+                  onClick={() => setShowSupplierPurchaseModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
