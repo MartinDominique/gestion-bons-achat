@@ -978,70 +978,20 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
           {/* Navigation par onglets */}
           <div className="bg-gray-50 border-b border-gray-200">
-            <nav className="flex space-x-0">
+            <nav className="flex">
               <button
                 onClick={() => setActiveTab('info')}
-                className={'px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
+                className={'w-48 py-4 border-b-2 font-medium text-sm flex flex-col items-center gap-1 ' + (
                   activeTab === 'info'
                     ? 'border-blue-500 text-blue-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 )}
               >
                 <span>📋</span>
-                Informations
+                <span>Informations</span>
               </button>
               <button
-                onClick={() => setActiveTab('articles')}
-                className={'px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
-                  activeTab === 'articles'
-                    ? 'border-blue-500 text-blue-600 bg-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                )}
-              >
-                <span>📦</span>
-                Articles
-                {items.length > 0 && (
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                    {items.length}
-                  </span>
-                )}
-              </button>
-              {editingPO && (
-                <button
-                  onClick={() => setActiveTab('livraisons')}
-                  className={'px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
-                    activeTab === 'livraisons'
-                      ? 'border-blue-500 text-blue-600 bg-white'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  )}
-                >
-                  <span>🚚</span>
-                  Livraisons
-                  {deliverySlips.length > 0 && (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                      {deliverySlips.length}
-                    </span>
-                  )}
-                </button>
-              )}
-              <button
-                onClick={() => setActiveTab('documents')}
-                className={'px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
-                  activeTab === 'documents'
-                    ? 'border-blue-500 text-blue-600 bg-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                )}
-              >
-                <span>📎</span>
-                Documents & Achats
-                {attachedFiles.length > 0 && (
-                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
-                    {attachedFiles.length}
-                  </span>
-                )}
-              </button>
-            </nav>
-          </div>
+                onClick={() => setActive
 
           {/* Message d'erreur */}
           {error && (
