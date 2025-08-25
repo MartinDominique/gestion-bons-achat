@@ -214,13 +214,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         /*
         const { data, error } = await supabase.storage
           .from('purchase-orders')
-          .upload(`${editingPO?.id || 'temp'}/${fileName}`, file);
+          .upload((editingPO?.id || 'temp') + '/' + fileName, file);
         
         if (error) throw error;
         
         const { data: { publicUrl } } = supabase.storage
           .from('purchase-orders')
-          .getPublicUrl(`${editingPO?.id || 'temp'}/${fileName}`);
+          .getPublicUrl((editingPO?.id || 'temp') + '/' + fileName);
         */
         
         // Option 2: Stockage en base64 (pour cette demo)
