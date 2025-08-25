@@ -980,7 +980,21 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           <div className="bg-gray-50 border-b border-gray-200">
             <nav className="flex">
               <button
-                onClick={() => setActiveTab('info')}
+                onClick={() => setActiveTab('articles')}
+                className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
+                  activeTab === 'articles'
+                    ? 'border-blue-500 text-blue-600 bg-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                )}
+              >
+                <span>📦</span>
+                <span>Articles</span>
+                {items.length > 0 && (
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-1">
+                    {items.length}
+                  </span>
+                )}
+              </button>Tab('info')}
                 className={'w-48 py-4 border-b-2 font-medium text-sm flex flex-col items-center gap-1 ' + (
                   activeTab === 'info'
                     ? 'border-blue-500 text-blue-600 bg-white'
