@@ -162,7 +162,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setDeliverySlips(slips || []);
       setAttachedFiles(po.files || []);
       
-      console.log(`BA ${po.po_number} chargé avec ${poItems?.length || 0} articles et ${po.files?.length || 0} fichiers`);
+      console.log('BA ' + po.po_number + ' chargé avec ' + (poItems?.length || 0) + ' articles et ' + (po.files?.length || 0) + ' fichiers');
       
     } catch (err) {
       console.error('Erreur chargement BA:', err);
@@ -457,10 +457,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       
       const { data: slips, error: slipsError } = await supabase
         .from('delivery_slips')
-        .select(`
-          *,
-          delivery_slip_items (*)
-        `)
+        .select('*, delivery_slip_items (*)')
         .eq('purchase_order_id', poId)
         .order('created_at', { ascending: false });
       
