@@ -978,7 +978,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
           {/* Navigation par onglets */}
           <div className="bg-gray-50 border-b border-gray-200">
-            <nav className="flex">
+            <nav className="flex space-x-0">
+              <button
+                onClick={() => setActiveTab('info')}
+                className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
+                  activeTab === 'info'
+                    ? 'border-blue-500 text-blue-600 bg-white'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                )}
+              >
+                <span>📋</span>
+                <span>Informations</span>
+              </button>
               <button
                 onClick={() => setActiveTab('articles')}
                 className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
@@ -994,18 +1005,43 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     {items.length}
                   </span>
                 )}
-              </button>Tab('info')}
-                className={'w-48 py-4 border-b-2 font-medium text-sm flex flex-col items-center gap-1 ' + (
-                  activeTab === 'info'
+              </button>
+              {editingPO && (
+                <button
+                  onClick={() => setActiveTab('livraisons')}
+                  className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
+                    activeTab === 'livraisons'
+                      ? 'border-blue-500 text-blue-600 bg-white'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  )}
+                >
+                  <span>🚚</span>
+                  <span>Livraisons</span>
+                  {deliverySlips.length > 0 && (
+                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-1">
+                      {deliverySlips.length}
+                    </span>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={() => setActiveTab('documents')}
+                className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
+                  activeTab === 'documents'
                     ? 'border-blue-500 text-blue-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 )}
               >
-                <span>📋</span>
-                <span>Informations</span>
+                <span>📎</span>
+                <span>Documents & Achats</span>
+                {attachedFiles.length > 0 && (
+                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full ml-1">
+                    {attachedFiles.length}
+                  </span>
+                )}
               </button>
-              <button
-                onClick={() => setActive
+            </nav>
+          </div>
 
           {/* Message d'erreur */}
           {error && (
