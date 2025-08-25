@@ -1741,16 +1741,22 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedSupplierPurchase.items.map((item, index) => (
-                          <tr key={index}>
-                            <td className="border border-gray-300 px-3 py-2">{item.product_id || item.code || '-'}</td>
-                            <td className="border border-gray-300 px-3 py-2">{item.description || item.name || '-'}</td>
-                            <td className="border border-gray-300 px-3 py-2 text-center">{item.quantity || 1}</td>
-                            <td className="border border-gray-300 px-3 py-2 text-center">{item.unit || 'UN'}</td>
-                            <td className="border border-gray-300 px-3 py-2 text-center">${parseFloat(item.price || 0).toFixed(2)}</td>
-                            <td className="border border-gray-300 px-3 py-2 text-center">${((item.quantity || 1) * parseFloat(item.price || 0)).toFixed(2)}</td>
-                          </tr>
-                        ))}
+                        {selectedSupplierPurchase.items.map((item, index) => {
+                          const quantity = parseFloat(item.quantity || item.qty || 1);
+                          const unitPrice = parseFloat(item.price || item.unit_price || item.selling_price || 0);
+                          const lineTotal = quantity * unitPrice;
+                          
+                          return (
+                            <tr key={index}>
+                              <td className="border border-gray-300 px-3 py-2">{item.product_id || item.code || item.sku || '-'}</td>
+                              <td className="border border-gray-300 px-3 py-2">{item.description || item.name || item.product_name || '-'}</td>
+                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{quantity}</td>
+                              <td className="border border-gray-300 px-3 py-2 text-center">{item.unit || item.unity || 'UN'}</td>
+                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">${unitPrice.toFixed(2)}</td>
+                              <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-600">${lineTotal.toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   ) : (
