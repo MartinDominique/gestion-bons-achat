@@ -47,6 +47,33 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Charger les achats fournisseurs liés
+  const loadSupplierPurchases = async (purchaseOrderId) => {
+    if (!purchaseOrderId) {
+      setSupplierPurchases([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .select('id, purchase_number, supplier_name, linked_po_number, total_amount, created_at, status, delivery_date, subtotal, taxes, shipping_cost, items, notes')
+        .eq('linked_po_id', purchaseOrderId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erreur chargement achats fournisseurs:', error);
+        setSupplierPurchases([]);
+      } else {
+        setSupplierPurchases(data || []);
+        console.log((data?.length || 0) + ' achats fournisseurs chargés pour le BA ' + purchaseOrderId);
+      }
+    } catch (error) {
+      console.error('Erreur chargement achats fournisseurs:', error);
+      setSupplierPurchases([]);
+    }
+  };
+
   // Vérifier si le BA a déjà une soumission attribuée
   const checkExistingSubmission = async (purchaseOrderId) => {
     if (!purchaseOrderId) {
@@ -82,33 +109,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       }
     } catch (error) {
       console.error('Erreur vérification soumission:', error);
-    }
-  };
-
-  // Charger les achats fournisseurs liés
-  const loadSupplierPurchases = async (purchaseOrderId) => {
-    if (!purchaseOrderId) {
-      setSupplierPurchases([]);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('supplier_purchases')
-        .select('id, purchase_number, supplier_name, linked_po_number, total_amount, created_at, status, delivery_date')
-        .eq('linked_po_id', purchaseOrderId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Erreur chargement achats fournisseurs:', error);
-        setSupplierPurchases([]);
-      } else {
-        setSupplierPurchases(data || []);
-        console.log(data?.length || 0, 'achats fournisseurs chargés pour le BA', purchaseOrderId);
-      }
-    } catch (error) {
-      console.error('Erreur chargement achats fournisseurs:', error);
-      setSupplierPurchases([]);
     }
   };
 
@@ -208,312 +208,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         }
         
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
-        const fileName = `${Date.now()}_${file.name}`;
-        
-        // Option 1: Upload vers Supabase Storage
-        /*
-        const { data, error } = await supabase.storage
-          .from('purchase-orders')
-          .upload((editingPO?.id || 'temp') + '/' + fileName, file);
-        
-        if (error) throw error;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('purchase-orders')
-          .getPublicUrl((editingPO?.id || 'temp') + '/' + fileName);
-        */
-        
-        // Option 2: Stockage en base64 (pour cette demo)
-        const base64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(file);
-        });
-        
-        uploadedFiles.push({
-          id: Date.now() + i,
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          uploadDate: new Date().toISOString(),
-          data: base64 // En production, utiliser l'URL du storage
-        });
-        
-        setUploadProgress(((i + 1) / files.length) * 100);
-      }
-      
-      const newFiles = [...attachedFiles, ...uploadedFiles];
-      setAttachedFiles(newFiles);
-      setFormData(prev => ({ ...prev, files: newFiles }));
-      
-      console.log((uploadedFiles.length) + ' fichier(s) ajouté(s)');
-      
-    } catch (error) {
-      console.error('Erreur upload fichiers:', error);
-      setError('Erreur upload: ' + error.message);
-    } finally {
-      setIsUploadingFiles(false);
-      setUploadProgress(0);
-      event.target.value = ''; // Reset input
-    }
-  };
-
-  const deleteFile = (fileId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) return;
-    
-    const newFiles = attachedFiles.filter(file => file.id !== fileId);
-    setAttachedFiles(newFiles);
-    setFormData(prev => ({ ...prev, files: newFiles }));
-  };
-
-  const downloadFile = (file) => {
-    if (file.data && file.data.startsWith('data:')) {
-      // Télécharger depuis base64
-      const link = document.createElement('a');
-      link.href = file.data;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else if (file.url) {
-      // Télécharger depuis URL
-      window.open(file.url, '_blank');
-    }
-  };
-
-  const viewFile = (file) => {
-    if (file.data && file.data.startsWith('data:')) {
-      // Ouvrir en base64
-      const newWindow = window.open();
-      if (file.type.includes('pdf')) {
-        newWindow.document.write('<iframe src="' + file.data + '" width="100%" height="100%"></iframe>');
-      } else if (file.type.includes('image')) {
-        newWindow.document.write('<img src="' + file.data + '" style="max-width: 100%; height: auto;">');
-      } else {
-        downloadFile(file);
-      }
-    } else if (file.url) {
-      window.open(file.url, '_blank');
-    }
-  };
-
-  // Fonction pour voir les détails d'un achat fournisseur
-  const visualizeSupplierPurchase = (purchase) => {
-    // Cette fonction devrait déjà exister dans votre codebase
-    // Si elle n'est pas disponible dans ce composant, vous devez l'importer ou la passer en props
-    console.log('Visualisation achat fournisseur:', purchase);
-    
-    // Solutions possibles:
-    // 1. Si la fonction existe ailleurs, l'importer: import { visualizeSupplierPurchase } from '../path/to/supplier-functions';
-    // 2. Ouvrir un modal dédié
-    // 3. Naviguer vers la page des achats fournisseurs
-    // Exemple temporaire:
-    alert('Voir achat ' + purchase.purchase_number + ' de ' + purchase.supplier_name + ' - ' + purchase.total_amount + '$');
-
-const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) => {
-  // État principal du formulaire
-  const [formData, setFormData] = useState({
-    po_number: '',
-    client_name: '',
-    client_email: '',
-    client_phone: '',
-    client_address: '',
-    date: new Date().toISOString().split('T')[0],
-    delivery_date: '',
-    payment_terms: '',
-    special_instructions: '',
-    submission_no: '',
-    amount: 0,
-    status: 'draft',
-    files: []
-  });
-
-  // États de l'interface
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('info');
-  
-  // États pour les modals
-  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-  
-  // Données pour les sélections
-  const [clients, setClients] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
-  const [items, setItems] = useState([]);
-  const [deliverySlips, setDeliverySlips] = useState([]);
-  const [attachedFiles, setAttachedFiles] = useState([]);
-  const [supplierPurchases, setSupplierPurchases] = useState([]);
-  
-  // Vérification soumission existante
-  const [hasExistingSubmission, setHasExistingSubmission] = useState(false);
-  const [existingSubmissionData, setExistingSubmissionData] = useState(null);
-
-  // États pour upload de fichiers
-  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  // Vérifier si le BA a déjà une soumission attribuée
-  const checkExistingSubmission = async (purchaseOrderId) => {
-    if (!purchaseOrderId) {
-      setHasExistingSubmission(false);
-      return;
-    }
-    
-    try {
-      const { data: poData, error: poError } = await supabase
-        .from('purchase_orders')
-        .select('submission_no')
-        .eq('id', purchaseOrderId)
-        .single();
-      
-      if (poError) throw poError;
-      
-      if (poData?.submission_no) {
-        const { data: submissionData, error: subError } = await supabase
-          .from('submissions')
-          .select('id, submission_number, status, client_name')
-          .eq('submission_number', poData.submission_no)
-          .single();
-        
-        if (subError) {
-          console.error('Erreur récupération soumission:', subError);
-        }
-        
-        setHasExistingSubmission(true);
-        setExistingSubmissionData(submissionData || { submission_number: poData.submission_no });
-      } else {
-        setHasExistingSubmission(false);
-        setExistingSubmissionData(null);
-      }
-    } catch (error) {
-      console.error('Erreur vérification soumission:', error);
-    }
-  };
-
-  // Charger les achats fournisseurs liés
-  const loadSupplierPurchases = async (purchaseOrderId) => {
-    if (!purchaseOrderId) {
-      setSupplierPurchases([]);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('supplier_purchases')
-        .select('id, purchase_number, supplier_name, linked_po_number, total_amount, created_at, status, delivery_date, subtotal, taxes, shipping_cost, items, notes')
-        .eq('linked_po_id', purchaseOrderId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Erreur chargement achats fournisseurs:', error);
-        setSupplierPurchases([]);
-      } else {
-        setSupplierPurchases(data || []);
-        console.log((data?.length || 0) + ' achats fournisseurs chargés pour le BA ' + purchaseOrderId);
-      }
-    } catch (error) {
-      console.error('Erreur chargement achats fournisseurs:', error);
-      setSupplierPurchases([]);
-    }
-  };
-
-  // Charger les données si édition
-  useEffect(() => {
-    if (isOpen && editingPO) {
-      loadPOData(editingPO.id);
-      checkExistingSubmission(editingPO.id);
-      loadSupplierPurchases(editingPO.id);
-    } else if (isOpen) {
-      resetForm();
-      loadClients();
-    }
-  }, [isOpen, editingPO]);
-
-  // Charger les données complètes d'un BA existant
-  const loadPOData = async (poId) => {
-    try {
-      setIsLoading(true);
-      
-      const { data: po, error: poError } = await supabase
-        .from('purchase_orders')
-        .select('*')
-        .eq('id', poId)
-        .single();
-      
-      if (poError) throw new Error(poError.message);
-      
-      const { data: poItems, error: itemsError } = await supabase
-        .from('client_po_items')
-        .select('*')
-        .eq('purchase_order_id', poId)
-        .order('product_id');
-      
-      if (itemsError) {
-        console.error('Erreur chargement articles:', itemsError);
-      }
-      
-      const { data: slips, error: slipsError } = await supabase
-        .from('delivery_slips')
-        .select('*, delivery_slip_items (*)')
-        .eq('purchase_order_id', poId)
-        .order('created_at', { ascending: false });
-      
-      if (slipsError) {
-        console.error('Erreur chargement livraisons:', slipsError);
-      }
-
-      setFormData(po);
-      setItems(poItems || []);
-      setDeliverySlips(slips || []);
-      setAttachedFiles(po.files || []);
-      
-      console.log('BA ' + po.po_number + ' chargé avec ' + (poItems?.length || 0) + ' articles et ' + (po.files?.length || 0) + ' fichiers');
-      
-    } catch (err) {
-      console.error('Erreur chargement BA:', err);
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fonctions pour la gestion des fichiers
-  const handleFileUpload = async (event) => {
-    const files = Array.from(event.target.files);
-    if (files.length === 0) return;
-
-    setIsUploadingFiles(true);
-    setUploadProgress(0);
-
-    try {
-      const uploadedFiles = [];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        
-        // Vérifier le type de fichier
-        const allowedTypes = [
-          'application/pdf',
-          'application/vnd.ms-excel',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'text/csv',
-          'image/jpeg',
-          'image/png'
-        ];
-        
-        if (!allowedTypes.includes(file.type)) {
-          throw new Error('Type de fichier non supporté: ' + file.name);
-        }
-        
-        // Vérifier la taille (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-           throw new Error('Fichier trop volumineux: ' + file.name + ' (max 10MB)');
-        }
-        
-        // Upload vers Supabase Storage (si configuré) ou stocker en base64
         const fileName = Date.now() + '_' + file.name;
         
         // Option 1: Upload vers Supabase Storage
@@ -601,7 +295,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     } else if (file.url) {
       window.open(file.url, '_blank');
     }
-   };
+  };
+
+  // Fonction pour voir les détails d'un achat fournisseur
+  const visualizeSupplierPurchase = (purchase) => {
+    setSelectedSupplierPurchase(purchase);
+    setShowSupplierPurchaseModal(true);
   };
 
   // Reset form
@@ -690,7 +389,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       
     } catch (err) {
       console.error('Erreur chargement soumissions:', err);
-              setError('Erreur soumissions: ' + err.message);
+      setError('Erreur soumissions: ' + err.message);
     }
   };
 
@@ -711,8 +410,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       
       const submissionItems = submission.items || [];
       const importedItems = submissionItems.map((item, index) => ({
-        id: `temp-${index}`,
-        product_id: item.product_id || item.code || `ITEM-${index + 1}`,
+        id: 'temp-' + index,
+        product_id: item.product_id || item.code || 'ITEM-' + (index + 1),
         description: item.name || item.description || 'Article',
         quantity: parseFloat(item.quantity) || 0,
         unit: item.unit || 'unité',
@@ -736,7 +435,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   // Ajouter un nouvel article manuellement
   const addNewItem = () => {
     const newItem = {
-      id: `new-${Date.now()}`,
+      id: 'new-' + Date.now(),
       product_id: '',
       description: '',
       quantity: 0,
@@ -1017,13 +716,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     if (!editingPO) return;
 
     const confirmDelete = window.confirm(
-      `Êtes-vous sûr de vouloir supprimer le bon d'achat ${editingPO.po_number} ?\n\n` +
-      `Cette action supprimera également :\n` +
-      `- Tous les articles du BA\n` +
-      `- Tous les bons de livraison associés\n` +
-      `- Tous les fichiers joints\n` +
-      `- Toutes les données liées\n\n` +
-      `Cette action est IRRÉVERSIBLE.`
+      'Êtes-vous sûr de vouloir supprimer le bon d\'achat ' + editingPO.po_number + ' ?\n\n' +
+      'Cette action supprimera également :\n' +
+      '- Tous les articles du BA\n' +
+      '- Tous les bons de livraison associés\n' +
+      '- Tous les fichiers joints\n' +
+      '- Toutes les données liées\n\n' +
+      'Cette action est IRRÉVERSIBLE.'
     );
 
     if (!confirmDelete) return;
@@ -1186,7 +885,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           .from('client_po_items')
           .insert(itemsData);
         
-        if (itemsError)         throw new Error('Erreur sauvegarde articles: ' + itemsError.message);
+        if (itemsError) throw new Error('Erreur sauvegarde articles: ' + itemsError.message);
         
         const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
         
@@ -1262,7 +961,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold">
-                  {editingPO ? `Modifier BA #${editingPO.po_number}` : 'Nouveau Bon d\'Achat Client'}
+                  {editingPO ? 'Modifier BA #' + editingPO.po_number : 'Nouveau Bon d\'Achat Client'}
                 </h2>
                 <p className="text-blue-100 mt-1">
                   Gestion complète des bons d'achat clients
@@ -1282,22 +981,22 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             <nav className="flex space-x-0">
               <button
                 onClick={() => setActiveTab('info')}
-                className={`px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                className={'px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
                   activeTab === 'info'
                     ? 'border-blue-500 text-blue-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                )}
               >
                 <span>📋</span>
                 Informations
               </button>
               <button
                 onClick={() => setActiveTab('articles')}
-                className={`px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                className={'px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
                   activeTab === 'articles'
                     ? 'border-blue-500 text-blue-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                )}
               >
                 <span>📦</span>
                 Articles
@@ -1310,11 +1009,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               {editingPO && (
                 <button
                   onClick={() => setActiveTab('livraisons')}
-                  className={`px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  className={'px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
                     activeTab === 'livraisons'
                       ? 'border-blue-500 text-blue-600 bg-white'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                  )}
                 >
                   <span>🚚</span>
                   Livraisons
@@ -1327,11 +1026,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               )}
               <button
                 onClick={() => setActiveTab('documents')}
-                className={`px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                className={'px-6 py-4 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
                   activeTab === 'documents'
                     ? 'border-blue-500 text-blue-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                )}
               >
                 <span>📎</span>
                 Documents & Achats
@@ -1626,11 +1325,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     Livraisons ({deliverySlips.length})
                   </h3>
                   <div className="flex items-center gap-4">
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    <div className={'px-3 py-1 rounded-full text-sm font-medium ' + (
                       deliveryStatus === 'completed' ? 'bg-green-100 text-green-800' :
                       deliveryStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-gray-100 text-gray-800'
-                    }`}>
+                    )}>
                       {deliveryStatus === 'completed' && 'Livraison Complète'}
                       {deliveryStatus === 'partial' && 'Livraison Partielle'}
                       {deliveryStatus === 'not_started' && 'Non Commencé'}
@@ -1665,11 +1364,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                               <p className="text-sm text-gray-500">Suivi: {slip.tracking_number}</p>
                             )}
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
                             slip.status === 'delivered' ? 'bg-green-100 text-green-800' :
                             slip.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
                             'bg-yellow-100 text-yellow-800'
-                          }`}>
+                          )}>
                             {slip.status}
                           </span>
                         </div>
@@ -1715,9 +1414,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                       />
                       <label
                         htmlFor="fileUpload"
-                        className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer flex items-center gap-2 ${
+                        className={'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer flex items-center gap-2 ' + (
                           isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        )}
                       >
                         📎 Choisir Fichiers
                       </label>
@@ -1729,7 +1428,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
+                        style={{ width: uploadProgress + '%' }}
                       ></div>
                     </div>
                   )}
@@ -1836,11 +1535,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-center">
-                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
                                   purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
                                   purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                   'bg-gray-100 text-gray-800'
-                                }`}>
+                                )}>
                                   {purchase.status}
                                 </span>
                               </td>
@@ -1970,25 +1669,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         </div>
       )}
 
-      {/* Modal de livraison */}
-      {showDeliveryModal && (
-        <DeliverySlipModal
-          isOpen={showDeliveryModal}
-          onClose={() => {
-            setShowDeliveryModal(false);
-            if (editingPO) {
-              loadPOData(editingPO.id);
-            }
-          }}
-          purchaseOrder={editingPO}
-          onRefresh={() => {
-            if (onRefresh) onRefresh();
-            if (editingPO) {
-              loadPOData(editingPO.id);
-            }
-          }}
-        />
-      )}
       {/* Modal visualisation achat fournisseur */}
       {showSupplierPurchaseModal && selectedSupplierPurchase && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -2135,6 +1815,26 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de livraison */}
+      {showDeliveryModal && (
+        <DeliverySlipModal
+          isOpen={showDeliveryModal}
+          onClose={() => {
+            setShowDeliveryModal(false);
+            if (editingPO) {
+              loadPOData(editingPO.id);
+            }
+          }}
+          purchaseOrder={editingPO}
+          onRefresh={() => {
+            if (onRefresh) onRefresh();
+            if (editingPO) {
+              loadPOData(editingPO.id);
+            }
+          }}
+        />
       )}
     </>
   );
