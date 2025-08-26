@@ -25,6 +25,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('info');
   
+  // NOUVEAU: État pour le mode de calcul du montant
+  const [amountMode, setAmountMode] = useState('auto'); // 'auto' ou 'manual'
+  
   // États pour les modals
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -162,6 +165,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setDeliverySlips(slips || []);
       setAttachedFiles(po.files || []);
       
+      // Déterminer le mode de calcul du montant
+      if (poItems && poItems.length > 0) {
+        const calculatedAmount = poItems.reduce((sum, item) => 
+          sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+        );
+        const currentAmount = parseFloat(po.amount || 0);
+        
+        // Si le montant actuel diffère du calcul, c'est probablement manuel
+        setAmountMode(Math.abs(calculatedAmount - currentAmount) > 0.01 ? 'manual' : 'auto');
+      }
+      
       console.log('BA ' + po.po_number + ' chargé avec ' + (poItems?.length || 0) + ' articles et ' + (po.files?.length || 0) + ' fichiers');
       
     } catch (err) {
@@ -170,6 +184,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // NOUVEAU: Fonction pour recalculer le montant
+  const recalculateAmount = () => {
+    const totalAmount = items.reduce((sum, item) => 
+      sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+    );
+    setFormData(prev => ({ ...prev, amount: totalAmount }));
+    setAmountMode('auto');
   };
 
   // Fonctions pour la gestion des fichiers
@@ -209,19 +232,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
         const fileName = Date.now() + '_' + file.name;
-        
-        // Option 1: Upload vers Supabase Storage
-        /*
-        const { data, error } = await supabase.storage
-          .from('purchase-orders')
-          .upload((editingPO?.id || 'temp') + '/' + fileName, file);
-        
-        if (error) throw error;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('purchase-orders')
-          .getPublicUrl((editingPO?.id || 'temp') + '/' + fileName);
-        */
         
         // Option 2: Stockage en base64 (pour cette demo)
         const base64 = await new Promise((resolve) => {
@@ -328,6 +338,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     setError('');
     setHasExistingSubmission(false);
     setExistingSubmissionData(null);
+    setAmountMode('auto'); // Reset du mode de calcul
   };
 
   // Charger les clients
@@ -393,7 +404,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
   };
 
-  // Importer une soumission
+  // MODIFIÉ: Importer une soumission avec gestion flexible du montant
   const importSubmission = async (submission) => {
     try {
       console.log('Import soumission:', submission.submission_number);
@@ -404,8 +415,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         client_email: submission.client_email || prev.client_email,
         client_phone: submission.client_phone || prev.client_phone,
         client_address: submission.client_address || prev.client_address,
-        submission_no: submission.submission_number,
-        amount: parseFloat(submission.amount) || 0
+        submission_no: submission.submission_number
       }));
       
       const submissionItems = submission.items || [];
@@ -421,6 +431,34 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       }));
       
       setItems(importedItems);
+      
+      // Calculer le montant des articles importés
+      const calculatedAmount = importedItems.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
+      const submissionAmount = parseFloat(submission.amount) || 0;
+      
+      // Demander à l'utilisateur quel montant utiliser
+      if (Math.abs(calculatedAmount - submissionAmount) > 0.01) {
+        const useSubmissionAmount = window.confirm(
+          `Quel montant voulez-vous utiliser ?\n\n` +
+          `Montant de la soumission: ${submissionAmount.toFixed(2)}$\n` +
+          `Montant calculé des articles: ${calculatedAmount.toFixed(2)}$\n\n` +
+          `Cliquez OK pour utiliser le montant de la soumission\n` +
+          `Cliquez Annuler pour utiliser le calcul des articles`
+        );
+
+        if (useSubmissionAmount) {
+          setAmountMode('manual');
+          setFormData(prev => ({ ...prev, amount: submissionAmount }));
+        } else {
+          setAmountMode('auto');
+          setFormData(prev => ({ ...prev, amount: calculatedAmount }));
+        }
+      } else {
+        // Les montants sont identiques, utiliser le mode auto
+        setAmountMode('auto');
+        setFormData(prev => ({ ...prev, amount: calculatedAmount }));
+      }
+      
       setShowSubmissionModal(false);
       setActiveTab('articles');
       
@@ -448,27 +486,33 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     setActiveTab('articles');
   };
 
-  // Mettre à jour un article
+  // MODIFIÉ: Mettre à jour un article avec gestion du montant
   const updateItem = (index, updatedItem) => {
     const newItems = [...items];
     newItems[index] = updatedItem;
     setItems(newItems);
     
-    const totalAmount = newItems.reduce((sum, item) => 
-      sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
-    );
-    setFormData(prev => ({ ...prev, amount: totalAmount }));
+    // Calculer automatiquement seulement si mode auto
+    if (amountMode === 'auto') {
+      const totalAmount = newItems.reduce((sum, item) => 
+        sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+      );
+      setFormData(prev => ({ ...prev, amount: totalAmount }));
+    }
   };
 
-  // Supprimer un article
+  // MODIFIÉ: Supprimer un article avec gestion du montant
   const deleteItem = (index) => {
     const newItems = items.filter((_, i) => i !== index);
     setItems(newItems);
     
-    const totalAmount = newItems.reduce((sum, item) => 
-      sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
-    );
-    setFormData(prev => ({ ...prev, amount: totalAmount }));
+    // Calculer automatiquement seulement si mode auto
+    if (amountMode === 'auto') {
+      const totalAmount = newItems.reduce((sum, item) => 
+        sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+      );
+      setFormData(prev => ({ ...prev, amount: totalAmount }));
+    }
   };
 
   // Composant pour éditer une ligne d'article
@@ -703,7 +747,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 title="Supprimer"
               >
                 🗑️
-              </button>
+            </button>
             )}
           </div>
         </td>
@@ -888,12 +932,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         
         if (itemsError) throw new Error('Erreur sauvegarde articles: ' + itemsError.message);
         
-        const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
-        
-        await supabase
-          .from('purchase_orders')
-          .update({ amount: totalAmount })
-          .eq('id', poData.id);
+        // Mettre à jour le montant seulement si mode auto
+        if (amountMode === 'auto') {
+          const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
+          
+          await supabase
+            .from('purchase_orders')
+            .update({ amount: totalAmount })
+            .eq('id', poData.id);
+        }
       }
       
       console.log('BA ' + poData.po_number + ' sauvegardé avec succès');
@@ -1160,20 +1207,88 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     />
                   </div>
 
-                  <div>
+                  {/* NOUVEAU: Champ montant avec gestion flexible */}
+                  <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Montant
                     </label>
-                    <input
-                      type="number"
-                      name="amount"
-                      value={formData.amount}
-                      onChange={handleChange}
-                      step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100"
-                      placeholder="0.00"
-                      readOnly
-                    />
+                    
+                    {/* Mode de calcul */}
+                    <div className="flex items-center gap-4 mb-2">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="auto"
+                          checked={amountMode === 'auto'}
+                          onChange={(e) => {
+                            setAmountMode(e.target.value);
+                            if (e.target.value === 'auto') {
+                              recalculateAmount();
+                            }
+                          }}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Calcul automatique</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="manual"
+                          checked={amountMode === 'manual'}
+                          onChange={(e) => setAmountMode(e.target.value)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Saisie manuelle</span>
+                      </label>
+                    </div>
+                    
+                    {/* Champ montant */}
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        name="amount"
+                        value={formData.amount}
+                        onChange={handleChange}
+                        step="0.01"
+                        readOnly={amountMode === 'auto'}
+                        className={`flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                          amountMode === 'auto' ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+                        }`}
+                        placeholder="0.00"
+                      />
+                      {amountMode === 'manual' && items.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={recalculateAmount}
+                          className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium"
+                          title="Recalculer depuis les articles"
+                        >
+                          ↻ Auto
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Informations sur le calcul */}
+                    <div className="mt-1 text-xs text-gray-500">
+                      {amountMode === 'auto' ? (
+                        items.length > 0 ? (
+                          <span className="text-green-600">
+                            ✓ Calculé automatiquement: {items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}$
+                          </span>
+                        ) : (
+                          <span>Sera calculé automatiquement en ajoutant des articles</span>
+                        )
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <span className="text-blue-600">Montant saisi manuellement</span>
+                          {items.length > 0 && (
+                            <span className="text-gray-400">
+                              (Articles totalisent: {items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}$)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div>
@@ -1313,6 +1428,29 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                         </tfoot>
                       </table>
                     </div>
+
+                    {/* Information sur le mode de calcul du montant */}
+                    {amountMode === 'manual' && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm text-yellow-800">
+                              <strong>Mode manuel activé:</strong> Le montant du BA ne sera pas recalculé automatiquement.
+                            </p>
+                            <p className="text-xs text-yellow-600 mt-1">
+                              Total des articles: {items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}$ 
+                              | Montant BA: {parseFloat(formData.amount || 0).toFixed(2)}$
+                            </p>
+                          </div>
+                          <button
+                            onClick={recalculateAmount}
+                            className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
+                          >
+                            Passer en mode auto
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1579,7 +1717,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               <div className="text-sm text-gray-600">
                 {items.length > 0 && (
                   <span>
-                    Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                    Total articles: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                    {amountMode === 'manual' && (
+                      <span className="text-blue-600 ml-2">
+                        | BA: ${parseFloat(formData.amount || 0).toFixed(2)}
+                      </span>
+                    )}
                   </span>
                 )}
                 {attachedFiles.length > 0 && (
