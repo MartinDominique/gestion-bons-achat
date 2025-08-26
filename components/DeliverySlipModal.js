@@ -223,7 +223,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             <div style="height: 2.2in; overflow: hidden;">
               <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
                 <div style="display: flex; align-items: start; gap: 20px;">
-                  <div style="width: 120px; height: 80px;">
+                  <div style="width: 140px; height: 100px;">
                     <img src="/logo.png" alt="Services TMT" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'">
                   </div>
                   <div style="font-size: 11px; line-height: 1.2;">
@@ -277,25 +277,25 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
                 <thead>
                   <tr>
-                    <th style="width: 15%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Code</th>
-                    <th style="width: 65%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Description</th>
-                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Unité</th>
-                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Cmd</th>
-                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold; border-right: 1px solid #000;">Qté Liv.</th>
-                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 9px; font-weight: bold;">Qté Souff.</th>
+                    <th style="width: 15%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Code</th>
+                    <th style="width: 65%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Description</th>
+                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Unité</th>
+                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Qté Cmd</th>
+                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Qté Liv.</th>
+                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold;">Qté Souff.</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${pageItems.map(item => `
                     <tr style="height: 20px;">
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; vertical-align: top; overflow: hidden;">
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; vertical-align: top; overflow: hidden;">
                         ${item.description}
                       </td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.quantity}</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;"><strong>${item.quantity_delivered_now}</strong></td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; font-size: 8px; text-align: center; vertical-align: top;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; text-align: center; vertical-align: top;">${item.quantity}</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; text-align: center; vertical-align: top;"><strong>${item.quantity_delivered_now}</strong></td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; font-size: 12px; text-align: center; vertical-align: top;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
                     </tr>
                   `).join('')}
                   
@@ -336,7 +336,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                 </div>
               ` : ''}
 
-              <div style="font-size: 7px; text-align: center; font-style: italic; line-height: 1.1;">
+              <div style="font-size: 8px; text-align: center; font-style: italic; line-height: 1.1;">
                 La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
                 Toute réclamation doit être faite dans les 48 heures suivant la réception.
               </div>
