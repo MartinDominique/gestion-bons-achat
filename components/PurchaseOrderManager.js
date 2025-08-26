@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Truck, BarChart3 } from 'lucide-react';
+import { Search, Plus, FileText, Truck, BarChart3, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // Importer seulement vos composants existants
@@ -96,6 +96,7 @@ const PurchaseOrderManager = () => {
     approved: filteredPOs.filter(po => po.status === 'approved').length,
     delivered: filteredPOs.filter(po => po.status === 'delivered').length,
     partial: filteredPOs.filter(po => po.status === 'partially_delivered').length,
+    pending: filteredPOs.filter(po => po.status === 'pending').length,
     totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.amount) || 0), 0)
   };
 
@@ -138,52 +139,80 @@ const PurchaseOrderManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header compact style version B */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      {/* Header Compact avec Gradient - Style Version Main */}
+      <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg shadow-lg p-6 text-white">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <FileText className="w-8 h-8 text-blue-600" />
-              Gestion des Bons d'Achat Client
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <FileText className="w-8 h-8" />
+              Gestion des Bons d'Achat
             </h1>
-            <p className="text-gray-600 mt-2">
-              Module complet de gestion des bons d'achat et livraisons partielles
+            <p className="text-blue-100 mt-1">
+              Gérez vos bons d'achat et commandes clients
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Nouveau BA
-          </button>
+          <div className="flex gap-3">
+            <button className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors">
+              Rapport
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 flex items-center gap-2 font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              Nouveau Bon d'Achat
+            </button>
+          </div>
         </div>
 
-        {/* Statistiques compactes style version B */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
-            <div className="text-sm text-gray-600">Total BAs</div>
+        {/* Statistiques Compactes Style Version Main */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 className="w-5 h-5 text-blue-200" />
+              <span className="text-sm font-medium text-blue-100">Total</span>
+            </div>
+            <div className="text-2xl font-bold">{stats.total}</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-gray-600">{stats.draft}</div>
-            <div className="text-sm text-gray-600">Brouillons</div>
+          
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <span className="text-sm font-medium text-green-100">Approuvés</span>
+            </div>
+            <div className="text-2xl font-bold text-green-200">{stats.approved}</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">{stats.approved}</div>
-            <div className="text-sm text-green-600">Approuvés</div>
+
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+              <span className="text-sm font-medium text-yellow-100">En Attente</span>
+            </div>
+            <div className="text-2xl font-bold text-yellow-200">{stats.pending}</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600">{stats.partial}</div>
-            <div className="text-sm text-blue-600">Partiels</div>
+
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+              <span className="text-sm font-medium text-blue-100">Partiels</span>
+            </div>
+            <div className="text-2xl font-bold text-blue-200">{stats.partial}</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">{stats.delivered}</div>
-            <div className="text-sm text-green-600">Livrés</div>
+
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+              <span className="text-sm font-medium text-green-100">Livrés</span>
+            </div>
+            <div className="text-2xl font-bold text-green-200">{stats.delivered}</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600">{formatCurrency(stats.totalValue)}</div>
-            <div className="text-sm text-blue-600">Valeur totale</div>
+
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-pink-400 rounded-full"></div>
+              <span className="text-sm font-medium text-pink-100">Montant Total</span>
+            </div>
+            <div className="text-xl font-bold text-pink-200">{formatCurrency(stats.totalValue)}</div>
           </div>
         </div>
       </div>
@@ -197,125 +226,134 @@ const PurchaseOrderManager = () => {
         </div>
       )}
 
-      {/* Navigation par onglets */}
+      {/* Section Principale */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={'py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  )}
-                >
-                  <Icon className="w-5 h-5" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
+        {/* Barre de recherche compacte */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rechercher par numéro PO, client, soumission..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-w-[200px]"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="draft">Brouillons</option>
+              <option value="pending">En attente</option>
+              <option value="approved">Approuvés</option>
+              <option value="partially_delivered">Partiellement livrés</option>
+              <option value="delivered">Livrés</option>
+            </select>
+          </div>
         </div>
 
-        <div className="p-6">
-          {/* Onglet Liste des Bons d'Achat */}
-          {activeTab === 'list' && (
-            <div className="space-y-6">
-              {/* Barre de recherche */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Rechercher par numéro de BA, client ou soumission..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">Tous les statuts</option>
-                  <option value="draft">Brouillons</option>
-                  <option value="approved">Approuvés</option>
-                  <option value="partially_delivered">Partiellement livrés</option>
-                  <option value="delivered">Livrés</option>
-                </select>
-              </div>
+        {/* En-têtes de colonnes - Style tableau compact */}
+        <div className="hidden lg:grid lg:grid-cols-8 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-600 uppercase tracking-wide">
+          <div>BON D'ACHAT</div>
+          <div className="col-span-2">CLIENT & DESCRIPTION</div>
+          <div>DATE</div>
+          <div>MONTANT</div>
+          <div>STATUT</div>
+          <div>LIVRAISON</div>
+          <div>ACTIONS</div>
+        </div>
 
-              {/* Liste des bons d'achat - Style version B compact */}
-              <div className="space-y-4">
-                {filteredPOs.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun bon d'achat trouvé</h3>
-                    <button
-                      onClick={() => setShowCreateModal(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                    >
-                      Créer le premier bon d'achat
-                    </button>
-                  </div>
-                ) : (
-                  filteredPOs.map((po) => (
-                    <div key={po.id} className="bg-white border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="text-lg font-semibold text-gray-900">BA #{po.po_number}</div>
-                          <span className={'inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + getStatusColor(po.status)}>
-                            {getStatusEmoji(po.status)} {formatStatus(po.status)}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEditPO(po)}
-                            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                          >
-                            Gérer
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <div className="font-medium text-gray-700">Client</div>
-                          <div className="text-gray-900">{po.client_name || 'N/A'}</div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-700">Date</div>
-                          <div className="text-gray-900">{formatDate(po.date)}</div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-700">Montant</div>
-                          <div className="text-gray-900 font-semibold">{formatCurrency(po.amount)}</div>
-                        </div>
-                      </div>
-
-                      {po.submission_no && (
-                        <div className="mt-2 text-sm text-gray-600">
-                          Soumission: #{po.submission_no}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+        {/* Liste des bons d'achat - Style compact tableau */}
+        <div>
+          {filteredPOs.length === 0 ? (
+            <div className="text-center py-12 px-6">
+              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun bon d'achat trouvé</h3>
+              <p className="text-gray-600 mb-4">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'Aucun résultat ne correspond à vos critères de recherche.'
+                  : 'Commencez par créer votre premier bon d\'achat.'}
+              </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              >
+                Créer le premier bon d'achat
+              </button>
             </div>
-          )}
+          ) : (
+            filteredPOs.map((po, index) => (
+              <div key={po.id} className={`grid lg:grid-cols-8 gap-4 p-6 hover:bg-gray-50 transition-colors ${index !== filteredPOs.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                {/* BON D'ACHAT - Mobile/Desktop */}
+                <div className="lg:flex lg:flex-col lg:justify-center">
+                  <div className="flex items-center gap-2 lg:block">
+                    <span className="text-xs text-gray-500 lg:hidden">BA:</span>
+                    <div className="font-mono text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                      #{po.po_number}
+                    </div>
+                    {po.submission_no && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        #{po.submission_no}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-          {/* Onglet Dashboard - Commenté si composant n'existe pas */}
-          {/*
-          {activeTab === 'dashboard' && (
-            <DeliveryDashboard />
+                {/* CLIENT & DESCRIPTION */}
+                <div className="col-span-2">
+                  <div className="font-medium text-gray-900">{po.client_name || 'N/A'}</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {po.submission_no ? `Soumission: #${po.submission_no}` : 'Aucune description'}
+                  </div>
+                </div>
+
+                {/* DATE */}
+                <div className="flex items-center lg:justify-start">
+                  <div className="lg:text-center">
+                    <div className="text-sm font-medium text-gray-900">{formatDate(po.date)}</div>
+                  </div>
+                </div>
+
+                {/* MONTANT */}
+                <div className="flex items-center lg:justify-center">
+                  <div className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
+                    {formatCurrency(po.amount)}
+                  </div>
+                </div>
+
+                {/* STATUT */}
+                <div className="flex items-center lg:justify-center">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-full ${getStatusColor(po.status)}`}>
+                    <span>{getStatusEmoji(po.status)}</span>
+                    <span className="hidden sm:inline">{formatStatus(po.status)}</span>
+                  </span>
+                </div>
+
+                {/* LIVRAISON */}
+                <div className="flex items-center lg:justify-center">
+                  <div className="flex items-center gap-1 text-gray-600">
+                    <Truck className="w-4 h-4" />
+                    <span className="text-xs">3</span>
+                  </div>
+                </div>
+
+                {/* ACTIONS */}
+                <div className="flex items-center lg:justify-center gap-2">
+                  <button
+                    onClick={() => handleEditPO(po)}
+                    className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span className="hidden sm:inline">Gérer</span>
+                  </button>
+                </div>
+              </div>
+            ))
           )}
-          */}
         </div>
       </div>
 
