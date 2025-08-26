@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Truck, BarChart3, Edit, Trash2 } from 'lucide-react';
+import { Search, Plus, FileText, Truck, BarChart3, Edit } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-// Importer les composants existants
+// Importer seulement vos composants existants
 import PurchaseOrderModal from './PurchaseOrderModal';
 // import DeliveryDashboard from './DeliveryDashboard'; // Commenté si n'existe pas
 
@@ -113,44 +113,24 @@ const PurchaseOrderManager = () => {
   }, []);
 
   const handleEditPO = (po) => {
-    // Fermer tout modal existant avant d'ouvrir le nouveau
-    if (showCreateModal) {
-      setShowCreateModal(false);
-      setSelectedPO(null);
-      
-      // Petit délai pour s'assurer que l'état est réinitialisé
-      setTimeout(() => {
-        setSelectedPO(po);
-        setShowCreateModal(true);
-      }, 100);
-    } else {
-      setSelectedPO(po);
-      setShowCreateModal(true);
-    }
+    setSelectedPO(po);
+    setShowCreateModal(true);
   };
 
   const handleModalClose = () => {
     setShowCreateModal(false);
     setSelectedPO(null);
-    // Petit délai avant de rafraîchir pour éviter les conflits
-    setTimeout(() => {
-      fetchPurchaseOrders();
-    }, 100);
+    fetchPurchaseOrders(); // Rafraîchir après modification
   };
 
-  const tabs = [
-    { id: 'list', label: 'Bons d\'Achat', icon: FileText }
-    // { id: 'dashboard', label: 'Dashboard', icon: BarChart3 } // Commenté si DeliveryDashboard n'existe pas
-  ];
-
-  // CORRECTION: Utiliser 'amount' au lieu de 'total_amount'
+  // Statistiques avec 'pending' ajouté
   const stats = {
     total: filteredPOs.length,
     draft: filteredPOs.filter(po => po.status === 'draft').length,
     approved: filteredPOs.filter(po => po.status === 'approved').length,
+    pending: filteredPOs.filter(po => po.status === 'pending').length,
     delivered: filteredPOs.filter(po => po.status === 'delivered').length,
     partial: filteredPOs.filter(po => po.status === 'partially_delivered').length,
-    pending: filteredPOs.filter(po => po.status === 'pending').length,
     totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.amount) || 0), 0)
   };
 
@@ -193,43 +173,31 @@ const PurchaseOrderManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Compact avec Gradient - Style Version Main */}
-      <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg shadow-lg p-6 text-white">
+      {/* Header Moderne avec Gradient */}
+      <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg shadow-lg text-white p-6">
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <FileText className="w-8 h-8" />
               Gestion des Bons d'Achat
             </h1>
-            <p className="text-blue-100 mt-1">
-              Gérez vos bons d'achat et commandes clients
-            </p>
+            <p className="text-blue-100 mt-1">Gérez vos bons d'achat et commandes clients</p>
           </div>
           <div className="flex gap-3">
             <button className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors">
               Rapport
             </button>
             <button
-              onClick={() => {
-                if (!showCreateModal) {
-                  setSelectedPO(null);
-                  setShowCreateModal(true);
-                }
-              }}
-              disabled={showCreateModal}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors ${
-                showCreateModal 
-                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed' 
-                  : 'bg-white text-blue-600 hover:bg-gray-100'
-              }`}
+              onClick={() => setShowCreateModal(true)}
+              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 flex items-center gap-2 font-medium"
             >
               <Plus className="w-5 h-5" />
-              {showCreateModal ? 'Modal ouvert...' : 'Nouveau Bon d\'Achat'}
+              Nouveau Bon d'Achat
             </button>
           </div>
         </div>
 
-        {/* Statistiques Compactes Style Version Main */}
+        {/* Statistiques en Cartes Colorées */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
             <div className="flex items-center gap-2 mb-1">
@@ -290,9 +258,9 @@ const PurchaseOrderManager = () => {
         </div>
       )}
 
-      {/* Section Principale */}
+      {/* Section Principale Blanche */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        {/* Barre de recherche compacte */}
+        {/* Barre de recherche */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
@@ -320,7 +288,7 @@ const PurchaseOrderManager = () => {
           </div>
         </div>
 
-        {/* En-têtes de colonnes - Style tableau compact */}
+        {/* En-têtes de colonnes */}
         <div className="hidden lg:grid lg:grid-cols-8 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-600 uppercase tracking-wide">
           <div>BON D'ACHAT</div>
           <div className="col-span-2">CLIENT & DESCRIPTION</div>
@@ -331,7 +299,7 @@ const PurchaseOrderManager = () => {
           <div>ACTIONS</div>
         </div>
 
-        {/* Liste des bons d'achat - Style compact tableau */}
+        {/* Liste des bons d'achat en format tableau */}
         <div>
           {filteredPOs.length === 0 ? (
             <div className="text-center py-12 px-6">
@@ -343,26 +311,16 @@ const PurchaseOrderManager = () => {
                   : 'Commencez par créer votre premier bon d\'achat.'}
               </p>
               <button
-                onClick={() => {
-                  if (!showCreateModal) {
-                    setSelectedPO(null);
-                    setShowCreateModal(true);
-                  }
-                }}
-                disabled={showCreateModal}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  showCreateModal 
-                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
               >
-                {showCreateModal ? 'Modal ouvert...' : 'Créer le premier bon d\'achat'}
+                Créer le premier bon d'achat
               </button>
             </div>
           ) : (
             filteredPOs.map((po, index) => (
               <div key={po.id} className={`grid lg:grid-cols-8 gap-4 p-6 hover:bg-gray-50 transition-colors ${index !== filteredPOs.length - 1 ? 'border-b border-gray-100' : ''}`}>
-                {/* BON D'ACHAT - Mobile/Desktop */}
+                {/* BON D'ACHAT */}
                 <div className="lg:flex lg:flex-col lg:justify-center">
                   <div className="flex items-center gap-2 lg:block">
                     <span className="text-xs text-gray-500 lg:hidden">BA:</span>
@@ -421,17 +379,10 @@ const PurchaseOrderManager = () => {
                 <div className="flex items-center lg:justify-center gap-2">
                   <button
                     onClick={() => handleEditPO(po)}
-                    disabled={showCreateModal}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-colors ${
-                      showCreateModal 
-                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
+                    className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors"
                   >
                     <Edit className="w-4 h-4" />
-                    <span className="hidden sm:inline">
-                      {showCreateModal ? 'Ouvert...' : 'Gérer'}
-                    </span>
+                    <span className="hidden sm:inline">Gérer</span>
                   </button>
                 </div>
               </div>
@@ -440,56 +391,14 @@ const PurchaseOrderManager = () => {
         </div>
       </div>
 
-      {/* Modal centralisé avec protection contre l'accumulation */}
-      {showCreateModal && selectedPO && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{zIndex: 9999}}>
-          <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            {/* Bouton de fermeture d'urgence */}
-            <button
-              onClick={() => {
-                setShowCreateModal(false);
-                setSelectedPO(null);
-              }}
-              className="absolute top-4 right-4 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-700"
-              style={{zIndex: 10000}}
-            >
-              ×
-            </button>
-            
-            <PurchaseOrderModal
-              isOpen={showCreateModal}
-              onClose={handleModalClose}
-              editingPO={selectedPO}
-              onRefresh={fetchPurchaseOrders}
-            />
-          </div>
-        </div>
-      )}
-      
-      {/* Modal pour création (sans selectedPO) */}
-      {showCreateModal && !selectedPO && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{zIndex: 9999}}>
-          <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            {/* Bouton de fermeture d'urgence */}
-            <button
-              onClick={() => {
-                setShowCreateModal(false);
-                setSelectedPO(null);
-              }}
-              className="absolute top-4 right-4 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-700"
-              style={{zIndex: 10000}}
-            >
-              ×
-            </button>
-            
-            <PurchaseOrderModal
-              isOpen={showCreateModal}
-              onClose={handleModalClose}
-              editingPO={null}
-              onRefresh={fetchPurchaseOrders}
-            />
-          </div>
-        </div>
+      {/* Modal centralisé */}
+      {showCreateModal && (
+        <PurchaseOrderModal
+          isOpen={showCreateModal}
+          onClose={handleModalClose}
+          editingPO={selectedPO}
+          onRefresh={fetchPurchaseOrders}
+        />
       )}
     </div>
   );
