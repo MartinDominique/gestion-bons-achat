@@ -828,6 +828,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             special_instructions: formData.special_instructions || null,
             submission_no: formData.submission_no || null,
             amount: formData.amount || 0,
+            status: formData.status,
             files: attachedFiles,
             updated_at: new Date().toISOString()
           })
