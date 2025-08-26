@@ -1743,7 +1743,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                       <tbody>
                         {selectedSupplierPurchase.items.map((item, index) => {
                           const quantity = parseFloat(item.quantity || item.qty || 1);
-                          const unitPrice = parseFloat(item.price || item.unit_price || item.selling_price || 0);
+                          const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
                           const lineTotal = quantity * unitPrice;
                           
                           return (
