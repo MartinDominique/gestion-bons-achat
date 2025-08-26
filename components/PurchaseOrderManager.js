@@ -34,11 +34,11 @@ const PurchaseOrderManager = () => {
         .order('created_at', { ascending: false });
 
       if (fetchError) {
-        throw new Error('Erreur chargement BAs: ' + fetchError.message);
+        throw new Error(`Erreur chargement BAs: ${fetchError.message}`);
       }
 
       setPurchaseOrders(data || []);
-      console.log('✅ ' + (data?.length || 0) + ' bons d\'achat chargés');
+      console.log(`✅ ${data?.length || 0} bons d'achat chargés`);
       
     } catch (err) {
       console.error('Erreur fetchPurchaseOrders:', err);
@@ -89,14 +89,13 @@ const PurchaseOrderManager = () => {
     // { id: 'dashboard', label: 'Dashboard', icon: BarChart3 } // Commenté si DeliveryDashboard n'existe pas
   ];
 
-  // CORRECTION: Utiliser 'amount' au lieu de 'total_amount'
   const stats = {
     total: filteredPOs.length,
     draft: filteredPOs.filter(po => po.status === 'draft').length,
     approved: filteredPOs.filter(po => po.status === 'approved').length,
     delivered: filteredPOs.filter(po => po.status === 'delivered').length,
     partial: filteredPOs.filter(po => po.status === 'partially_delivered').length,
-    totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.amount) || 0), 0)
+    totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.total_amount) || 0), 0)
   };
 
   // Formater statut
@@ -138,7 +137,7 @@ const PurchaseOrderManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header compact style version B */}
+      {/* Header avec statistiques */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex justify-between items-start mb-6">
           <div>
@@ -159,30 +158,30 @@ const PurchaseOrderManager = () => {
           </button>
         </div>
 
-        {/* Statistiques compactes style version B */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-6">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+        {/* Statistiques rapides */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
             <div className="text-sm text-gray-600">Total BAs</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-gray-600">{stats.draft}</div>
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-gray-600">{stats.draft}</div>
             <div className="text-sm text-gray-600">Brouillons</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">{stats.approved}</div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
             <div className="text-sm text-green-600">Approuvés</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600">{stats.partial}</div>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{stats.partial}</div>
             <div className="text-sm text-blue-600">Partiels</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600">{stats.delivered}</div>
+          <div className="text-center p-3 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{stats.delivered}</div>
             <div className="text-sm text-green-600">Livrés</div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600">{formatCurrency(stats.totalValue)}</div>
+          <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.totalValue)}</div>
             <div className="text-sm text-blue-600">Valeur totale</div>
           </div>
         </div>
@@ -207,11 +206,11 @@ const PurchaseOrderManager = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={'py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ' + (
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  )}
+                  }`}
                 >
                   <Icon className="w-5 h-5" />
                   {tab.label}
@@ -250,7 +249,7 @@ const PurchaseOrderManager = () => {
                 </select>
               </div>
 
-              {/* Liste des bons d'achat - Style version B compact */}
+              {/* Liste des bons d'achat */}
               <div className="space-y-4">
                 {filteredPOs.length === 0 ? (
                   <div className="text-center py-12">
@@ -265,11 +264,11 @@ const PurchaseOrderManager = () => {
                   </div>
                 ) : (
                   filteredPOs.map((po) => (
-                    <div key={po.id} className="bg-white border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div key={po.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
                           <div className="text-lg font-semibold text-gray-900">BA #{po.po_number}</div>
-                          <span className={'inline-flex px-2 py-1 text-xs font-semibold rounded-full ' + getStatusColor(po.status)}>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(po.status)}`}>
                             {getStatusEmoji(po.status)} {formatStatus(po.status)}
                           </span>
                         </div>
