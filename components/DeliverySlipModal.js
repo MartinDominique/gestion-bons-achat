@@ -249,7 +249,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
                 <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
                   <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Livrer à :</div>
-                  <div style="font-size: 10px; line-height: 1.2;">
+                  <div style="font-size: 11px; line-height: 1.2;">
                     <strong>${purchaseOrder.client_name}</strong><br>
                     ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
                     ${purchaseOrder.delivery_address || purchaseOrder.client_address || 'Adresse de livraison à confirmer'}
@@ -288,14 +288,14 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                 <tbody>
                   ${pageItems.map(item => `
                     <tr style="height: 20px;">
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; vertical-align: top; overflow: hidden;">
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; vertical-align: top; overflow: hidden;">
                         ${item.description}
                       </td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; text-align: center; vertical-align: top;">${item.quantity}</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 12px; text-align: center; vertical-align: top;"><strong>${item.quantity_delivered_now}</strong></td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; font-size: 12px; text-align: center; vertical-align: top;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${item.quantity}</td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;"><strong>${item.quantity_delivered_now}</strong></td>
+                      <td style="padding: 3px; border-bottom: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
                     </tr>
                   `).join('')}
                   
@@ -316,13 +316,13 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
             <!-- FOOTER FIXE (1.3 inches - ajusté par Martin) -->
             <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.3in; border-top: 1px solid #000; padding-top: 10px;">
-              <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
+              <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
               
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <div style="text-align: center;">
-                  <div style="border-top: 2px solid #000; width: 120px; margin: 10px auto 3px auto;"></div>
+                  <div style="border-top: 2px solid #000; width: 120px; margin: 20px auto 5px auto;"></div>
                   <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
                 </div>
                 <div style="font-size: 10px;">
@@ -336,7 +336,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                 </div>
               ` : ''}
 
-              <div style="font-size: 8px; text-align: center; font-style: italic; line-height: 1.1;">
+              <div style="font-size: 9px; text-align: center; font-style: italic; line-height: 1.1;">
                 La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
                 Toute réclamation doit être faite dans les 48 heures suivant la réception.
               </div>
