@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, FileText, Truck, BarChart3, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-// Importer seulement vos composants existants - VÉRIFICATION IMPORTANTE
-// import PurchaseOrderModal from './PurchaseOrderModal';
+// Importer les composants existants
+import PurchaseOrderModal from './PurchaseOrderModal';
 // import DeliveryDashboard from './DeliveryDashboard'; // Commenté si n'existe pas
 
 // Utiliser vos utilitaires existants
@@ -113,23 +113,8 @@ const PurchaseOrderManager = () => {
   }, []);
 
   const handleEditPO = (po) => {
-    // TEMPORAIRE : Affichage de debug pour diagnostiquer le problème
-    console.log('🔧 Tentative d\'édition du BA:', po);
-    console.log('🔧 État actuel showCreateModal:', showCreateModal);
-    
-    // Vérification si le modal existe
-    const modalExists = document.querySelector('[role="dialog"]');
-    console.log('🔧 Modal existant détecté:', modalExists);
-    
     setSelectedPO(po);
     setShowCreateModal(true);
-    
-    // Si le modal ne s'ouvre pas correctement, afficher une alerte temporaire
-    setTimeout(() => {
-      if (!document.querySelector('[role="dialog"]')) {
-        alert(`DIAGNOSTIC: Le modal ne s'ouvre pas correctement.\nBA sélectionné: ${po.po_number}\nClient: ${po.client_name}\n\nVérifiez que PurchaseOrderModal.js existe et est correctement configuré.`);
-      }
-    }, 100);
   };
 
   const handleModalClose = () => {
@@ -413,33 +398,7 @@ const PurchaseOrderManager = () => {
         </div>
       </div>
 
-      {/* Modal centralisé - DIAGNOSTIC */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
-            <h2 className="text-xl font-bold mb-4">🔧 Diagnostic Modal</h2>
-            <div className="space-y-2 text-sm">
-              <p><strong>État showCreateModal:</strong> {showCreateModal.toString()}</p>
-              <p><strong>BA sélectionné:</strong> {selectedPO?.po_number || 'Aucun'}</p>
-              <p><strong>Client:</strong> {selectedPO?.client_name || 'Aucun'}</p>
-              <p><strong>PurchaseOrderModal importé:</strong> Non (commenté temporairement)</p>
-            </div>
-            <div className="mt-6 space-y-3">
-              <button
-                onClick={handleModalClose}
-                className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-              >
-                Fermer
-              </button>
-              <div className="text-xs text-gray-600 p-3 bg-gray-50 rounded">
-                <strong>Instructions:</strong> Vérifiez que le fichier PurchaseOrderModal.js existe dans le même dossier et décommentez l'import en haut du fichier.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* COMMENTÉ TEMPORAIREMENT POUR DIAGNOSTIC
+      {/* Modal centralisé */}
       {showCreateModal && (
         <PurchaseOrderModal
           isOpen={showCreateModal}
@@ -448,7 +407,6 @@ const PurchaseOrderManager = () => {
           onRefresh={fetchPurchaseOrders}
         />
       )}
-      */}
     </div>
   );
 };
