@@ -113,14 +113,29 @@ const PurchaseOrderManager = () => {
   }, []);
 
   const handleEditPO = (po) => {
-    setSelectedPO(po);
-    setShowCreateModal(true);
+    // Fermer tout modal existant avant d'ouvrir le nouveau
+    if (showCreateModal) {
+      setShowCreateModal(false);
+      setSelectedPO(null);
+      
+      // Petit délai pour s'assurer que l'état est réinitialisé
+      setTimeout(() => {
+        setSelectedPO(po);
+        setShowCreateModal(true);
+      }, 100);
+    } else {
+      setSelectedPO(po);
+      setShowCreateModal(true);
+    }
   };
 
   const handleModalClose = () => {
     setShowCreateModal(false);
     setSelectedPO(null);
-    fetchPurchaseOrders(); // Rafraîchir après modification (inclut les livraisons)
+    // Petit délai avant de rafraîchir pour éviter les conflits
+    setTimeout(() => {
+      fetchPurchaseOrders();
+    }, 100);
   };
 
   const tabs = [
@@ -195,11 +210,21 @@ const PurchaseOrderManager = () => {
               Rapport
             </button>
             <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-100 flex items-center gap-2 font-medium"
+              onClick={() => {
+                if (!showCreateModal) {
+                  setSelectedPO(null);
+                  setShowCreateModal(true);
+                }
+              }}
+              disabled={showCreateModal}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors ${
+                showCreateModal 
+                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed' 
+                  : 'bg-white text-blue-600 hover:bg-gray-100'
+              }`}
             >
               <Plus className="w-5 h-5" />
-              Nouveau Bon d'Achat
+              {showCreateModal ? 'Modal ouvert...' : 'Nouveau Bon d\'Achat'}
             </button>
           </div>
         </div>
@@ -318,10 +343,20 @@ const PurchaseOrderManager = () => {
                   : 'Commencez par créer votre premier bon d\'achat.'}
               </p>
               <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                onClick={() => {
+                  if (!showCreateModal) {
+                    setSelectedPO(null);
+                    setShowCreateModal(true);
+                  }
+                }}
+                disabled={showCreateModal}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  showCreateModal 
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
-                Créer le premier bon d'achat
+                {showCreateModal ? 'Modal ouvert...' : 'Créer le premier bon d\'achat'}
               </button>
             </div>
           ) : (
@@ -386,10 +421,17 @@ const PurchaseOrderManager = () => {
                 <div className="flex items-center lg:justify-center gap-2">
                   <button
                     onClick={() => handleEditPO(po)}
-                    className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors"
+                    disabled={showCreateModal}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm transition-colors ${
+                      showCreateModal 
+                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                   >
                     <Edit className="w-4 h-4" />
-                    <span className="hidden sm:inline">Gérer</span>
+                    <span className="hidden sm:inline">
+                      {showCreateModal ? 'Ouvert...' : 'Gérer'}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -398,14 +440,56 @@ const PurchaseOrderManager = () => {
         </div>
       </div>
 
-      {/* Modal centralisé */}
-      {showCreateModal && (
-        <PurchaseOrderModal
-          isOpen={showCreateModal}
-          onClose={handleModalClose}
-          editingPO={selectedPO}
-          onRefresh={fetchPurchaseOrders}
-        />
+      {/* Modal centralisé avec protection contre l'accumulation */}
+      {showCreateModal && selectedPO && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{zIndex: 9999}}>
+          <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            {/* Bouton de fermeture d'urgence */}
+            <button
+              onClick={() => {
+                setShowCreateModal(false);
+                setSelectedPO(null);
+              }}
+              className="absolute top-4 right-4 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-700"
+              style={{zIndex: 10000}}
+            >
+              ×
+            </button>
+            
+            <PurchaseOrderModal
+              isOpen={showCreateModal}
+              onClose={handleModalClose}
+              editingPO={selectedPO}
+              onRefresh={fetchPurchaseOrders}
+            />
+          </div>
+        </div>
+      )}
+      
+      {/* Modal pour création (sans selectedPO) */}
+      {showCreateModal && !selectedPO && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" style={{zIndex: 9999}}>
+          <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            {/* Bouton de fermeture d'urgence */}
+            <button
+              onClick={() => {
+                setShowCreateModal(false);
+                setSelectedPO(null);
+              }}
+              className="absolute top-4 right-4 z-50 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-700"
+              style={{zIndex: 10000}}
+            >
+              ×
+            </button>
+            
+            <PurchaseOrderModal
+              isOpen={showCreateModal}
+              onClose={handleModalClose}
+              editingPO={null}
+              onRefresh={fetchPurchaseOrders}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
