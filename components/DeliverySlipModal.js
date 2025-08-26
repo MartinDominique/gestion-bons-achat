@@ -322,7 +322,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <div style="text-align: center;">
-                  <div style="border-top: 2px solid #000; width: 120px; margin: 20px auto 5px auto;"></div>
+                  <div style="border-top: 2px solid #000; width: 200px; margin: 40px auto 5px auto;"></div>
                   <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
                 </div>
                 <div style="font-size: 10px;">
