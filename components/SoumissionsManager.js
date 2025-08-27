@@ -11,14 +11,14 @@ export default function SoumissionsManager() {
   const [showHistory, setShowHistory] = useState(false);
   const [showNonInventoryForm, setShowNonInventoryForm] = useState(false);
   const [showQuickAddProduct, setShowQuickAddProduct] = useState(false);
-  const [showInventoryUpload, setShowInventoryUpload] = useState(false);
+  
   const [editingSubmission, setEditingSubmission] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sendingReport, setSendingReport] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState(null);
-  const [uploadingInventory, setUploadingInventory] = useState(false);
+  
   // États pour la gestion des fichiers uploaded
   const [uploadingFiles, setUploadingFiles] = useState(false);
   
@@ -167,39 +167,6 @@ export default function SoumissionsManager() {
     }));
     setShowUsdCalculator(false);
     setUsdAmount('');
-  };
-
-  // Fonction pour gérer l'upload d'inventaire
-  const handleInventoryUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setUploadingInventory(true);
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/import-inventory', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        alert(`✅ Inventaire importé avec succès !\n${result.message || 'Produits mis à jour'}`);
-        await fetchProducts();
-      } else {
-        const errorData = await response.json();
-        alert(`❌ Erreur lors de l'import: ${errorData.error || 'Erreur inconnue'}`);
-      }
-    } catch (error) {
-      console.error('Erreur upload inventaire:', error);
-      alert('❌ Erreur lors de l\'upload du fichier');
-    } finally {
-      setUploadingInventory(false);
-      setShowInventoryUpload(false);
-    }
   };
 
   // Fonction pour générer le numéro automatique
@@ -2209,59 +2176,7 @@ const cleanupFilesForSubmission = async (files) => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            {/* Modal upload inventaire */}
-            {showInventoryUpload && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg w-full max-w-md">
-                  <div className="p-4 sm:p-6">
-                    <h3 className="text-lg font-semibold mb-4">
-                      <Upload className="w-5 h-5 inline mr-2 text-purple-600" />
-                      Importer Inventaire
-                    </h3>
-                    <div className="space-y-4">
-                      <p className="text-sm text-gray-600">
-                        Sélectionnez votre fichier d'inventaire Excel (.xlsx, .xls) ou CSV
-                      </p>
-                      <input
-                        type="file"
-                        accept=".xlsx,.xls,.csv"
-                        onChange={handleInventoryUpload}
-                        className="block w-full text-sm text-gray-500
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-full file:border-0
-                          file:text-sm file:font-semibold
-                          file:bg-purple-50 file:text-purple-700
-                          hover:file:bg-purple-100"
-                        disabled={uploadingInventory}
-                      />
-                      {uploadingInventory && (
-                        <div className="flex items-center justify-center p-4">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mr-2"></div>
-                          <span className="text-purple-600">Import en cours...</span>
-                        </div>
-                      )}
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => setShowInventoryUpload(false)}
-                          disabled={uploadingInventory}
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                        >
-                          Annuler
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowInventoryUpload(true)}
-              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm flex items-center justify-center"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Inventaire
-            </button>
+            
             <button
               onClick={handleSendReport}
               disabled={sendingReport}
