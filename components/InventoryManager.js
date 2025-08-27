@@ -159,10 +159,6 @@ export default function InventoryManager() {
   try {
     setSaving(true);
     
-    console.log('🔍 Item à modifier:', editingItem);
-    console.log('🔑 product_id:', editingItem.product_id);
-    console.log('📋 Onglet actif:', activeTab);
-    
     const updates = {
       cost_price: parseFloat(editForm.cost_price) || 0,
       selling_price: parseFloat(editForm.selling_price) || 0,
@@ -172,36 +168,38 @@ export default function InventoryManager() {
       updates.stock_qty = parseInt(editForm.stock_qty) || 0;
     }
     
-    console.log('💾 Données à sauvegarder:', updates);
-    
     const tableName = activeTab === 'products' ? 'products' : 'non_inventory_items';
-    console.log('🗄️ Table cible:', tableName);
     
-    // Test si l'enregistrement existe
-    const { data: existing } = await supabase
-      .from(tableName)
-      .select('*')
-      .eq('product_id', editingItem.product_id)
-      .single();
-    
-    console.log('📄 Enregistrement existant:', existing);
-    
-    // Tentative de mise à jour
     const { data, error } = await supabase
       .from(tableName)
       .update(updates)
       .eq('product_id', editingItem.product_id)
       .select();
     
-    console.log('✅ Résultat update:', data);
-    console.log('❌ Erreur:', error);
-    
     if (error) throw error;
-    if (!data || data.length === 0) {
-      console.warn('⚠️ Aucun enregistrement mis à jour');
+    
+    // 🚀 NOUVEAU : Mettre à jour localement au lieu de tout recharger
+    if (data && data.length > 0) {
+      const updatedItem = data[0];
+      
+      if (activeTab === 'products') {
+        setProducts(prevProducts => 
+          prevProducts.map(product => 
+            product.product_id === updatedItem.product_id ? updatedItem : product
+          )
+        );
+      } else {
+        setNonInventoryItems(prevItems => 
+          prevItems.map(item => 
+            item.product_id === updatedItem.product_id ? updatedItem : item
+          )
+        );
+      }
+      
+      console.log('✅ Produit mis à jour localement');
+      alert('💾 Modifications sauvegardées avec succès !');
     }
     
-    await loadData();
     closeEditModal();
     
   } catch (error) {
