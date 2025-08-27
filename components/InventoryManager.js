@@ -174,7 +174,7 @@ export default function InventoryManager() {
       const { error } = await supabase
         .from(tableName)
         .update(updates)
-        .eq('id', editingItem.id);
+        .eq('product_id', editingItem.id);
       
       if (error) throw error;
       
