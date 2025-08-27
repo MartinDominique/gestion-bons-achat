@@ -1192,13 +1192,13 @@ const shouldShowBilingual = () => {
                 <tr key={item.product_id}>
                   <td>{item.product_id}</td>
                   <td>
-                  {item.description}
-                  {item.notes && (
-                  <div style="font-size: 10px; color: #666; margin-top: 4px; font-style: italic;">
-                  📝 {item.notes}
-                </div>
-                )}
-                  </td>
+                    {item.description}
+                    {item.notes && (
+                    <div style={{fontSize: '10px', color: '#666', marginTop: '4px', fontStyle: 'italic'}}>
+                    📝 {item.notes}
+                    </div>
+                    )}
+                </td>
                   <td className="text-center">{item.quantity}</td>
                   <td className="text-center">{item.unit}</td>
                   <td className="text-right">{formatCurrency(item.cost_price)}</td>
