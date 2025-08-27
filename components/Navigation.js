@@ -1,6 +1,6 @@
 'use client';
 
-import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck } from 'lucide-react';
+import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse } from 'lucide-react';
 //
 import Link from 'next/link';
 import Image from 'next/image';
