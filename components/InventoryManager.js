@@ -47,48 +47,44 @@ export default function InventoryManager() {
   const loadData = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Début chargement produits...');
+      
       // Charger les produits
-      // NOUVEAU - récupère tous vos 6718 produits
-    const loadData = async () => {
-  try {
-    setLoading(true);
-    
-    // Charger les produits
-    const { data: productsData, error: productsError } = await supabase
-      .from('products')
-      .select('*')
-      .order('product_id', { ascending: true });
-    
-    if (productsError) throw productsError;
-    
-    // Charger les articles non-inventaire
-    const { data: nonInventoryData, error: nonInventoryError } = await supabase
-      .from('non_inventory_items')
-      .select('*')
-      .order('product_id', { ascending: true });
-    
-    if (nonInventoryError) throw nonInventoryError;
-    
-    setProducts(productsData || []);
-    setNonInventoryItems(nonInventoryData || []);
-    
-    // Extraire les groupes uniques
-    const allItems = [...(productsData || []), ...(nonInventoryData || [])];
-    const groups = [...new Set(allItems
-      .map(item => item.product_group)
-      .filter(group => group && group.trim() !== '')
-    )].sort();
-    
-    setProductGroups(groups);
-    
-  } catch (error) {
-    console.error('Erreur chargement inventaire:', error);
-    alert('Erreur lors du chargement de l\'inventaire');
-  } finally {
-    setLoading(false);
-  }
-};
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .range(0, 9999)  // Essayer de récupérer plus de 1000
+        .order('product_id', { ascending: true });
+      
+      if (productsError) throw productsError;
+      
+      // Charger les articles non-inventaire
+      const { data: nonInventoryData, error: nonInventoryError } = await supabase
+        .from('non_inventory_items')
+        .select('*')
+        .order('product_id', { ascending: true });
+      
+      if (nonInventoryError) throw nonInventoryError;
+      
+      console.log('📦 Produits chargés:', productsData?.length);
+      setProducts(productsData || []);
+      setNonInventoryItems(nonInventoryData || []);
+      
+      // Extraire les groupes uniques
+      const allItems = [...(productsData || []), ...(nonInventoryData || [])];
+      const groups = [...new Set(allItems
+        .map(item => item.product_group)
+        .filter(group => group && group.trim() !== '')
+      )].sort();
+      
+      setProductGroups(groups);
+      
+    } catch (error) {
+      console.error('Erreur chargement inventaire:', error);
+      alert('Erreur lors du chargement de l\'inventaire');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const applyFilters = () => {
     const sourceData = activeTab === 'products' ? products : nonInventoryItems;
