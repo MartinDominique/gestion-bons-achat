@@ -153,42 +153,50 @@ export default function InventoryManager() {
     });
   };
 
-  const saveChanges = async () => {
-    if (!editingItem) return;
+    const saveChanges = async () => {
+  if (!editingItem) return;
+  
+  try {
+    setSaving(true);
     
-    try {
-      setSaving(true);
-      
-      const updates = {
-        cost_price: parseFloat(editForm.cost_price) || 0,
-        selling_price: parseFloat(editForm.selling_price) || 0,
-      };
-      
-      // Ajouter stock_qty seulement pour les produits
-      if (activeTab === 'products') {
-        updates.stock_qty = parseInt(editForm.stock_qty) || 0;
-      }
-      
-      const tableName = activeTab === 'products' ? 'products' : 'non_inventory_items';
-      
-      const { error } = await supabase
-        .from(tableName)
-        .update(updates)
-        .eq('product_id', editingItem.id);
-      
-      if (error) throw error;
-      
-      // Recharger les données
-      await loadData();
-      closeEditModal();
-      
-    } catch (error) {
-      console.error('Erreur sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde');
-    } finally {
-      setSaving(false);
+    console.log('Item à modifier:', editingItem);
+    console.log('Clé utilisée:', editingItem.product_id);
+    
+    const updates = {
+      cost_price: parseFloat(editForm.cost_price) || 0,
+      selling_price: parseFloat(editForm.selling_price) || 0,
+    };
+    
+    if (activeTab === 'products') {
+      updates.stock_qty = parseInt(editForm.stock_qty) || 0;
     }
-  };
+    
+    console.log('Données à mettre à jour:', updates);
+    
+    const tableName = activeTab === 'products' ? 'products' : 'non_inventory_items';
+    
+    const { data, error } = await supabase
+      .from(tableName)
+      .update(updates)
+      .eq('product_id', editingItem.product_id)
+      .select(); // Ajouter select() pour voir si ça trouve quelque chose
+    
+    console.log('Résultat update:', data);
+    console.log('Erreur:', error);
+    
+    if (error) throw error;
+    
+    // Recharger les données
+    await loadData();
+    closeEditModal();
+    
+  } catch (error) {
+    console.error('Erreur sauvegarde:', error);
+    alert('Erreur lors de la sauvegarde');
+  } finally {
+    setSaving(false);
+  }
+};
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
