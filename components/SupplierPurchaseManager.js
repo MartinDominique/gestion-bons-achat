@@ -1185,29 +1185,30 @@ const shouldShowBilingual = () => {
                 <th>{shouldShowBilingual() ? 'Unit' : 'Unité'}</th>
                 <th>{shouldShowBilingual() ? 'Unit Price' : 'Prix Unit.'}</th>
                 <th>{shouldShowBilingual() ? 'Total' : 'Total'}</th>
-                {selectedItems.some(item => item.notes) && (
-                  <th>{shouldShowBilingual() ? 'Notes' : 'Notes'}</th>
-                )}
               </tr>
             </thead>
             <tbody>
               {selectedItems.map((item) => (
                 <tr key={item.product_id}>
                   <td>{item.product_id}</td>
-                  <td>{item.description}</td>
+                  <td>
+                  {item.description}
+                  {item.notes && (
+                  <div style="font-size: 10px; color: #666; margin-top: 4px; font-style: italic;">
+                  📝 {item.notes}
+                </div>
+                )}
+                  </td>
                   <td className="text-center">{item.quantity}</td>
                   <td className="text-center">{item.unit}</td>
                   <td className="text-right">{formatCurrency(item.cost_price)}</td>
                   <td className="text-right">{formatCurrency(item.cost_price * item.quantity)}</td>
-                  {selectedItems.some(i => i.notes) && (
-                    <td className="text-sm">{item.notes || ''}</td>
-                  )}
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={selectedItems.some(item => item.notes) ? "6" : "5"} className="text-right font-medium">
+                <td colSpan="5" className="text-right font-medium">
                   {shouldShowBilingual() ? 'Sous-total / Subtotal:' : 'Sous-total:'}
                 </td>
                 <td className="text-right">{formatCurrency(purchaseForm.subtotal)}</td>
@@ -1217,13 +1218,13 @@ const shouldShowBilingual = () => {
 {isCanadianSupplier() && (
   <>
     <tr>
-      <td colSpan={selectedItems.some(item => item.notes) ? "6" : "5"} className="text-right font-medium">
+      <td colSpan="5" className="text-right font-medium">
         {shouldShowBilingual() ? 'GST (5%):' : 'TPS (5%):'}
       </td>
       <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
     </tr>
     <tr>
-      <td colSpan={selectedItems.some(item => item.notes) ? "6" : "5"} className="text-right font-medium">
+      <td colSpan="5" className="text-right font-medium">
         {shouldShowBilingual() ? 'PST (9.975%):' : 'TVQ (9.975%):'}
       </td>
       <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
@@ -1233,14 +1234,14 @@ const shouldShowBilingual = () => {
               
               {purchaseForm.shipping_cost > 0 && (
                 <tr>
-                  <td colSpan={selectedItems.some(item => item.notes) ? "6" : "5"} className="text-right font-medium">
+                  <td colSpan="5" className="text-right font-medium">
                     {shouldShowBilingual() ? 'Shipping:' : 'Frais de livraison:'}
                   </td>
                   <td className="text-right">{formatCurrency(purchaseForm.shipping_cost)}</td>
                 </tr>
               )}
               <tr>
-                <td colSpan={selectedItems.some(item => item.notes) ? "6" : "5"} className="text-right font-bold text-lg bg-gray-100">
+                <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">
                   {shouldShowBilingual() ? 'TOTAL CAD$:' : 'TOTAL:'}
                 </td>
                 <td className="text-right font-bold text-lg bg-gray-100">{formatCurrency(purchaseForm.total_amount)}</td>
