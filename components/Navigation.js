@@ -12,6 +12,7 @@ import InventoryManager from './components/InventoryManager';
 const pages = [
   { id: 'bons-achat', name: "Bons d'achat Clients", icon: Package },
   { id: 'soumissions', name: 'Soumissions', icon: FileText },
+  { id: 'inventaire', name: 'Inventaire', icon: Warehouse },
   { id: 'achat-materiels', name: 'Achat Matériels', icon: ShoppingCart },
 ];
 
