@@ -49,18 +49,21 @@ export default function InventoryManager() {
       setLoading(true);
       
       // Charger les produits
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .order('product_id', { ascending: true });
+      // NOUVEAU - récupère tous vos 6718 produits
+const { data: productsData, error: productsError } = await supabase
+  .from('products')
+  .select('*')
+  .order('product_id', { ascending: true })
+  .limit(10000);
       
       if (productsError) throw productsError;
       
       // Charger les articles non-inventaire
       const { data: nonInventoryData, error: nonInventoryError } = await supabase
-        .from('non_inventory_items')
-        .select('*')
-        .order('product_id', { ascending: true });
+      .from('non_inventory_items')
+      .select('*')
+      .order('product_id', { ascending: true })
+      .limit(1000);
       
       if (nonInventoryError) throw nonInventoryError;
       
