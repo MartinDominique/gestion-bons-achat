@@ -44,47 +44,60 @@ export default function InventoryManager() {
     applyFilters();
   }, [searchTerm, selectedGroup, activeTab, products, nonInventoryItems]);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Charger les produits
-      const { data: productsData, error: productsError } = await supabase
+    const loadData = async () => {
+  try {
+    setLoading(true);
+    
+    // Charger TOUS les produits par pagination
+    const allProducts = [];
+    let page = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data: batch, error } = await supabase
         .from('products')
         .select('*')
-        .range(0, 9999)  // Essayer de récupérer plus de 1000
+        .range(page * pageSize, (page + 1) * pageSize - 1)
         .order('product_id', { ascending: true });
       
-      if (productsError) throw productsError;
+      if (error) throw error;
+      if (!batch || batch.length === 0) break;
       
-      // Charger les articles non-inventaire
-      const { data: nonInventoryData, error: nonInventoryError } = await supabase
-        .from('non_inventory_items')
-        .select('*')
-        .order('product_id', { ascending: true });
+      allProducts.push(...batch);
+      console.log(`Lot ${page + 1}: ${batch.length} produits (Total: ${allProducts.length})`);
       
-      if (nonInventoryError) throw nonInventoryError;
-      
-      console.log('📦 Produits chargés:', productsData?.length);
-      setProducts(productsData || []);
-      setNonInventoryItems(nonInventoryData || []);
-      
-      // Extraire les groupes uniques
-      const allItems = [...(productsData || []), ...(nonInventoryData || [])];
-      const groups = [...new Set(allItems
-        .map(item => item.product_group)
-        .filter(group => group && group.trim() !== '')
-      )].sort();
-      
-      setProductGroups(groups);
-      
-    } catch (error) {
-      console.error('Erreur chargement inventaire:', error);
-      alert('Erreur lors du chargement de l\'inventaire');
-    } finally {
-      setLoading(false);
+      if (batch.length < pageSize) break; // Dernier lot
+      page++;
     }
-  };
+    
+    // Charger les articles non-inventaire (probablement moins de 1000)
+    const { data: nonInventoryData, error: nonInventoryError } = await supabase
+      .from('non_inventory_items')
+      .select('*')
+      .order('product_id', { ascending: true });
+    
+    if (nonInventoryError) throw nonInventoryError;
+    
+    console.log(`Total final: ${allProducts.length} produits`);
+    setProducts(allProducts);
+    setNonInventoryItems(nonInventoryData || []);
+    
+    // Extraire les groupes uniques
+    const allItems = [...allProducts, ...(nonInventoryData || [])];
+    const groups = [...new Set(allItems
+      .map(item => item.product_group)
+      .filter(group => group && group.trim() !== '')
+    )].sort();
+    
+    setProductGroups(groups);
+    
+  } catch (error) {
+    console.error('Erreur chargement inventaire:', error);
+    alert('Erreur lors du chargement de l\'inventaire');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const applyFilters = () => {
     const sourceData = activeTab === 'products' ? products : nonInventoryItems;
