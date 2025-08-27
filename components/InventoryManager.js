@@ -159,8 +159,9 @@ export default function InventoryManager() {
   try {
     setSaving(true);
     
-    console.log('Item à modifier:', editingItem);
-    console.log('Clé utilisée:', editingItem.product_id);
+    console.log('🔍 Item à modifier:', editingItem);
+    console.log('🔑 product_id:', editingItem.product_id);
+    console.log('📋 Onglet actif:', activeTab);
     
     const updates = {
       cost_price: parseFloat(editForm.cost_price) || 0,
@@ -171,22 +172,35 @@ export default function InventoryManager() {
       updates.stock_qty = parseInt(editForm.stock_qty) || 0;
     }
     
-    console.log('Données à mettre à jour:', updates);
+    console.log('💾 Données à sauvegarder:', updates);
     
     const tableName = activeTab === 'products' ? 'products' : 'non_inventory_items';
+    console.log('🗄️ Table cible:', tableName);
     
+    // Test si l'enregistrement existe
+    const { data: existing } = await supabase
+      .from(tableName)
+      .select('*')
+      .eq('product_id', editingItem.product_id)
+      .single();
+    
+    console.log('📄 Enregistrement existant:', existing);
+    
+    // Tentative de mise à jour
     const { data, error } = await supabase
       .from(tableName)
       .update(updates)
       .eq('product_id', editingItem.product_id)
-      .select(); // Ajouter select() pour voir si ça trouve quelque chose
+      .select();
     
-    console.log('Résultat update:', data);
-    console.log('Erreur:', error);
+    console.log('✅ Résultat update:', data);
+    console.log('❌ Erreur:', error);
     
     if (error) throw error;
+    if (!data || data.length === 0) {
+      console.warn('⚠️ Aucun enregistrement mis à jour');
+    }
     
-    // Recharger les données
     await loadData();
     closeEditModal();
     
