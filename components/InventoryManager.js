@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { 
   Search, Package, Edit, DollarSign, Filter, X, 
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
-  Eye, Plus, Trash2, RotateCcw
+  Eye, Plus, Trash2, RotateCcw, Upload
 } from 'lucide-react';
 
 export default function InventoryManager() {
@@ -27,6 +27,10 @@ export default function InventoryManager() {
   });
   const [saving, setSaving] = useState(false);
   
+  // États pour l'upload d'inventaire
+  const [showInventoryUpload, setShowInventoryUpload] = useState(false);
+  const [uploadingInventory, setUploadingInventory] = useState(false);
+  
   // Statistiques
   const [stats, setStats] = useState({
     total: 0,
@@ -44,60 +48,93 @@ export default function InventoryManager() {
     applyFilters();
   }, [searchTerm, selectedGroup, activeTab, products, nonInventoryItems]);
 
-    const loadData = async () => {
-  try {
-    setLoading(true);
-    
-    // Charger TOUS les produits par pagination
-    const allProducts = [];
-    let page = 0;
-    const pageSize = 1000;
-    
-    while (true) {
-      const { data: batch, error } = await supabase
-        .from('products')
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Charger TOUS les produits par pagination
+      const allProducts = [];
+      let page = 0;
+      const pageSize = 1000;
+      
+      while (true) {
+        const { data: batch, error } = await supabase
+          .from('products')
+          .select('*')
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+          .order('product_id', { ascending: true });
+        
+        if (error) throw error;
+        if (!batch || batch.length === 0) break;
+        
+        allProducts.push(...batch);
+        console.log(`Lot ${page + 1}: ${batch.length} produits (Total: ${allProducts.length})`);
+        
+        if (batch.length < pageSize) break; // Dernier lot
+        page++;
+      }
+      
+      // Charger les articles non-inventaire (probablement moins de 1000)
+      const { data: nonInventoryData, error: nonInventoryError } = await supabase
+        .from('non_inventory_items')
         .select('*')
-        .range(page * pageSize, (page + 1) * pageSize - 1)
         .order('product_id', { ascending: true });
       
-      if (error) throw error;
-      if (!batch || batch.length === 0) break;
+      if (nonInventoryError) throw nonInventoryError;
       
-      allProducts.push(...batch);
-      console.log(`Lot ${page + 1}: ${batch.length} produits (Total: ${allProducts.length})`);
+      console.log(`Total final: ${allProducts.length} produits`);
+      setProducts(allProducts);
+      setNonInventoryItems(nonInventoryData || []);
       
-      if (batch.length < pageSize) break; // Dernier lot
-      page++;
+      // Extraire les groupes uniques
+      const allItems = [...allProducts, ...(nonInventoryData || [])];
+      const groups = [...new Set(allItems
+        .map(item => item.product_group)
+        .filter(group => group && group.trim() !== '')
+      )].sort();
+      
+      setProductGroups(groups);
+      
+    } catch (error) {
+      console.error('Erreur chargement inventaire:', error);
+      alert('Erreur lors du chargement de l\'inventaire');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Fonction pour gérer l'upload d'inventaire
+  const handleInventoryUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setUploadingInventory(true);
     
-    // Charger les articles non-inventaire (probablement moins de 1000)
-    const { data: nonInventoryData, error: nonInventoryError } = await supabase
-      .from('non_inventory_items')
-      .select('*')
-      .order('product_id', { ascending: true });
-    
-    if (nonInventoryError) throw nonInventoryError;
-    
-    console.log(`Total final: ${allProducts.length} produits`);
-    setProducts(allProducts);
-    setNonInventoryItems(nonInventoryData || []);
-    
-    // Extraire les groupes uniques
-    const allItems = [...allProducts, ...(nonInventoryData || [])];
-    const groups = [...new Set(allItems
-      .map(item => item.product_group)
-      .filter(group => group && group.trim() !== '')
-    )].sort();
-    
-    setProductGroups(groups);
-    
-  } catch (error) {
-    console.error('Erreur chargement inventaire:', error);
-    alert('Erreur lors du chargement de l\'inventaire');
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/import-inventory', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Inventaire importé avec succès !\n${result.message || 'Produits mis à jour'}`);
+        await loadData(); // Recharger les données
+      } else {
+        const errorData = await response.json();
+        alert(`Erreur lors de l'import: ${errorData.error || 'Erreur inconnue'}`);
+      }
+    } catch (error) {
+      console.error('Erreur upload inventaire:', error);
+      alert('Erreur lors de l\'upload du fichier');
+    } finally {
+      setUploadingInventory(false);
+      setShowInventoryUpload(false);
+    }
+  };
 
   const applyFilters = () => {
     const sourceData = activeTab === 'products' ? products : nonInventoryItems;
@@ -153,62 +190,63 @@ export default function InventoryManager() {
     });
   };
 
-    const saveChanges = async () => {
-  if (!editingItem) return;
-  
-  try {
-    setSaving(true);
+  const saveChanges = async () => {
+    if (!editingItem) return;
     
-    const updates = {
-      cost_price: parseFloat(editForm.cost_price) || 0,
-      selling_price: parseFloat(editForm.selling_price) || 0,
-    };
-    
-    if (activeTab === 'products') {
-      updates.stock_qty = parseInt(editForm.stock_qty) || 0;
-    }
-    
-    const tableName = activeTab === 'products' ? 'products' : 'non_inventory_items';
-    
-    const { data, error } = await supabase
-      .from(tableName)
-      .update(updates)
-      .eq('product_id', editingItem.product_id)
-      .select();
-    
-    if (error) throw error;
-    
-    // 🚀 NOUVEAU : Mettre à jour localement au lieu de tout recharger
-    if (data && data.length > 0) {
-      const updatedItem = data[0];
+    try {
+      setSaving(true);
       
+      const updates = {
+        cost_price: parseFloat(editForm.cost_price) || 0,
+        selling_price: parseFloat(editForm.selling_price) || 0,
+      };
+      
+      // Ajouter stock_qty seulement pour les produits
       if (activeTab === 'products') {
-        setProducts(prevProducts => 
-          prevProducts.map(product => 
-            product.product_id === updatedItem.product_id ? updatedItem : product
-          )
-        );
-      } else {
-        setNonInventoryItems(prevItems => 
-          prevItems.map(item => 
-            item.product_id === updatedItem.product_id ? updatedItem : item
-          )
-        );
+        updates.stock_qty = parseInt(editForm.stock_qty) || 0;
       }
       
-      console.log('✅ Produit mis à jour localement');
-      alert('💾 Modifications sauvegardées avec succès !');
+      const tableName = activeTab === 'products' ? 'products' : 'non_inventory_items';
+      
+      const { data, error } = await supabase
+        .from(tableName)
+        .update(updates)
+        .eq('product_id', editingItem.product_id)
+        .select();
+      
+      if (error) throw error;
+      
+      // Mettre à jour localement au lieu de tout recharger
+      if (data && data.length > 0) {
+        const updatedItem = data[0];
+        
+        if (activeTab === 'products') {
+          setProducts(prevProducts => 
+            prevProducts.map(product => 
+              product.product_id === updatedItem.product_id ? updatedItem : product
+            )
+          );
+        } else {
+          setNonInventoryItems(prevItems => 
+            prevItems.map(item => 
+              item.product_id === updatedItem.product_id ? updatedItem : item
+            )
+          );
+        }
+        
+        console.log('Produit mis à jour localement');
+        alert('Modifications sauvegardées avec succès !');
+      }
+      
+      closeEditModal();
+      
+    } catch (error) {
+      console.error('Erreur sauvegarde:', error);
+      alert('Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
     }
-    
-    closeEditModal();
-    
-  } catch (error) {
-    console.error('Erreur sauvegarde:', error);
-    alert('Erreur lors de la sauvegarde');
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
@@ -262,14 +300,23 @@ export default function InventoryManager() {
             </p>
           </div>
           
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 disabled:opacity-50"
-          >
-            <RotateCcw className="w-4 h-4 inline mr-2" />
-            Actualiser
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowInventoryUpload(true)}
+              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 disabled:opacity-50 flex items-center justify-center"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Importer Inventaire
+            </button>
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 disabled:opacity-50"
+            >
+              <RotateCcw className="w-4 h-4 inline mr-2" />
+              Actualiser
+            </button>
+          </div>
         </div>
 
         {/* Statistiques */}
@@ -567,6 +614,52 @@ export default function InventoryManager() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal upload inventaire */}
+      {showInventoryUpload && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="p-4 sm:p-6">
+              <h3 className="text-lg font-semibold mb-4">
+                <Upload className="w-5 h-5 inline mr-2 text-blue-600" />
+                Importer Inventaire
+              </h3>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">
+                  Sélectionnez votre fichier d'inventaire Excel (.xlsx, .xls) ou CSV
+                </p>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleInventoryUpload}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100"
+                  disabled={uploadingInventory}
+                />
+                {uploadingInventory && (
+                  <div className="flex items-center justify-center p-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-blue-600">Import en cours...</span>
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowInventoryUpload(false)}
+                    disabled={uploadingInventory}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
