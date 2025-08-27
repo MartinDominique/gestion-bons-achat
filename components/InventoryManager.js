@@ -47,14 +47,18 @@ export default function InventoryManager() {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+      console.log('🔍 Début chargement produits...');
       // Charger les produits
       // NOUVEAU - récupère tous vos 6718 produits
 const { data: productsData, error: productsError } = await supabase
   .from('products')
-  .select('*')
+  .select('*', { count: 'exact' })
   .order('product_id', { ascending: true })
   .limit(10000);
+
+      console.log('📊 Nombre total en base:', count);
+      console.log('📦 Produits reçus:', productsData?.length);
+      console.log('❌ Erreur:', productsError);
       
       if (productsError) throw productsError;
       
