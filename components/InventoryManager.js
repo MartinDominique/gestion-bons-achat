@@ -374,11 +374,11 @@ export default function InventoryManager() {
 
           {/* Filtres */}
           <div className={`${showFilters ? 'block' : 'hidden'} sm:block`}>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <select
                 value={selectedGroup}
                 onChange={(e) => setSelectedGroup(e.target.value)}
-                className="px-3 py-2 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                className="w-full sm:w-auto px-2 py-2 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
               >
                 <option value="all">Tous les groupes</option>
                 {productGroups.map(group => (
@@ -389,9 +389,9 @@ export default function InventoryManager() {
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
+                  className="w-full sm:w-auto px-2 py-2 bg-red-100 text-red-700 rounded-lg text-xs hover:bg-red-200 flex items-center justify-center"
                 >
-                  <X className="w-4 h-4 inline mr-1" />
+                  <X className="w-4 h-4 mr-1" />
                   Effacer recherche
                 </button>
               )}
