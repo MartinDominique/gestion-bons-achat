@@ -31,7 +31,7 @@ export default function InventoryManager() {
   const [showInventoryUpload, setShowInventoryUpload] = useState(false);
   const [uploadingInventory, setUploadingInventory] = useState(false);
   
-  // Statistiques
+  // Statistiques (gardées pour les calculs internes)
   const [stats, setStats] = useState({
     total: 0,
     lowStock: 0,
@@ -288,69 +288,33 @@ export default function InventoryManager() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
+    <div className="max-w-6xl mx-auto p-2 sm:p-4 space-y-3">
       
-      {/* En-tête avec statistiques */}
-      <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold">Gestion Inventaire</h2>
-            <p className="text-white/90 text-sm sm:text-base mt-1">
+      {/* En-tête compact - STATISTIQUES SUPPRIMÉES */}
+      <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-lg shadow-lg p-3 text-white">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">Gestion Inventaire</h2>
+            <p className="text-white/90 text-sm mt-1">
               Consultez et modifiez vos produits et prix
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="flex gap-2">
             <button
               onClick={() => setShowInventoryUpload(true)}
-              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 disabled:opacity-50 flex items-center justify-center"
+              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-xs font-medium hover:bg-white/20 disabled:opacity-50 flex items-center"
             >
-              <Upload className="w-4 h-4 mr-2" />
-              Importer Inventaire
+              <Upload className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Import</span>
             </button>
             <button
               onClick={loadData}
               disabled={loading}
-              className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 disabled:opacity-50"
+              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-xs font-medium hover:bg-white/20 disabled:opacity-50"
             >
-              <RotateCcw className="w-4 h-4 inline mr-2" />
-              Actualiser
+              <RotateCcw className="w-4 h-4" />
             </button>
-          </div>
-        </div>
-
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-            <div className="flex items-center">
-              <Package className="w-8 h-8 mr-3" />
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Articles</p>
-                <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
-              </div>
-            </div>
-          </div>
-          
-          {activeTab === 'products' && (
-            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-              <div className="flex items-center">
-                <AlertCircle className="w-8 h-8 mr-3" />
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-white/90">Stock faible</p>
-                  <p className="text-xl sm:text-2xl font-bold">{stats.lowStock}</p>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-            <div className="flex items-center">
-              <DollarSign className="w-8 h-8 mr-3" />
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Valeur totale</p>
-                <p className="text-lg sm:text-xl font-bold">{formatCurrency(stats.totalValue)}</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -384,7 +348,7 @@ export default function InventoryManager() {
         </div>
 
         {/* Barre de recherche et filtres */}
-        <div className="p-4 space-y-3">
+        <div className="p-3 space-y-3">
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Recherche */}
             <div className="flex-1 relative">
