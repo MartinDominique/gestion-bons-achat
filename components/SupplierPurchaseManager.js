@@ -54,6 +54,13 @@ export default function SupplierPurchaseManager() {
   const [selectedPurchaseId, setSelectedPurchaseId] = useState(null);
   const [showSupplierFormModal, setShowSupplierFormModal] = useState(false);
   
+  // NOUVEAUX ÉTATS POUR IMPORT SOUMISSION
+  const [showImportSubmissionModal, setShowImportSubmissionModal] = useState(false);
+  const [availableSubmissions, setAvailableSubmissions] = useState([]);
+  const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
+  const [itemsToImport, setItemsToImport] = useState([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  
   // Recherche produits
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [searchingProducts, setSearchingProducts] = useState(false);
@@ -66,12 +73,13 @@ export default function SupplierPurchaseManager() {
   // État pour la correction
   const [isFixingPOs, setIsFixingPOs] = useState(false);
   
-  // Formulaire principal
+  // Formulaire principal - MODIFIÉ avec linked_submission_id
   const [purchaseForm, setPurchaseForm] = useState({
     supplier_id: '',
     supplier_name: '',
     linked_po_id: '',
     linked_po_number: '',
+    linked_submission_id: null,
     shipping_address_id: '',
     shipping_company: '',
     shipping_account: '',
@@ -128,12 +136,12 @@ export default function SupplierPurchaseManager() {
         }
         
         if (!session) {
-          console.warn('⚠️ Aucune session utilisateur');
+          console.warn('Aucune session utilisateur');
           setLoading(false);
           return;
         }
         
-        console.log('✅ Session utilisateur valide');
+        console.log('Session utilisateur valide');
         
         await fetchSupplierPurchases();
         await fetchSuppliers();
@@ -190,6 +198,102 @@ useEffect(() => {
   }));
 }, [selectedItems, purchaseForm.shipping_cost, purchaseForm.supplier_id, suppliers]);
 
+  // NOUVELLES FONCTIONS POUR IMPORT SOUMISSION
+  
+  // Fonction pour récupérer les soumissions acceptées
+  const fetchAvailableSubmissions = async () => {
+    setLoadingSubmissions(true);
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('status', 'accepted')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAvailableSubmissions(data || []);
+    } catch (error) {
+      console.error('Erreur chargement soumissions:', error);
+      alert('Erreur lors du chargement des soumissions');
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  };
+
+  // Fonction pour gérer la sélection d'une soumission
+  const handleSubmissionSelect = (submission) => {
+    setSelectedSubmissionForImport(submission);
+    const itemsWithSelection = (submission.items || []).map(item => ({
+      ...item,
+      selected: false,
+      importQuantity: item.quantity || 1
+    }));
+    setItemsToImport(itemsWithSelection);
+  };
+
+  // Fonction pour toggle la sélection d'un item
+  const toggleItemSelection = (productId, isSelected) => {
+    setItemsToImport(items => 
+      items.map(item => 
+        item.product_id === productId 
+          ? { ...item, selected: isSelected }
+          : item
+      )
+    );
+  };
+
+  // Fonction pour modifier la quantité d'import
+  const updateImportQuantity = (productId, newQuantity) => {
+    const quantity = parseFloat(newQuantity);
+    if (quantity > 0) {
+      setItemsToImport(items => 
+        items.map(item => 
+          item.product_id === productId 
+            ? { ...item, importQuantity: quantity }
+            : item
+        )
+      );
+    }
+  };
+
+  // Fonction pour importer les items sélectionnés
+  const handleImportSelectedItems = () => {
+    const selectedItems = itemsToImport.filter(item => item.selected);
+    
+    if (selectedItems.length === 0) {
+      alert('Veuillez sélectionner au moins un item à importer');
+      return;
+    }
+
+    const importedItems = selectedItems.map(item => ({
+      ...item,
+      quantity: item.importQuantity,
+      cost_price: item.cost_price,
+      original_selling_price: item.selling_price,
+      notes: '',
+    }));
+
+    const existingProductIds = selectedItems.map(item => item.product_id);
+    const filteredExisting = selectedItems.filter(item => 
+      !existingProductIds.includes(item.product_id)
+    );
+    
+    setSelectedItems([...filteredExisting, ...importedItems]);
+    
+    setPurchaseForm(prev => ({
+      ...prev,
+      linked_submission_id: selectedSubmissionForImport.id,
+      notes: prev.notes + 
+        `\nImporté depuis soumission ${selectedSubmissionForImport.submission_number} - ${selectedSubmissionForImport.client_name}`
+    }));
+
+    setShowImportSubmissionModal(false);
+    setSelectedSubmissionForImport(null);
+    setItemsToImport([]);
+    
+    alert(`${importedItems.length} item(s) importé(s) depuis la soumission ${selectedSubmissionForImport.submission_number}`);
+  };
+
   // Fonction pour générer le numéro d'achat
   const generatePurchaseNumber = async () => {
     const now = new Date();
@@ -240,7 +344,7 @@ useEffect(() => {
       const enrichedData = (data || []).map(purchase => {
         // Si linked_po_number est vide mais qu'on a un linked_po_id ET des données de PO
         if (!purchase.linked_po_number && purchase.linked_po_id && purchase.purchase_orders) {
-          console.log(`🔗 Enrichissement PO pour achat ${purchase.purchase_number}:`, purchase.purchase_orders.po_number);
+          console.log(`Enrichissement PO pour achat ${purchase.purchase_number}:`, purchase.purchase_orders.po_number);
           return {
             ...purchase,
             linked_po_number: purchase.purchase_orders.po_number,  
@@ -306,7 +410,7 @@ useEffect(() => {
     
     try {
       setIsFixingPOs(true);
-      console.log('🔧 Correction des achats existants...');
+      console.log('Correction des achats existants...');
       
       // Récupérer tous les achats qui ont un linked_po_id mais pas de linked_po_number
       const { data: purchasesToFix, error: fetchError } = await supabase
@@ -317,7 +421,7 @@ useEffect(() => {
       
       if (fetchError) throw fetchError;
       
-      console.log(`📋 ${purchasesToFix.length} achats à vérifier`);
+      console.log(`${purchasesToFix.length} achats à vérifier`);
       
       // Récupérer tous les POs
       const { data: allPOs, error: poError } = await supabase
@@ -340,23 +444,23 @@ useEffect(() => {
             .eq('id', purchase.id);
             
           if (updateError) {
-            console.error(`❌ Erreur correction achat ${purchase.purchase_number}:`, updateError);
+            console.error(`Erreur correction achat ${purchase.purchase_number}:`, updateError);
           } else {
-            console.log(`✅ Achat ${purchase.purchase_number} corrigé avec PO ${po.po_number}`);
+            console.log(`Achat ${purchase.purchase_number} corrigé avec PO ${po.po_number}`);
             fixedCount++;
           }
         }
       }
       
-      console.log(`🎉 Correction terminée! ${fixedCount} achats corrigés.`);
-      alert(`✅ Correction terminée!\n${fixedCount} achat(s) corrigé(s).`);
+      console.log(`Correction terminée! ${fixedCount} achats corrigés.`);
+      alert(`Correction terminée!\n${fixedCount} achat(s) corrigé(s).`);
       
       // Recharger les données
       await fetchSupplierPurchases();
       
     } catch (error) {
-      console.error('❌ Erreur lors de la correction:', error);
-      alert('❌ Erreur lors de la correction: ' + error.message);
+      console.error('Erreur lors de la correction:', error);
+      alert('Erreur lors de la correction: ' + error.message);
     } finally {
       setIsFixingPOs(false);
     }
@@ -476,7 +580,7 @@ useEffect(() => {
   };
 
   const handleDeleteSupplier = async (id) => {
-    if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer ce fournisseur ?')) return;
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce fournisseur ?')) return;
     
     try {
       const { error } = await supabase
@@ -536,11 +640,11 @@ useEffect(() => {
       });
       
       // Message de succès
-      alert(editingAddress ? '✅ Adresse mise à jour avec succès!' : '✅ Adresse créée avec succès!');
+      alert(editingAddress ? 'Adresse mise à jour avec succès!' : 'Adresse créée avec succès!');
       
     } catch (error) {
       console.error('Erreur sauvegarde adresse:', error);
-      alert('❌ Erreur lors de la sauvegarde de l\'adresse: ' + error.message);
+      alert('Erreur lors de la sauvegarde de l\'adresse: ' + error.message);
     }
   };
 
@@ -642,7 +746,7 @@ useEffect(() => {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
 
-  // Sauvegarde achat
+  // Sauvegarde achat - MODIFIÉE avec linked_submission_id
   const handlePurchaseSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -658,6 +762,7 @@ useEffect(() => {
         supplier_name: purchaseForm.supplier_name,
         linked_po_id: purchaseForm.linked_po_id || null,
         linked_po_number: purchaseForm.linked_po_number,
+        linked_submission_id: purchaseForm.linked_submission_id || null, // NOUVEAU CHAMP
         shipping_address_id: purchaseForm.shipping_address_id,
         shipping_company: purchaseForm.shipping_company,
         shipping_account: purchaseForm.shipping_account,
@@ -683,26 +788,26 @@ useEffect(() => {
           .update(purchaseData)
           .eq('id', editingPurchase.id);
         if (error) throw error;
-        console.log('✅ Achat mis à jour avec succès');
+        console.log('Achat mis à jour avec succès');
       } else {
         const { error } = await supabase
           .from('supplier_purchases')
           .insert([purchaseData]);
         if (error) throw error;
-        console.log('✅ Achat créé avec succès');
+        console.log('Achat créé avec succès');
       }
 
       await fetchSupplierPurchases();
       resetForm();
-      console.log(editingPurchase ? '✅ Achat modifié avec succès!' : '✅ Achat créé avec succès!');
+      console.log(editingPurchase ? 'Achat modifié avec succès!' : 'Achat créé avec succès!');
     } catch (error) {
       console.error('Erreur sauvegarde achat:', error);
-      alert('❌ Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+      alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
     }
   };
 
   const handleDeletePurchase = async (id) => {
-    if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cet achat ?')) return;
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet achat ?')) return;
     
     try {
       const { error } = await supabase
@@ -716,6 +821,7 @@ useEffect(() => {
     }
   };
 
+  // resetForm MODIFIÉE avec linked_submission_id
   const resetForm = () => {
     setShowForm(false);
     setEditingPurchase(null);
@@ -725,6 +831,7 @@ useEffect(() => {
       supplier_name: '',
       linked_po_id: '',
       linked_po_number: '',
+      linked_submission_id: null, // NOUVEAU CHAMP
       shipping_address_id: '',
       shipping_company: '',
       shipping_account: '',
@@ -1195,7 +1302,7 @@ const shouldShowBilingual = () => {
                     {item.description}
                     {item.notes && (
                     <div style={{fontSize: '10px', color: '#666', marginTop: '4px', fontStyle: 'italic'}}>
-                    📝 {item.notes}
+                    {item.notes}
                     </div>
                     )}
                 </td>
@@ -1269,7 +1376,7 @@ const shouldShowBilingual = () => {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold">
-                    {editingPurchase ? '✏️ Modifier Achat Fournisseur' : '🛒 Nouvel Achat Fournisseur'}
+                    {editingPurchase ? 'Modifier Achat Fournisseur' : 'Nouvel Achat Fournisseur'}
                   </h2>
                   <p className="text-orange-100 text-sm mt-1">
                     {purchaseForm.purchase_number && `N°: ${purchaseForm.purchase_number}`}
@@ -1281,39 +1388,39 @@ const shouldShowBilingual = () => {
                     onClick={() => exportPDF('download')}
                     className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
                   >
-                    📥 Télécharger PDF
+                    Télécharger PDF
                   </button>
                   <button
                     onClick={() => exportPDF('modal')}
                     className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
                   >
-                    🪟 Aperçu Modal
+                    Aperçu Modal
                   </button>
                   <button
                     onClick={() => exportPDF('view')}
                     className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
                   >
-                    👁️ Voir PDF
+                    Voir PDF
                   </button>
                   <button
                     onClick={handlePrint}
                     className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
                   >
-                    🖨️ Imprimer
+                    Imprimer
                   </button>
                   <button
                     type="button"
                     onClick={resetForm}
                     className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-sm font-medium"
                   >
-                    ❌ Annuler
+                    Annuler
                   </button>
                   <button
                     type="submit"
                     form="purchase-form"
                     className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
                   >
-                    {editingPurchase ? '💾 Mettre à jour' : '✨ Créer'}
+                    {editingPurchase ? 'Mettre à jour' : 'Créer'}
                   </button>
                 </div>
               </div>
@@ -1327,7 +1434,7 @@ const shouldShowBilingual = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                     <label className="block text-sm font-semibold text-blue-800 mb-2">
-                      🏢 Fournisseur *
+                      Fournisseur *
                     </label>
                     <div className="flex gap-2">
                       <select
@@ -1373,7 +1480,7 @@ const shouldShowBilingual = () => {
 
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                     <label className="block text-sm font-semibold text-green-800 mb-2">
-                      📋 Bon d'achat client lié
+                      Bon d'achat client lié
                     </label>
                     <select
                       value={purchaseForm.linked_po_id}
@@ -1405,7 +1512,7 @@ const shouldShowBilingual = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                     <label className="block text-sm font-semibold text-purple-800 mb-2">
-                      📍 Adresse de livraison *
+                      Adresse de livraison *
                     </label>
                     <div className="flex gap-2">
                       <select
@@ -1463,7 +1570,7 @@ const shouldShowBilingual = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-sm font-semibold text-orange-800 mb-2">
-                          🚚 Transporteur
+                          Transporteur
                         </label>
                         <input
                           type="text"
@@ -1475,7 +1582,7 @@ const shouldShowBilingual = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-orange-800 mb-2">
-                          🔢 N° Compte
+                          N° Compte
                         </label>
                         <input
                           type="text"
@@ -1493,7 +1600,7 @@ const shouldShowBilingual = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                   <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                     <label className="block text-sm font-semibold text-yellow-800 mb-2">
-                      📅 Date livraison prévue
+                      Date livraison prévue
                     </label>
                     <input
                       type="date"
@@ -1505,23 +1612,23 @@ const shouldShowBilingual = () => {
 
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      🏷️ Statut
+                      Statut
                     </label>
                     <select
                       value={purchaseForm.status}
                       onChange={(e) => setPurchaseForm({...purchaseForm, status: e.target.value})}
                       className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
                     >
-                      <option value="draft">📝 Brouillon</option>
-                      <option value="ordered">📤 Commandé</option>
-                      <option value="received">✅ Reçu</option>
-                      <option value="cancelled">❌ Annulé</option>
+                      <option value="draft">Brouillon</option>
+                      <option value="ordered">Commandé</option>
+                      <option value="received">Reçu</option>
+                      <option value="cancelled">Annulé</option>
                     </select>
                   </div>
 
                   <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                     <label className="block text-sm font-semibold text-red-800 mb-2">
-                      💸 Frais de livraison
+                      Frais de livraison
                     </label>
                     <input
                       type="number"
@@ -1535,27 +1642,44 @@ const shouldShowBilingual = () => {
                   </div>
                 </div>
 
-                {/* Recherche produits */}
+                {/* Recherche produits AVEC BOUTON IMPORT SOUMISSION */}
                 <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                   <h3 className="text-base sm:text-lg font-semibold text-indigo-800 mb-4">
-                    🔍 Recherche Produits
+                    Recherche Produits
                   </h3>
                   
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      id="product-search"
-                      type="text"
-                      placeholder="Rechercher un produit (min. 2 caractères)..."
-                      value={productSearchTerm}
-                      onChange={(e) => {
-                        setProductSearchTerm(e.target.value);
-                        setFocusedProductIndex(-1);
+                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          id="product-search"
+                          type="text"
+                          placeholder="Rechercher un produit (min. 2 caractères)..."
+                          value={productSearchTerm}
+                          onChange={(e) => {
+                            setProductSearchTerm(e.target.value);
+                            setFocusedProductIndex(-1);
+                          }}
+                          onKeyDown={handleProductKeyDown}
+                          className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                          autoComplete="off"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* NOUVEAU BOUTON IMPORT SOUMISSION */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        fetchAvailableSubmissions();
+                        setShowImportSubmissionModal(true);
                       }}
-                      onKeyDown={handleProductKeyDown}
-                      className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
-                      autoComplete="off"
-                    />
+                      className="w-full sm:w-auto px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center justify-center"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Importer depuis Soumission
+                    </button>
                   </div>
                   
                   {/* Résultats recherche */}
@@ -1650,7 +1774,7 @@ const shouldShowBilingual = () => {
                 {selectedItems.length > 0 && (
                   <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                     <h3 className="text-base sm:text-lg font-semibold text-yellow-800 mb-4">
-                      📦 Produits Sélectionnés ({selectedItems.length})
+                      Produits Sélectionnés ({selectedItems.length})
                     </h3>
                     
                     <div className="overflow-x-auto">
@@ -1723,7 +1847,7 @@ const shouldShowBilingual = () => {
                 {/* Notes */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    📝 Notes
+                    Notes
                   </label>
                   <textarea
                     value={purchaseForm.notes}
@@ -1767,6 +1891,254 @@ const shouldShowBilingual = () => {
             </div>
           </div>
         </div>
+
+        {/* MODAL IMPORT SOUMISSION - AJOUTÉ ICI */}
+        {showImportSubmissionModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+              
+              {/* En-tête */}
+              <div className="bg-green-50 p-6 border-b border-green-200">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-green-600">Importer depuis une Soumission</h2>
+                    <p className="text-green-700 text-sm mt-1">
+                      Sélectionnez une soumission acceptée et choisissez les items à commander
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowImportSubmissionModal(false);
+                      setSelectedSubmissionForImport(null);
+                      setItemsToImport([]);
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                {/* Étape 1: Sélection de la soumission */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    1. Sélectionnez une soumission acceptée
+                  </h3>
+                  
+                  {loadingSubmissions ? (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mr-3"></div>
+                      <span className="text-green-600">Chargement des soumissions...</span>
+                    </div>
+                  ) : availableSubmissions.length === 0 ? (
+                    <div className="text-center p-8 text-gray-500">
+                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                      <p>Aucune soumission acceptée trouvée</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {availableSubmissions.map((submission) => (
+                        <div 
+                          key={submission.id} 
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                            selectedSubmissionForImport?.id === submission.id 
+                              ? 'border-green-500 bg-green-50' 
+                              : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
+                          }`}
+                          onClick={() => handleSubmissionSelect(submission)}
+                        >
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-semibold text-gray-900">
+                                {submission.submission_number}
+                              </h4>
+                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                                Acceptée
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              <strong>Client:</strong> {submission.client_name}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              <strong>Description:</strong> {submission.description}
+                            </p>
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-green-600 font-medium">
+                                {formatCurrency(submission.amount)}
+                              </span>
+                              <span className="text-gray-500">
+                                {submission.items?.length || 0} item(s)
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(submission.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Étape 2: Sélection des items */}
+                {selectedSubmissionForImport && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      2. Sélectionnez les items à commander
+                    </h3>
+                    
+                    <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                      <p className="text-blue-800 text-sm">
+                        <strong>Soumission sélectionnée:</strong> {selectedSubmissionForImport.submission_number} - {selectedSubmissionForImport.client_name}
+                      </p>
+                      <p className="text-blue-700 text-xs mt-1">
+                        Les prix de coût de la soumission deviendront les prix de coût de l'achat. Les prix de vente sont conservés pour référence.
+                      </p>
+                    </div>
+
+                    {itemsToImport.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">Cette soumission ne contient aucun item</p>
+                    ) : (
+                      <>
+                        {/* Actions en lot */}
+                        <div className="flex gap-3 mb-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setItemsToImport(items => items.map(item => ({ ...item, selected: true })));
+                            }}
+                            className="px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 text-sm"
+                          >
+                            Tout sélectionner
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setItemsToImport(items => items.map(item => ({ ...item, selected: false })));
+                            }}
+                            className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 text-sm"
+                          >
+                            Tout désélectionner
+                          </button>
+                        </div>
+
+                        {/* Tableau des items */}
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="text-left p-3 font-semibold">Sélection</th>
+                                <th className="text-left p-3 font-semibold">Code</th>
+                                <th className="text-left p-3 font-semibold">Description</th>
+                                <th className="text-center p-3 font-semibold">Qté Originale</th>
+                                <th className="text-center p-3 font-semibold">Qté à Commander</th>
+                                <th className="text-right p-3 font-semibold">Prix Coût</th>
+                                <th className="text-right p-3 font-semibold">Prix Vente (Réf)</th>
+                                <th className="text-right p-3 font-semibold">Total Coût</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {itemsToImport.map((item, index) => (
+                                <tr key={item.product_id} className="border-t hover:bg-gray-50">
+                                  <td className="p-3 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={item.selected}
+                                      onChange={(e) => toggleItemSelection(item.product_id, e.target.checked)}
+                                      className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                                    />
+                                  </td>
+                                  <td className="p-3 font-mono text-xs">{item.product_id}</td>
+                                  <td className="p-3">
+                                    <div>
+                                      <div className="font-medium">{item.description}</div>
+                                      <div className="text-xs text-gray-500">{item.unit}</div>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 text-center text-gray-600">
+                                    {item.quantity}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      min="0.1"
+                                      value={item.importQuantity}
+                                      onChange={(e) => updateImportQuantity(item.product_id, e.target.value)}
+                                      disabled={!item.selected}
+                                      className={`w-20 text-center rounded border p-1 ${
+                                        item.selected 
+                                          ? 'border-green-300 focus:border-green-500 focus:ring-green-500' 
+                                          : 'border-gray-200 bg-gray-50'
+                                      }`}
+                                    />
+                                  </td>
+                                  <td className="p-3 text-right font-medium text-orange-600">
+                                    {formatCurrency(item.cost_price || 0)}
+                                  </td>
+                                  <td className="p-3 text-right font-medium text-blue-600">
+                                    {formatCurrency(item.selling_price || 0)}
+                                  </td>
+                                  <td className="p-3 text-right font-bold">
+                                    {formatCurrency((item.cost_price || 0) * (item.importQuantity || 0))}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot className="bg-gray-50">
+                              <tr>
+                                <td colSpan="7" className="p-3 text-right font-semibold">
+                                  Total Coût Sélectionné:
+                                </td>
+                                <td className="p-3 text-right font-bold text-green-600">
+                                  {formatCurrency(
+                                    itemsToImport
+                                      .filter(item => item.selected)
+                                      .reduce((sum, item) => sum + (item.cost_price || 0) * (item.importQuantity || 0), 0)
+                                  )}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+
+                        {/* Actions finales */}
+                        <div className="flex justify-between items-center mt-6">
+                          <div className="text-sm text-gray-600">
+                            {itemsToImport.filter(item => item.selected).length} item(s) sélectionné(s) 
+                            sur {itemsToImport.length}
+                          </div>
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowImportSubmissionModal(false);
+                                setSelectedSubmissionForImport(null);
+                                setItemsToImport([]);
+                              }}
+                              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                            >
+                              Annuler
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleImportSelectedItems}
+                              disabled={itemsToImport.filter(item => item.selected).length === 0}
+                              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                              Importer {itemsToImport.filter(item => item.selected).length} item(s)
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   }
@@ -1778,7 +2150,7 @@ const shouldShowBilingual = () => {
       <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-xl shadow-lg p-4 sm:p-6 text-white">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold">🛒 Gestion des Achats Fournisseurs</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold">Gestion des Achats Fournisseurs</h2>
             <p className="text-white/90 text-sm sm:text-base mt-1">
               Gérez vos commandes fournisseurs et suivez vos achats
             </p>
@@ -1802,7 +2174,7 @@ const shouldShowBilingual = () => {
               ) : (
                 <>
                   <Wrench className="w-4 h-4 inline mr-2" />
-                  🔧 Corriger POs
+                  Corriger POs
                 </>
               )}
             </button>
@@ -1824,7 +2196,7 @@ const shouldShowBilingual = () => {
               }}
               className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
             >
-              ➕ Nouvel Achat
+              Nouvel Achat
             </button>
           </div>
         </div>
@@ -1884,7 +2256,7 @@ const shouldShowBilingual = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="🔍 Rechercher par numéro, fournisseur..."
+                placeholder="Rechercher par numéro, fournisseur..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
@@ -1898,10 +2270,10 @@ const shouldShowBilingual = () => {
               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
             >
               <option value="all">Tous les statuts</option>
-              <option value="draft">📝 Brouillons</option>
-              <option value="ordered">📤 Commandés</option>
-              <option value="received">✅ Reçus</option>
-              <option value="cancelled">❌ Annulés</option>
+              <option value="draft">Brouillons</option>
+              <option value="ordered">Commandés</option>
+              <option value="received">Reçus</option>
+              <option value="cancelled">Annulés</option>
             </select>
           </div>
         </div>
@@ -1964,9 +2336,9 @@ const shouldShowBilingual = () => {
                         purchase.status === 'received' ? 'bg-green-100 text-green-800' :
                         'bg-red-100 text-red-800'
                       }`}>
-                        {purchase.status === 'ordered' ? '📤 Commandé' :
-                         purchase.status === 'draft' ? '📝 Brouillon' :
-                         purchase.status === 'received' ? '✅ Reçu' : '❌ Annulé'}
+                        {purchase.status === 'ordered' ? 'Commandé' :
+                         purchase.status === 'draft' ? 'Brouillon' :
+                         purchase.status === 'received' ? 'Reçu' : 'Annulé'}
                       </span>
                     </td>
                     <td className="px-3 py-4 text-center">
@@ -2087,9 +2459,9 @@ const shouldShowBilingual = () => {
                       purchase.status === 'received' ? 'bg-green-100 text-green-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {purchase.status === 'ordered' ? '📤 Commandé' :
-                       purchase.status === 'draft' ? '📝 Brouillon' :
-                       purchase.status === 'received' ? '✅ Reçu' : '❌ Annulé'}
+                      {purchase.status === 'ordered' ? 'Commandé' :
+                       purchase.status === 'draft' ? 'Brouillon' :
+                       purchase.status === 'received' ? 'Reçu' : 'Annulé'}
                     </span>
                   </div>
                 </div>
@@ -2104,7 +2476,7 @@ const shouldShowBilingual = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-6 border-b bg-orange-50">
-              <h2 className="text-2xl font-bold text-orange-600">🏢 Gestion des Fournisseurs</h2>
+              <h2 className="text-2xl font-bold text-orange-600">Gestion des Fournisseurs</h2>
               <div className="flex gap-3">
                 <button
                   onClick={() => {
@@ -2128,13 +2500,13 @@ const shouldShowBilingual = () => {
                   }}
                   className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
                 >
-                  ➕ Nouveau Fournisseur
+                  Nouveau Fournisseur
                 </button>
                 <button
                   onClick={() => setShowSupplierModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  ❌ Fermer
+                  Fermer
                 </button>
               </div>
             </div>
@@ -2153,13 +2525,13 @@ const shouldShowBilingual = () => {
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg">{supplier.company_name}</h3>
                           <div className="text-sm text-gray-600 mt-2 space-y-1">
-                            {supplier.contact_name && <p>👤 Contact: {supplier.contact_name}</p>}
-                            {supplier.email && <p>📧 {supplier.email}</p>}
-                            {supplier.phone && <p>📞 {supplier.phone}</p>}
+                            {supplier.contact_name && <p>Contact: {supplier.contact_name}</p>}
+                            {supplier.email && <p>{supplier.email}</p>}
+                            {supplier.phone && <p>{supplier.phone}</p>}
                             {supplier.address && (
-                              <p>📍 {supplier.address}, {supplier.city}, {supplier.province} {supplier.postal_code}</p>
+                              <p>{supplier.address}, {supplier.city}, {supplier.province} {supplier.postal_code}</p>
                             )}
-                            {supplier.notes && <p className="italic">📝 {supplier.notes}</p>}
+                            {supplier.notes && <p className="italic">{supplier.notes}</p>}
                           </div>
                         </div>
                         <div className="flex gap-2 ml-4">
@@ -2176,13 +2548,13 @@ const shouldShowBilingual = () => {
                             }}
                             className="px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
                           >
-                            ✏️ Modifier
+                            Modifier
                           </button>
                           <button
                             onClick={() => handleDeleteSupplier(supplier.id)}
                             className="px-3 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200"
                           >
-                            🗑️ Supprimer
+                            Supprimer
                           </button>
                         </div>
                       </div>
@@ -2199,7 +2571,7 @@ const shouldShowBilingual = () => {
       <dialog id="supplier-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
         <div className="bg-white rounded-lg w-full max-w-2xl p-6">
           <h3 className="text-xl font-bold text-orange-600 mb-4">
-            {editingSupplier ? '✏️ Modifier Fournisseur' : '➕ Nouveau Fournisseur'}
+            {editingSupplier ? 'Modifier Fournisseur' : 'Nouveau Fournisseur'}
           </h3>
           
           <form onSubmit={handleSupplierSubmit} className="space-y-4">
@@ -2387,22 +2759,22 @@ const shouldShowBilingual = () => {
                 </p>
               </div>
 
-                      <div className="md:col-span-2">
-  <label className="flex items-center space-x-2">
-    <input
-      type="checkbox"
-      checked={supplierForm.tax_exempt}
-      onChange={(e) => setSupplierForm({...supplierForm, tax_exempt: e.target.checked})}
-      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-    />
-    <span className="text-sm font-medium text-gray-700">
-      Exempt de taxes / Tax exempt
-    </span>
-  </label>
-  <p className="text-xs text-gray-500 mt-1">
-    Si coché, aucune taxe ne sera appliquée aux commandes de ce fournisseur
-  </p>
-</div>
+              <div className="md:col-span-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={supplierForm.tax_exempt}
+                    onChange={(e) => setSupplierForm({...supplierForm, tax_exempt: e.target.checked})}
+                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Exempt de taxes / Tax exempt
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Si coché, aucune taxe ne sera appliquée aux commandes de ce fournisseur
+                </p>
+              </div>
 
               {/* Tax ID pour les fournisseurs américains */}
               {supplierForm.country === 'USA' && (
@@ -2452,7 +2824,7 @@ const shouldShowBilingual = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-6 border-b bg-purple-50">
-              <h2 className="text-2xl font-bold text-purple-600">📍 Gestion des Adresses de Livraison</h2>
+              <h2 className="text-2xl font-bold text-purple-600">Gestion des Adresses de Livraison</h2>
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -2472,14 +2844,14 @@ const shouldShowBilingual = () => {
                   }}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
-                  ➕ Nouvelle Adresse
+                  Nouvelle Adresse
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  ❌ Fermer
+                  Fermer
                 </button>
               </div>
             </div>
@@ -2497,7 +2869,7 @@ const shouldShowBilingual = () => {
                       {address.is_default && (
                         <div className="absolute top-2 right-2">
                           <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                            ⭐ Par défaut
+                            Par défaut
                           </span>
                         </div>
                       )}
@@ -2506,9 +2878,9 @@ const shouldShowBilingual = () => {
                         <div className="flex-1 pr-4">
                           <h3 className="font-semibold text-lg">{address.name}</h3>
                           <div className="text-sm text-gray-600 mt-2 space-y-1">
-                            <p>📍 {address.address}</p>
-                            <p>🏙️ {address.city}, {address.province} {address.postal_code}</p>
-                            <p>🌍 {address.country}</p>
+                            <p>{address.address}</p>
+                            <p>{address.city}, {address.province} {address.postal_code}</p>
+                            <p>{address.country}</p>
                           </div>
                         </div>
                         
@@ -2522,11 +2894,11 @@ const shouldShowBilingual = () => {
                             }}
                             className="px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
                           >
-                            ✏️ Modifier
+                            Modifier
                           </button>
                           <button
                             onClick={async () => {
-                              if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer cette adresse ?')) return;
+                              if (!confirm('Êtes-vous sûr de vouloir supprimer cette adresse ?')) return;
                               
                               try {
                                 const { error } = await supabase
@@ -2543,7 +2915,7 @@ const shouldShowBilingual = () => {
                             }}
                             className="px-3 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200"
                           >
-                            🗑️ Supprimer
+                            Supprimer
                           </button>
                         </div>
                       </div>
@@ -2567,7 +2939,7 @@ const shouldShowBilingual = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xl font-bold text-purple-600 mb-4">
-              {editingAddress ? '✏️ Modifier Adresse' : '➕ Nouvelle Adresse'}
+              {editingAddress ? 'Modifier Adresse' : 'Nouvelle Adresse'}
             </h3>
             
             <form onSubmit={handleAddressSubmit} className="space-y-4">
@@ -2677,7 +3049,7 @@ const shouldShowBilingual = () => {
                       className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
                     <span className="text-sm font-medium text-gray-700">
-                      ⭐ Définir comme adresse par défaut
+                      Définir comme adresse par défaut
                     </span>
                   </label>
                 </div>
@@ -2695,7 +3067,7 @@ const shouldShowBilingual = () => {
                   type="submit"
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
-                  {editingAddress ? '💾 Mettre à jour' : '✨ Créer'}
+                  {editingAddress ? 'Mettre à jour' : 'Créer'}
                 </button>
               </div>
             </form>
@@ -2707,7 +3079,7 @@ const shouldShowBilingual = () => {
       {showSupplierFormModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
           <div className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-2xl">
-            <h3 className="text-xl font-bold text-blue-600 mb-4">➕ Nouveau Fournisseur</h3>
+            <h3 className="text-xl font-bold text-blue-600 mb-4">Nouveau Fournisseur</h3>
             
             <form onSubmit={async (e) => {
               e.preventDefault();
@@ -2745,10 +3117,10 @@ const shouldShowBilingual = () => {
                   tax_exempt: false
                 });
                 
-                alert('✅ Fournisseur créé et sélectionné!');
+                alert('Fournisseur créé et sélectionné!');
               } catch (error) {
                 console.error('Erreur:', error);
-                alert('❌ Erreur lors de la création');
+                alert('Erreur lors de la création');
               }
             }} className="space-y-4">
               <input
@@ -2799,7 +3171,7 @@ const shouldShowBilingual = () => {
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  ✨ Créer
+                  Créer
                 </button>
               </div>
             </form>
