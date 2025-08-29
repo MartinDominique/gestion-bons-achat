@@ -270,7 +270,7 @@ useEffect(() => {
       quantity: item.importQuantity,
       cost_price: item.cost_price,
       original_selling_price: item.selling_price,
-      notes: `Importé de soumission ${selectedSubmissionForImport.submission_number}`,
+      notes: '',
     }));
 
     const existingProductIds = selectedItems.map(item => item.product_id);
