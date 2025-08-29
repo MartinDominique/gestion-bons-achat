@@ -23,6 +23,10 @@ export default function InventoryManager() {
   const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState(null);
   const [lastFetchTime, setLastFetchTime] = useState(null);
   
+  // Cache pour les filtres (optimisation supplémentaire)
+  const [filteredCache, setFilteredCache] = useState({});
+  const [lastFilterParams, setLastFilterParams] = useState('');
+  
   // Modal d'édition
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -122,6 +126,10 @@ export default function InventoryManager() {
       setProducts(allProducts);
       setNonInventoryItems(nonInventoryData || []);
       
+      // 🧹 Nettoyer le cache de filtres quand les données changent
+      setFilteredCache({});
+      setLastFilterParams('');
+      
       // Extraire les groupes uniques
       const allItems = [...allProducts, ...(nonInventoryData || [])];
       const groups = [...new Set(allItems
@@ -173,39 +181,88 @@ export default function InventoryManager() {
   };
 
   const applyFilters = () => {
+    // 🚀 OPTIMISATION - Créer une clé de cache unique basée sur les paramètres de filtre
+    const filterKey = `${activeTab}-${searchTerm}-${selectedGroup}`;
+    
+    // 🧠 Vérifier si on a déjà calculé ce filtre
+    if (filteredCache[filterKey] && filterKey === lastFilterParams) {
+      console.log("⚡ Cache de filtre utilisé - Instantané");
+      setFilteredItems(filteredCache[filterKey].items);
+      setStats(filteredCache[filterKey].stats);
+      return;
+    }
+    
+    console.log("🔄 Calcul des filtres...");
+    const startTime = performance.now();
+    
     const sourceData = activeTab === 'products' ? products : nonInventoryItems;
     
-    let filtered = sourceData.filter(item => {
-      // Recherche par code ou description
-      const matchesSearch = !searchTerm || 
-        item.product_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      // Filtre par groupe
-      const matchesGroup = selectedGroup === 'all' || item.product_group === selectedGroup;
-      
-      return matchesSearch && matchesGroup;
-    });
+    // 🚀 OPTIMISATION - Filtrage optimisé
+    let filtered;
+    if (!searchTerm && selectedGroup === 'all') {
+      // Pas de filtre = toutes les données (évite la boucle)
+      filtered = sourceData;
+    } else {
+      // Filtrage nécessaire
+      const searchLower = searchTerm.toLowerCase();
+      filtered = sourceData.filter(item => {
+        // Recherche optimisée - éviter les appels multiples à toLowerCase()
+        const matchesSearch = !searchTerm || 
+          item.product_id.toLowerCase().includes(searchLower) ||
+          (item.description && item.description.toLowerCase().includes(searchLower));
+        
+        // Filtre par groupe
+        const matchesGroup = selectedGroup === 'all' || item.product_group === selectedGroup;
+        
+        return matchesSearch && matchesGroup;
+      });
+    }
     
-    setFilteredItems(filtered);
+    // 🚀 OPTIMISATION - Calcul des statistiques optimisé
+    let totalValue = 0;
+    let lowStock = 0;
     
-    // Calculer les statistiques
-    const totalValue = filtered.reduce((sum, item) => {
-      const stock = parseInt(item.stock_qty) || 0;
-      const cost = parseFloat(item.cost_price) || 0;
-      return sum + (stock * cost);
-    }, 0);
+    if (activeTab === 'products') {
+      // Une seule boucle pour calculer les deux statistiques
+      for (const item of filtered) {
+        const stock = parseInt(item.stock_qty) || 0;
+        const cost = parseFloat(item.cost_price) || 0;
+        
+        totalValue += (stock * cost);
+        if (stock < 10) lowStock++;
+      }
+    } else {
+      // Pour non-inventaire, seulement la valeur totale
+      for (const item of filtered) {
+        const cost = parseFloat(item.cost_price) || 0;
+        totalValue += cost; // Pas de stock pour non-inventaire
+      }
+    }
     
-    const lowStock = filtered.filter(item => {
-      const stock = parseInt(item.stock_qty) || 0;
-      return activeTab === 'products' && stock < 10; // Seuil stock faible
-    }).length;
-    
-    setStats({
+    const newStats = {
       total: filtered.length,
       lowStock: lowStock,
       totalValue: totalValue
-    });
+    };
+    
+    // 💾 Sauvegarder en cache
+    const cacheData = {
+      items: filtered,
+      stats: newStats
+    };
+    
+    setFilteredCache(prev => ({
+      ...prev,
+      [filterKey]: cacheData
+    }));
+    setLastFilterParams(filterKey);
+    
+    // Mettre à jour les états
+    setFilteredItems(filtered);
+    setStats(newStats);
+    
+    const endTime = performance.now();
+    console.log(`✅ Filtres calculés en ${(endTime - startTime).toFixed(2)}ms (${filtered.length} items)`);
   };
 
   const openEditModal = (item) => {
@@ -283,6 +340,11 @@ export default function InventoryManager() {
         }
         
         console.log('✅ Produit mis à jour localement et en cache');
+        
+        // 🧹 Nettoyer le cache de filtres car les données ont changé
+        setFilteredCache({});
+        setLastFilterParams('');
+        
         alert('Modifications sauvegardées avec succès !');
       }
       
