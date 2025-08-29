@@ -1,5 +1,3 @@
-// AJOUTS À FAIRE DANS SupplierPurchaseManager.js
-
 // ============= NOUVEAUX ÉTATS À AJOUTER =============
 const [showImportSubmissionModal, setShowImportSubmissionModal] = useState(false);
 const [availableSubmissions, setAvailableSubmissions] = useState([]);
@@ -402,11 +400,6 @@ const purchaseData = {
   notes: purchaseForm.notes,
   purchase_number: purchaseNumber
 };
-
-// ============= SCRIPT SQL À EXÉCUTER =============
--- Ajouter la colonne avec le bon type (bigint pour correspondre à submissions.id)
-ALTER TABLE supplier_purchases 
-ADD COLUMN linked_submission_id bigint REFERENCES submissions(id);
 
 // ============= MODIFICATION DU FORMULAIRE PRINCIPAL (resetForm) =============
 
