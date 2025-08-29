@@ -18,6 +18,11 @@ export default function InventoryManager() {
   const [activeTab, setActiveTab] = useState('products'); // 'products' ou 'non_inventory'
   const [showFilters, setShowFilters] = useState(false);
   
+  // Cache intelligent
+  const [cachedProducts, setCachedProducts] = useState(null);
+  const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
+  
   // Modal d'édition
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -48,8 +53,31 @@ export default function InventoryManager() {
     applyFilters();
   }, [searchTerm, selectedGroup, activeTab, products, nonInventoryItems]);
 
-  const loadData = async () => {
+  const loadData = async (forceReload = false) => {
     try {
+      const now = Date.now();
+      const fiveMinutesAgo = now - (5 * 60 * 1000); // 5 minutes en millisecondes
+      
+      // 🧠 CACHE INTELLIGENT - Vérifier si on peut utiliser le cache
+      if (!forceReload && cachedProducts && cachedNonInventoryItems && lastFetchTime && lastFetchTime > fiveMinutesAgo) {
+        console.log("✅ Cache utilisé - Chargement instantané (données < 5 min)");
+        setProducts(cachedProducts);
+        setNonInventoryItems(cachedNonInventoryItems);
+        
+        // Extraire les groupes depuis le cache
+        const allItems = [...cachedProducts, ...cachedNonInventoryItems];
+        const groups = [...new Set(allItems
+          .map(item => item.product_group)
+          .filter(group => group && group.trim() !== '')
+        )].sort();
+        setProductGroups(groups);
+        
+        setLoading(false);
+        return;
+      }
+      
+      // 📡 Chargement depuis la base de données
+      console.log(`📡 Chargement depuis Supabase ${forceReload ? '(rechargement forcé)' : '(données expirées ou premier chargement)'}`);
       setLoading(true);
       
       // Charger TOUS les produits par pagination
@@ -74,7 +102,7 @@ export default function InventoryManager() {
         page++;
       }
       
-      // Charger les articles non-inventaire (probablement moins de 1000)
+      // Charger les articles non-inventaire
       const { data: nonInventoryData, error: nonInventoryError } = await supabase
         .from('non_inventory_items')
         .select('*')
@@ -82,7 +110,15 @@ export default function InventoryManager() {
       
       if (nonInventoryError) throw nonInventoryError;
       
-      console.log(`Total final: ${allProducts.length} produits`);
+      console.log(`✅ Chargement terminé: ${allProducts.length} produits + ${(nonInventoryData || []).length} non-inventaire`);
+      
+      // 💾 SAUVEGARDER EN CACHE
+      setCachedProducts(allProducts);
+      setCachedNonInventoryItems(nonInventoryData || []);
+      setLastFetchTime(now);
+      console.log("💾 Données mises en cache pour 5 minutes");
+      
+      // Mettre à jour les états
       setProducts(allProducts);
       setNonInventoryItems(nonInventoryData || []);
       
@@ -122,7 +158,7 @@ export default function InventoryManager() {
       if (response.ok) {
         const result = await response.json();
         alert(`Inventaire importé avec succès !\n${result.message || 'Produits mis à jour'}`);
-        await loadData(); // Recharger les données
+        await loadData(true); // Force le rechargement après import
       } else {
         const errorData = await response.json();
         alert(`Erreur lors de l'import: ${errorData.error || 'Erreur inconnue'}`);
@@ -226,15 +262,27 @@ export default function InventoryManager() {
               product.product_id === updatedItem.product_id ? updatedItem : product
             )
           );
+          // Mettre à jour le cache aussi
+          setCachedProducts(prevCache => 
+            prevCache ? prevCache.map(product => 
+              product.product_id === updatedItem.product_id ? updatedItem : product
+            ) : null
+          );
         } else {
           setNonInventoryItems(prevItems => 
             prevItems.map(item => 
               item.product_id === updatedItem.product_id ? updatedItem : item
             )
           );
+          // Mettre à jour le cache aussi
+          setCachedNonInventoryItems(prevCache => 
+            prevCache ? prevCache.map(item => 
+              item.product_id === updatedItem.product_id ? updatedItem : item
+            ) : null
+          );
         }
         
-        console.log('Produit mis à jour localement');
+        console.log('✅ Produit mis à jour localement et en cache');
         alert('Modifications sauvegardées avec succès !');
       }
       
@@ -295,9 +343,16 @@ export default function InventoryManager() {
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <h2 className="text-xl font-bold">Gestion Inventaire</h2>
-            <p className="text-white/90 text-sm mt-1">
-              Consultez et modifiez vos produits et prix
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-white/90 text-sm mt-1">
+                Consultez et modifiez vos produits et prix
+              </p>
+              {lastFetchTime && (
+                <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                  {Date.now() - lastFetchTime < 300000 ? '🟢 Cache' : '🔄 Actualisé'}
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="flex gap-2">
@@ -309,7 +364,7 @@ export default function InventoryManager() {
               <span className="hidden sm:inline">Import</span>
             </button>
             <button
-              onClick={loadData}
+              onClick={() => loadData(true)} // Force le rechargement
               disabled={loading}
               className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-xs font-medium hover:bg-white/20 disabled:opacity-50"
             >
