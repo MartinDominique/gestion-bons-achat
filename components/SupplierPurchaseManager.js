@@ -32,6 +32,19 @@ const getPostalCodePlaceholder = (country) => {
   }
 };
 
+// Liste des transporteurs
+const CARRIERS = [
+  '',
+  'GLS',
+  'Purolator', 
+  'UPS',
+  'FedEx',
+  'DHL',
+  'Nationex',
+  'Poste Canada',
+  'Intelcom'
+];
+
 export default function SupplierPurchaseManager() {
   // États principaux
   const [supplierPurchases, setSupplierPurchases] = useState([]);
@@ -73,13 +86,14 @@ export default function SupplierPurchaseManager() {
   // État pour la correction
   const [isFixingPOs, setIsFixingPOs] = useState(false);
   
-  // Formulaire principal - MODIFIÉ avec linked_submission_id
+  // Formulaire principal - MODIFIÉ avec supplier_quote_reference
   const [purchaseForm, setPurchaseForm] = useState({
     supplier_id: '',
     supplier_name: '',
     linked_po_id: '',
     linked_po_number: '',
     linked_submission_id: null,
+    supplier_quote_reference: '', // NOUVEAU CHAMP
     shipping_address_id: '',
     shipping_company: '',
     shipping_account: '',
@@ -746,7 +760,7 @@ useEffect(() => {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
 
-  // Sauvegarde achat - MODIFIÉE avec linked_submission_id
+  // Sauvegarde achat - MODIFIÉE avec supplier_quote_reference
   const handlePurchaseSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -762,7 +776,8 @@ useEffect(() => {
         supplier_name: purchaseForm.supplier_name,
         linked_po_id: purchaseForm.linked_po_id || null,
         linked_po_number: purchaseForm.linked_po_number,
-        linked_submission_id: purchaseForm.linked_submission_id || null, // NOUVEAU CHAMP
+        linked_submission_id: purchaseForm.linked_submission_id || null,
+        supplier_quote_reference: purchaseForm.supplier_quote_reference, // NOUVEAU CHAMP
         shipping_address_id: purchaseForm.shipping_address_id,
         shipping_company: purchaseForm.shipping_company,
         shipping_account: purchaseForm.shipping_account,
@@ -821,7 +836,7 @@ useEffect(() => {
     }
   };
 
-  // resetForm MODIFIÉE avec linked_submission_id
+  // resetForm MODIFIÉE avec supplier_quote_reference
   const resetForm = () => {
     setShowForm(false);
     setEditingPurchase(null);
@@ -831,7 +846,8 @@ useEffect(() => {
       supplier_name: '',
       linked_po_id: '',
       linked_po_number: '',
-      linked_submission_id: null, // NOUVEAU CHAMP
+      linked_submission_id: null,
+      supplier_quote_reference: '', // NOUVEAU CHAMP
       shipping_address_id: '',
       shipping_company: '',
       shipping_account: '',
@@ -1078,6 +1094,16 @@ useEffect(() => {
     overlay.addEventListener('click', clickHandler);
   }
 
+  // MODIFIÉ - Fonction pour formatter le prix avec 4 décimales pour les prix unitaires
+  const formatUnitPrice = (amount) => {
+    return new Intl.NumberFormat('en-CA', {
+      style: 'currency',
+      currency: 'CAD',
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4
+    }).format(amount || 0);
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
       style: 'currency',
@@ -1215,6 +1241,10 @@ const shouldShowBilingual = () => {
               <div className="text-sm text-gray-600 space-y-1">
                 <p><strong>{purchaseForm.purchase_number}</strong></p>
                 <p><strong>{shouldShowBilingual() ? 'Date:' : 'Date:'}</strong> {formatDate(new Date())}</p>
+                {/* NOUVEAU - Référence soumission fournisseur */}
+                {purchaseForm.supplier_quote_reference && (
+                  <p><strong>{shouldShowBilingual() ? 'Supplier Quote:' : 'Soumission:'}</strong> {purchaseForm.supplier_quote_reference}</p>
+                )}
                 {purchaseForm.linked_po_number && (
                   <p><strong>{shouldShowBilingual() ? 'Client PO:' : 'BA Client:'}</strong> {purchaseForm.linked_po_number}</p>
                 )}
@@ -1227,13 +1257,13 @@ const shouldShowBilingual = () => {
 
           {/* Section Fournisseur et Livrer à côte à côte */}
           <div className="grid grid-cols-2 gap-8 mb-6">
-            {/* Fournisseur à gauche */}
+            {/* Fournisseur à gauche - MODIFIÉ POUR ÊTRE PLUS COMPACT */}
             {selectedSupplier && (
               <div>
                 <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
                   {shouldShowBilingual() ? 'Supplier:' : 'Fournisseur:'}
                 </h3>
-                <div className="space-y-1">
+                <div className="space-y-1 text-sm leading-tight">
                   <p className="font-medium text-base">{selectedSupplier.company_name}</p>
                   {selectedSupplier.contact_name && (
                     <p>{shouldShowBilingual() ? 'Contact:' : 'Contact:'} {selectedSupplier.contact_name}</p>
@@ -1308,7 +1338,8 @@ const shouldShowBilingual = () => {
                 </td>
                   <td className="text-center">{item.quantity}</td>
                   <td className="text-center">{item.unit}</td>
-                  <td className="text-right">{formatCurrency(item.cost_price)}</td>
+                  {/* MODIFIÉ - Prix unitaire avec 4 décimales */}
+                  <td className="text-right">{formatUnitPrice(item.cost_price)}</td>
                   <td className="text-right">{formatCurrency(item.cost_price * item.quantity)}</td>
                 </tr>
               ))}
@@ -1508,6 +1539,51 @@ const shouldShowBilingual = () => {
                   </div>
                 </div>
 
+                {/* NOUVEAU - Soumission fournisseur et Date de livraison côte à côte */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <label className="block text-sm font-semibold text-yellow-800 mb-2">
+                      Soumission *
+                    </label>
+                    <input
+                      type="text"
+                      value={purchaseForm.supplier_quote_reference}
+                      onChange={(e) => setPurchaseForm({...purchaseForm, supplier_quote_reference: e.target.value})}
+                      className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
+                      placeholder="Réf. soumission fournisseur"
+                      required
+                    />
+                  </div>
+
+                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                    <label className="block text-sm font-semibold text-indigo-800 mb-2">
+                      Date livraison prévue
+                    </label>
+                    <input
+                      type="date"
+                      value={purchaseForm.delivery_date}
+                      onChange={(e) => setPurchaseForm({...purchaseForm, delivery_date: e.target.value})}
+                      className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                    />
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">
+                      Statut
+                    </label>
+                    <select
+                      value={purchaseForm.status}
+                      onChange={(e) => setPurchaseForm({...purchaseForm, status: e.target.value})}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                    >
+                      <option value="draft">Brouillon</option>
+                      <option value="ordered">Commandé</option>
+                      <option value="received">Reçu</option>
+                      <option value="cancelled">Annulé</option>
+                    </select>
+                  </div>
+                </div>
+
                 {/* Adresse de livraison et Méthode */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
@@ -1522,9 +1598,10 @@ const shouldShowBilingual = () => {
                         required
                       >
                         <option value="">Sélectionner une adresse...</option>
+                        {/* MODIFIÉ - Afficher seulement le nom */}
                         {shippingAddresses.map((address) => (
                           <option key={address.id} value={address.id}>
-                            {address.name} - {address.city}
+                            {address.name}
                             {address.is_default && ' ⭐'}
                           </option>
                         ))}
@@ -1572,13 +1649,18 @@ const shouldShowBilingual = () => {
                         <label className="block text-sm font-semibold text-orange-800 mb-2">
                           Transporteur
                         </label>
-                        <input
-                          type="text"
+                        {/* MODIFIÉ - Menu déroulant au lieu de champ texte */}
+                        <select
                           value={purchaseForm.shipping_company}
                           onChange={(e) => setPurchaseForm({...purchaseForm, shipping_company: e.target.value})}
                           className="block w-full rounded-lg border-orange-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
-                          placeholder="Ex: FedEx, UPS..."
-                        />
+                        >
+                          {CARRIERS.map((carrier, index) => (
+                            <option key={index} value={carrier}>
+                              {carrier || 'Sélectionner...'}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-orange-800 mb-2">
@@ -1596,36 +1678,8 @@ const shouldShowBilingual = () => {
                   </div>
                 </div>
 
-                {/* Date de livraison et Statut */}
+                {/* Frais de livraison */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                    <label className="block text-sm font-semibold text-yellow-800 mb-2">
-                      Date livraison prévue
-                    </label>
-                    <input
-                      type="date"
-                      value={purchaseForm.delivery_date}
-                      onChange={(e) => setPurchaseForm({...purchaseForm, delivery_date: e.target.value})}
-                      className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
-                    />
-                  </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      Statut
-                    </label>
-                    <select
-                      value={purchaseForm.status}
-                      onChange={(e) => setPurchaseForm({...purchaseForm, status: e.target.value})}
-                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
-                    >
-                      <option value="draft">Brouillon</option>
-                      <option value="ordered">Commandé</option>
-                      <option value="received">Reçu</option>
-                      <option value="cancelled">Annulé</option>
-                    </select>
-                  </div>
-
                   <div className="bg-red-50 p-4 rounded-lg border border-red-200">
                     <label className="block text-sm font-semibold text-red-800 mb-2">
                       Frais de livraison
@@ -1704,7 +1758,7 @@ const shouldShowBilingual = () => {
                             <div>
                               <p className="font-medium">{product.product_id} - {product.description}</p>
                               <p className="text-sm text-gray-600">
-                                Prix coût: {formatCurrency(product.cost_price)} / {product.unit}
+                                Prix coût: {formatUnitPrice(product.cost_price)} / {product.unit}
                               </p>
                             </div>
                             <button
@@ -1808,11 +1862,11 @@ const shouldShowBilingual = () => {
                               <td className="p-2 text-right">
                                 <input
                                   type="number"
-                                  step="0.01"
+                                  step="0.0001"
                                   min="0"
                                   value={item.cost_price}
                                   onChange={(e) => updateItemPrice(item.product_id, e.target.value)}
-                                  className="w-20 text-right rounded border-gray-300"
+                                  className="w-24 text-right rounded border-gray-300"
                                 />
                               </td>
                               <td className="p-2 text-right font-medium">
@@ -2075,7 +2129,7 @@ const shouldShowBilingual = () => {
                                     />
                                   </td>
                                   <td className="p-3 text-right font-medium text-orange-600">
-                                    {formatCurrency(item.cost_price || 0)}
+                                    {formatUnitPrice(item.cost_price || 0)}
                                   </td>
                                   <td className="p-3 text-right font-medium text-blue-600">
                                     {formatCurrency(item.selling_price || 0)}
