@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Truck, BarChart3, Edit, Users, DollarSign } from 'lucide-react';
+import { Search, Plus, FileText, Truck, BarChart3, Edit, Users, DollarSign, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // Importer seulement vos composants existants
@@ -21,6 +21,9 @@ const PurchaseOrderManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [filteredPOs, setFilteredPOs] = useState([]);
+  
+  // États pour les modifications de statut rapides
+  const [updatingStatus, setUpdatingStatus] = useState({}); // Pour tracker quels BAs sont en cours de mise à jour
 
   // Charger les bons d'achat directement (sans hook)
   const fetchPurchaseOrders = async () => {
@@ -86,6 +89,57 @@ const PurchaseOrderManager = () => {
     }
   };
 
+  // Nouvelle fonction pour mettre à jour le statut directement
+  const updatePOStatus = async (poId, newStatus, currentPO) => {
+    try {
+      // Marquer ce BA comme en cours de mise à jour
+      setUpdatingStatus(prev => ({ ...prev, [poId]: true }));
+      setError('');
+
+      console.log(`Mise à jour statut BA ${currentPO.po_number}: ${currentPO.status} → ${newStatus}`);
+
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', poId)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`Erreur mise à jour statut: ${error.message}`);
+      }
+
+      // Mettre à jour l'état local pour un feedback immédiat
+      setPurchaseOrders(prevPOs => 
+        prevPOs.map(po => 
+          po.id === poId 
+            ? { ...po, status: newStatus, updated_at: data.updated_at }
+            : po
+        )
+      );
+
+      console.log(`✅ Statut du BA ${currentPO.po_number} mis à jour vers "${newStatus}"`);
+
+    } catch (err) {
+      console.error('Erreur updatePOStatus:', err);
+      setError(`Erreur lors de la mise à jour du statut: ${err.message}`);
+      
+      // Optionnel: Rétablir l'ancien statut en cas d'erreur
+      // Ici on laisse fetchPurchaseOrders() se charger du refresh
+      
+    } finally {
+      // Retirer le flag de chargement
+      setUpdatingStatus(prev => {
+        const newState = { ...prev };
+        delete newState[poId];
+        return newState;
+      });
+    }
+  };
+
   // Filtrer les BAs
   useEffect(() => {
     let filtered = purchaseOrders;
@@ -141,7 +195,9 @@ const PurchaseOrderManager = () => {
       approved: 'Approuvé',
       partially_delivered: 'Partiellement livré',
       delivered: 'Livré',
-      cancelled: 'Annulé'
+      cancelled: 'Annulé',
+      completed: 'Complété',
+      rejected: 'Rejeté'
     };
     return statusLabels[status] || status;
   };
@@ -154,9 +210,53 @@ const PurchaseOrderManager = () => {
       approved: 'bg-green-100 text-green-800',
       partially_delivered: 'bg-blue-100 text-blue-800',
       delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
+      cancelled: 'bg-red-100 text-red-800',
+      completed: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800'
     };
     return statusColors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Options de statut pour le select
+  const statusOptions = [
+    { value: 'draft', label: 'Brouillon', emoji: '📝' },
+    { value: 'pending', label: 'En attente', emoji: '⏳' },
+    { value: 'approved', label: 'Approuvé', emoji: '✅' },
+    { value: 'partially_delivered', label: 'Partiellement livré', emoji: '🚛' },
+    { value: 'delivered', label: 'Livré', emoji: '📦' },
+    { value: 'completed', label: 'Complété', emoji: '🎉' },
+    { value: 'rejected', label: 'Rejeté', emoji: '❌' },
+    { value: 'cancelled', label: 'Annulé', emoji: '🚫' }
+  ];
+
+  // Composant StatusSelector pour éviter la duplication
+  const StatusSelector = ({ po }) => {
+    const isUpdating = updatingStatus[po.id];
+
+    return (
+      <div className="flex items-center">
+        {isUpdating ? (
+          <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span>Mise à jour...</span>
+          </div>
+        ) : (
+          <select
+            value={po.status}
+            onChange={(e) => updatePOStatus(po.id, e.target.value, po)}
+            disabled={isUpdating}
+            className={`text-xs font-medium rounded-full border-0 py-1 px-3 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all duration-200 ${getStatusColor(po.status)}`}
+            title="Cliquer pour changer le statut"
+          >
+            {statusOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.emoji} {option.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -242,6 +342,12 @@ const PurchaseOrderManager = () => {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="text-red-800">
             <strong>Erreur:</strong> {error}
+            <button 
+              onClick={() => setError('')} 
+              className="ml-4 text-red-600 underline hover:no-underline"
+            >
+              Fermer
+            </button>
           </div>
         </div>
       )}
@@ -273,6 +379,14 @@ const PurchaseOrderManager = () => {
               <option value="partially_delivered">Partiellement livrés</option>
               <option value="delivered">Livrés</option>
             </select>
+          </div>
+          
+          {/* Info sur la modification rapide du statut */}
+          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-700">
+              💡 <strong>Astuce:</strong> Vous pouvez changer le statut directement en cliquant sur le statut dans la liste, 
+              ou utiliser le bouton "Gérer" pour accéder aux options complètes.
+            </p>
           </div>
         </div>
 
@@ -342,12 +456,8 @@ const PurchaseOrderManager = () => {
                   </div>
                 </div>
 
-                {/* STATUT */}
-                <div className="flex items-center">
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(po.status)}`}>
-                    {getStatusEmoji(po.status)} {formatStatus(po.status)}
-                  </span>
-                </div>
+                {/* STATUT - Modifiable directement */}
+                <StatusSelector po={po} />
 
                 {/* LIVRAISON */}
                 <div className="flex items-center">
