@@ -454,6 +454,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     newItems[index] = updatedItem;
     setItems(newItems);
     
+    // Calculer le montant total automatiquement lors de la modification d'articles
     const totalAmount = newItems.reduce((sum, item) => 
       sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
     );
@@ -465,6 +466,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     const newItems = items.filter((_, i) => i !== index);
     setItems(newItems);
     
+    // Recalculer le montant total après suppression
     const totalAmount = newItems.reduce((sum, item) => 
       sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
     );
@@ -703,7 +705,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 title="Supprimer"
               >
                 🗑️
-              </button>
+            </button>
             )}
           </div>
         </td>
@@ -888,12 +890,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         
         if (itemsError) throw new Error('Erreur sauvegarde articles: ' + itemsError.message);
         
-        const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
-        
-        await supabase
-          .from('purchase_orders')
-          .update({ amount: totalAmount })
-          .eq('id', poData.id);
+        // Recalculer le montant total basé sur les articles si nécessaire
+        if (formData.amount === 0 || !formData.amount) {
+          const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
+          
+          await supabase
+            .from('purchase_orders')
+            .update({ amount: totalAmount })
+            .eq('id', poData.id);
+        }
       }
       
       console.log('BA ' + poData.po_number + ' sauvegardé avec succès');
@@ -1162,7 +1167,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Montant
+                      Montant <span className="text-xs text-gray-500">(modifiable manuellement)</span>
                     </label>
                     <input
                       type="number"
@@ -1170,10 +1175,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                       value={formData.amount}
                       onChange={handleChange}
                       step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
-                      readOnly
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Le montant peut être saisi manuellement ou calculé automatiquement depuis les articles
+                    </p>
                   </div>
 
                   <div>
@@ -1586,17 +1593,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 onClick={onClose}
                 className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
               >
-                {activeTab === 'livraisons' || activeTab === 'documents' ? 'Fermer' : 'Annuler'}
+                Fermer
               </button>
-              {activeTab !== 'livraisons' && activeTab !== 'documents' && (
-                <button
-                  onClick={savePurchaseOrder}
-                  disabled={isLoading || !formData.client_name || !formData.po_number}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                  {isLoading ? 'Sauvegarde...' : (editingPO ? 'Mettre à jour' : 'Créer BA')}
-                </button>
-              )}
+              <button
+                onClick={savePurchaseOrder}
+                disabled={isLoading || !formData.client_name || !formData.po_number}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {isLoading ? 'Sauvegarde...' : (editingPO ? 'Mettre à jour' : 'Créer BA')}
+              </button>
             </div>
           </div>
         </div>
