@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import 'jspdf-autotable';  // AJOUTÉ pour les tableaux PDF
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
@@ -7,6 +8,11 @@ import {
   Plus, Upload, X, ChevronDown, ShoppingCart, Building2, Truck,
   MapPin, Calendar, Package, DollarSign, Printer, Wrench
 } from 'lucide-react';
+
+// Configuration email - AJOUTÉ
+const DOMINIQUE_EMAIL = 'info.servicestmt@gmail.com'; // À MODIFIER avec le vrai email
+const FROM_EMAIL = 'noreply@votreentreprise.com'; // À MODIFIER avec votre domaine vérifié
+const RESEND_API_KEY = process.env.REACT_APP_RESEND_API_KEY;
 
 // Fonction pour obtenir le pattern du code postal
 const getPostalCodePattern = (country) => {
@@ -73,6 +79,8 @@ export default function SupplierPurchaseManager() {
   const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
   const [itemsToImport, setItemsToImport] = useState([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [emailStatus, setEmailStatus] = useState('');
+  const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   
   // Recherche produits
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -136,6 +144,361 @@ export default function SupplierPurchaseManager() {
     country: 'Canada',
     is_default: false
   });
+
+    // NOUVELLES FONCTIONS EMAIL - AJOUTÉ
+
+// Générer le PDF de l'achat fournisseur
+const generatePurchasePDF = (purchase) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.width;
+  
+  // En-tête du document
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ACHAT FOURNISSEUR', pageWidth / 2, 20, { align: 'center' });
+  
+  doc.setFontSize(16);
+  doc.text(`N° ${purchase.purchase_number}`, pageWidth / 2, 30, { align: 'center' });
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Date: ${new Date(purchase.created_at).toLocaleDateString('fr-FR')}`, pageWidth / 2, 40, { align: 'center' });
+  
+  // Ligne de séparation
+  doc.setLineWidth(0.5);
+  doc.line(10, 45, pageWidth - 10, 45);
+  
+  // Informations fournisseur
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FOURNISSEUR:', 15, 60);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(12);
+  doc.text(purchase.supplier_name || 'N/A', 15, 70);
+  
+  // Informations de base
+  const startY = 85;
+  doc.text(`Date création: ${new Date(purchase.created_at).toLocaleDateString('fr-FR')}`, 15, startY);
+  
+  if (purchase.delivery_date) {
+    doc.text(`Date livraison: ${new Date(purchase.delivery_date).toLocaleDateString('fr-FR')}`, 15, startY + 8);
+  }
+  
+  doc.text(`Statut: ${purchase.status}`, 15, startY + 16);
+  
+  // Référence soumission fournisseur
+  if (purchase.supplier_quote_reference) {
+    doc.text(`Réf. Soumission: ${purchase.supplier_quote_reference}`, 15, startY + 24);
+  }
+  
+  // Lien avec bon d'achat client si existant
+  if (purchase.linked_po_number) {
+    doc.setFillColor(230, 240, 255);
+    doc.rect(10, startY + 35, pageWidth - 20, 20, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text('LIEN AVEC BON D\'ACHAT CLIENT:', 15, startY + 45);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`N° Bon d'achat: ${purchase.linked_po_number}`, 15, startY + 52);
+  }
+  
+  // Tableau des articles
+  const itemsStartY = purchase.linked_po_number ? startY + 65 : startY + 45;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('DÉTAIL DES ARTICLES:', 15, itemsStartY);
+  
+  if (purchase.items && purchase.items.length > 0) {
+    const tableData = purchase.items.map(item => {
+      const quantity = parseFloat(item.quantity || 1);
+      const unitPrice = parseFloat(item.cost_price || 0);
+      const lineTotal = quantity * unitPrice;
+      
+      return [
+        item.product_id || '-',
+        item.description || '-',
+        quantity.toString(),
+        item.unit || 'UN',
+        `$${unitPrice.toFixed(4)}`,
+        `$${lineTotal.toFixed(2)}`
+      ];
+    });
+    
+    doc.autoTable({
+      startY: itemsStartY + 10,
+      head: [['Code', 'Description', 'Qté', 'Unité', 'Prix Unit.', 'Total']],
+      body: tableData,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [70, 130, 180] },
+      margin: { left: 15, right: 15 }
+    });
+    
+    // Totaux
+    const finalY = doc.lastAutoTable.finalY + 10;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Sous-total:', pageWidth - 80, finalY);
+    doc.text(`$${parseFloat(purchase.subtotal || 0).toFixed(2)}`, pageWidth - 15, finalY, { align: 'right' });
+    
+    if (parseFloat(purchase.tps || 0) > 0) {
+      doc.text('TPS (5%):', pageWidth - 80, finalY + 8);
+      doc.text(`$${parseFloat(purchase.tps || 0).toFixed(2)}`, pageWidth - 15, finalY + 8, { align: 'right' });
+    }
+    
+    if (parseFloat(purchase.tvq || 0) > 0) {
+      doc.text('TVQ (9.975%):', pageWidth - 80, finalY + 16);
+      doc.text(`$${parseFloat(purchase.tvq || 0).toFixed(2)}`, pageWidth - 15, finalY + 16, { align: 'right' });
+    }
+    
+    if (parseFloat(purchase.shipping_cost || 0) > 0) {
+      doc.text('Livraison:', pageWidth - 80, finalY + 24);
+      doc.text(`$${parseFloat(purchase.shipping_cost || 0).toFixed(2)}`, pageWidth - 15, finalY + 24, { align: 'right' });
+    }
+    
+    // Ligne de séparation
+    const totalLineY = finalY + 32;
+    doc.setLineWidth(1);
+    doc.line(pageWidth - 80, totalLineY, pageWidth - 15, totalLineY);
+    
+    doc.setFontSize(14);
+    doc.text('TOTAL GÉNÉRAL:', pageWidth - 80, totalLineY + 10);
+    doc.text(`$${parseFloat(purchase.total_amount || 0).toFixed(2)}`, pageWidth - 15, totalLineY + 10, { align: 'right' });
+    
+    // Notes si présentes
+    if (purchase.notes) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Notes:', 15, totalLineY + 25);
+      doc.setFont('helvetica', 'normal');
+      doc.text(purchase.notes, 15, totalLineY + 35, { maxWidth: pageWidth - 30 });
+    }
+  } else {
+    doc.setFont('helvetica', 'italic');
+    doc.text('Aucun article disponible', 15, itemsStartY + 15);
+  }
+  
+  return doc;
+};
+
+// Envoyer l'email avec Resend
+const sendEmailToDominique = async (purchase, pdfBlob) => {
+  if (!RESEND_API_KEY) {
+    throw new Error('Clé API Resend manquante. Vérifiez REACT_APP_RESEND_API_KEY dans votre .env');
+  }
+
+  try {
+    setIsLoadingEmail(true);
+    setEmailStatus('Envoi en cours...');
+    
+    // Convertir le PDF en base64 pour l'attachment
+    const pdfBase64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(',')[1]; // Enlever le préfixe data:
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(pdfBlob);
+    });
+
+    const isApproved = purchase.status === 'ordered' || purchase.status === 'approved';
+    const emailData = {
+      from: FROM_EMAIL,
+      to: [DOMINIQUE_EMAIL],
+      subject: `🛒 ${isApproved ? 'Achat Fournisseur Approuvé' : 'Nouvel Achat Fournisseur'} - #${purchase.purchase_number}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 24px;">
+              ${isApproved ? '✅ Achat Approuvé' : '📋 Nouvel Achat Créé'}
+            </h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">
+              Achat Fournisseur #${purchase.purchase_number}
+            </p>
+          </div>
+          
+          <div style="background: white; padding: 20px; border: 1px solid #e0e0e0; border-top: none;">
+            <h2 style="color: #333; margin-top: 0;">Détails de l'achat</h2>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Fournisseur:</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${purchase.supplier_name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Date création:</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${new Date(purchase.created_at).toLocaleDateString('fr-FR')}</td>
+              </tr>
+              ${purchase.supplier_quote_reference ? `
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Réf. Soumission:</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${purchase.supplier_quote_reference}</td>
+              </tr>
+              ` : ''}
+              ${purchase.delivery_date ? `
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Date livraison:</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${new Date(purchase.delivery_date).toLocaleDateString('fr-FR')}</td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Statut:</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                  <span style="background: ${isApproved ? '#d4edda' : '#fff3cd'}; 
+                               color: ${isApproved ? '#155724' : '#856404'}; 
+                               padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                    ${purchase.status.toUpperCase()}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0;"><strong>Montant total:</strong></td>
+                <td style="padding: 8px 0; font-size: 18px; font-weight: bold; color: #28a745;">
+                  $${parseFloat(purchase.total_amount || 0).toFixed(2)}
+                </td>
+              </tr>
+            </table>
+            
+            ${purchase.linked_po_number ? `
+            <div style="background: #e7f3ff; border-left: 4px solid #0066cc; padding: 15px; margin: 20px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #0066cc;">🔗 Lié au Bon d'Achat Client</h3>
+              <p style="margin: 0;">N° Bon d'achat: <strong>${purchase.linked_po_number}</strong></p>
+            </div>
+            ` : ''}
+            
+            ${purchase.items && purchase.items.length > 0 ? `
+            <h3 style="color: #333;">Articles (${purchase.items.length})</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
+              <thead>
+                <tr style="background: #f8f9fa;">
+                  <th style="text-align: left; padding: 8px; border: 1px solid #dee2e6;">Article</th>
+                  <th style="text-align: center; padding: 8px; border: 1px solid #dee2e6;">Qté</th>
+                  <th style="text-align: right; padding: 8px; border: 1px solid #dee2e6;">Prix Unit.</th>
+                  <th style="text-align: right; padding: 8px; border: 1px solid #dee2e6;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${purchase.items.map(item => {
+                  const quantity = parseFloat(item.quantity || 1);
+                  const unitPrice = parseFloat(item.cost_price || 0);
+                  const lineTotal = quantity * unitPrice;
+                  
+                  return `
+                  <tr>
+                    <td style="padding: 8px; border: 1px solid #dee2e6;">
+                      <strong>${item.product_id || '-'}</strong><br>
+                      <small style="color: #666;">${item.description || '-'}</small>
+                    </td>
+                    <td style="text-align: center; padding: 8px; border: 1px solid #dee2e6;">${quantity}</td>
+                    <td style="text-align: right; padding: 8px; border: 1px solid #dee2e6;">$${unitPrice.toFixed(4)}</td>
+                    <td style="text-align: right; padding: 8px; border: 1px solid #dee2e6; font-weight: bold;">$${lineTotal.toFixed(2)}</td>
+                  </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+            ` : ''}
+            
+            ${purchase.notes ? `
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 20px;">
+              <h4 style="margin: 0 0 10px 0; color: #333;">📝 Notes</h4>
+              <p style="margin: 0; color: #666;">${purchase.notes}</p>
+            </div>
+            ` : ''}
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; border: 1px solid #e0e0e0; border-top: none;">
+            <p style="margin: 0; color: #666; font-size: 12px;">
+              Document PDF joint • Système de Gestion des Achats Fournisseurs
+            </p>
+          </div>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: `Achat_Fournisseur_${purchase.purchase_number}.pdf`,
+          content: pdfBase64,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }
+      ]
+    };
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Erreur Resend: ${errorData.message || response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ Email envoyé avec succès:', result.id);
+    setEmailStatus(`✅ Email envoyé à Dominique (${result.id})`);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Erreur envoi email:', error);
+    setEmailStatus(`❌ Erreur: ${error.message}`);
+    throw error;
+  } finally {
+    setIsLoadingEmail(false);
+  }
+};
+
+// Fonction pour tester l'envoi d'email (développement)
+const testEmailFunction = async () => {
+  const testPurchase = {
+    id: 'test-123',
+    purchase_number: 'TEST-001',
+    supplier_name: 'Fournisseur Test',
+    total_amount: 1250.00,
+    subtotal: 1000.00,
+    tps: 50.00,
+    tvq: 99.75,
+    shipping_cost: 100.25,
+    status: 'ordered',
+    created_at: new Date().toISOString(),
+    delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    linked_po_number: 'PO-2025-001',
+    supplier_quote_reference: 'QTE-2025-456',
+    notes: 'Ceci est un test d\'envoi d\'email automatique.',
+    items: [
+      {
+        product_id: 'TEST-001',
+        description: 'Article de test',
+        quantity: 5,
+        unit: 'unité',
+        cost_price: 100.00
+      },
+      {
+        product_id: 'TEST-002', 
+        description: 'Deuxième article test',
+        quantity: 10,
+        unit: 'mètre',
+        cost_price: 50.00
+      }
+    ]
+  };
+
+  try {
+    const pdf = generatePurchasePDF(testPurchase);
+    const pdfBlob = pdf.output('blob');
+    await sendEmailToDominique(testPurchase, pdfBlob);
+  } catch (error) {
+    console.error('Erreur test email:', error);
+  }
+};
+
+// FIN NOUVELLES FONCTIONS EMAIL
 
   // Chargement initial avec vérification auth
   useEffect(() => {
@@ -760,58 +1123,159 @@ useEffect(() => {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
 
-  // Sauvegarde achat - MODIFIÉE avec supplier_quote_reference
-  const handlePurchaseSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      let purchaseNumber = purchaseForm.purchase_number;
+           const handlePurchaseSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    let purchaseNumber = purchaseForm.purchase_number;
+    
+    if (!editingPurchase) {
+      purchaseNumber = await generatePurchaseNumber();
+    }
+
+    // CORRECTION: Filtrer les données pour ne garder que les colonnes de la table
+    const purchaseData = {
+      supplier_id: purchaseForm.supplier_id,
+      supplier_name: purchaseForm.supplier_name,
+      linked_po_id: purchaseForm.linked_po_id || null,
+      linked_po_number: purchaseForm.linked_po_number,
+      linked_submission_id: purchaseForm.linked_submission_id || null,
+      supplier_quote_reference: purchaseForm.supplier_quote_reference,
+      shipping_address_id: purchaseForm.shipping_address_id,
+      shipping_company: purchaseForm.shipping_company,
+      shipping_account: purchaseForm.shipping_account,
+      delivery_date: purchaseForm.delivery_date || (() => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow.toISOString().split('T')[0];
+      })(),
+      items: selectedItems,
+      subtotal: purchaseForm.subtotal,
+      tps: purchaseForm.tps,
+      tvq: purchaseForm.tvq,
+      shipping_cost: parseFloat(purchaseForm.shipping_cost || 0),
+      total_amount: purchaseForm.total_amount,
+      status: purchaseForm.status,
+      notes: purchaseForm.notes,
+      purchase_number: purchaseNumber
+    };
+
+    // UNE SEULE SAUVEGARDE AVEC RÉCUPÉRATION DES DONNÉES
+    let savedPurchase;
+
+    if (editingPurchase) {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .update(purchaseData)
+        .eq('id', editingPurchase.id)
+        .select()
+        .single();
+      if (error) throw error;
+      savedPurchase = data;
+      console.log('Achat mis à jour avec succès');
+    } else {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .insert([purchaseData])
+        .select()
+        .single();
+      if (error) throw error;
+      savedPurchase = data;
+      console.log('Achat créé avec succès');
+    }
+
+    // LOGIQUE EMAIL - Envoyer email si création OU si approuvé
+    const shouldSendEmail = (
+      (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
+      (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
+    );
+
+    if (shouldSendEmail && RESEND_API_KEY) {
+      try {
+        const pdf = generatePurchasePDF(savedPurchase);
+        const pdfBlob = pdf.output('blob');
+        await sendEmailToDominique(savedPurchase, pdfBlob);
+      } catch (emailError) {
+        console.error('⚠️ Achat sauvé mais erreur email:', emailError);
+        // Continue sans faire échouer la sauvegarde
+      }
+    }
+    
+    await fetchSupplierPurchases();
+    resetForm();
+    console.log(editingPurchase ? 'Achat modifié avec succès!' : 'Achat créé avec succès!');
+  } catch (error) {
+    console.error('Erreur sauvegarde achat:', error);
+    alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+  }
+};
+
+    // UNE SEULE SAUVEGARDE AVEC RÉCUPÉRATION DES DONNÉES
+    let savedPurchase;
+
+    if (editingPurchase) {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .update(purchaseData)
+        .eq('id', editingPurchase.id)
+        .select()
+        .single();
+      if (error) throw error;
+      savedPurchase = data;
+      console.log('Achat mis à jour avec succès');
+    } else {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .insert([purchaseData])
+        .select()
+        .single();
+      if (error) throw error;
+      savedPurchase = data;
+      console.log('Achat créé avec succès');
+    }
+
+    // LOGIQUE EMAIL - Envoyer email si création OU si approuvé
+    const shouldSendEmail = (
+      (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
+      (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
+    );
+
+    if (shouldSendEmail && RESEND_API_KEY) {
+      try {
+        const pdf = generatePurchasePDF(savedPurchase);
+        const pdfBlob = pdf.output('blob');
+        await sendEmailToDominique(savedPurchase, pdfBlob);
+      } catch (emailError) {
+        console.error('⚠️ Achat sauvé mais erreur email:', emailError);
+        // Continue sans faire échouer la sauvegarde
+      }
+    }
+    
+    await fetchSupplierPurchases();
+    resetForm();
+    console.log(editingPurchase ? 'Achat modifié avec succès!' : 'Achat créé avec succès!');
+  } catch (error) {
+    console.error('Erreur sauvegarde achat:', error);
+    alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+  }
+};
+
+      // NOUVELLE LOGIQUE EMAIL - Envoyer email si création OU si approuvé
+      const shouldSendEmail = (
+        (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
+        (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
+      );
+
+      if (shouldSendEmail && RESEND_API_KEY) {
+        try {
+          const pdf = generatePurchasePDF(savedPurchase);
+          const pdfBlob = pdf.output('blob');
+          await sendEmailToDominique(savedPurchase, pdfBlob);
+        } catch (emailError) {
+          console.error('⚠️ Achat sauvé mais erreur email:', emailError);
+          // Continue sans faire échouer la sauvegarde
+        }
+      }
       
-      if (!editingPurchase) {
-        purchaseNumber = await generatePurchaseNumber();
-      }
-
-      // CORRECTION: Filtrer les données pour ne garder que les colonnes de la table
-      const purchaseData = {
-        supplier_id: purchaseForm.supplier_id,
-        supplier_name: purchaseForm.supplier_name,
-        linked_po_id: purchaseForm.linked_po_id || null,
-        linked_po_number: purchaseForm.linked_po_number,
-        linked_submission_id: purchaseForm.linked_submission_id || null,
-        supplier_quote_reference: purchaseForm.supplier_quote_reference, // NOUVEAU CHAMP
-        shipping_address_id: purchaseForm.shipping_address_id,
-        shipping_company: purchaseForm.shipping_company,
-        shipping_account: purchaseForm.shipping_account,
-        delivery_date: purchaseForm.delivery_date || (() => {
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          return tomorrow.toISOString().split('T')[0];
-        })(),
-        items: selectedItems,
-        subtotal: purchaseForm.subtotal,
-        tps: purchaseForm.tps,
-        tvq: purchaseForm.tvq,
-        shipping_cost: parseFloat(purchaseForm.shipping_cost || 0),
-        total_amount: purchaseForm.total_amount,
-        status: purchaseForm.status,
-        notes: purchaseForm.notes,
-        purchase_number: purchaseNumber
-      };
-
-      if (editingPurchase) {
-        const { error } = await supabase
-          .from('supplier_purchases')
-          .update(purchaseData)
-          .eq('id', editingPurchase.id);
-        if (error) throw error;
-        console.log('Achat mis à jour avec succès');
-      } else {
-        const { error } = await supabase
-          .from('supplier_purchases')
-          .insert([purchaseData]);
-        if (error) throw error;
-        console.log('Achat créé avec succès');
-      }
-
       await fetchSupplierPurchases();
       resetForm();
       console.log(editingPurchase ? 'Achat modifié avec succès!' : 'Achat créé avec succès!');
@@ -864,6 +1328,10 @@ useEffect(() => {
     });
     setProductSearchTerm('');
     setFocusedProductIndex(-1);
+
+    // AJOUTÉ - Reset email status
+  setEmailStatus('');
+  setIsLoadingEmail(false);
   };
 
   const handlePrint = () => {
@@ -1450,12 +1918,26 @@ const shouldShowBilingual = () => {
                     type="submit"
                     form="purchase-form"
                     className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
+                    disabled={isLoadingEmail}
                   >
-                    {editingPurchase ? 'Mettre à jour' : 'Créer'}
+                    {isLoadingEmail ? 'Envoi...' : (editingPurchase ? 'Mettre à jour' : 'Créer')}
                   </button>
                 </div>
               </div>
             </div>
+
+              {/* NOUVEAU - Affichage du statut email */}
+            {emailStatus && (
+              <div className={`mx-6 mt-4 p-4 rounded-lg border ${
+                emailStatus.includes('✅') 
+                  ? 'bg-green-50 border-green-200 text-green-800' 
+                  : emailStatus.includes('❌')
+                  ? 'bg-red-50 border-red-200 text-red-800'
+                  : 'bg-blue-50 border-blue-200 text-blue-800'
+              }`}>
+                {emailStatus}
+              </div>
+            )}
             
             {/* Contenu du formulaire */}
             <div className="p-4 sm:p-6">
@@ -2252,6 +2734,17 @@ const shouldShowBilingual = () => {
             >
               Nouvel Achat
             </button>
+                {/* NOUVEAU - Bouton test email en développement */}
+            {process.env.NODE_ENV === 'development' && RESEND_API_KEY && (
+              <button
+                onClick={testEmailFunction}
+                disabled={isLoadingEmail}
+                className="w-full sm:w-auto px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm font-medium disabled:opacity-50"
+                title="Tester l'envoi d'email à Dominique"
+              >
+                {isLoadingEmail ? 'Test...' : '🧪 Test Email'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -2301,6 +2794,27 @@ const shouldShowBilingual = () => {
           </div>
         </div>
       </div>
+
+      {/* NOUVEAU - Affichage du statut email global */}
+        {emailStatus && (
+          <div className={`mb-4 p-3 rounded-lg border ${
+            emailStatus.includes('✅') 
+              ? 'bg-green-500/20 border-green-400/30 text-green-100' 
+              : emailStatus.includes('❌')
+              ? 'bg-red-500/20 border-red-400/30 text-red-100'
+              : 'bg-blue-500/20 border-blue-400/30 text-blue-100'
+          }`}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">{emailStatus}</span>
+              <button 
+                onClick={() => setEmailStatus('')}
+                className="text-white/60 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* Filtres */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
