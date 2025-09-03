@@ -1124,7 +1124,7 @@ useEffect(() => {
   };
 
      // Sauvegarde achat - MODIFIÉE avec supplier_quote_reference ET EMAIL
-const handlePurchaseSubmit = async (e) => {
+     const handlePurchaseSubmit = async (e) => {
   e.preventDefault();
   try {
     let purchaseNumber = purchaseForm.purchase_number;
@@ -1133,7 +1133,6 @@ const handlePurchaseSubmit = async (e) => {
       purchaseNumber = await generatePurchaseNumber();
     }
 
-    // CORRECTION: Filtrer les données pour ne garder que les colonnes de la table
     const purchaseData = {
       supplier_id: purchaseForm.supplier_id,
       supplier_name: purchaseForm.supplier_name,
@@ -1160,7 +1159,6 @@ const handlePurchaseSubmit = async (e) => {
       purchase_number: purchaseNumber
     };
 
-    // UNE SEULE SAUVEGARDE AVEC RÉCUPÉRATION DES DONNÉES
     let savedPurchase;
 
     if (editingPurchase) {
@@ -1184,7 +1182,7 @@ const handlePurchaseSubmit = async (e) => {
       console.log('Achat créé avec succès');
     }
 
-    // LOGIQUE EMAIL - Envoyer email si création OU si approuvé
+    // LOGIQUE EMAIL
     const shouldSendEmail = (
       (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
       (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
@@ -1197,7 +1195,6 @@ const handlePurchaseSubmit = async (e) => {
         await sendEmailToDominique(savedPurchase, pdfBlob);
       } catch (emailError) {
         console.error('⚠️ Achat sauvé mais erreur email:', emailError);
-        // Continue sans faire échouer la sauvegarde
       }
     }
     
@@ -1208,7 +1205,7 @@ const handlePurchaseSubmit = async (e) => {
     console.error('Erreur sauvegarde achat:', error);
     alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
   }
-};      
+};    
 
       // NOUVELLE LOGIQUE EMAIL - Envoyer email si création OU si approuvé
       const shouldSendEmail = (
