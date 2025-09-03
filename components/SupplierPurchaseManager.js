@@ -279,8 +279,7 @@ const generatePurchasePDF = (purchase) => {
   return doc;
 };
 
-    // Envoyer l'email via API route
-const sendEmailToDominique = async (purchase, pdfBlob) => {
+    const sendEmailToDominique = async (purchase, pdfBlob) => {
   try {
     setIsLoadingEmail(true);
     setEmailStatus('Envoi en cours...');
@@ -296,7 +295,7 @@ const sendEmailToDominique = async (purchase, pdfBlob) => {
       reader.readAsDataURL(pdfBlob);
     });
 
-    // Appeler l'API route Next.js (pas directement Resend)
+    // Appeler l'API route Next.js
     const response = await fetch('/api/send-purchase-email', {
       method: 'POST',
       headers: {
@@ -328,19 +327,28 @@ const sendEmailToDominique = async (purchase, pdfBlob) => {
   }
 };
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(emailData)
-    });
+    // Appeler l'API route Next.js (pas directement Resend)
+const response = await fetch('/api/send-purchase-email', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    purchase,
+    pdfBase64
+  })
+});
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Erreur Resend: ${errorData.message || response.statusText}`);
-    }
+const result = await response.json();
+
+if (!response.ok) {
+  throw new Error(result.error || 'Erreur serveur');
+}
+
+console.log('✅ Email envoyé avec succès:', result.messageId);
+setEmailStatus(`✅ Email envoyé à Dominique (${result.messageId})`);
+
+return result;
 
     const result = await response.json();
     console.log('✅ Email envoyé avec succès:', result.id);
