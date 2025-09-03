@@ -101,7 +101,7 @@ export async function POST(request) {
       `,
       attachments: [
         {
-          filename: `Achat_Fournisseur_${body.purchase.purchase_number}.pdf`,
+          filename: `${body.purchase.purchase_number}.pdf`,
           content: body.pdfBase64,
           type: 'application/pdf',
           disposition: 'attachment'
