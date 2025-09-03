@@ -1191,10 +1191,8 @@ const handlePurchaseSubmit = async (e) => {
     }
 
     // LOGIQUE EMAIL - VERSION SANS AWAIT DANS LE TRY/CATCH
-    const shouldSendEmail = (
-  (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
-  (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
-);
+   // LOGIQUE SIMPLIFIÉE - Envoyer email à chaque sauvegarde si statut = "ordered"
+const shouldSendEmail = (savedPurchase.status === 'ordered');
 
 console.log('📧 DÉBOGAGE EMAIL:');
 console.log('- shouldSendEmail:', shouldSendEmail);
