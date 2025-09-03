@@ -12,7 +12,6 @@ import {
 // Configuration email - AJOUTÉ
 const DOMINIQUE_EMAIL = 'info.servicestmt@gmail.com'; // À MODIFIER avec le vrai email
 const FROM_EMAIL = 'noreply@onboard.resend.dev'; // À MODIFIER avec votre domaine vérifié
-const RESEND_API_KEY = process.env.NEXT_PUBLIC_RESEND_API_KEY;
 
 // Fonction pour obtenir le pattern du code postal
 const getPostalCodePattern = (country) => {
@@ -281,149 +280,54 @@ const generatePurchasePDF = (purchase) => {
   return doc;
 };
 
-// Envoyer l'email avec Resend
+// Envoyer l'email via API route
 const sendEmailToDominique = async (purchase, pdfBlob) => {
-  if (!RESEND_API_KEY) {
-    throw new Error('Clé API Resend manquante. Vérifiez REACT_APP_RESEND_API_KEY dans votre .env');
-  }
-
   try {
     setIsLoadingEmail(true);
     setEmailStatus('Envoi en cours...');
     
-    // Convertir le PDF en base64 pour l'attachment
+    // Convertir le PDF en base64
     const pdfBase64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result.split(',')[1]; // Enlever le préfixe data:
+        const base64 = reader.result.split(',')[1];
         resolve(base64);
       };
       reader.onerror = reject;
       reader.readAsDataURL(pdfBlob);
     });
 
-    const isApproved = purchase.status === 'ordered' || purchase.status === 'approved';
-    const emailData = {
-      from: FROM_EMAIL,
-      to: [DOMINIQUE_EMAIL],
-      subject: `🛒 ${isApproved ? 'Achat Fournisseur Approuvé' : 'Nouvel Achat Fournisseur'} - #${purchase.purchase_number}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-            <h1 style="margin: 0; font-size: 24px;">
-              ${isApproved ? '✅ Achat Approuvé' : '📋 Nouvel Achat Créé'}
-            </h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">
-              Achat Fournisseur #${purchase.purchase_number}
-            </p>
-          </div>
-          
-          <div style="background: white; padding: 20px; border: 1px solid #e0e0e0; border-top: none;">
-            <h2 style="color: #333; margin-top: 0;">Détails de l'achat</h2>
-            
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Fournisseur:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${purchase.supplier_name}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Date création:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${new Date(purchase.created_at).toLocaleDateString('fr-FR')}</td>
-              </tr>
-              ${purchase.supplier_quote_reference ? `
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Réf. Soumission:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${purchase.supplier_quote_reference}</td>
-              </tr>
-              ` : ''}
-              ${purchase.delivery_date ? `
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Date livraison:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${new Date(purchase.delivery_date).toLocaleDateString('fr-FR')}</td>
-              </tr>
-              ` : ''}
-              <tr>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Statut:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                  <span style="background: ${isApproved ? '#d4edda' : '#fff3cd'}; 
-                               color: ${isApproved ? '#155724' : '#856404'}; 
-                               padding: 4px 8px; border-radius: 4px; font-size: 12px;">
-                    ${purchase.status.toUpperCase()}
-                  </span>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0;"><strong>Montant total:</strong></td>
-                <td style="padding: 8px 0; font-size: 18px; font-weight: bold; color: #28a745;">
-                  $${parseFloat(purchase.total_amount || 0).toFixed(2)}
-                </td>
-              </tr>
-            </table>
-            
-            ${purchase.linked_po_number ? `
-            <div style="background: #e7f3ff; border-left: 4px solid #0066cc; padding: 15px; margin: 20px 0;">
-              <h3 style="margin: 0 0 10px 0; color: #0066cc;">🔗 Lié au Bon d'Achat Client</h3>
-              <p style="margin: 0;">N° Bon d'achat: <strong>${purchase.linked_po_number}</strong></p>
-            </div>
-            ` : ''}
-            
-            ${purchase.items && purchase.items.length > 0 ? `
-            <h3 style="color: #333;">Articles (${purchase.items.length})</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
-              <thead>
-                <tr style="background: #f8f9fa;">
-                  <th style="text-align: left; padding: 8px; border: 1px solid #dee2e6;">Article</th>
-                  <th style="text-align: center; padding: 8px; border: 1px solid #dee2e6;">Qté</th>
-                  <th style="text-align: right; padding: 8px; border: 1px solid #dee2e6;">Prix Unit.</th>
-                  <th style="text-align: right; padding: 8px; border: 1px solid #dee2e6;">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${purchase.items.map(item => {
-                  const quantity = parseFloat(item.quantity || 1);
-                  const unitPrice = parseFloat(item.cost_price || 0);
-                  const lineTotal = quantity * unitPrice;
-                  
-                  return `
-                  <tr>
-                    <td style="padding: 8px; border: 1px solid #dee2e6;">
-                      <strong>${item.product_id || '-'}</strong><br>
-                      <small style="color: #666;">${item.description || '-'}</small>
-                    </td>
-                    <td style="text-align: center; padding: 8px; border: 1px solid #dee2e6;">${quantity}</td>
-                    <td style="text-align: right; padding: 8px; border: 1px solid #dee2e6;">$${unitPrice.toFixed(4)}</td>
-                    <td style="text-align: right; padding: 8px; border: 1px solid #dee2e6; font-weight: bold;">$${lineTotal.toFixed(2)}</td>
-                  </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-            ` : ''}
-            
-            ${purchase.notes ? `
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 20px;">
-              <h4 style="margin: 0 0 10px 0; color: #333;">📝 Notes</h4>
-              <p style="margin: 0; color: #666;">${purchase.notes}</p>
-            </div>
-            ` : ''}
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; border: 1px solid #e0e0e0; border-top: none;">
-            <p style="margin: 0; color: #666; font-size: 12px;">
-              Document PDF joint • Système de Gestion des Achats Fournisseurs
-            </p>
-          </div>
-        </div>
-      `,
-      attachments: [
-        {
-          filename: `Achat_Fournisseur_${purchase.purchase_number}.pdf`,
-          content: pdfBase64,
-          type: 'application/pdf',
-          disposition: 'attachment'
-        }
-      ]
-    };
+    // Appeler l'API route
+    const response = await fetch('/api/send-purchase-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        purchase,
+        pdfBase64
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Erreur serveur');
+    }
+
+    console.log('✅ Email envoyé avec succès:', result.messageId);
+    setEmailStatus(`✅ Email envoyé à Dominique (${result.messageId})`);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Erreur envoi email:', error);
+    setEmailStatus(`❌ Erreur: ${error.message}`);
+    throw error;
+  } finally {
+    setIsLoadingEmail(false);
+  }
+};
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
