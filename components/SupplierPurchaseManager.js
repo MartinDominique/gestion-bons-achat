@@ -12,7 +12,7 @@ import {
 // Configuration email - AJOUTÉ
 const DOMINIQUE_EMAIL = 'info.servicestmt@gmail.com'; // À MODIFIER avec le vrai email
 const FROM_EMAIL = 'noreply@onboard.resend.dev'; // À MODIFIER avec votre domaine vérifié
-const RESEND_API_KEY = process.env.REACT_APP_RESEND_API_KEY;
+const RESEND_API_KEY = process.env.NEXT_PUBLIC_RESEND_API_KEY;
 
 // Fonction pour obtenir le pattern du code postal
 const getPostalCodePattern = (country) => {
