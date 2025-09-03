@@ -11,7 +11,6 @@ import {
 
 // Configuration email - AJOUTÉ
 const DOMINIQUE_EMAIL = 'info.servicestmt@gmail.com'; // À MODIFIER avec le vrai email
-const FROM_EMAIL = 'noreply@onboard.resend.dev'; // À MODIFIER avec votre domaine vérifié
 
 // Fonction pour obtenir le pattern du code postal
 const getPostalCodePattern = (country) => {
@@ -280,7 +279,7 @@ const generatePurchasePDF = (purchase) => {
   return doc;
 };
 
-// Envoyer l'email via API route
+    // Envoyer l'email via API route
 const sendEmailToDominique = async (purchase, pdfBlob) => {
   try {
     setIsLoadingEmail(true);
@@ -297,7 +296,7 @@ const sendEmailToDominique = async (purchase, pdfBlob) => {
       reader.readAsDataURL(pdfBlob);
     });
 
-    // Appeler l'API route
+    // Appeler l'API route Next.js (pas directement Resend)
     const response = await fetch('/api/send-purchase-email', {
       method: 'POST',
       headers: {
@@ -1104,7 +1103,7 @@ console.log('- RESEND_API_KEY présente:', !!RESEND_API_KEY);
 console.log('- savedPurchase.status:', savedPurchase.status);
 console.log('- editingPurchase:', !!editingPurchase);
 
-if (shouldSendEmail && RESEND_API_KEY) {
+if (shouldSendEmail) {
   console.log('📧 Début génération PDF...');
   const pdf = generatePurchasePDF(savedPurchase);
   const pdfBlob = pdf.output('blob');
