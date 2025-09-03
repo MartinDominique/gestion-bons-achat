@@ -3,75 +3,63 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request) {
-  console.log('🔧 API route send-purchase-email appelée');
+  console.log('🔧 API route appelée');
   
   try {
-    // Vérifier la clé API
-    if (!process.env.RESEND_API_KEY) {
-      console.error('❌ RESEND_API_KEY manquante côté serveur');
+    // Vérification clé API avec plus de détails
+    const apiKey = process.env.RESEND_API_KEY;
+    console.log('Clé API présente:', !!apiKey);
+    console.log('Début de la clé:', apiKey ? apiKey.substring(0, 8) : 'MANQUANTE');
+    
+    if (!apiKey) {
       return Response.json({ 
         success: false, 
-        error: 'Configuration API manquante' 
+        error: 'RESEND_API_KEY manquante' 
       }, { status: 500 });
     }
 
-    console.log('✅ Clé API présente côté serveur');
+    const body = await request.json();
+    console.log('Données reçues:', {
+      hasPurchase: !!body.purchase,
+      hasPdfBase64: !!body.pdfBase64,
+      purchaseNumber: body.purchase?.purchase_number
+    });
 
-    const { purchase, pdfBase64 } = await request.json();
+    // TEST SIMPLE D'ABORD - Sans PDF ni destinataire complexe
+    console.log('📧 Test email simple...');
     
-    if (!purchase || !pdfBase64) {
-      console.error('❌ Données manquantes:', { purchase: !!purchase, pdf: !!pdfBase64 });
-      return Response.json({ 
-        success: false, 
-        error: 'Données manquantes' 
-      }, { status: 400 });
-    }
-
-    console.log('✅ Données reçues:', purchase.purchase_number);
-
-    // Email simple d'abord (sans PDF pour tester)
-    const emailData = {
+    const testEmailData = {
       from: 'delivered@resend.dev',
-      to: ['info.servicestmt@gmail.com'],
-      subject: `🛒 Achat Fournisseur - ${purchase.purchase_number}`,
-      html: `
-        <h2>Nouvel Achat Fournisseur</h2>
-        <p><strong>Numéro:</strong> ${purchase.purchase_number}</p>
-        <p><strong>Fournisseur:</strong> ${purchase.supplier_name}</p>
-        <p><strong>Total:</strong> ${purchase.total_amount} CAD</p>
-        <p>PDF joint.</p>
-      `,
-      attachments: [
-        {
-          filename: `Achat_${purchase.purchase_number}.pdf`,
-          content: pdfBase64,
-          type: 'application/pdf'
-        }
-      ]
+      to: ['test@resend.dev'], // Adresse de test Resend
+      subject: 'Test simple',
+      html: '<p>Test basique</p>'
     };
 
-    console.log('📧 Envoi email via Resend...');
-    const { data, error } = await resend.emails.send(emailData);
-
-    if (error) {
-      console.error('❌ Erreur Resend:', error);
+    const result = await resend.emails.send(testEmailData);
+    console.log('Résultat Resend:', result);
+    
+    if (result.error) {
+      console.error('Erreur Resend détaillée:', JSON.stringify(result.error, null, 2));
       return Response.json({ 
         success: false, 
-        error: `Resend: ${error.message}` 
+        error: `Resend error: ${JSON.stringify(result.error)}` 
       }, { status: 400 });
     }
 
-    console.log('✅ Email envoyé:', data.id);
+    console.log('✅ Email envoyé:', result.data?.id);
     return Response.json({ 
       success: true, 
-      messageId: data.id 
+      messageId: result.data?.id,
+      debug: result
     });
 
   } catch (error) {
-    console.error('❌ Erreur API route:', error);
+    console.error('❌ Exception:', error);
+    console.error('Stack:', error.stack);
     return Response.json({ 
       success: false, 
-      error: error.message 
+      error: `Exception: ${error.message}`,
+      stack: error.stack
     }, { status: 500 });
   }
 }
