@@ -284,137 +284,135 @@ const generatePurchasePDF = (purchase) => {
     setIsLoadingEmail(true);
     setEmailStatus('Envoi en cours...');
     
-    // Vérifier que le conteneur d'impression existe
     const printContainer = document.querySelector('.print-container');
     if (!printContainer) {
-      throw new Error('Conteneur d\'impression non trouvé - assurez-vous d\'être sur la page de formulaire');
+      throw new Error('Conteneur d\'impression non trouvé');
     }
 
     console.log('Génération du PDF professionnel...');
     
-    // Styles d'impression temporaires
+    // Styles d'impression améliorés
     const printStyles = document.createElement('style');
     printStyles.textContent = `
       .temp-print-view * { visibility: visible !important; }
       .temp-print-view {
-        position: absolute !important;
+        position: fixed !important;
         left: -9999px !important; 
         top: 0 !important;
-        width: 8.5in !important;
+        width: 1024px !important; /* Largeur fixe plus grande */
         background: #fff !important;
-        padding: 0.5in !important;
-        font-size: 12px !important;
-        line-height: 1.4 !important;
+        padding: 48px !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
         font-family: Arial, sans-serif !important;
+        box-sizing: border-box !important;
       }
       .temp-print-view table { 
         width: 100% !important; 
         border-collapse: collapse !important; 
+        margin: 20px 0 !important;
       }
       .temp-print-view th, .temp-print-view td {
         border: 1px solid #000 !important; 
-        padding: 8px !important; 
+        padding: 12px !important; 
         text-align: left !important;
+        font-size: 12px !important;
       }
       .temp-print-view th { 
         background-color: #f0f0f0 !important; 
         font-weight: bold !important;
       }
+      .temp-print-view .text-right {
+        text-align: right !important;
+      }
+      .temp-print-view .text-center {
+        text-align: center !important;
+      }
+      .temp-print-view h1, .temp-print-view h2, .temp-print-view h3 {
+        margin: 10px 0 !important;
+      }
     `;
     document.head.appendChild(printStyles);
 
-    // Cloner et préparer le contenu
     const clonedContainer = printContainer.cloneNode(true);
     clonedContainer.className = 'temp-print-view';
     clonedContainer.style.visibility = 'visible';
     clonedContainer.style.display = 'block';
     document.body.appendChild(clonedContainer);
 
-    // Attendre que le DOM soit prêt
-    await new Promise(resolve => setTimeout(resolve, 150));
+    // Attendre plus longtemps pour le rendu
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Générer le canvas avec qualité optimisée
+    // Capture avec meilleure qualité
     const canvas = await html2canvas(clonedContainer, {
-      scale: 1.5, // Qualité réduite pour éviter les fichiers trop volumineux
+      scale: 2, // Qualité élevée
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      width: 612, // Largeur lettre en points
-      height: Math.min(clonedContainer.scrollHeight, 1500), // Limiter la hauteur
-      windowWidth: 612,
-      windowHeight: 792
+      width: 1024, // Largeur fixe
+      height: clonedContainer.scrollHeight,
+      windowWidth: 1024,
+      windowHeight: clonedContainer.scrollHeight + 100,
+      allowTaint: true,
+      imageTimeout: 15000
     });
 
-    // Nettoyage du DOM
+    // Nettoyage
     document.body.removeChild(clonedContainer);
     document.head.removeChild(printStyles);
 
-    // Créer le PDF
+    // PDF avec meilleure résolution
     const pdf = new jsPDF({ 
       unit: 'pt', 
       format: 'letter',
-      compress: true // Compression activée
+      compress: true
     });
     
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = { top: 36, right: 36, bottom: 36, left: 36 };
-    const usableWidth = pageWidth - margin.left - margin.right;
+    const margin = 50;
+    const usableWidth = pageWidth - (margin * 2);
+    const usableHeight = pageHeight - (margin * 2);
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.8); // JPEG avec 80% qualité au lieu de PNG
+    // Conversion en JPEG avec qualité élevée
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const imgWidth = usableWidth;
     const imgHeight = canvas.height * (imgWidth / canvas.width);
 
-    // Ajouter l'image au PDF
-    if (imgHeight > pageHeight - margin.top - margin.bottom) {
-      // Si trop haut, paginer
+    if (imgHeight <= usableHeight) {
+      // Une seule page
+      pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+    } else {
+      // Pagination
       let heightLeft = imgHeight;
       let positionY = 0;
-      let page = 1;
 
       while (heightLeft > 0) {
-        if (page > 1) pdf.addPage();
+        if (positionY > 0) pdf.addPage();
 
         pdf.addImage(
           imgData,
           'JPEG',
-          margin.left,
-          margin.top + positionY,
+          margin,
+          margin + positionY,
           imgWidth,
           imgHeight
         );
 
-        heightLeft -= (pageHeight - margin.top - margin.bottom);
-        positionY -= (pageHeight - margin.top - margin.bottom);
-        page++;
+        heightLeft -= usableHeight;
+        positionY -= usableHeight;
       }
-    } else {
-      // Une seule page
-      pdf.addImage(
-        imgData,
-        'JPEG',
-        margin.left,
-        margin.top,
-        imgWidth,
-        imgHeight
-      );
     }
 
-    // Convertir en base64
     const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
     const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
-    const pdfSizeMB = Math.round(pdfSizeKB / 1024 * 100) / 100;
     
-    console.log(`Taille PDF générée: ${pdfSizeKB} KB (${pdfSizeMB} MB)`);
+    console.log(`Taille PDF: ${pdfSizeKB} KB`);
     
-    // Vérifier la taille (limite Vercel = ~4.5MB pour body)
-    if (pdfSizeKB > 4000) {
-      throw new Error(`PDF trop volumineux: ${pdfSizeMB} MB. Limite: ~4 MB`);
+    if (pdfSizeKB > 5000) {
+      throw new Error(`PDF trop volumineux: ${Math.round(pdfSizeKB/1024 * 10)/10} MB`);
     }
 
-    console.log('Envoi de l\'email...');
-
-    // Appel API
     const response = await fetch('/api/send-purchase-email', {
       method: 'POST',
       headers: {
@@ -426,25 +424,19 @@ const generatePurchasePDF = (purchase) => {
       })
     });
 
-    // Vérifier le type de contenu de la réponse
     const contentType = response.headers.get('content-type');
-    console.log('Type de réponse:', contentType, 'Status:', response.status);
-
-    if (!contentType || !contentType.includes('application/json')) {
+    if (!contentType?.includes('application/json')) {
       const htmlResponse = await response.text();
-      console.error('Réponse HTML au lieu de JSON:', htmlResponse.substring(0, 300));
-      throw new Error('Le serveur a retourné une page HTML au lieu de JSON. Vérifiez les logs Vercel.');
+      throw new Error('Réponse HTML au lieu de JSON');
     }
 
     const result = await response.json();
-
+    
     if (!response.ok) {
-      throw new Error(result.error || `Erreur serveur: ${response.status}`);
+      throw new Error(result.error || `Erreur ${response.status}`);
     }
 
-    console.log('Email envoyé avec succès:', result.messageId);
-    setEmailStatus(`Email envoyé avec PDF (${pdfSizeKB} KB) - ID: ${result.messageId}`);
-    
+    setEmailStatus(`Email envoyé avec PDF haute qualité (${pdfSizeKB} KB)`);
     return result;
     
   } catch (error) {
