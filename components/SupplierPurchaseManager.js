@@ -327,43 +327,6 @@ const generatePurchasePDF = (purchase) => {
   }
 };
 
-    // Appeler l'API route Next.js (pas directement Resend)
-const response = await fetch('/api/send-purchase-email', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    purchase,
-    pdfBase64
-  })
-});
-
-const result = await response.json();
-
-if (!response.ok) {
-  throw new Error(result.error || 'Erreur serveur');
-}
-
-console.log('✅ Email envoyé avec succès:', result.messageId);
-setEmailStatus(`✅ Email envoyé à Dominique (${result.messageId})`);
-
-return result;
-
-    const result = await response.json();
-    console.log('✅ Email envoyé avec succès:', result.id);
-    setEmailStatus(`✅ Email envoyé à Dominique (${result.id})`);
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Erreur envoi email:', error);
-    setEmailStatus(`❌ Erreur: ${error.message}`);
-    throw error;
-  } finally {
-    setIsLoadingEmail(false);
-  }
-};
 
 // Fonction pour tester l'envoi d'email (développement)
 const testEmailFunction = async () => {
@@ -488,11 +451,9 @@ useEffect(() => {
 
   // DÉBOGAGE TEMPORAIRE - VÉRIFICATION RESEND API
 useEffect(() => {
-  console.log('🔑 RESEND_API_KEY:', RESEND_API_KEY ? 'PRÉSENTE' : 'MANQUANTE');
-  console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+    console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
   console.log('📧 DOMINIQUE_EMAIL:', DOMINIQUE_EMAIL);
-  console.log('📧 FROM_EMAIL:', FROM_EMAIL);
-}, []);
+  }, []);
 
   // NOUVELLES FONCTIONS POUR IMPORT SOUMISSION
   
@@ -1107,7 +1068,7 @@ const shouldSendEmail = (savedPurchase.status === 'ordered');
 
 console.log('📧 DÉBOGAGE EMAIL:');
 console.log('- shouldSendEmail:', shouldSendEmail);
-console.log('- RESEND_API_KEY présente:', !!RESEND_API_KEY);
+console.log('- API Route disponible:', true);
 console.log('- savedPurchase.status:', savedPurchase.status);
 console.log('- editingPurchase:', !!editingPurchase);
 
@@ -1129,8 +1090,7 @@ if (shouldSendEmail) {
 } else {
   console.log('📧 Email non envoyé. Raisons:');
   console.log('- shouldSendEmail:', shouldSendEmail);
-  console.log('- RESEND_API_KEY:', !!RESEND_API_KEY);
-}
+  }
     
     await fetchSupplierPurchases();
     resetForm();
@@ -2591,7 +2551,7 @@ const shouldShowBilingual = () => {
               Nouvel Achat
             </button>
                 {/* NOUVEAU - Bouton test email en développement */}
-            {process.env.NODE_ENV === 'development' && RESEND_API_KEY && (
+            {process.env.NODE_ENV === 'development' && (
               <button
                 onClick={testEmailFunction}
                 disabled={isLoadingEmail}
