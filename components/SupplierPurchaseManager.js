@@ -1124,7 +1124,7 @@ useEffect(() => {
   };
 
      // Sauvegarde achat - MODIFIÉE avec supplier_quote_reference ET EMAIL
-     const handlePurchaseSubmit = async (e) => {
+const handlePurchaseSubmit = async (e) => {
   e.preventDefault();
   try {
     let purchaseNumber = purchaseForm.purchase_number;
@@ -1182,20 +1182,25 @@ useEffect(() => {
       console.log('Achat créé avec succès');
     }
 
-    // LOGIQUE EMAIL
+    // LOGIQUE EMAIL - VERSION SANS AWAIT DANS LE TRY/CATCH
     const shouldSendEmail = (
       (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
       (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
     );
 
     if (shouldSendEmail && RESEND_API_KEY) {
-      try {
-        const pdf = generatePurchasePDF(savedPurchase);
-        const pdfBlob = pdf.output('blob');
-        await sendEmailToDominique(savedPurchase, pdfBlob);
-      } catch (emailError) {
-        console.error('⚠️ Achat sauvé mais erreur email:', emailError);
-      }
+      const pdf = generatePurchasePDF(savedPurchase);
+      const pdfBlob = pdf.output('blob');
+      
+      // Exécution asynchrone sans bloquer la sauvegarde
+      sendEmailToDominique(savedPurchase, pdfBlob)
+        .then(() => {
+          setEmailStatus('✅ Email envoyé avec succès');
+        })
+        .catch((emailError) => {
+          console.error('⚠️ Achat sauvé mais erreur email:', emailError);
+          setEmailStatus(`❌ Erreur email: ${emailError.message}`);
+        });
     }
     
     await fetchSupplierPurchases();
@@ -1205,33 +1210,7 @@ useEffect(() => {
     console.error('Erreur sauvegarde achat:', error);
     alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
   }
-};    
-
-      // NOUVELLE LOGIQUE EMAIL - Envoyer email si création OU si approuvé
-      const shouldSendEmail = (
-        (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
-        (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
-      );
-
-      if (shouldSendEmail && RESEND_API_KEY) {
-        try {
-          const pdf = generatePurchasePDF(savedPurchase);
-          const pdfBlob = pdf.output('blob');
-          await sendEmailToDominique(savedPurchase, pdfBlob);
-        } catch (emailError) {
-          console.error('⚠️ Achat sauvé mais erreur email:', emailError);
-          // Continue sans faire échouer la sauvegarde
-        }
-      }
-      
-      await fetchSupplierPurchases();
-      resetForm();
-      console.log(editingPurchase ? 'Achat modifié avec succès!' : 'Achat créé avec succès!');
-    } catch (error) {
-      console.error('Erreur sauvegarde achat:', error);
-      alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
-    }
-  };
+};
 
   const handleDeletePurchase = async (id) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cet achat ?')) return;
