@@ -31,7 +31,7 @@ export async function POST(request) {
 
     // Email simple d'abord (sans PDF pour tester)
     const emailData = {
-      from: 'noreply@onboard.resend.dev',
+      from: 'delivered@resend.dev',
       to: ['info.servicestmt@gmail.com'],
       subject: `🛒 Achat Fournisseur - ${purchase.purchase_number}`,
       html: `
