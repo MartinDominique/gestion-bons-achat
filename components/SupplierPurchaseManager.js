@@ -284,18 +284,76 @@ const generatePurchasePDF = (purchase) => {
     setIsLoadingEmail(true);
     setEmailStatus('Envoi en cours...');
     
-    // Convertir le PDF en base64
-    const pdfBase64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(pdfBlob);
+    // UTILISER LE SYSTÈME D'EXPORT PDF EXISTANT AU LIEU DE generatePurchasePDF
+    const printContainer = document.querySelector('.print-container');
+    if (!printContainer) {
+      throw new Error('Conteneur d\'impression non trouvé');
+    }
+
+    // Copier le code de exportPDF pour générer le même PDF
+    const printStyles = document.createElement('style');
+    printStyles.textContent = `
+      .temp-print-view * { visibility: visible !important; }
+      .temp-print-view {
+        position: absolute !important;
+        left: 0 !important; top: 0 !important;
+        width: 8.5in !important;
+        background: #fff !important;
+        padding: 0.5in !important;
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+      }
+      .temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
+      .temp-print-view th, .temp-print-view td {
+        border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
+      }
+      .temp-print-view th { background-color: #f0f0f0 !important; }
+    `;
+    document.head.appendChild(printStyles);
+
+    const clonedContainer = printContainer.cloneNode(true);
+    clonedContainer.className = 'temp-print-view';
+    clonedContainer.style.visibility = 'visible';
+    clonedContainer.style.display = 'block';
+    document.body.appendChild(clonedContainer);
+
+    await new Promise(r => setTimeout(r, 100));
+
+    const canvas = await html2canvas(clonedContainer, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false
     });
 
-    // Appeler l'API route Next.js
+    // Nettoyage
+    document.body.removeChild(clonedContainer);
+    document.head.removeChild(printStyles);
+
+    // Générer le PDF avec le même système que l'export
+    const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = { top: 36, right: 36, bottom: 36, left: 36 };
+    const usableWidth = pageWidth - margin.left - margin.right;
+
+    const imgData = canvas.toDataURL('image/png');
+    const imgWidth = usableWidth;
+    const imgHeight = canvas.height * (imgWidth / canvas.width);
+
+    pdf.addImage(
+      imgData,
+      'PNG',
+      margin.left,
+      margin.top,
+      imgWidth,
+      imgHeight
+    );
+
+    // Convertir en base64
+    const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
+
+    // Appeler l'API route
     const response = await fetch('/api/send-purchase-email', {
       method: 'POST',
       headers: {
@@ -314,7 +372,7 @@ const generatePurchasePDF = (purchase) => {
     }
 
     console.log('✅ Email envoyé avec succès:', result.messageId);
-    setEmailStatus(`✅ Email envoyé à Dominique (${result.messageId})`);
+    setEmailStatus(`✅ Email envoyé avec PDF professionnel (${result.messageId})`);
     
     return result;
     
