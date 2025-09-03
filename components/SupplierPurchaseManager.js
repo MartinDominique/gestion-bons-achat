@@ -284,76 +284,137 @@ const generatePurchasePDF = (purchase) => {
     setIsLoadingEmail(true);
     setEmailStatus('Envoi en cours...');
     
-    // UTILISER LE SYSTÈME D'EXPORT PDF EXISTANT AU LIEU DE generatePurchasePDF
+    // Vérifier que le conteneur d'impression existe
     const printContainer = document.querySelector('.print-container');
     if (!printContainer) {
-      throw new Error('Conteneur d\'impression non trouvé');
+      throw new Error('Conteneur d\'impression non trouvé - assurez-vous d\'être sur la page de formulaire');
     }
 
-    // Copier le code de exportPDF pour générer le même PDF
+    console.log('Génération du PDF professionnel...');
+    
+    // Styles d'impression temporaires
     const printStyles = document.createElement('style');
     printStyles.textContent = `
       .temp-print-view * { visibility: visible !important; }
       .temp-print-view {
         position: absolute !important;
-        left: 0 !important; top: 0 !important;
+        left: -9999px !important; 
+        top: 0 !important;
         width: 8.5in !important;
         background: #fff !important;
         padding: 0.5in !important;
         font-size: 12px !important;
         line-height: 1.4 !important;
+        font-family: Arial, sans-serif !important;
       }
-      .temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
+      .temp-print-view table { 
+        width: 100% !important; 
+        border-collapse: collapse !important; 
+      }
       .temp-print-view th, .temp-print-view td {
-        border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
+        border: 1px solid #000 !important; 
+        padding: 8px !important; 
+        text-align: left !important;
       }
-      .temp-print-view th { background-color: #f0f0f0 !important; }
+      .temp-print-view th { 
+        background-color: #f0f0f0 !important; 
+        font-weight: bold !important;
+      }
     `;
     document.head.appendChild(printStyles);
 
+    // Cloner et préparer le contenu
     const clonedContainer = printContainer.cloneNode(true);
     clonedContainer.className = 'temp-print-view';
     clonedContainer.style.visibility = 'visible';
     clonedContainer.style.display = 'block';
     document.body.appendChild(clonedContainer);
 
-    await new Promise(r => setTimeout(r, 100));
+    // Attendre que le DOM soit prêt
+    await new Promise(resolve => setTimeout(resolve, 150));
 
+    // Générer le canvas avec qualité optimisée
     const canvas = await html2canvas(clonedContainer, {
-      scale: 2,
+      scale: 1.5, // Qualité réduite pour éviter les fichiers trop volumineux
       useCORS: true,
       backgroundColor: '#ffffff',
-      logging: false
+      logging: false,
+      width: 612, // Largeur lettre en points
+      height: Math.min(clonedContainer.scrollHeight, 1500), // Limiter la hauteur
+      windowWidth: 612,
+      windowHeight: 792
     });
 
-    // Nettoyage
+    // Nettoyage du DOM
     document.body.removeChild(clonedContainer);
     document.head.removeChild(printStyles);
 
-    // Générer le PDF avec le même système que l'export
-    const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
+    // Créer le PDF
+    const pdf = new jsPDF({ 
+      unit: 'pt', 
+      format: 'letter',
+      compress: true // Compression activée
+    });
+    
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = { top: 36, right: 36, bottom: 36, left: 36 };
     const usableWidth = pageWidth - margin.left - margin.right;
 
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/jpeg', 0.8); // JPEG avec 80% qualité au lieu de PNG
     const imgWidth = usableWidth;
     const imgHeight = canvas.height * (imgWidth / canvas.width);
 
-    pdf.addImage(
-      imgData,
-      'PNG',
-      margin.left,
-      margin.top,
-      imgWidth,
-      imgHeight
-    );
+    // Ajouter l'image au PDF
+    if (imgHeight > pageHeight - margin.top - margin.bottom) {
+      // Si trop haut, paginer
+      let heightLeft = imgHeight;
+      let positionY = 0;
+      let page = 1;
+
+      while (heightLeft > 0) {
+        if (page > 1) pdf.addPage();
+
+        pdf.addImage(
+          imgData,
+          'JPEG',
+          margin.left,
+          margin.top + positionY,
+          imgWidth,
+          imgHeight
+        );
+
+        heightLeft -= (pageHeight - margin.top - margin.bottom);
+        positionY -= (pageHeight - margin.top - margin.bottom);
+        page++;
+      }
+    } else {
+      // Une seule page
+      pdf.addImage(
+        imgData,
+        'JPEG',
+        margin.left,
+        margin.top,
+        imgWidth,
+        imgHeight
+      );
+    }
 
     // Convertir en base64
     const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
+    const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
+    const pdfSizeMB = Math.round(pdfSizeKB / 1024 * 100) / 100;
+    
+    console.log(`Taille PDF générée: ${pdfSizeKB} KB (${pdfSizeMB} MB)`);
+    
+    // Vérifier la taille (limite Vercel = ~4.5MB pour body)
+    if (pdfSizeKB > 4000) {
+      throw new Error(`PDF trop volumineux: ${pdfSizeMB} MB. Limite: ~4 MB`);
+    }
 
-    // Appeler l'API route
+    console.log('Envoi de l\'email...');
+
+    // Appel API
     const response = await fetch('/api/send-purchase-email', {
       method: 'POST',
       headers: {
@@ -365,20 +426,30 @@ const generatePurchasePDF = (purchase) => {
       })
     });
 
+    // Vérifier le type de contenu de la réponse
+    const contentType = response.headers.get('content-type');
+    console.log('Type de réponse:', contentType, 'Status:', response.status);
+
+    if (!contentType || !contentType.includes('application/json')) {
+      const htmlResponse = await response.text();
+      console.error('Réponse HTML au lieu de JSON:', htmlResponse.substring(0, 300));
+      throw new Error('Le serveur a retourné une page HTML au lieu de JSON. Vérifiez les logs Vercel.');
+    }
+
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.error || 'Erreur serveur');
+      throw new Error(result.error || `Erreur serveur: ${response.status}`);
     }
 
-    console.log('✅ Email envoyé avec succès:', result.messageId);
-    setEmailStatus(`✅ Email envoyé avec PDF professionnel (${result.messageId})`);
+    console.log('Email envoyé avec succès:', result.messageId);
+    setEmailStatus(`Email envoyé avec PDF (${pdfSizeKB} KB) - ID: ${result.messageId}`);
     
     return result;
     
   } catch (error) {
-    console.error('❌ Erreur envoi email:', error);
-    setEmailStatus(`❌ Erreur: ${error.message}`);
+    console.error('Erreur envoi email:', error);
+    setEmailStatus(`Erreur: ${error.message}`);
     throw error;
   } finally {
     setIsLoadingEmail(false);
