@@ -575,6 +575,14 @@ useEffect(() => {
   }));
 }, [selectedItems, purchaseForm.shipping_cost, purchaseForm.supplier_id, suppliers]);
 
+  // DÉBOGAGE TEMPORAIRE - VÉRIFICATION RESEND API
+useEffect(() => {
+  console.log('🔑 RESEND_API_KEY:', RESEND_API_KEY ? 'PRÉSENTE' : 'MANQUANTE');
+  console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+  console.log('📧 DOMINIQUE_EMAIL:', DOMINIQUE_EMAIL);
+  console.log('📧 FROM_EMAIL:', FROM_EMAIL);
+}, []);
+
   // NOUVELLES FONCTIONS POUR IMPORT SOUMISSION
   
   // Fonction pour récupérer les soumissions acceptées
@@ -1184,24 +1192,36 @@ const handlePurchaseSubmit = async (e) => {
 
     // LOGIQUE EMAIL - VERSION SANS AWAIT DANS LE TRY/CATCH
     const shouldSendEmail = (
-      (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
-      (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
-    );
+  (!editingPurchase && (savedPurchase.status === 'ordered' || savedPurchase.status === 'draft')) ||
+  (editingPurchase && savedPurchase.status === 'ordered' && editingPurchase.status !== 'ordered')
+);
 
-    if (shouldSendEmail && RESEND_API_KEY) {
-      const pdf = generatePurchasePDF(savedPurchase);
-      const pdfBlob = pdf.output('blob');
-      
-      // Exécution asynchrone sans bloquer la sauvegarde
-      sendEmailToDominique(savedPurchase, pdfBlob)
-        .then(() => {
-          setEmailStatus('✅ Email envoyé avec succès');
-        })
-        .catch((emailError) => {
-          console.error('⚠️ Achat sauvé mais erreur email:', emailError);
-          setEmailStatus(`❌ Erreur email: ${emailError.message}`);
-        });
-    }
+console.log('📧 DÉBOGAGE EMAIL:');
+console.log('- shouldSendEmail:', shouldSendEmail);
+console.log('- RESEND_API_KEY présente:', !!RESEND_API_KEY);
+console.log('- savedPurchase.status:', savedPurchase.status);
+console.log('- editingPurchase:', !!editingPurchase);
+
+if (shouldSendEmail && RESEND_API_KEY) {
+  console.log('📧 Début génération PDF...');
+  const pdf = generatePurchasePDF(savedPurchase);
+  const pdfBlob = pdf.output('blob');
+  console.log('📧 PDF généré, envoi email...');
+  
+  sendEmailToDominique(savedPurchase, pdfBlob)
+    .then(() => {
+      console.log('📧 EMAIL ENVOYÉ AVEC SUCCÈS');
+      setEmailStatus('✅ Email envoyé avec succès');
+    })
+    .catch((emailError) => {
+      console.error('📧 ERREUR EMAIL:', emailError);
+      setEmailStatus(`❌ Erreur email: ${emailError.message}`);
+    });
+} else {
+  console.log('📧 Email non envoyé. Raisons:');
+  console.log('- shouldSendEmail:', shouldSendEmail);
+  console.log('- RESEND_API_KEY:', !!RESEND_API_KEY);
+}
     
     await fetchSupplierPurchases();
     resetForm();
