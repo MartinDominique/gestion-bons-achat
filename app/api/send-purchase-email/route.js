@@ -36,7 +36,7 @@ export async function POST(request) {
     
     const simpleEmailData = {
       from: 'delivered@resend.dev',
-      to: ['info.servicestmt@gmail.com'],
+      to: ['servicestmt@gmail.com'],
       subject: `Test - ${body.purchase?.purchase_number || 'N/A'}`,
       html: '<p>Test simple sans PDF</p>'
     };
