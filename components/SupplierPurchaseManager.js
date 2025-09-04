@@ -291,7 +291,7 @@ const generatePurchasePDF = (purchase) => {
 
     console.log('Génération du PDF professionnel...');
     
-    // Styles d'impression améliorés
+    // STYLES AMÉLIORÉS - PARAMÈTRES DE ZOOM AUGMENTÉS
     const printStyles = document.createElement('style');
     printStyles.textContent = `
       .temp-print-view * { visibility: visible !important; }
@@ -299,37 +299,44 @@ const generatePurchasePDF = (purchase) => {
         position: fixed !important;
         left: -9999px !important; 
         top: 0 !important;
-        width: 1024px !important; /* Largeur fixe plus grande */
+        width: 1400px !important; /* AUGMENTÉ de 1024px à 1400px */
         background: #fff !important;
-        padding: 48px !important;
-        font-size: 14px !important;
-        line-height: 1.5 !important;
+        padding: 60px !important; /* AUGMENTÉ de 48px à 60px */
+        font-size: 18px !important; /* AUGMENTÉ de 14px à 18px */
+        line-height: 1.6 !important;
         font-family: Arial, sans-serif !important;
         box-sizing: border-box !important;
       }
       .temp-print-view table { 
         width: 100% !important; 
         border-collapse: collapse !important; 
-        margin: 20px 0 !important;
+        margin: 25px 0 !important; /* AUGMENTÉ */
       }
       .temp-print-view th, .temp-print-view td {
-        border: 1px solid #000 !important; 
-        padding: 12px !important; 
+        border: 2px solid #000 !important; /* BORDURES PLUS ÉPAISSES */
+        padding: 15px !important; /* AUGMENTÉ de 12px à 15px */
         text-align: left !important;
-        font-size: 12px !important;
+        font-size: 16px !important; /* AUGMENTÉ de 12px à 16px */
       }
       .temp-print-view th { 
         background-color: #f0f0f0 !important; 
         font-weight: bold !important;
+        font-size: 17px !important; /* EN-TÊTES PLUS GROS */
+      }
+      .temp-print-view h1 {
+        font-size: 32px !important; /* TITRE PLUS GROS */
+      }
+      .temp-print-view h2 {
+        font-size: 24px !important;
+      }
+      .temp-print-view h3 {
+        font-size: 20px !important;
       }
       .temp-print-view .text-right {
         text-align: right !important;
       }
       .temp-print-view .text-center {
         text-align: center !important;
-      }
-      .temp-print-view h1, .temp-print-view h2, .temp-print-view h3 {
-        margin: 10px 0 !important;
       }
     `;
     document.head.appendChild(printStyles);
@@ -343,15 +350,15 @@ const generatePurchasePDF = (purchase) => {
     // Attendre plus longtemps pour le rendu
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Capture avec meilleure qualité
+    // CAPTURE AVEC QUALITÉ MAXIMALE
     const canvas = await html2canvas(clonedContainer, {
-      scale: 2, // Qualité élevée
+      scale: 2.5, /* AUGMENTÉ de 2 à 2.5 */
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      width: 1024, // Largeur fixe
+      width: 1400, /* CORRESPOND À LA LARGEUR CSS */
       height: clonedContainer.scrollHeight,
-      windowWidth: 1024,
+      windowWidth: 1400, /* AUGMENTÉ */
       windowHeight: clonedContainer.scrollHeight + 100,
       allowTaint: true,
       imageTimeout: 15000
@@ -374,7 +381,7 @@ const generatePurchasePDF = (purchase) => {
     const usableWidth = pageWidth - (margin * 2);
     const usableHeight = pageHeight - (margin * 2);
 
-    // Conversion en JPEG avec qualité élevée
+    // JPEG avec qualité très élevée
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const imgWidth = usableWidth;
     const imgHeight = canvas.height * (imgWidth / canvas.width);
@@ -406,11 +413,13 @@ const generatePurchasePDF = (purchase) => {
 
     const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
     const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
+    const pdfSizeMB = Math.round(pdfSizeKB / 1024 * 100) / 100;
     
-    console.log(`Taille PDF: ${pdfSizeKB} KB`);
+    console.log(`Taille PDF: ${pdfSizeKB} KB (${pdfSizeMB} MB)`);
     
-    if (pdfSizeKB > 5000) {
-      throw new Error(`PDF trop volumineux: ${Math.round(pdfSizeKB/1024 * 10)/10} MB`);
+    // Limite plus élevée pour la haute qualité
+    if (pdfSizeKB > 6000) {
+      throw new Error(`PDF trop volumineux: ${pdfSizeMB} MB. Limite: ~6 MB`);
     }
 
     const response = await fetch('/api/send-purchase-email', {
@@ -436,7 +445,7 @@ const generatePurchasePDF = (purchase) => {
       throw new Error(result.error || `Erreur ${response.status}`);
     }
 
-    setEmailStatus(`Email envoyé avec PDF haute qualité (${pdfSizeKB} KB)`);
+    setEmailStatus(`Email envoyé avec PDF haute qualité (${pdfSizeKB} KB - ${pdfSizeMB} MB)`);
     return result;
     
   } catch (error) {
