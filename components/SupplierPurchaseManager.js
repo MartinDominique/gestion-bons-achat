@@ -143,13 +143,11 @@ export default function SupplierPurchaseManager() {
     is_default: false
   });
 
-    // NOUVELLES FONCTIONS EMAIL - AJOUTÉ
-
-// Fonction pour générer le PDF avec le bon format
+   // REMPLACER la fonction generatePurchasePDF existante par celle-ci
 const generatePurchasePDF = (purchase) => {
   const doc = new jsPDF({
     unit: 'mm',
-    format: 'letter', // 8.5" x 11"
+    format: 'letter',
     orientation: 'portrait'
   });
   
@@ -195,8 +193,7 @@ const generatePurchasePDF = (purchase) => {
   doc.setFont('helvetica', 'normal');
   doc.text(purchase.supplier_name || 'N/A', margin, currentY);
   
-  // Obtenir les détails du fournisseur si disponible
-  // (Vous devriez passer les détails du fournisseur dans l'objet purchase)
+  // Détails du fournisseur
   if (purchase.supplier_details) {
     currentY += 8;
     if (purchase.supplier_details.contact_name) {
@@ -235,7 +232,7 @@ const generatePurchasePDF = (purchase) => {
   currentY += 10;
   doc.setFont('helvetica', 'normal');
   
-  // Obtenir les détails de l'adresse de livraison
+  // Détails de l'adresse de livraison
   if (purchase.shipping_address_details) {
     doc.text(purchase.shipping_address_details.name, rightColumn, currentY);
     currentY += 8;
@@ -252,7 +249,6 @@ const generatePurchasePDF = (purchase) => {
   
   // En-têtes du tableau
   const headers = ['Code', 'Description', 'Qté', 'Unité', 'Prix Unit.', 'Total'];
-  const columnWidths = [25, 60, 15, 15, 25, 25]; // largeurs en mm
   const columnX = [margin, margin + 25, margin + 85, margin + 100, margin + 115, margin + 140];
   
   doc.setFont('helvetica', 'bold');
@@ -348,355 +344,6 @@ const generatePurchasePDF = (purchase) => {
   }
   
   return doc;
-};
-
-    import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import 'jspdf-autotable';  // AJOUTÉ pour les tableaux PDF
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { 
-  MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, 
-  Plus, Upload, X, ChevronDown, ShoppingCart, Building2, Truck,
-  MapPin, Calendar, Package, DollarSign, Printer, Wrench
-} from 'lucide-react';
-
-// Configuration email - AJOUTÉ
-const DOMINIQUE_EMAIL = 'info.servicestmt@gmail.com'; // À MODIFIER avec le vrai email
-
-// Fonction pour obtenir le pattern du code postal
-const getPostalCodePattern = (country) => {
-  switch (country) {
-    case 'Canada':
-      return "[A-Za-z]\\d[A-Za-z] \\d[A-Za-z]\\d";
-    case 'USA':
-      return "\\d{5}(-\\d{4})?";
-    default:
-      return "";
-  }
-};
-
-// Fonction pour obtenir le placeholder du code postal
-const getPostalCodePlaceholder = (country) => {
-  switch (country) {
-    case 'Canada':
-      return "H1A 1A1";
-    case 'USA':
-      return "12345 ou 12345-6789";
-    default:
-      return "";
-  }
-};
-
-// Liste des transporteurs
-const CARRIERS = [
-  '',
-  'GLS',
-  'Purolator', 
-  'UPS',
-  'FedEx',
-  'DHL',
-  'Nationex',
-  'Poste Canada',
-  'Intelcom'
-];
-
-export default function SupplierPurchaseManager() {
-  // États principaux
-  const [supplierPurchases, setSupplierPurchases] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [purchaseOrders, setPurchaseOrders] = useState([]);
-  const [shippingAddresses, setShippingAddresses] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  
-  // États UI
-  const [showForm, setShowForm] = useState(false);
-  const [showSupplierModal, setShowSupplierModal] = useState(false);
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [showAddressFormModal, setShowAddressFormModal] = useState(false);
-  const [editingPurchase, setEditingPurchase] = useState(null);
-  const [editingSupplier, setEditingSupplier] = useState(null);
-  const [editingAddress, setEditingAddress] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedPurchaseId, setSelectedPurchaseId] = useState(null);
-  const [showSupplierFormModal, setShowSupplierFormModal] = useState(false);
-  
-  // NOUVEAUX ÉTATS POUR IMPORT SOUMISSION
-  const [showImportSubmissionModal, setShowImportSubmissionModal] = useState(false);
-  const [availableSubmissions, setAvailableSubmissions] = useState([]);
-  const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
-  const [itemsToImport, setItemsToImport] = useState([]);
-  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
-  const [emailStatus, setEmailStatus] = useState('');
-  const [isLoadingEmail, setIsLoadingEmail] = useState(false);
-  
-  // Recherche produits
-  const [productSearchTerm, setProductSearchTerm] = useState('');
-  const [searchingProducts, setSearchingProducts] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [focusedProductIndex, setFocusedProductIndex] = useState(-1);
-  const [showQuantityInput, setShowQuantityInput] = useState(false);
-  const [selectedProductForQuantity, setSelectedProductForQuantity] = useState(null);
-  const [tempQuantity, setTempQuantity] = useState('1');
-  
-  // État pour la correction
-  const [isFixingPOs, setIsFixingPOs] = useState(false);
-  
-  // Formulaire principal - MODIFIÉ avec supplier_quote_reference
-  const [purchaseForm, setPurchaseForm] = useState({
-    supplier_id: '',
-    supplier_name: '',
-    linked_po_id: '',
-    linked_po_number: '',
-    linked_submission_id: null,
-    supplier_quote_reference: '', // NOUVEAU CHAMP
-    shipping_address_id: '',
-    shipping_company: '',
-    shipping_account: '',
-    delivery_date: '',
-    items: [],
-    subtotal: 0,
-    tps: 0,
-    tvq: 0,
-    shipping_cost: 0,
-    total_amount: 0,
-    status: 'draft',
-    notes: '',
-    purchase_number: ''
-  });
-
-  // Formulaire fournisseur
-  const [supplierForm, setSupplierForm] = useState({
-    company_name: '',
-    contact_name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    province: 'QC',
-    postal_code: '',
-    country: 'Canada',
-    notes: '',
-    preferred_english: false,
-    tax_id: '',
-    tax_exempt: false
-  });
-
-  // Formulaire adresse
-  const [addressForm, setAddressForm] = useState({
-    name: '',
-    address: '',
-    city: '',
-    province: 'QC',
-    postal_code: '',
-    country: 'Canada',
-    is_default: false
-  });
-
-    // NOUVELLES FONCTIONS EMAIL - AJOUTÉ
-
-// Générer le PDF de l'achat fournisseur
-const generatePurchasePDF = (purchase) => {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.width;
-  
-  // En-tête du document
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ACHAT FOURNISSEUR', pageWidth / 2, 20, { align: 'center' });
-  
-  doc.setFontSize(16);
-  doc.text(`N° ${purchase.purchase_number}`, pageWidth / 2, 30, { align: 'center' });
-  
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${new Date(purchase.created_at).toLocaleDateString('fr-FR')}`, pageWidth / 2, 40, { align: 'center' });
-  
-  // Ligne de séparation
-  doc.setLineWidth(0.5);
-  doc.line(10, 45, pageWidth - 10, 45);
-  
-  // Informations fournisseur
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('FOURNISSEUR:', 15, 60);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.text(purchase.supplier_name || 'N/A', 15, 70);
-  
-  // Informations de base
-  const startY = 85;
-  doc.text(`Date création: ${new Date(purchase.created_at).toLocaleDateString('fr-FR')}`, 15, startY);
-  
-  if (purchase.delivery_date) {
-    doc.text(`Date livraison: ${new Date(purchase.delivery_date).toLocaleDateString('fr-FR')}`, 15, startY + 8);
-  }
-  
-  doc.text(`Statut: ${purchase.status}`, 15, startY + 16);
-  
-  // Référence soumission fournisseur
-  if (purchase.supplier_quote_reference) {
-    doc.text(`Réf. Soumission: ${purchase.supplier_quote_reference}`, 15, startY + 24);
-  }
-  
-  // Lien avec bon d'achat client si existant
-  if (purchase.linked_po_number) {
-    doc.setFillColor(230, 240, 255);
-    doc.rect(10, startY + 35, pageWidth - 20, 20, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.text('LIEN AVEC BON D\'ACHAT CLIENT:', 15, startY + 45);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`N° Bon d'achat: ${purchase.linked_po_number}`, 15, startY + 52);
-  }
-  
-  // Tableau des articles
-  const itemsStartY = purchase.linked_po_number ? startY + 65 : startY + 45;
-  
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('DÉTAIL DES ARTICLES:', 15, itemsStartY);
-  
-  if (purchase.items && purchase.items.length > 0) {
-    const tableData = purchase.items.map(item => {
-      const quantity = parseFloat(item.quantity || 1);
-      const unitPrice = parseFloat(item.cost_price || 0);
-      const lineTotal = quantity * unitPrice;
-      
-      return [
-        item.product_id || '-',
-        item.description || '-',
-        quantity.toString(),
-        item.unit || 'UN',
-        `$${unitPrice.toFixed(4)}`,
-        `$${lineTotal.toFixed(2)}`
-      ];
-    });
-    
-    doc.autoTable({
-      startY: itemsStartY + 10,
-      head: [['Code', 'Description', 'Qté', 'Unité', 'Prix Unit.', 'Total']],
-      body: tableData,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [70, 130, 180] },
-      margin: { left: 15, right: 15 }
-    });
-    
-    // Totaux
-    const finalY = doc.lastAutoTable.finalY + 10;
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('Sous-total:', pageWidth - 80, finalY);
-    doc.text(`$${parseFloat(purchase.subtotal || 0).toFixed(2)}`, pageWidth - 15, finalY, { align: 'right' });
-    
-    if (parseFloat(purchase.tps || 0) > 0) {
-      doc.text('TPS (5%):', pageWidth - 80, finalY + 8);
-      doc.text(`$${parseFloat(purchase.tps || 0).toFixed(2)}`, pageWidth - 15, finalY + 8, { align: 'right' });
-    }
-    
-    if (parseFloat(purchase.tvq || 0) > 0) {
-      doc.text('TVQ (9.975%):', pageWidth - 80, finalY + 16);
-      doc.text(`$${parseFloat(purchase.tvq || 0).toFixed(2)}`, pageWidth - 15, finalY + 16, { align: 'right' });
-    }
-    
-    if (parseFloat(purchase.shipping_cost || 0) > 0) {
-      doc.text('Livraison:', pageWidth - 80, finalY + 24);
-      doc.text(`$${parseFloat(purchase.shipping_cost || 0).toFixed(2)}`, pageWidth - 15, finalY + 24, { align: 'right' });
-    }
-    
-    // Ligne de séparation
-    const totalLineY = finalY + 32;
-    doc.setLineWidth(1);
-    doc.line(pageWidth - 80, totalLineY, pageWidth - 15, totalLineY);
-    
-    doc.setFontSize(14);
-    doc.text('TOTAL GÉNÉRAL:', pageWidth - 80, totalLineY + 10);
-    doc.text(`$${parseFloat(purchase.total_amount || 0).toFixed(2)}`, pageWidth - 15, totalLineY + 10, { align: 'right' });
-    
-    // Notes si présentes
-    if (purchase.notes) {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Notes:', 15, totalLineY + 25);
-      doc.setFont('helvetica', 'normal');
-      doc.text(purchase.notes, 15, totalLineY + 35, { maxWidth: pageWidth - 30 });
-    }
-  } else {
-    doc.setFont('helvetica', 'italic');
-    doc.text('Aucun article disponible', 15, itemsStartY + 15);
-  }
-  
-  return doc;
-};
-
-    // Fonction d'envoi d'email corrigée
-const sendEmailToDominique = async (purchase, enrichedPurchaseData = null) => {
-  try {
-    setIsLoadingEmail(true);
-    setEmailStatus('Génération du PDF...');
-    
-    // Enrichir les données d'achat avec les détails du fournisseur et de l'adresse
-    const enrichedPurchase = { ...purchase };
-    
-    // Ajouter les détails du fournisseur
-    if (purchase.supplier_id && suppliers.length > 0) {
-      const supplier = suppliers.find(s => s.id === purchase.supplier_id);
-      if (supplier) {
-        enrichedPurchase.supplier_details = supplier;
-      }
-    }
-    
-    // Ajouter les détails de l'adresse de livraison
-    if (purchase.shipping_address_id && shippingAddresses.length > 0) {
-      const address = shippingAddresses.find(a => a.id === purchase.shipping_address_id);
-      if (address) {
-        enrichedPurchase.shipping_address_details = address;
-      }
-    }
-    
-    console.log('Génération du PDF...');
-    const pdf = generatePurchasePDF(enrichedPurchase);
-    const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
-    const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
-    
-    console.log(`Taille PDF: ${pdfSizeKB} KB`);
-    
-    if (pdfSizeKB > 10000) { // Limite à 10MB
-      throw new Error(`PDF trop volumineux: ${Math.round(pdfSizeKB/1024 * 10)/10} MB`);
-    }
-    
-    setEmailStatus('Envoi de l\'email...');
-    
-    const response = await fetch('/api/send-purchase-email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        purchase: enrichedPurchase,
-        pdfBase64,
-        recipientEmail: DOMINIQUE_EMAIL
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Erreur ${response.status}: ${errorData}`);
-    }
-
-    const result = await response.json();
-    setEmailStatus(`✅ Email envoyé avec succès (PDF: ${pdfSizeKB} KB)`);
-    return result;
-    
-  } catch (error) {
-    console.error('Erreur envoi email:', error);
-    setEmailStatus(`❌ Erreur: ${error.message}`);
-    throw error;
-  } finally {
-    setIsLoadingEmail(false);
-  }
 };
 
 
