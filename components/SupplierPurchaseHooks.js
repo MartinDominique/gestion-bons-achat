@@ -491,77 +491,75 @@ export const useSupplierPurchase = () => {
         console.log('Achat créé avec succès');
       }
 
-      // Dans SupplierPurchaseHooks.js, remplacez la section "LOGIQUE EMAIL" dans handlePurchaseSubmit par :
+      // LOGIQUE EMAIL MODIFIÉE
+      const shouldSendEmailStatuses = ['in_order', 'ordered']; // EN COMMANDE et COMMANDÉ
+      const isEmailableStatus = shouldSendEmailStatuses.includes(savedPurchase.status);
 
-// LOGIQUE EMAIL MODIFIÉE
-const shouldSendEmailStatuses = ['in_order', 'ordered']; // NOUVEAU et COMMANDÉ
-const isEmailableStatus = shouldSendEmailStatuses.includes(savedPurchase.status);
+      console.log('📧 DÉBOGAGE EMAIL:');
+      console.log('- Status:', savedPurchase.status);
+      console.log('- isEmailableStatus:', isEmailableStatus);
+      console.log('- editingPurchase:', !!editingPurchase);
 
-console.log('📧 DÉBOGAGE EMAIL:');
-console.log('- Status:', savedPurchase.status);
-console.log('- isEmailableStatus:', isEmailableStatus);
-console.log('- editingPurchase:', !!editingPurchase);
-
-if (isEmailableStatus) {
-  if (!editingPurchase) {
-    // CRÉATION - Email automatique
-    console.log('📧 Création avec statut email → Envoi automatique');
-    
-    const pdf = generatePurchasePDF(savedPurchase);
-    const pdfBlob = pdf.output('blob');
-    
-    setIsLoadingEmail(true);
-    setEmailStatus('Envoi automatique en cours...');
-    
-    sendEmailToDominique(savedPurchase, pdfBlob)
-      .then(() => {
-        console.log('📧 EMAIL AUTOMATIQUE ENVOYÉ');
-        setEmailStatus('✅ Email envoyé automatiquement');
-      })
-      .catch((emailError) => {
-        console.error('📧 ERREUR EMAIL:', emailError);
-        setEmailStatus(`❌ Erreur email: ${emailError.message}`);
-      })
-      .finally(() => {
-        setIsLoadingEmail(false);
-      });
-  } else {
-    // MODIFICATION - Demander confirmation
-    console.log('📧 Modification avec statut email → Demander confirmation');
-    
-    const shouldSendEmail = confirm(
-      `Voulez-vous envoyer l'email de confirmation à Dominique ?\n\n` +
-      `Bon d'achat: ${savedPurchase.purchase_number}\n` +
-      `Statut: ${savedPurchase.status === 'in_order' ? 'En commande' : 'Commandé'}\n` +
-      `Fournisseur: ${savedPurchase.supplier_name}`
-    );
-    
-    if (shouldSendEmail) {
-      const pdf = generatePurchasePDF(savedPurchase);
-      const pdfBlob = pdf.output('blob');
-      
-      setIsLoadingEmail(true);
-      setEmailStatus('Envoi en cours...');
-      
-      sendEmailToDominique(savedPurchase, pdfBlob)
-        .then(() => {
-          console.log('📧 EMAIL MANUEL ENVOYÉ');
-          setEmailStatus('✅ Email envoyé avec succès');
-        })
-        .catch((emailError) => {
-          console.error('📧 ERREUR EMAIL:', emailError);
-          setEmailStatus(`❌ Erreur email: ${emailError.message}`);
-        })
-        .finally(() => {
-          setIsLoadingEmail(false);
-        });
-    } else {
-      setEmailStatus('📧 Email non envoyé (choix utilisateur)');
-    }
-  }
-} else {
-  console.log('📧 Statut ne nécessite pas d\'email');
-}
+      if (isEmailableStatus) {
+        if (!editingPurchase) {
+          // CRÉATION - Email automatique
+          console.log('📧 Création avec statut email → Envoi automatique');
+          
+          const pdf = generatePurchasePDF(savedPurchase);
+          const pdfBlob = pdf.output('blob');
+          
+          setIsLoadingEmail(true);
+          setEmailStatus('Envoi automatique en cours...');
+          
+          sendEmailToDominique(savedPurchase, pdfBlob)
+            .then(() => {
+              console.log('📧 EMAIL AUTOMATIQUE ENVOYÉ');
+              setEmailStatus('✅ Email envoyé automatiquement');
+            })
+            .catch((emailError) => {
+              console.error('📧 ERREUR EMAIL:', emailError);
+              setEmailStatus(`❌ Erreur email: ${emailError.message}`);
+            })
+            .finally(() => {
+              setIsLoadingEmail(false);
+            });
+        } else {
+          // MODIFICATION - Demander confirmation
+          console.log('📧 Modification avec statut email → Demander confirmation');
+          
+          const shouldSendEmail = confirm(
+            `Voulez-vous envoyer l'email de confirmation à Dominique ?\n\n` +
+            `Bon d'achat: ${savedPurchase.purchase_number}\n` +
+            `Statut: ${savedPurchase.status === 'in_order' ? 'En commande' : 'Commandé'}\n` +
+            `Fournisseur: ${savedPurchase.supplier_name}`
+          );
+          
+          if (shouldSendEmail) {
+            const pdf = generatePurchasePDF(savedPurchase);
+            const pdfBlob = pdf.output('blob');
+            
+            setIsLoadingEmail(true);
+            setEmailStatus('Envoi en cours...');
+            
+            sendEmailToDominique(savedPurchase, pdfBlob)
+              .then(() => {
+                console.log('📧 EMAIL MANUEL ENVOYÉ');
+                setEmailStatus('✅ Email envoyé avec succès');
+              })
+              .catch((emailError) => {
+                console.error('📧 ERREUR EMAIL:', emailError);
+                setEmailStatus(`❌ Erreur email: ${emailError.message}`);
+              })
+              .finally(() => {
+                setIsLoadingEmail(false);
+              });
+          } else {
+            setEmailStatus('📧 Email non envoyé (choix utilisateur)');
+          }
+        }
+      } else {
+        console.log('📧 Statut ne nécessite pas d\'email');
+      }
       
       await loadSupplierPurchases();
       resetForm();
@@ -569,6 +567,61 @@ if (isEmailableStatus) {
     } catch (error) {
       console.error('Erreur sauvegarde achat:', error);
       alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+    }
+  };
+
+  // ===== NOUVELLE FONCTION - MISE À JOUR RAPIDE DU STATUT =====
+  const handleQuickStatusUpdate = async (purchaseId, newStatus, purchase) => {
+    try {
+      // Mettre à jour seulement le statut
+      const updatedData = {
+        ...purchase,
+        status: newStatus
+      };
+      
+      const savedPurchase = await updateSupplierPurchase(purchaseId, updatedData);
+      
+      // Appliquer la même logique d'email que dans handlePurchaseSubmit
+      const shouldSendEmailStatuses = ['in_order', 'ordered'];
+      const isEmailableStatus = shouldSendEmailStatuses.includes(newStatus);
+      
+      if (isEmailableStatus) {
+        // Pour les mises à jour rapides, toujours demander confirmation
+        const shouldSendEmail = confirm(
+          `Voulez-vous envoyer l'email de confirmation à Dominique ?\n\n` +
+          `Bon d'achat: ${purchase.purchase_number}\n` +
+          `Nouveau statut: ${newStatus === 'in_order' ? 'En commande' : 'Commandé'}\n` +
+          `Fournisseur: ${purchase.supplier_name}`
+        );
+        
+        if (shouldSendEmail) {
+          const pdf = generatePurchasePDF(savedPurchase);
+          const pdfBlob = pdf.output('blob');
+          
+          setIsLoadingEmail(true);
+          setEmailStatus('Envoi en cours...');
+          
+          sendEmailToDominique(savedPurchase, pdfBlob)
+            .then(() => {
+              setEmailStatus('✅ Email envoyé avec succès');
+            })
+            .catch((emailError) => {
+              setEmailStatus(`❌ Erreur email: ${emailError.message}`);
+            })
+            .finally(() => {
+              setIsLoadingEmail(false);
+            });
+        } else {
+          setEmailStatus('📧 Email non envoyé (choix utilisateur)');
+        }
+      }
+      
+      // Recharger la liste
+      await loadSupplierPurchases();
+      
+    } catch (error) {
+      console.error('Erreur mise à jour statut:', error);
+      alert('Erreur lors de la mise à jour du statut: ' + error.message);
     }
   };
 
@@ -885,6 +938,7 @@ if (isEmailableStatus) {
     handlePurchaseSubmit,
     handleDeletePurchase,
     handleEditPurchase,
+    handleQuickStatusUpdate, // NOUVELLE FONCTION
     handleSupplierSubmit,
     handleSupplierFormSubmit,
     handleDeleteSupplier,
