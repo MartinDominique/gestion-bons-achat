@@ -96,6 +96,7 @@ export default function SupplierPurchaseManager() {
     handlePurchaseSubmit,
     handleDeletePurchase,
     handleEditPurchase,
+    handleQuickStatusUpdate, // NOUVELLE FONCTION
     handleSupplierSubmit,
     handleSupplierFormSubmit,
     handleDeleteSupplier,
@@ -427,7 +428,7 @@ export default function SupplierPurchaseManager() {
         </div>
       </div>
 
-      {/* Liste des achats - Desktop */}
+      {/* Liste des achats - Desktop AVEC SELECTS STATUTS */}
       <div className="hidden lg:block bg-white shadow-lg rounded-lg overflow-hidden">
         {filteredPurchases.length === 0 ? (
           <div className="text-center py-12">
@@ -487,16 +488,24 @@ export default function SupplierPurchaseManager() {
                         {formatCurrency(purchase.total_amount)}
                       </span>
                     </td>
+                    {/* NOUVEAU - SELECT POUR STATUT */}
                     <td className="px-3 py-4 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
-                        purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
-                        purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                        purchase.status === 'received' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {PURCHASE_STATUSES[purchase.status] || purchase.status}
-                      </span>
+                      <select
+                        value={purchase.status}
+                        onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
+                        disabled={isLoadingEmail}
+                        className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${
+                          purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
+                          purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
+                          purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                          purchase.status === 'received' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
+                          <option key={key} value={key}>{label}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex justify-center space-x-1">
@@ -524,7 +533,7 @@ export default function SupplierPurchaseManager() {
         )}
       </div>
 
-      {/* Liste mobile */}
+      {/* Liste mobile AVEC SELECTS STATUTS */}
       <div className="lg:hidden space-y-4">
         {filteredPurchases.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -607,17 +616,25 @@ export default function SupplierPurchaseManager() {
                     </div>
                   </div>
 
+                  {/* NOUVEAU - SELECT STATUT MOBILE */}
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 text-sm">Statut</span>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
-                      purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
-                      purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                      purchase.status === 'received' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {PURCHASE_STATUSES[purchase.status] || purchase.status}
-                    </span>
+                    <select
+                      value={purchase.status}
+                      onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
+                      disabled={isLoadingEmail}
+                      className={`px-2 py-1 rounded text-xs border-0 cursor-pointer ${
+                        purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
+                        purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
+                        purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                        purchase.status === 'received' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
