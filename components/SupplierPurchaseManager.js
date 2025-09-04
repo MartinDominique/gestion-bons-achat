@@ -16,86 +16,91 @@ import {
 
 
 // === Unified PDF renderer: renders .print-container to a Letter PDF with identical styles ===
+// === Unified PDF renderer: renders .print-container to a Letter PDF with identical styles ===
 async function renderPrintContainerToPDF() {
-const printContainer = document.querySelector('.print-container');
-if (!printContainer) throw new Error("Conteneur d'impression (.print-container) non trouvé");
+  const printContainer = document.querySelector('.print-container');
+  if (!printContainer) throw new Error("Conteneur d'impression (.print-container) non trouvé");
 
+  const printStyles = document.createElement('style');
+  printStyles.textContent = `
+    .temp-print-view * { visibility: visible !important; }
+    .temp-print-view {
+      position: absolute !important;
+      left: 0 !important; top: 0 !important;
+      width: 8.5in !important;
+      background: #fff !important;
+      padding: 0.5in !important;
+      font-size: 12px !important;
+      line-height: 1.4 !important;
+      color: #000 !important;
+    }
+    .temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
+    .temp-print-view th, .temp-print-view td {
+      border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
+    }
+    .temp-print-view th { background-color: #f0f0f0 !important; }
+  `;
+  document.head.appendChild(printStyles);
 
-const printStyles = document.createElement('style');
-printStyles.textContent = `
-.temp-print-view * { visibility: visible !important; }
-.temp-print-view {
-position: absolute !important;
-left: 0 !important; top: 0 !important;
-width: 8.5in !important;
-background: #fff !important;
-padding: 0.5in !important;
-font-size: 12px !important;
-line-height: 1.4 !important;
-color: #000 !important;
+  const cloned = printContainer.cloneNode(true);
+  cloned.classList.add('temp-print-view');
+  document.body.appendChild(cloned);
+
+  await new Promise(r => setTimeout(r, 80));
+
+  const canvas = await html2canvas(cloned, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false
+  });
+
+  document.body.removeChild(cloned);
+  document.head.removeChild(printStyles);
+
+  const pdf = new jsPDF({ unit: 'pt', format: 'letter' }); // 612x792 pt
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = { top: 36, right: 36, bottom: 36, left: 36 };
+  const usableWidth = pageWidth - margin.left - margin.right;
+  const usableHeight = pageHeight - margin.top - margin.bottom;
+
+  const imgData = canvas.toDataURL('image/png');
+  const imgWidth = usableWidth;
+  const imgHeight = canvas.height * (imgWidth / canvas.width);
+
+  let heightLeft = imgHeight;
+  let positionY = 0;
+  let page = 1;
+
+  while (heightLeft > 0) {
+    if (page > 1) pdf.addPage();
+
+    pdf.addImage(
+      imgData, 'PNG',
+      margin.left,
+      margin.top + positionY,
+      imgWidth,
+      imgHeight
+    );
+
+    // footer page number
+    pdf.setFontSize(10);
+    pdf.text(
+      `Page ${page}`,
+      pageWidth - margin.right,
+      pageHeight - 14,
+      { align: 'right', baseline: 'bottom' }
+    );
+
+    heightLeft -= usableHeight;
+    positionY -= usableHeight;
+    page++;
+  }
+
+  return pdf;
 }
-.temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
-.temp-print-view th, .temp-print-view td {
-border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
-}
-.temp-print-view th { background-color: #f0f0f0 !important; }
-`;
-document.head.appendChild(printStyles);
 
-
-const cloned = printContainer.cloneNode(true);
-cloned.classList.add('temp-print-view');
-document.body.appendChild(cloned);
-
-
-await new Promise(r => setTimeout(r, 80));
-
-
-const canvas = await html2canvas(cloned, {
-scale: 2,
-useCORS: true,
-backgroundColor: '#ffffff',
-logging: false
-});
-
-
-document.body.removeChild(cloned);
-document.head.removeChild(printStyles);
-
-
-const pdf = new jsPDF({ unit: 'pt', format: 'letter' }); // 612x792 pt
-const pageWidth = pdf.internal.pageSize.getWidth();
-const pageHeight = pdf.internal.pageSize.getHeight();
-const margin = { top: 36, right: 36, bottom: 36, left: 36 };
-const usableWidth = pageWidth - margin.left - margin.right;
-const usableHeight = pageHeight - margin.top - margin.bottom;
-
-
-const imgData = canvas.toDataURL('image/png');
-const imgWidth = usableWidth;
-const imgHeight = canvas.height * (imgWidth / canvas.width);
-
-
-let heightLeft = imgHeight;
-let positionY = 0;
-let page = 1;
-
-
-while (heightLeft > 0) {
-if (page > 1) pdf.addPage();
-
-
-pdf.addImage(
-imgData, 'PNG',
-margin.left,
-margin.top + positionY,
-imgWidth,
-imgHeight
-);
-
-
-// footer page number
-}
 
 // Configuration email - AJOUTÉ
 const DOMINIQUE_EMAIL = 'info.servicestmt@gmail.com'; // À MODIFIER avec le vrai email
