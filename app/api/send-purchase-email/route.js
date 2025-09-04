@@ -1,9 +1,17 @@
 import { Resend } from 'resend';
+import dynamic from 'next/dynamic';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const SupplierPurchaseManager = dynamic(
+  () => import('@/components/SupplierPurchaseManager'),
+  { ssr: false }
+);
 
 export async function POST(request) {
   console.log('🔧 API route appelée');
+  export default function Page() {
+  return <SupplierPurchaseManager />;
+}
   
   try {
     const apiKey = process.env.RESEND_API_KEY;
