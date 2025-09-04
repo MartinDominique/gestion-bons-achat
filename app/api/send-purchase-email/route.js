@@ -9,10 +9,7 @@ const SupplierPurchaseManager = dynamic(
 
 export async function POST(request) {
   console.log('🔧 API route appelée');
-  export default function Page() {
-  return <SupplierPurchaseManager />;
-}
-  
+   
   try {
     const apiKey = process.env.RESEND_API_KEY;
     
