@@ -9,6 +9,92 @@ import {
   MapPin, Calendar, Package, DollarSign, Printer, Wrench
 } from 'lucide-react';
 
+// PATCH: unify PDF generation for print/export and email
+// Inserted helper renderPrintContainerToPDF() and rewired sendEmailToDominique()
+
+
+// === Unified PDF renderer: renders .print-container to a Letter PDF with identical styles ===
+async function renderPrintContainerToPDF() {
+const printContainer = document.querySelector('.print-container');
+if (!printContainer) throw new Error("Conteneur d'impression (.print-container) non trouvé");
+
+
+const printStyles = document.createElement('style');
+printStyles.textContent = `
+.temp-print-view * { visibility: visible !important; }
+.temp-print-view {
+position: absolute !important;
+left: 0 !important; top: 0 !important;
+width: 8.5in !important;
+background: #fff !important;
+padding: 0.5in !important;
+font-size: 12px !important;
+line-height: 1.4 !important;
+color: #000 !important;
+}
+.temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
+.temp-print-view th, .temp-print-view td {
+border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
+}
+.temp-print-view th { background-color: #f0f0f0 !important; }
+`;
+document.head.appendChild(printStyles);
+
+
+const cloned = printContainer.cloneNode(true);
+cloned.classList.add('temp-print-view');
+document.body.appendChild(cloned);
+
+
+await new Promise(r => setTimeout(r, 80));
+
+
+const canvas = await html2canvas(cloned, {
+scale: 2,
+useCORS: true,
+backgroundColor: '#ffffff',
+logging: false
+});
+
+
+document.body.removeChild(cloned);
+document.head.removeChild(printStyles);
+
+
+const pdf = new jsPDF({ unit: 'pt', format: 'letter' }); // 612x792 pt
+const pageWidth = pdf.internal.pageSize.getWidth();
+const pageHeight = pdf.internal.pageSize.getHeight();
+const margin = { top: 36, right: 36, bottom: 36, left: 36 };
+const usableWidth = pageWidth - margin.left - margin.right;
+const usableHeight = pageHeight - margin.top - margin.bottom;
+
+
+const imgData = canvas.toDataURL('image/png');
+const imgWidth = usableWidth;
+const imgHeight = canvas.height * (imgWidth / canvas.width);
+
+
+let heightLeft = imgHeight;
+let positionY = 0;
+let page = 1;
+
+
+while (heightLeft > 0) {
+if (page > 1) pdf.addPage();
+
+
+pdf.addImage(
+imgData, 'PNG',
+margin.left,
+margin.top + positionY,
+imgWidth,
+imgHeight
+);
+
+
+// footer page number
+}
+
 // Configuration email - AJOUTÉ
 const DOMINIQUE_EMAIL = 'info.servicestmt@gmail.com'; // À MODIFIER avec le vrai email
 
@@ -280,181 +366,38 @@ const generatePurchasePDF = (purchase) => {
 };
 
     const sendEmailToDominique = async (purchase, pdfBlob) => {
-  try {
-    setIsLoadingEmail(true);
-    setEmailStatus('Envoi en cours...');
-    
-    const printContainer = document.querySelector('.print-container');
-    if (!printContainer) {
-      throw new Error('Conteneur d\'impression non trouvé');
-    }
+try {
+// Utilise le même rendu que l'impression/export pour garantir un PDF IDENTIQUE
+const pdf = await renderPrintContainerToPDF();
+const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
 
-    console.log('Génération du PDF professionnel...');
-    
-    // STYLES AMÉLIORÉS - PARAMÈTRES DE ZOOM AUGMENTÉS
-    const printStyles = document.createElement('style');
-    printStyles.textContent = `
-      .temp-print-view * { visibility: visible !important; }
-      .temp-print-view {
-        position: fixed !important;
-        left: -9999px !important; 
-        top: 0 !important;
-        width: 1400px !important; /* AUGMENTÉ de 1024px à 1400px */
-        background: #fff !important;
-        padding: 60px !important; /* AUGMENTÉ de 48px à 60px */
-        font-size: 18px !important; /* AUGMENTÉ de 14px à 18px */
-        line-height: 1.6 !important;
-        font-family: Arial, sans-serif !important;
-        box-sizing: border-box !important;
-      }
-      .temp-print-view table { 
-        width: 100% !important; 
-        border-collapse: collapse !important; 
-        margin: 25px 0 !important; /* AUGMENTÉ */
-      }
-      .temp-print-view th, .temp-print-view td {
-        border: 2px solid #000 !important; /* BORDURES PLUS ÉPAISSES */
-        padding: 15px !important; /* AUGMENTÉ de 12px à 15px */
-        text-align: left !important;
-        font-size: 16px !important; /* AUGMENTÉ de 12px à 16px */
-      }
-      .temp-print-view th { 
-        background-color: #f0f0f0 !important; 
-        font-weight: bold !important;
-        font-size: 17px !important; /* EN-TÊTES PLUS GROS */
-      }
-      .temp-print-view h1 {
-        font-size: 32px !important; /* TITRE PLUS GROS */
-      }
-      .temp-print-view h2 {
-        font-size: 24px !important;
-      }
-      .temp-print-view h3 {
-        font-size: 20px !important;
-      }
-      .temp-print-view .text-right {
-        text-align: right !important;
-      }
-      .temp-print-view .text-center {
-        text-align: center !important;
-      }
-    `;
-    document.head.appendChild(printStyles);
 
-    const clonedContainer = printContainer.cloneNode(true);
-    clonedContainer.className = 'temp-print-view';
-    clonedContainer.style.visibility = 'visible';
-    clonedContainer.style.display = 'block';
-    document.body.appendChild(clonedContainer);
+// (optionnel) Contrôle de poids, comme avant
+const sizeInMB = (pdfBase64.length * (3/4)) / (1024 * 1024);
+if (sizeInMB > 9.5) {
+alert(`Le PDF fait ${sizeInMB.toFixed(2)} Mo — réduit le contenu ou enlève des images.`);
+return;
+}
 
-    // Attendre plus longtemps pour le rendu
-    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // CAPTURE AVEC QUALITÉ MAXIMALE
-    const canvas = await html2canvas(clonedContainer, {
-      scale: 2.5, /* AUGMENTÉ de 2 à 2.5 */
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      width: 1400, /* CORRESPOND À LA LARGEUR CSS */
-      height: clonedContainer.scrollHeight,
-      windowWidth: 1400, /* AUGMENTÉ */
-      windowHeight: clonedContainer.scrollHeight + 100,
-      allowTaint: true,
-      imageTimeout: 15000
-    });
+const res = await fetch('/api/send-purchase-email', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ purchase, pdfBase64 })
+});
 
-    // Nettoyage
-    document.body.removeChild(clonedContainer);
-    document.head.removeChild(printStyles);
 
-    // PDF avec meilleure résolution
-    const pdf = new jsPDF({ 
-      unit: 'pt', 
-      format: 'letter',
-      compress: true
-    });
-    
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 50;
-    const usableWidth = pageWidth - (margin * 2);
-    const usableHeight = pageHeight - (margin * 2);
+if (!res.ok) {
+const msg = await res.text();
+throw new Error(msg || 'Échec de l\'envoi du courriel');
+}
 
-    // JPEG avec qualité très élevée
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const imgWidth = usableWidth;
-    const imgHeight = canvas.height * (imgWidth / canvas.width);
 
-    if (imgHeight <= usableHeight) {
-      // Une seule page
-      pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
-    } else {
-      // Pagination
-      let heightLeft = imgHeight;
-      let positionY = 0;
-
-      while (heightLeft > 0) {
-        if (positionY > 0) pdf.addPage();
-
-        pdf.addImage(
-          imgData,
-          'JPEG',
-          margin,
-          margin + positionY,
-          imgWidth,
-          imgHeight
-        );
-
-        heightLeft -= usableHeight;
-        positionY -= usableHeight;
-      }
-    }
-
-    const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
-    const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
-    const pdfSizeMB = Math.round(pdfSizeKB / 1024 * 100) / 100;
-    
-    console.log(`Taille PDF: ${pdfSizeKB} KB (${pdfSizeMB} MB)`);
-    
-    // Limite plus élevée pour la haute qualité
-    if (pdfSizeKB > 6000) {
-      throw new Error(`PDF trop volumineux: ${pdfSizeMB} MB. Limite: ~6 MB`);
-    }
-
-    const response = await fetch('/api/send-purchase-email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        purchase,
-        pdfBase64
-      })
-    });
-
-    const contentType = response.headers.get('content-type');
-    if (!contentType?.includes('application/json')) {
-      const htmlResponse = await response.text();
-      throw new Error('Réponse HTML au lieu de JSON');
-    }
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || `Erreur ${response.status}`);
-    }
-
-    setEmailStatus(`Email envoyé avec PDF haute qualité (${pdfSizeKB} KB - ${pdfSizeMB} MB)`);
-    return result;
-    
-  } catch (error) {
-    console.error('Erreur envoi email:', error);
-    setEmailStatus(`Erreur: ${error.message}`);
-    throw error;
-  } finally {
-    setIsLoadingEmail(false);
-  }
+alert('Courriel envoyé à Dominique avec le PDF attaché (même format que l\'impression).');
+} catch (err) {
+console.error('sendEmailToDominique error:', err);
+alert(`Erreur d'envoi de courriel: ${err.message || err}`);
+}
 };
 
 
