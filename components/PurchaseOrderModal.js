@@ -1927,7 +1927,8 @@ const startAddingNewItem = () => {
                 </div>
               </div>
               )}
-          </div> 
+          </div>
+         </div>       
             
           {/* Footer adapté mobile */}
 <div className="bg-gray-50 px-4 sm:px-6 py-4 border-t flex-shrink-0">
