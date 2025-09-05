@@ -1910,48 +1910,68 @@ const startAddingNewItem = () => {
           </div>
 
           {/* Footer adapté mobile */}
-          <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-t flex-shrink-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              {editingPO && (
-                <button
-                  onClick={deletePurchaseOrder}
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
-                >
-                  🗑️ Supprimer BA
-                </button>
-              )}
-              
-              <div className="text-sm text-gray-600 text-center sm:text-left">
-                {items.length > 0 && (
-                  <span>
-                    Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
-                  </span>
-                )}
-                {attachedFiles.length > 0 && (
-                  <span className={items.length > 0 ? "block sm:ml-4 sm:inline" : ""}>
-                    {attachedFiles.length} document(s)
-                  </span>
-                )}
-              </div>
-            </div>
+<div className="bg-gray-50 px-4 sm:px-6 py-4 border-t flex-shrink-0">
+  {/* Informations sur une ligne séparée sur mobile */}
+  <div className="text-sm text-gray-600 text-center mb-3 sm:mb-0 sm:hidden">
+    {items.length > 0 && (
+      <span className="block">
+        Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+      </span>
+    )}
+    {attachedFiles.length > 0 && (
+      <span className="block">
+        {attachedFiles.length} document(s)
+      </span>
+    )}
+  </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
-              >
-                Fermer
-              </button>
-              <button
-                onClick={savePurchaseOrder}
-                disabled={isLoading || !formData.client_name || !formData.po_number}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
-              >
-                {isLoading ? 'Sauvegarde...' : (editingPO ? 'Mettre à jour' : 'Créer BA')}
-              </button>
+  {/* Boutons tous ensemble sur mobile */}
+  <div className="flex flex-row justify-between items-center gap-2 sm:gap-4">
+    {/* Informations desktop à gauche */}
+    <div className="hidden sm:block text-sm text-gray-600">
+      {items.length > 0 && (
+        <span>
+          Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+        </span>
+      )}
+      {attachedFiles.length > 0 && (
+        <span className={items.length > 0 ? "ml-4" : ""}>
+          {attachedFiles.length} document(s)
+        </span>
+      )}
+    </div>
+
+    {/* Tous les boutons regroupés */}
+    <div className="flex gap-2 flex-1 sm:flex-initial justify-end">
+      {editingPO && (
+        <button
+          onClick={deletePurchaseOrder}
+          disabled={isLoading}
+          className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm"
+        >
+          <span>🗑️</span>
+          <span className="hidden sm:inline">Supprimer BA</span>
+          <span className="sm:hidden">Suppr.</span>
+        </button>
+      )}
+      
+      <button
+        onClick={onClose}
+        className="px-3 sm:px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-xs sm:text-sm"
+      >
+        Fermer
+      </button>
+      
+      <button
+        onClick={savePurchaseOrder}
+        disabled={isLoading || !formData.client_name || !formData.po_number}
+        className="px-3 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-xs sm:text-sm"
+      >
+        {isLoading ? 'Sauvegarde...' : (editingPO ? 'Mettre à jour' : 'Créer BA')}
+        </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
 
