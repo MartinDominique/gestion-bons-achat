@@ -1847,17 +1847,8 @@ const startAddingNewItem = () => {
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
                     >
                       🚚 Nouvelle Livraison
-                    </button>
-                                        
-                    {/* DEBUG TEMPORAIRE */}
-                    <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                      <strong>🔍 Debug Livraison:</strong><br/>
-                      • Soumission existante: <span className="font-bold">{hasExistingSubmission ? 'OUI' : 'NON'}</span><br/>
-                      • Numéro soumission: "<span className="font-bold">{formData.submission_no || 'VIDE'}</span>"<br/>
-                      • Nombre d'articles: <span className="font-bold">{items.length}</span><br/>
-                      • Bouton activé: <span className="font-bold">{(!hasExistingSubmission || items.length === 0) ? 'NON' : 'OUI'}</span>
-                    </div>
-                  </div>
+                    </button>           
+                    /div>
                 </div>
 
                 {deliverySlips.length === 0 ? (
@@ -1897,18 +1888,6 @@ const startAddingNewItem = () => {
                               Réimprimer
                             </button>
                           </div>
-                        </div>
-
-                          {/* NOUVEAU BOUTON RÉIMPRIMER */}
-                              <button
-                                onClick={() => reprintDeliverySlip(slip)}
-                                className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center gap-1"
-                                title="Réimprimer ce bon de livraison"
-                              >
-                                Réimprimer
-                              </button>
-                            </div>
-                          </div>   
                         </div>
                         
                         {slip.delivery_slip_items && slip.delivery_slip_items.length > 0 && (
