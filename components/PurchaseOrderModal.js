@@ -1153,16 +1153,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       // Récupérer les articles du bon de livraison
       const { data: deliveryItems, error: itemsError } = await supabase
         .from('delivery_slip_items')
-        .select(`
-          *,
-          client_po_items (
-            product_id,
-            description,
-            quantity,
-            unit,
-            selling_price
-          )
-        `)
+        .select('*')
         .eq('delivery_slip_id', deliverySlip.id);
 
       if (itemsError) {
@@ -1175,21 +1166,41 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         return;
       }
 
-      // Convertir au format attendu par generatePDF
-      const selectedItems = deliveryItems.map(item => ({
-        product_id: item.client_po_items.product_id,
-        description: item.client_po_items.description,
-        quantity: item.client_po_items.quantity,
-        unit: item.client_po_items.unit,
-        price: item.client_po_items.selling_price,
-        quantity_to_deliver: item.quantity_delivered
-      }));
+      // Récupérer les détails des articles depuis client_po_items
+      const { data: poItems, error: poItemsError } = await supabase
+        .from('client_po_items')
+        .select('*')
+        .eq('purchase_order_id', deliverySlip.purchase_order_id);
+
+      if (poItemsError) {
+        console.error('Erreur chargement articles BA:', poItemsError);
+        setError('Erreur lors du chargement des détails des articles');
+        return;
+      }
+
+      // Mapper les articles de livraison avec leurs détails
+      const selectedItems = deliveryItems.map(deliveryItem => {
+        // Trouver l'article correspondant dans le BA
+        const poItem = poItems.find(item => 
+          item.product_id === deliveryItem.product_id ||
+          item.id === deliveryItem.client_po_item_id
+        );
+
+        return {
+          product_id: deliveryItem.product_id || poItem?.product_id || 'N/A',
+          description: poItem?.description || deliveryItem.description || 'Article',
+          quantity: poItem?.quantity || 1,
+          unit: poItem?.unit || 'UN',
+          price: poItem?.selling_price || 0,
+          quantity_to_deliver: deliveryItem.quantity_delivered || 0
+        };
+      });
 
       // Simuler les données du formulaire pour le PDF
       const mockFormData = {
         delivery_date: deliverySlip.delivery_date,
         transport_company: deliverySlip.transport_company || 'Non spécifié',
-        tracking_number: deliverySlip.transport_number || 'N/A',
+        tracking_number: deliverySlip.transport_number || deliverySlip.tracking_number || 'N/A',
         delivery_contact: deliverySlip.delivery_contact || '',
         special_instructions: deliverySlip.special_instructions || '',
         items: selectedItems.map(item => ({
@@ -1201,7 +1212,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         }))
       };
 
-      // Appeler la même fonction de génération PDF que dans DeliverySlipModal
+      // Appeler la fonction de génération PDF
       await generateReprinterPDF(deliverySlip, selectedItems, mockFormData);
 
     } catch (error) {
