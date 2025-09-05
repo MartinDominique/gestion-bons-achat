@@ -579,6 +579,25 @@ const [showMobileItemEditor, setShowMobileItemEditor] = useState(false);
 
   // Ajouter un nouvel article manuellement
   const addNewItem = () => {
+  // Détecter si on est sur mobile
+  const isMobile = window.innerWidth < 640; // sm breakpoint
+  
+  if (isMobile) {
+    // Sur mobile, ouvrir le modal d'édition
+    setEditingItemIndex(null);
+    setEditingItemData({
+      id: 'new-' + Date.now(),
+      product_id: '',
+      description: '',
+      quantity: 1,
+      unit: 'unité',
+      selling_price: 0,
+      delivered_quantity: 0,
+      from_manual: true
+    });
+    setShowMobileItemEditor(true);
+  } else {
+    // Sur desktop, comportement normal
     const newItem = {
       id: 'new-' + Date.now(),
       product_id: '',
@@ -591,7 +610,8 @@ const [showMobileItemEditor, setShowMobileItemEditor] = useState(false);
     };
     setItems([...items, newItem]);
     setActiveTab('articles');
-  };
+  }
+};
 
   // Mettre à jour un article
   const updateItem = (index, updatedItem) => {
@@ -1457,7 +1477,7 @@ const startAddingNewItem = () => {
                       <span>Fournisseur</span>
                     </button>
                     <button
-                      onClick={startAddingNewItem}
+                      onClick={addNewItem}
                       className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
                     >
                       <span>+</span>
@@ -1472,7 +1492,7 @@ const startAddingNewItem = () => {
                     <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
                     <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
                       <button
-                        onClick={startAddingNewItem}
+                        onClick={addNewItem}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
                       >
                         Ajouter manuellement
