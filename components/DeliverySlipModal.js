@@ -336,7 +336,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
               ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-                <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 8px;">
+                <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 10px;">
                 <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions || 'Aucune instruction particulière'}
               </div>
               ` : ''}
@@ -386,6 +386,9 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
           @media print {
             body { margin: 0; }
             .no-print { display: none; }
+            .print-page:last-child {
+              page-break-after: avoid !important;
+            }
           }
         </style>
       </head>
