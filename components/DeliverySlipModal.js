@@ -273,7 +273,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
             <!-- BODY - TABLEAU (6.8 inches - ajusté par Martin) -->
-            <div style="height: 6.8in; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
+            <div style="height: 6.3in; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
               <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
                 <thead>
                   <tr>
@@ -315,7 +315,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
             <!-- FOOTER FIXE (1.3 inches - ajusté par Martin) -->
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.3in; border-top: 1px solid #000; padding-top: 10px;">
+              <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.3in; border-top: 1px solid #000; padding-top: 10px; background: white; page-break-inside: avoid;">
               <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
@@ -336,9 +336,8 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                 </div>
               ` : ''}
 
-              <div style="font-size: 9px; text-align: center; font-style: italic; line-height: 1.1;">
-                La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.<br>
-                Toute réclamation doit être faite dans les 48 heures suivant la réception.
+              <div class="footer-disclaimer" style="font-size: 9px; text-align: center; font-style: italic; line-height: 1.1; position: absolute; bottom: 2px; left: 0; right: 0; background: white; page-break-inside: avoid;">
+                La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.
               </div>
             </div>
           </div>
