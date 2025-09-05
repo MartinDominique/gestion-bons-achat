@@ -1846,240 +1846,239 @@ const startAddingNewItem = () => {
                       disabled={items.length === 0}  // Seulement vérifier qu'il y a des articles
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
                     >
-                      🚚 Nouvelle Livraison
-                    </button>           
-                    /div>
-                </div>
-
-                {deliverySlips.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 mb-4">Aucune livraison créée</p>
-                    <p className="text-sm text-gray-400">Créez votre première livraison pour ce bon d'achat</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {deliverySlips.map((slip) => (
-                      <div key={slip.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-semibold text-lg">{slip.delivery_number}</h4>
-                            <p className="text-gray-600">Date: {new Date(slip.delivery_date).toLocaleDateString()}</p>
-                            {slip.transport_company && (
-                              <p className="text-sm text-gray-500">Transport: {slip.transport_company}</p>
-                            )}
-                            {slip.tracking_number && (
-                              <p className="text-sm text-gray-500">Suivi: {slip.tracking_number}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
-                              slip.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                              slip.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            )}>
-                              {slip.status}
-                            </span>
-                            
-                            <button
-                              onClick={() => reprintDeliverySlip(slip)}
-                              className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
-                              title="Réimprimer ce bon de livraison"
-                            >
-                              Réimprimer
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {slip.delivery_slip_items && slip.delivery_slip_items.length > 0 && (
-                          <div className="mt-4">
-                            <p className="text-sm font-medium text-gray-700 mb-2">
-                              Articles livrés ({slip.delivery_slip_items.length}):
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                              {slip.delivery_slip_items.map((item, index) => (
-                                <div key={index} className="text-sm text-gray-600 bg-gray-50 rounded p-2">
-                                  <span className="font-medium">{item.product_id}</span>
-                                  <span className="ml-2">Qté: {item.quantity_delivered}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ONGLET DOCUMENTS & ACHATS */}
-            {activeTab === 'documents' && (
-              <div className="space-y-8">
-                
-                {/* Section Documents */}
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                    <h3 className="text-lg font-semibold">Documents Joints ({attachedFiles.length})</h3>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="file"
-                        id="fileUpload"
-                        multiple
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="fileUpload"
-                        className={'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer flex items-center gap-2 text-sm ' + (
-                          isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''
-                        )}
-                      >
-                        📎 Choisir Fichiers
-                      </label>
+                        🚚 Nouvelle Livraison
+                      </button>           
                     </div>
                   </div>
 
-                  {/* Progress bar pour upload */}
-                  {isUploadingFiles && (
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: uploadProgress + '%' }}
-                      ></div>
-                    </div>
-                  )}
-
-                  {/* Types de fichiers acceptés */}
-                  <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                    <strong>Types acceptés:</strong> PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG (Max: 10MB par fichier)
-                  </div>
-
-                  {/* Liste des documents */}
-                  {attachedFiles.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                      <p className="text-gray-500 mb-2">Aucun document joint</p>
-                      <p className="text-sm text-gray-400">Glissez des fichiers ici ou cliquez sur "Choisir Fichiers"</p>
+                  {deliverySlips.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500 mb-4">Aucune livraison créée</p>
+                      <p className="text-sm text-gray-400">Créez votre première livraison pour ce bon d'achat</p>
                     </div>
                   ) : (
-                    <div className="grid gap-3">
-                      {attachedFiles.map((file) => (
-                        <div key={file.id} className="border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-50">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0">
-                              {file.type.includes('pdf') ? '📄' :
-                               file.type.includes('excel') || file.type.includes('sheet') ? '📊' :
-                               file.type.includes('word') || file.type.includes('doc') ? '📝' :
-                               file.type.includes('image') ? '🖼️' : '📎'}
-                            </div>
+                    <div className="space-y-4">
+                      {deliverySlips.map((slip) => (
+                        <div key={slip.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start">
                             <div>
-                              <p className="font-medium text-gray-900">{file.name}</p>
-                              <p className="text-sm text-gray-500">
-                                {formatFileSize(file.size)} • Ajouté le {new Date(file.uploadDate).toLocaleDateString()}
-                              </p>
+                              <h4 className="font-semibold text-lg">{slip.delivery_number}</h4>
+                              <p className="text-gray-600">Date: {new Date(slip.delivery_date).toLocaleDateString()}</p>
+                              {slip.transport_company && (
+                                <p className="text-sm text-gray-500">Transport: {slip.transport_company}</p>
+                              )}
+                              {slip.tracking_number && (
+                                <p className="text-sm text-gray-500">Suivi: {slip.tracking_number}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
+                                slip.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                slip.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              )}>
+                                {slip.status}
+                              </span>
+                              
+                              <button
+                                onClick={() => reprintDeliverySlip(slip)}
+                                className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
+                                title="Réimprimer ce bon de livraison"
+                              >
+                                Réimprimer
+                              </button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => viewFile(file)}
-                              className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
-                              title="Voir"
-                            >
-                              Voir
-                            </button>
-                            <button
-                              onClick={() => downloadFile(file)}
-                              className="text-green-600 hover:text-green-800 px-3 py-1 border border-green-300 rounded text-sm"
-                              title="Télécharger"
-                            >
-                              Télécharger
-                            </button>
-                            <button
-                              onClick={() => deleteFile(file.id)}
-                              className="text-red-600 hover:text-red-800 px-3 py-1 border border-red-300 rounded text-sm"
-                              title="Supprimer"
-                            >
-                              Supprimer
-                            </button>
-                          </div>
+                          
+                          {slip.delivery_slip_items && slip.delivery_slip_items.length > 0 && (
+                            <div className="mt-4">
+                              <p className="text-sm font-medium text-gray-700 mb-2">
+                                Articles livrés ({slip.delivery_slip_items.length}):
+                              </p>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {slip.delivery_slip_items.map((item, index) => (
+                                  <div key={index} className="text-sm text-gray-600 bg-gray-50 rounded p-2">
+                                    <span className="font-medium">{item.product_id}</span>
+                                    <span className="ml-2">Qté: {item.quantity_delivered}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
+              )}
 
-                {/* Section Achats Fournisseurs */}
-                <div className="space-y-4 border-t pt-6">
-                  <h3 className="text-lg font-semibold">Achats Fournisseurs Liés ({supplierPurchases.length})</h3>
+              {/* ONGLET DOCUMENTS & ACHATS */}
+              {activeTab === 'documents' && (
+                <div className="space-y-8">
                   
-                  {supplierPurchases.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg border">
-                      <p className="text-gray-500">Aucun achat fournisseur lié à ce BA</p>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Les achats fournisseurs apparaîtront ici automatiquement s'ils sont liés à ce bon d'achat
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {supplierPurchases.map((purchase) => (
-                              <tr key={purchase.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3">
-                                  <div className="font-medium text-gray-900">{purchase.purchase_number}</div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="text-gray-900">{purchase.supplier_name}</div>
-                                </td>
-                                <td className="px-4 py-3 text-right">
-                                  <div className="font-medium text-green-600">
-                                    ${parseFloat(purchase.total_amount || 0).toFixed(2)}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  <div className="text-sm text-gray-600">
-                                    {new Date(purchase.created_at).toLocaleDateString()}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
-                                    purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                    purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  )}>
-                                    {purchase.status}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  <button
-                                    onClick={() => visualizeSupplierPurchase(purchase)}
-                                    className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
-                                  >
-                                    Voir
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                  {/* Section Documents */}
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                      <h3 className="text-lg font-semibold">Documents Joints ({attachedFiles.length})</h3>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="file"
+                          id="fileUpload"
+                          multiple
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="fileUpload"
+                          className={'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer flex items-center gap-2 text-sm ' + (
+                            isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''
+                          )}
+                        >
+                          📎 Choisir Fichiers
+                        </label>
                       </div>
                     </div>
-                  )}
+
+                    {/* Progress bar pour upload */}
+                    {isUploadingFiles && (
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: uploadProgress + '%' }}
+                        ></div>
+                      </div>
+                    )}
+
+                    {/* Types de fichiers acceptés */}
+                    <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                      <strong>Types acceptés:</strong> PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG (Max: 10MB par fichier)
+                    </div>
+
+                    {/* Liste des documents */}
+                    {attachedFiles.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                        <p className="text-gray-500 mb-2">Aucun document joint</p>
+                        <p className="text-sm text-gray-400">Glissez des fichiers ici ou cliquez sur "Choisir Fichiers"</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {attachedFiles.map((file) => (
+                          <div key={file.id} className="border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-50">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-shrink-0">
+                                {file.type.includes('pdf') ? '📄' :
+                                 file.type.includes('excel') || file.type.includes('sheet') ? '📊' :
+                                 file.type.includes('word') || file.type.includes('doc') ? '📝' :
+                                 file.type.includes('image') ? '🖼️' : '📎'}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{file.name}</p>
+                                <p className="text-sm text-gray-500">
+                                  {formatFileSize(file.size)} • Ajouté le {new Date(file.uploadDate).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => viewFile(file)}
+                                className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
+                                title="Voir"
+                              >
+                                Voir
+                              </button>
+                              <button
+                                onClick={() => downloadFile(file)}
+                                className="text-green-600 hover:text-green-800 px-3 py-1 border border-green-300 rounded text-sm"
+                                title="Télécharger"
+                              >
+                                Télécharger
+                              </button>
+                              <button
+                                onClick={() => deleteFile(file.id)}
+                                className="text-red-600 hover:text-red-800 px-3 py-1 border border-red-300 rounded text-sm"
+                                title="Supprimer"
+                              >
+                                Supprimer
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section Achats Fournisseurs */}
+                  <div className="space-y-4 border-t pt-6">
+                    <h3 className="text-lg font-semibold">Achats Fournisseurs Liés ({supplierPurchases.length})</h3>
+                    
+                    {supplierPurchases.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg border">
+                        <p className="text-gray-500">Aucun achat fournisseur lié à ce BA</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                          Les achats fournisseurs apparaîtront ici automatiquement s'ils sont liés à ce bon d'achat
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {supplierPurchases.map((purchase) => (
+                                <tr key={purchase.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3">
+                                    <div className="font-medium text-gray-900">{purchase.purchase_number}</div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="text-gray-900">{purchase.supplier_name}</div>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <div className="font-medium text-green-600">
+                                      ${parseFloat(purchase.total_amount || 0).toFixed(2)}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <div className="text-sm text-gray-600">
+                                      {new Date(purchase.created_at).toLocaleDateString()}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
+                                      purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                      purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    )}>
+                                      {purchase.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <button
+                                      onClick={() => visualizeSupplierPurchase(purchase)}
+                                      className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
+                                    >
+                                      Voir
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
           {/* Footer adapté mobile */}
 <div className="bg-gray-50 px-4 sm:px-6 py-4 border-t flex-shrink-0">
