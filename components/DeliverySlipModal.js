@@ -202,7 +202,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
     // Template d'impression avec votre design TMT
     const generateCopyContent = (copyType, items, isLastCopy = false) => {
-      const ITEMS_PER_PAGE = 30; // Ajusté par Martin
+      const ITEMS_PER_PAGE = 28; // Ajusté par Martin
       
       // Diviser les articles en groupes par page
       const pageGroups = [];
