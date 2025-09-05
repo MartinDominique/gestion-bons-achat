@@ -1894,7 +1894,7 @@ const startAddingNewItem = () => {
                                 className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center gap-1"
                                 title="Réimprimer ce bon de livraison"
                               >
-                                🖨️ Réimprimer
+                                Réimprimer
                               </button>
                             </div>
                           </div>   
