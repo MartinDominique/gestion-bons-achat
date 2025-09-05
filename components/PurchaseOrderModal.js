@@ -1887,6 +1887,7 @@ const startAddingNewItem = () => {
                           )}>
                             {slip.status}
                           </span>
+                        </div>
 
                           {/* NOUVEAU BOUTON RÉIMPRIMER */}
                               <button
