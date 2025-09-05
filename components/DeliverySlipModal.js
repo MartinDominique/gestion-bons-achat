@@ -326,7 +326,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                 <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
               </div>
               
-              <div style="text-align: right; flex: 2; padding: 0 15px;">
+              <div style="text-align: center; flex: 2; padding: 0 15px;">
                 <div style="font-size: 9px; font-style: italic; line-height: 1.1; border: 1px solid #ccc; padding: 5px; border-radius: 3px; background: #f9f9f9;">
                   La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet. 
                 </div>
