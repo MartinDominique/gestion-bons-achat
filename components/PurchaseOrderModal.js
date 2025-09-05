@@ -1700,24 +1700,14 @@ const startAddingNewItem = () => {
                       {deliveryStatus === 'partial' && 'Livraison Partielle'}
                       {deliveryStatus === 'not_started' && 'Non Commencé'}
                     </div>
-                    <button
+                   <button
                       onClick={openDeliveryModal}
                       disabled={!hasExistingSubmission || items.length === 0}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-                      title={`Debug: Soumission=${hasExistingSubmission}, Articles=${items.length}, Submission_no="${formData.submission_no}"`}
                     >
                       🚚 Nouvelle Livraison
                     </button>
-
-                    {/* Debug info temporaire */}
-                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                      <strong>Debug:</strong><br/>
-                      • Soumission existante: {hasExistingSubmission ? 'OUI' : 'NON'}<br/>
-                      • Numéro soumission: "{formData.submission_no || 'VIDE'}"<br/>
-                      • Nombre d'articles: {items.length}<br/>
-                      • Bouton activé: {(!hasExistingSubmission || items.length === 0) ? 'NON' : 'OUI'}
-                    </div>
-                 </div>
+                  </div>
 
                 {deliverySlips.length === 0 ? (
                   <div className="text-center py-12">
@@ -1936,6 +1926,8 @@ const startAddingNewItem = () => {
                   )}
                 </div>
               </div>
+              )}
+          </div> 
             
           {/* Footer adapté mobile */}
 <div className="bg-gray-50 px-4 sm:px-6 py-4 border-t flex-shrink-0">
