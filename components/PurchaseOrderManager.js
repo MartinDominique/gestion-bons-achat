@@ -176,14 +176,17 @@ const PurchaseOrderManager = () => {
     fetchPurchaseOrders(); // Rafraîchir après modification
   };
 
-  // Statistiques avec toutes les catégories
+    // Statistiques avec toutes les catégories
   const stats = {
     total: filteredPOs.length,
     draft: filteredPOs.filter(po => po.status === 'draft').length,
-    approved: filteredPOs.filter(po => po.status === 'approved').length,
     pending: filteredPOs.filter(po => po.status === 'pending').length,
-    delivered: filteredPOs.filter(po => po.status === 'delivered').length,
+    approved: filteredPOs.filter(po => po.status === 'approved').length,
     partial: filteredPOs.filter(po => po.status === 'partially_delivered').length,
+    delivered: filteredPOs.filter(po => po.status === 'delivered').length,
+    completed: filteredPOs.filter(po => po.status === 'completed').length,
+    rejected: filteredPOs.filter(po => po.status === 'rejected').length,
+    cancelled: filteredPOs.filter(po => po.status === 'cancelled').length,
     totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.amount) || 0), 0)
   };
 
@@ -293,46 +296,90 @@ const PurchaseOrderManager = () => {
           </div>
         </div>
 
-        {/* Statistiques Modernes - Style Photo */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Total */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+        {/* Statistiques Complètes - 7 Statuts + Total */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
+          {/* Total - Toujours visible */}
+          <div className="col-span-2 md:col-span-1 bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
             <div className="flex items-center justify-between mb-2">
-              <BarChart3 className="w-8 h-8 text-blue-200" />
-              <span className="text-2xl font-bold">{stats.total}</span>
+              <BarChart3 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-200" />
+              <span className="text-xl sm:text-2xl font-bold">{stats.total}</span>
             </div>
-            <p className="text-blue-100 font-medium">Total</p>
+            <p className="text-blue-100 font-medium text-sm">Total</p>
           </div>
 
-          {/* Approuvés */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+          {/* Brouillons */}
+          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
             <div className="flex items-center justify-between mb-2">
-              <div className="w-8 h-8 bg-green-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">✓</span>
+              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-gray-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">📝</span>
               </div>
-              <span className="text-2xl font-bold text-green-200">{stats.approved}</span>
+              <span className="text-lg sm:text-2xl font-bold text-gray-200">{stats.draft}</span>
             </div>
-            <p className="text-green-100 font-medium">Approuvés</p>
+            <p className="text-gray-100 font-medium text-xs sm:text-sm">Brouillons</p>
           </div>
 
           {/* En Attente */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
             <div className="flex items-center justify-between mb-2">
-              <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">⏳</span>
+              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-yellow-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">⏳</span>
               </div>
-              <span className="text-2xl font-bold text-yellow-200">{stats.pending}</span>
+              <span className="text-lg sm:text-2xl font-bold text-yellow-200">{stats.pending}</span>
             </div>
-            <p className="text-yellow-100 font-medium">En Attente</p>
+            <p className="text-yellow-100 font-medium text-xs sm:text-sm">En Attente</p>
           </div>
 
-          {/* Montant Total */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+          {/* Approuvés */}
+          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
             <div className="flex items-center justify-between mb-2">
-              <DollarSign className="w-8 h-8 text-pink-200" />
-              <span className="text-xl font-bold text-pink-200">{formatCurrency(stats.totalValue)}</span>
+              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-green-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">✅</span>
+              </div>
+              <span className="text-lg sm:text-2xl font-bold text-green-200">{stats.approved}</span>
             </div>
-            <p className="text-pink-100 font-medium">Montant Total</p>
+            <p className="text-green-100 font-medium text-xs sm:text-sm">Approuvés</p>
+          </div>
+
+          {/* Partiellement Livrés */}
+          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-blue-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">🚛</span>
+              </div>
+              <span className="text-lg sm:text-2xl font-bold text-blue-200">{stats.partial}</span>
+            </div>
+            <p className="text-blue-100 font-medium text-xs sm:text-sm">Partiels</p>
+          </div>
+
+          {/* Livrés */}
+          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">📦</span>
+              </div>
+              <span className="text-lg sm:text-2xl font-bold text-green-200">{stats.delivered}</span>
+            </div>
+            <p className="text-green-100 font-medium text-xs sm:text-sm">Livrés</p>
+          </div>
+
+          {/* Complétés */}
+          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-purple-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs sm:text-sm">🎉</span>
+              </div>
+              <span className="text-lg sm:text-2xl font-bold text-purple-200">{stats.completed}</span>
+            </div>
+            <p className="text-purple-100 font-medium text-xs sm:text-sm">Complétés</p>
+          </div>
+
+          {/* Montant Total - Occupe 2 colonnes sur mobile */}
+          <div className="col-span-2 md:col-span-1 bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+            <div className="flex items-center justify-between mb-2">
+              <DollarSign className="w-6 sm:w-8 h-6 sm:h-8 text-pink-200" />
+              <span className="text-lg sm:text-xl font-bold text-pink-200">{formatCurrency(stats.totalValue)}</span>
+            </div>
+            <p className="text-pink-100 font-medium text-sm">Montant Total</p>
           </div>
         </div>
       </div>
