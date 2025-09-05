@@ -1702,7 +1702,7 @@ const startAddingNewItem = () => {
                     </div>
                     <button
                       onClick={openDeliveryModal}
-                      disabled={!hasExistingSubmission || items.length === 0}
+                      disabled={items.length === 0}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
                     >
                       🚚 Nouvelle Livraison
