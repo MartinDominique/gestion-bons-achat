@@ -1145,6 +1145,147 @@ if (existingPOs && existingPOs.length > 0) {
     }
   };
 
+    // Réimprimer un bon de livraison existant
+const reprintDeliverySlip = async (deliverySlip) => {
+  try {
+    console.log('Réimpression du bon de livraison:', deliverySlip.delivery_number);
+    
+    // Récupérer les articles du bon de livraison
+    const { data: deliveryItems, error: itemsError } = await supabase
+      .from('delivery_slip_items')
+      .select(`
+        *,
+        client_po_items (
+          product_id,
+          description,
+          quantity,
+          unit,
+          selling_price
+        )
+      `)
+      .eq('delivery_slip_id', deliverySlip.id);
+
+    if (itemsError) {
+      setError('Erreur lors du chargement des articles: ' + itemsError.message);
+      return;
+    }
+
+    if (!deliveryItems || deliveryItems.length === 0) {
+      setError('Aucun article trouvé pour ce bon de livraison');
+      return;
+    }
+
+    // Convertir au format attendu par generatePDF
+    const selectedItems = deliveryItems.map(item => ({
+      product_id: item.client_po_items.product_id,
+      description: item.client_po_items.description,
+      quantity: item.client_po_items.quantity,
+      unit: item.client_po_items.unit,
+      price: item.client_po_items.selling_price,
+      quantity_to_deliver: item.quantity_delivered
+    }));
+
+    // Simuler les données du formulaire pour le PDF
+    const mockFormData = {
+      delivery_date: deliverySlip.delivery_date,
+      transport_company: deliverySlip.transport_company || 'Non spécifié',
+      tracking_number: deliverySlip.transport_number || 'N/A',
+      delivery_contact: deliverySlip.delivery_contact || '',
+      special_instructions: deliverySlip.special_instructions || '',
+      items: selectedItems.map(item => ({
+        ...item,
+        delivered_quantity: 0, // Pour le calcul des quantités restantes
+        remaining_quantity: item.quantity,
+        quantity_delivered_now: item.quantity_to_deliver,
+        remaining_after_delivery: Math.max(0, item.quantity - item.quantity_to_deliver)
+      }))
+    };
+
+    // Appeler la même fonction de génération PDF que dans DeliverySlipModal
+    await generateReprinterPDF(deliverySlip, selectedItems, mockFormData);
+
+  } catch (error) {
+    console.error('Erreur réimpression:', error);
+    setError('Erreur lors de la réimpression: ' + error.message);
+  }
+};
+
+          // Fonction de génération PDF pour réimpression (similaire à celle du DeliverySlipModal)
+          const generateReprinterPDF = async (deliverySlip, selectedItems, mockFormData) => {
+            // Vous pouvez copier la fonction generatePDF du DeliverySlipModal ici
+            // ou créer une version simplifiée
+            
+            const printWindow = window.open('', '_blank');
+            
+            const simpleHTML = `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>Réimpression - ${deliverySlip.delivery_number}</title>
+                <style>
+                  body { font-family: Arial, sans-serif; margin: 20px; }
+                  .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+                  table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                  th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                  th { background-color: #f0f0f0; }
+                  @media print { body { margin: 0; } }
+                </style>
+              </head>
+              <body>
+                <div class="header">
+                  <h1>RÉIMPRESSION - BON DE LIVRAISON</h1>
+                  <h2>${deliverySlip.delivery_number}</h2>
+                  <p>Date: ${new Date(deliverySlip.delivery_date).toLocaleDateString('fr-CA')}</p>
+                  <p>BA Client: ${editingPO.po_number}</p>
+                  <p>Client: ${editingPO.client_name}</p>
+                </div>
+                
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Description</th>
+                      <th>Quantité Livrée</th>
+                      <th>Unité</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${selectedItems.map(item => `
+                      <tr>
+                        <td>${item.product_id}</td>
+                        <td>${item.description}</td>
+                        <td><strong>${item.quantity_to_deliver}</strong></td>
+                        <td>${item.unit || 'UN'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+                
+                <div style="margin-top: 30px;">
+                  <p><strong>Transport:</strong> ${mockFormData.transport_company}</p>
+                  <p><strong>N° de suivi:</strong> ${mockFormData.tracking_number}</p>
+                  ${mockFormData.special_instructions ? `<p><strong>Instructions:</strong> ${mockFormData.special_instructions}</p>` : ''}
+                </div>
+                
+                <div style="margin-top: 50px; text-align: center;">
+                  <div style="border-top: 2px solid #000; width: 200px; margin: 0 auto 10px;"></div>
+                  <p>SIGNATURE CLIENT</p>
+                </div>
+              </body>
+              </html>
+            `;
+            
+            printWindow.document.write(simpleHTML);
+            printWindow.document.close();
+            
+            printWindow.onload = function() {
+              setTimeout(() => {
+                printWindow.print();
+                setTimeout(() => printWindow.close(), 1000);
+              }, 100);
+            };
+          };
+
         // Ouvrir le modal de livraison
 const openDeliveryModal = () => {
   if (items.length === 0) {
@@ -1746,6 +1887,17 @@ const startAddingNewItem = () => {
                           )}>
                             {slip.status}
                           </span>
+
+                          {/* NOUVEAU BOUTON RÉIMPRIMER */}
+                              <button
+                                onClick={() => reprintDeliverySlip(slip)}
+                                className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 flex items-center gap-1"
+                                title="Réimprimer ce bon de livraison"
+                              >
+                                🖨️ Réimprimer
+                              </button>
+                            </div>
+                          </div>   
                         </div>
                         
                         {slip.delivery_slip_items && slip.delivery_slip_items.length > 0 && (
