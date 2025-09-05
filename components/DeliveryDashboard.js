@@ -153,53 +153,55 @@ const stats = {
       </div>
 
       {/* Statistiques générales */}
-<div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-  <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+<div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+  <div className="bg-white rounded-lg shadow-lg p-4 border border-gray-200">
     <div className="flex items-center">
-      <Package className="w-8 h-8 text-blue-600 mr-3" />
+      <Clock className="w-6 h-6 text-gray-600 mr-2" />
       <div>
-        <p className="text-sm font-medium text-gray-600">Total Achats</p>
-        <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+        <p className="text-xs font-medium text-gray-600">Brouillons</p>
+        <p className="text-xl font-bold text-gray-700">{stats.brouillon}</p>
       </div>
     </div>
   </div>
 
-  <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+  <div className="bg-white rounded-lg shadow-lg p-4 border border-yellow-200">
     <div className="flex items-center">
-      <Clock className="w-8 h-8 text-gray-600 mr-3" />
+      <AlertTriangle className="w-6 h-6 text-yellow-600 mr-2" />
       <div>
-        <p className="text-sm font-medium text-gray-600">Brouillons</p>
-        <p className="text-2xl font-bold text-gray-700">{stats.brouillon}</p>
+        <p className="text-xs font-medium text-yellow-600">En commande</p>
+        <p className="text-xl font-bold text-yellow-700">{stats.enCommande}</p>
       </div>
     </div>
   </div>
 
-  <div className="bg-white rounded-lg shadow-lg p-6 border border-yellow-200">
+  <div className="bg-white rounded-lg shadow-lg p-4 border border-blue-200">
     <div className="flex items-center">
-      <AlertTriangle className="w-8 h-8 text-yellow-600 mr-3" />
+      <Truck className="w-6 h-6 text-blue-600 mr-2" />
       <div>
-        <p className="text-sm font-medium text-yellow-600">En commande</p>
-        <p className="text-2xl font-bold text-yellow-700">{stats.enCommande}</p>
+        <p className="text-xs font-medium text-blue-600">Commandés</p>
+        <p className="text-xl font-bold text-blue-700">{stats.commande}</p>
       </div>
     </div>
   </div>
 
-  <div className="bg-white rounded-lg shadow-lg p-6 border border-blue-200">
+  <div className="bg-white rounded-lg shadow-lg p-4 border border-green-200">
     <div className="flex items-center">
-      <Truck className="w-8 h-8 text-blue-600 mr-3" />
+      <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
       <div>
-        <p className="text-sm font-medium text-blue-600">Commandés</p>
-        <p className="text-2xl font-bold text-blue-700">{stats.commande}</p>
+        <p className="text-xs font-medium text-green-600">Reçus</p>
+        <p className="text-xl font-bold text-green-700">{stats.recu}</p>
       </div>
     </div>
   </div>
 
-  <div className="bg-white rounded-lg shadow-lg p-6 border border-green-200">
+  <div className="bg-white rounded-lg shadow-lg p-4 border border-purple-200">
     <div className="flex items-center">
-      <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
+      <Package className="w-6 h-6 text-purple-600 mr-2" />
       <div>
-        <p className="text-sm font-medium text-green-600">Reçus</p>
-        <p className="text-2xl font-bold text-green-700">{stats.recu}</p>
+        <p className="text-xs font-medium text-purple-600">Total</p>
+        <p className="text-xl font-bold text-purple-700">
+          ${dashboardData.reduce((sum, ba) => sum + (ba.total_amount || 0), 0).toLocaleString()}
+        </p>
       </div>
     </div>
   </div>
