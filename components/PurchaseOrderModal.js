@@ -920,80 +920,101 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     );
   };
 
-  // Supprimer le bon d'achat
-  const deletePurchaseOrder = async () => {
-    if (!editingPO) return;
+      // Supprimer le bon d'achat
+const deletePurchaseOrder = async () => {
+  if (!editingPO) return;
 
-    const confirmDelete = window.confirm(
-      'Êtes-vous sûr de vouloir supprimer le bon d\'achat ' + editingPO.po_number + ' ?\n\n' +
-      'Cette action supprimera également :\n' +
-      '- Tous les articles du BA\n' +
-      '- Tous les bons de livraison associés\n' +
-      '- Tous les fichiers joints\n' +
-      '- Toutes les données liées\n\n' +
-      'Cette action est IRRÉVERSIBLE.'
-    );
+  const confirmDelete = window.confirm(
+    'Êtes-vous sûr de vouloir supprimer le bon d\'achat ' + editingPO.po_number + ' ?\n\n' +
+    'Cette action supprimera également :\n' +
+    '- Tous les articles du BA\n' +
+    '- Tous les bons de livraison associés\n' +
+    '- Tous les fichiers joints\n' +
+    '- Les liens avec les achats fournisseurs (les achats fournisseurs seront conservés)\n' +
+    '- Toutes les données liées\n\n' +
+    'Cette action est IRRÉVERSIBLE.'
+  );
 
-    if (!confirmDelete) return;
+  if (!confirmDelete) return;
 
-    try {
-      setIsLoading(true);
-      setError('');
+  try {
+    setIsLoading(true);
+    setError('');
 
-      console.log('Début suppression BA:', editingPO.id);
+    console.log('Début suppression BA:', editingPO.id);
 
-      if (deliverySlips.length > 0) {
-        const { error: deliveryItemsError } = await supabase
-          .from('delivery_slip_items')
-          .delete()
-          .in('delivery_slip_id', deliverySlips.map(slip => slip.id));
+    // 1. NOUVEAU : Délier les achats fournisseurs (ne pas les supprimer)
+    const { error: supplierUnlinkError } = await supabase
+      .from('supplier_purchases')
+      .update({ 
+        linked_po_id: null, 
+        linked_po_number: null 
+      })
+      .eq('linked_po_id', editingPO.id);
 
-        if (deliveryItemsError) {
-          throw new Error('Erreur suppression articles livraison: ' + deliveryItemsError.message);
-        }
+    if (supplierUnlinkError) {
+      console.warn('Avertissement déliage achats fournisseurs:', supplierUnlinkError);
+      // On continue même si ça échoue, pas critique
+    } else {
+      console.log('✅ Achats fournisseurs déliés du BA');
+    }
+
+    // 2. Supprimer les articles de livraison
+    if (deliverySlips.length > 0) {
+      const { error: deliveryItemsError } = await supabase
+        .from('delivery_slip_items')
+        .delete()
+        .in('delivery_slip_id', deliverySlips.map(slip => slip.id));
+
+      if (deliveryItemsError) {
+        throw new Error('Erreur suppression articles livraison: ' + deliveryItemsError.message);
       }
+    }
 
-      if (deliverySlips.length > 0) {
-        const { error: deliverySlipsError } = await supabase
-          .from('delivery_slips')
-          .delete()
-          .eq('purchase_order_id', editingPO.id);
-
-        if (deliverySlipsError) {
-          throw new Error('Erreur suppression bons livraison: ' + deliverySlipsError.message);
-        }
-      }
-
-      const { error: itemsError } = await supabase
-        .from('client_po_items')
+    // 3. Supprimer les bons de livraison
+    if (deliverySlips.length > 0) {
+      const { error: deliverySlipsError } = await supabase
+        .from('delivery_slips')
         .delete()
         .eq('purchase_order_id', editingPO.id);
 
-      if (itemsError) {
-        throw new Error('Erreur suppression articles BA: ' + itemsError.message);
+      if (deliverySlipsError) {
+        throw new Error('Erreur suppression bons livraison: ' + deliverySlipsError.message);
       }
-
-      const { error: poError } = await supabase
-        .from('purchase_orders')
-        .delete()
-        .eq('id', editingPO.id);
-
-      if (poError) {
-        throw new Error('Erreur suppression BA principal: ' + poError.message);
-      }
-
-      console.log('BA ' + editingPO.po_number + ' supprimé avec succès');
-      
-      if (onRefresh) onRefresh();
-      onClose();
-
-    } catch (err) {
-      console.error('Erreur suppression BA:', err);
-      setError('Erreur lors de la suppression: ' + err.message);
-    } finally {
-      setIsLoading(false);
     }
-  };
+
+    // 4. Supprimer les articles du BA
+    const { error: itemsError } = await supabase
+      .from('client_po_items')
+      .delete()
+      .eq('purchase_order_id', editingPO.id);
+
+    if (itemsError) {
+      throw new Error('Erreur suppression articles BA: ' + itemsError.message);
+    }
+
+    // 5. Enfin, supprimer le BA principal
+    const { error: poError } = await supabase
+      .from('purchase_orders')
+      .delete()
+      .eq('id', editingPO.id);
+
+    if (poError) {
+      throw new Error('Erreur suppression BA principal: ' + poError.message);
+    }
+
+    console.log('✅ BA ' + editingPO.po_number + ' supprimé avec succès');
+    
+    if (onRefresh) onRefresh();
+    onClose();
+
+  } catch (err) {
+    console.error('Erreur suppression BA:', err);
+    setError('Erreur lors de la suppression: ' + err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Sauvegarder le BA
   const savePurchaseOrder = async () => {
