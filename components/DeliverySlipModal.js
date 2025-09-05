@@ -220,7 +220,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
           <div class="print-page" style="height: 10.5in; display: block; position: relative; ${isVeryLastPage ? 'page-break-after: avoid;' : ''}">
             
             <!-- HEADER FIXE (2.2 inches - ajusté par Martin) -->
-            <div style="height: 2.2in; overflow: hidden;">
+            <div style="height: 2.1in; overflow: hidden;">
               <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
                 <div style="display: flex; align-items: start; gap: 20px;">
                   <div style="width: 140px; height: 100px;">
@@ -272,7 +272,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             ` : ''}
             </div>
 
-            <!-- BODY - TABLEAU (6.8 inches - ajusté par Martin) -->
+            <!-- BODY - TABLEAU (6.1 inches - ajusté par Martin) -->
             <div style="height: 6.3in; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
               <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
                 <thead>
@@ -315,14 +315,14 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
             <!-- FOOTER FIXE (1.3 inches - ajusté par Martin) -->
-              <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.3in; border-top: 1px solid #000; padding-top: 10px; background: white; page-break-inside: avoid;">
+              <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.2in; border-top: 1px solid #000; padding-top: 10px; background: white; page-break-inside: avoid;">
               <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
               
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <div style="text-align: center; flex: 1;">
-                <div style="border-top: 2px solid #000; width: 150px; margin: 20px auto 5px auto;"></div>
+                <div style="border-top: 2px solid #000; width: 150px; margin: 40px auto 5px auto;"></div>
                 <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
               </div>
               
