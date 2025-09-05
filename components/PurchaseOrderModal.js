@@ -54,6 +54,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // États pour l'édition mobile
+const [editingItemIndex, setEditingItemIndex] = useState(null);
+const [editingItemData, setEditingItemData] = useState(null);
+const [showMobileItemEditor, setShowMobileItemEditor] = useState(false);
+
   // Charger les achats fournisseurs liés au client (pour import)
   const loadClientSupplierPurchases = async (clientName) => {
     if (!clientName) {
@@ -1102,6 +1107,51 @@ if (existingPOs && existingPOs.length > 0) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+    // Fonctions pour l'édition mobile
+const startEditingItem = (index) => {
+  setEditingItemIndex(index);
+  setEditingItemData({...items[index]});
+  setShowMobileItemEditor(true);
+};
+
+const saveMobileItemEdit = () => {
+  if (editingItemIndex !== null) {
+    updateItem(editingItemIndex, editingItemData);
+  } else {
+    // Nouvel article
+    setItems([...items, editingItemData]);
+    // Recalculer le montant total
+    const totalAmount = [...items, editingItemData].reduce((sum, item) => 
+      sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+    );
+    setFormData(prev => ({ ...prev, amount: totalAmount }));
+  }
+  setShowMobileItemEditor(false);
+  setEditingItemIndex(null);
+  setEditingItemData(null);
+};
+
+const cancelMobileItemEdit = () => {
+  setShowMobileItemEditor(false);
+  setEditingItemIndex(null);
+  setEditingItemData(null);
+};
+
+const startAddingNewItem = () => {
+  setEditingItemIndex(null);
+  setEditingItemData({
+    id: 'new-' + Date.now(),
+    product_id: '',
+    description: '',
+    quantity: 1,
+    unit: 'unité',
+    selling_price: 0,
+    delivered_quantity: 0,
+    from_manual: true
+  });
+  setShowMobileItemEditor(true);
+};
+
   if (!isOpen) return null;
 
   const deliveryStatus = getDeliveryStatus();
@@ -1407,7 +1457,7 @@ if (existingPOs && existingPOs.length > 0) {
                       <span>Fournisseur</span>
                     </button>
                     <button
-                      onClick={addNewItem}
+                      onClick={startAddingNewItem}
                       className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
                     >
                       <span>+</span>
@@ -1422,7 +1472,7 @@ if (existingPOs && existingPOs.length > 0) {
                     <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
                     <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
                       <button
-                        onClick={addNewItem}
+                        onClick={startAddingNewItem}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
                       >
                         Ajouter manuellement
@@ -1455,9 +1505,7 @@ if (existingPOs && existingPOs.length > 0) {
                               <div className="font-medium text-gray-900 text-sm">{item.product_id}</div>
                               <div className="flex gap-1">
                                 <button
-                                  onClick={() => {
-                                    // Logic for edit mode would be implemented here
-                                  }}
+                                  onClick={() => startEditingItem(index)}
                                   className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-300 rounded"
                                 >
                                   ✏️
