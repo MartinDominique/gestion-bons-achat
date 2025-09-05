@@ -2338,4 +2338,105 @@ const startAddingNewItem = () => {
   );
 };
 
+    {/* Modal d'édition mobile */}
+      {showMobileItemEditor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden">
+            <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
+              <h3 className="font-semibold">
+                {editingItemIndex !== null ? 'Modifier Article' : 'Nouvel Article'}
+              </h3>
+              <button onClick={cancelMobileItemEdit} className="text-white">✕</button>
+            </div>
+            
+            <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Code Produit *</label>
+                <input
+                  type="text"
+                  value={editingItemData?.product_id || ''}
+                  onChange={(e) => setEditingItemData(prev => ({...prev, product_id: e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Ex: ITEM-001"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                <input
+                  type="text"
+                  value={editingItemData?.description || ''}
+                  onChange={(e) => setEditingItemData(prev => ({...prev, description: e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Description de l'article"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantité *</label>
+                  <input
+                    type="number"
+                    value={editingItemData?.quantity || 0}
+                    onChange={(e) => setEditingItemData(prev => ({...prev, quantity: parseFloat(e.target.value) || 0}))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    step="0.01"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unité</label>
+                  <select
+                    value={editingItemData?.unit || 'unité'}
+                    onChange={(e) => setEditingItemData(prev => ({...prev, unit: e.target.value}))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="unité">UN</option>
+                    <option value="mètre">M</option>
+                    <option value="pied">FT</option>
+                    <option value="kilogramme">KG</option>
+                    <option value="litre">L</option>
+                    <option value="heure">H</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prix Unitaire *</label>
+                <input
+                  type="number"
+                  value={editingItemData?.selling_price || 0}
+                  onChange={(e) => setEditingItemData(prev => ({...prev, selling_price: parseFloat(e.target.value) || 0}))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  step="0.01"
+                  placeholder="0.00"
+                />
+              </div>
+              
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  <strong>Total:</strong> ${((editingItemData?.quantity || 0) * (editingItemData?.selling_price || 0)).toFixed(2)}
+                </p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 px-4 py-3 flex gap-3 border-t">
+              <button
+                onClick={cancelMobileItemEdit}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={saveMobileItemEdit}
+                disabled={!editingItemData?.product_id || !editingItemData?.description}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {editingItemIndex !== null ? 'Modifier' : 'Ajouter'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 export default PurchaseOrderModal;
