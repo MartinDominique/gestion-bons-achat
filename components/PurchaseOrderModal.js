@@ -903,15 +903,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             >
               ✏️
             </button>
-            {(item.from_manual || item.from_supplier_purchase) && (
-              <button
-                onClick={onDelete}
-                className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
-                title="Supprimer"
-              >
-                🗑️
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (window.confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) {
+                onDelete();
+                }
+              }}
+            className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
+            title="Supprimer"
+            >
+            🗑️
+            </button>
           </div>
         </td>
       </tr>
@@ -2509,20 +2511,20 @@ const startAddingNewItem = () => {
               </div>
               
               {/* Bouton supprimer pour les articles modifiables */}
-              {editingItemIndex !== null && editingItemData && (editingItemData.from_manual || editingItemData.from_supplier_purchase) && (
-                <div className="pt-4 border-t">
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) {
-                        deleteItem(editingItemIndex);
-                        cancelMobileItemEdit();
-                      }
-                    }}
+               {editingItemIndex !== null && (
+              <div className="pt-4 border-t">
+                <button
+                  onClick={() => {
+                    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) {
+                    deleteItem(editingItemIndex);
+                    cancelMobileItemEdit();
+                    }
+                  }}
                     className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
                   >
-                    🗑️ Supprimer l'article
-                  </button>
-                </div>
+                  🗑️ Supprimer l'article
+                </button>
+              </div>
               )}
             </div>
             
