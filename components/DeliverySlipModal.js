@@ -202,7 +202,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
     // Template d'impression avec votre design TMT
     const generateCopyContent = (copyType, items, isLastCopy = false) => {
-      const ITEMS_PER_PAGE = 28; // Ajusté par Martin
+      const ITEMS_PER_PAGE = 30; // Ajusté par Martin 30
       
       // Diviser les articles en groupes par page
       const pageGroups = [];
@@ -315,30 +315,35 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
             <!-- FOOTER FIXE (1.3 inches - ajusté par Martin) -->
-              <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.5in; border-top: 1px solid #000; padding-top: 10px; background: white; page-break-inside: avoid;">
+              <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.3in; border-top: 1px solid #000; padding-top: 10px; background: white; page-break-inside: avoid;">
               <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
               
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="text-align: center;">
-                  <div style="border-top: 2px solid #000; width: 200px; margin: 40px auto 5px auto;"></div>
-                  <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
-                </div>
-                <div style="font-size: 10px;">
-                  Date de réception: ___________________
+              <div style="text-align: center; flex: 1;">
+                <div style="border-top: 2px solid #000; width: 150px; margin: 40px auto 5px auto;"></div>
+                <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
+              </div>
+              
+              <div style="text-align: center; flex: 2; padding: 0 15px;">
+                <div style="font-size: 9px; font-style: italic; line-height: 1.1; border: 1px solid #ccc; padding: 5px; border-radius: 3px; background: #f9f9f9;">
+                  La marchandise demeure la propriété de Services TMT Inc.<br>
+                  jusqu'au paiement complet. 
                 </div>
               </div>
-
-              ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-                <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 8px;">
-                  <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
-                </div>
-              ` : ''}
-
-              <div class="footer-disclaimer" style="font-size: 9px; text-align: center; font-style: italic; line-height: 1.1; position: absolute; bottom: 2px; left: 0; right: 0; background: white; page-break-inside: avoid;">
-                La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.
+              
+              <div style="text-align: center; flex: 1; font-size: 10px;">
+                Date de réception:<br>
+                ___________________
               </div>
+            </div>
+            
+            ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+              <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 8px;">
+                <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
+              </div>
+            ` : ''}
             </div>
           </div>
         `;
