@@ -315,7 +315,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
             <!-- FOOTER FIXE (1.3 inches - ajusté par Martin) -->
-              <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.5in; border-top: 1px solid #000; padding-top: 10px; background: white; page-break-inside: avoid;">
+              <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2in; border-top: 1px solid #000; padding-top: 10px; background: white; page-break-inside: avoid;">
               <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
