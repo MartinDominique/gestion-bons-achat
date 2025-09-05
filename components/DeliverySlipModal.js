@@ -571,13 +571,13 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
           )}
 
           {!hasExistingSubmission && (
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
               <div className="flex">
-                <div className="flex-shrink-0">⚠️</div>
+                <div className="flex-shrink-0">ℹ️</div>
                 <div className="ml-3">
-                  <p className="text-sm text-yellow-700">
-                    <strong>Attention:</strong> Ce bon d'achat n'a pas de soumission attribuée.
-                    Vous devez d'abord attribuer une soumission avant de pouvoir créer une livraison.
+                  <p className="text-sm text-blue-700">
+                    <strong>Info:</strong> Ce bon d'achat n'a pas de soumission attribuée.
+                    Vous pouvez quand même créer une livraison pour les articles ajoutés manuellement.
                   </p>
                 </div>
               </div>
