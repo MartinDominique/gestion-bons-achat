@@ -49,10 +49,10 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
       // Vérifier d'abord qu'il y a une soumission attribuée
       const hasSubmission = await checkExistingSubmission(purchaseOrder.id);
       
-      if (!hasSubmission) {
-        setError('Ce bon d\'achat n\'a pas de soumission attribuée. Impossible de créer une livraison.');
-        return;
-      }
+      // Permettre le chargement même sans soumission pour les articles manuels
+        if (!hasSubmission) {
+          console.log('⚠️ Pas de soumission, mais on charge les articles quand même');
+        }
 
       // Charger les articles depuis client_po_items
       const { data: poItems, error: itemsError } = await supabase
@@ -764,7 +764,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               </button>
               <button
                 type="submit"
-                disabled={isLoading || selectedItems.length === 0 || !hasExistingSubmission}
+                disabled={isLoading || selectedItems.length === 0}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 {isLoading ? (
