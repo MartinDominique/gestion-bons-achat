@@ -1146,23 +1146,13 @@ if (existingPOs && existingPOs.length > 0) {
   };
 
         // Ouvrir le modal de livraison
-      const openDeliveryModal = () => {
-        // Vérifier qu'il y a des articles à livrer
-        if (items.length === 0) {
-          setError('Ce bon d\'achat doit avoir au moins un article avant de pouvoir créer une livraison.');
-          return;
-        }
-        
-        // Permettre la livraison même sans soumission si articles manuels
-        const hasManualItems = items.some(item => item.from_manual || item.from_supplier_purchase);
-        
-        if (!hasExistingSubmission && !hasManualItems) {
-          setError('Ce bon d\'achat doit avoir une soumission attribuée ou des articles ajoutés manuellement avant de pouvoir créer une livraison.');
-          return;
-        }
-        
-        setShowDeliveryModal(true);
-      };
+const openDeliveryModal = () => {
+  if (items.length === 0) {
+    setError('Ce bon d\'achat doit avoir au moins un article avant de pouvoir créer une livraison.');
+    return;
+  }
+  setShowDeliveryModal(true);
+};
 
   // Calculer le statut de livraison
   const getDeliveryStatus = () => {
