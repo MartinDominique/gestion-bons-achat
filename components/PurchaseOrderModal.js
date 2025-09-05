@@ -947,16 +947,19 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         throw new Error('Le nom du client est requis');
       }
       
-      const { data: existingPO } = await supabase
-        .from('purchase_orders')
-        .select('id')
-        .eq('po_number', formData.po_number)
-        .not('id', 'eq', editingPO?.id || 0)
-        .single();
-      
-      if (existingPO) {
-        throw new Error('Le numéro de BA "' + formData.po_number + '" existe déjà');
-      }
+      const { data: existingPOs, error: duplicateError } = await supabase
+  .from('purchase_orders')
+  .select('id')
+  .eq('po_number', formData.po_number)
+  .not('id', 'eq', editingPO?.id || 0);
+
+if (duplicateError) {
+  throw new Error('Erreur vérification doublons: ' + duplicateError.message);
+}
+
+if (existingPOs && existingPOs.length > 0) {
+  throw new Error('Le numéro de BA "' + formData.po_number + '" existe déjà');
+}
       
       let poData;
       
