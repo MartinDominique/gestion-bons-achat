@@ -1972,6 +1972,7 @@ const startAddingNewItem = () => {
             </div>
           </div>
         </div>
+      </div>
    
       {/* Modal import soumissions */}
       {showSubmissionModal && (
