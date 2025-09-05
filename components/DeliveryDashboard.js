@@ -103,7 +103,7 @@ const stats = {
   }
 };
 
-  /const getStatusIcon = (status) => {
+  const getStatusIcon = (status) => {
   switch (status) {
     case 'Reçu':
       return <CheckCircle className="w-4 h-4" />;
