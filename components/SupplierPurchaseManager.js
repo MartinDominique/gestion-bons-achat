@@ -392,6 +392,7 @@ export default function SupplierPurchaseManager() {
     </div>
   </div>
 </div>
+</div>
 
       {/* Affichage du statut email global */}
       {emailStatus && (
