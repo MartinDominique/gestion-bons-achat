@@ -2736,8 +2736,7 @@ const startAddingNewItem = () => {
             </div>
           </div>
         </div>
-      )}
-    </>
+         </>
     );
   };
 
