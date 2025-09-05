@@ -2333,8 +2333,128 @@ const startAddingNewItem = () => {
           }}
         />
       )}
+      {/* Modal d'édition mobile */}
+      {showMobileItemEditor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden">
+            <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
+              <h3 className="text-lg font-semibold">
+                {editingItemIndex !== null ? 'Modifier Article' : 'Nouvel Article'}
+              </h3>
+              <button
+                onClick={cancelMobileItemEdit}
+                className="text-white hover:bg-white/20 rounded p-1"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Code Produit *
+                </label>
+                <input
+                  type="text"
+                  value={editingItemData?.product_id || ''}
+                  onChange={(e) => setEditingItemData(prev => ({...prev, product_id: e.target.value}))}
+                  placeholder="Ex: PROD-001"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description *
+                </label>
+                <textarea
+                  value={editingItemData?.description || ''}
+                  onChange={(e) => setEditingItemData(prev => ({...prev, description: e.target.value}))}
+                  placeholder="Description de l'article"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows="3"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantité *
+                  </label>
+                  <input
+                    type="number"
+                    value={editingItemData?.quantity || ''}
+                    onChange={(e) => setEditingItemData(prev => ({...prev, quantity: parseFloat(e.target.value) || 0}))}
+                    placeholder="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    step="0.01"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unité
+                  </label>
+                  <select
+                    value={editingItemData?.unit || 'unité'}
+                    onChange={(e) => setEditingItemData(prev => ({...prev, unit: e.target.value}))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="unité">UN</option>
+                    <option value="mètre">M</option>
+                    <option value="pied">FT</option>
+                    <option value="kilogramme">KG</option>
+                    <option value="litre">L</option>
+                    <option value="heure">H</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Prix Unitaire *
+                </label>
+                <input
+                  type="number"
+                  value={editingItemData?.selling_price || ''}
+                  onChange={(e) => setEditingItemData(prev => ({...prev, selling_price: parseFloat(e.target.value) || 0}))}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  step="0.01"
+                />
+              </div>
+              
+              {/* Affichage du total calculé */}
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">Total ligne :</span>
+                  <span className="text-lg font-bold text-green-600">
+                    ${((editingItemData?.quantity || 0) * (editingItemData?.selling_price || 0)).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 px-4 py-3 flex justify-between items-center border-t">
+              <button
+                onClick={cancelMobileItemEdit}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={saveMobileItemEdit}
+                disabled={!editingItemData?.product_id || !editingItemData?.description}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
+              >
+                {editingItemIndex !== null ? 'Modifier' : 'Ajouter'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
-  );
-};
+    );
+  };
 
 export default PurchaseOrderModal;
