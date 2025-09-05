@@ -333,11 +333,14 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               </div>
             </div>
             
-            ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-              <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 8px;">
-                <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions}
+            </div>
+
+              ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
+                <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 8px;">
+                <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions || 'Aucune instruction particulière'}
               </div>
-            ` : ''}
+              ` : ''}
+              </div>
             </div>
           </div>
         `;
