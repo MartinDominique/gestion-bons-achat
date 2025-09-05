@@ -14,8 +14,7 @@ const pages = [
   { id: 'soumissions', name: 'Soumissions', icon: FileText },
   { id: 'inventaire', name: 'Inventaire', icon: Warehouse },
   { id: 'achat-materiels', name: 'Achat Matériels', icon: ShoppingCart },
-  { id: 'dashboard-livraisons', name: 'Dashboard Fournisseurs', icon: Truck },
-];
+  ];
 
 export default function Navigation() {
   const pathname = usePathname();
