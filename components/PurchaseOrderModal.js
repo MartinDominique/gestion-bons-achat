@@ -1145,14 +1145,24 @@ if (existingPOs && existingPOs.length > 0) {
     }
   };
 
-  // Ouvrir le modal de livraison
-  const openDeliveryModal = () => {
-    if (!hasExistingSubmission) {
-      setError('Ce bon d\'achat doit avoir une soumission attribuée avant de pouvoir créer une livraison.');
-      return;
-    }
-    setShowDeliveryModal(true);
-  };
+        // Ouvrir le modal de livraison
+      const openDeliveryModal = () => {
+        // Vérifier qu'il y a des articles à livrer
+        if (items.length === 0) {
+          setError('Ce bon d\'achat doit avoir au moins un article avant de pouvoir créer une livraison.');
+          return;
+        }
+        
+        // Permettre la livraison même sans soumission si articles manuels
+        const hasManualItems = items.some(item => item.from_manual || item.from_supplier_purchase);
+        
+        if (!hasExistingSubmission && !hasManualItems) {
+          setError('Ce bon d\'achat doit avoir une soumission attribuée ou des articles ajoutés manuellement avant de pouvoir créer une livraison.');
+          return;
+        }
+        
+        setShowDeliveryModal(true);
+      };
 
   // Calculer le statut de livraison
   const getDeliveryStatus = () => {
@@ -1702,12 +1712,12 @@ const startAddingNewItem = () => {
                     </div>
                     <button
                       onClick={openDeliveryModal}
-                      disabled={items.length === 0}
+                      disabled={items.length === 0}  // Seulement vérifier qu'il y a des articles
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
                     >
                       🚚 Nouvelle Livraison
                     </button>
-                    
+                                        
                     {/* DEBUG TEMPORAIRE */}
                     <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
                       <strong>🔍 Debug Livraison:</strong><br/>
