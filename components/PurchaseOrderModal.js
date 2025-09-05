@@ -1880,13 +1880,23 @@ const startAddingNewItem = () => {
                               <p className="text-sm text-gray-500">Suivi: {slip.tracking_number}</p>
                             )}
                           </div>
-                          <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
-                            slip.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                            slip.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          )}>
-                            {slip.status}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
+                              slip.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                              slip.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            )}>
+                              {slip.status}
+                            </span>
+                            
+                            <button
+                              onClick={() => reprintDeliverySlip(slip)}
+                              className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
+                              title="Réimprimer ce bon de livraison"
+                            >
+                              Réimprimer
+                            </button>
+                          </div>
                         </div>
 
                           {/* NOUVEAU BOUTON RÉIMPRIMER */}
