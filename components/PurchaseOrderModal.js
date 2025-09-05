@@ -363,19 +363,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         // Upload vers Supabase Storage (si configuré) ou stocker en base64
         const fileName = Date.now() + '_' + file.name;
         
-        // Option 1: Upload vers Supabase Storage
-        /*
-        const { data, error } = await supabase.storage
-          .from('purchase-orders')
-          .upload((editingPO?.id || 'temp') + '/' + fileName, file);
-        
-        if (error) throw error;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('purchase-orders')
-          .getPublicUrl((editingPO?.id || 'temp') + '/' + fileName);
-        */
-        
         // Option 2: Stockage en base64 (pour cette demo)
         const base64 = await new Promise((resolve) => {
           const reader = new FileReader();
@@ -1118,16 +1105,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-        <div className="bg-white rounded-xl max-w-6xl w-full h-[95vh] flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 flex-shrink-0">
+      {/* Modal principal adapté mobile */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-2 sm:p-4">
+        <div className="bg-white rounded-xl w-full h-[98vh] sm:max-w-6xl sm:h-[95vh] flex flex-col overflow-hidden">
+          {/* Header adapté mobile */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 sm:p-6 flex-shrink-0">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold">
-                  {editingPO ? 'Modifier BA #' + editingPO.po_number : 'Nouveau Bon d\'Achat Client'}
+                <h2 className="text-lg sm:text-2xl font-bold">
+                  {editingPO ? `BA #${editingPO.po_number}` : 'Nouveau BA Client'}
                 </h2>
-                <p className="text-blue-100 mt-1">
+                <p className="text-blue-100 mt-1 text-sm hidden sm:block">
                   Gestion complète des bons d'achat clients
                 </p>
               </div>
@@ -1140,32 +1128,32 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             </div>
           </div>
 
-          {/* Navigation par onglets */}
-          <div className="bg-gray-50 border-b border-gray-200 flex-shrink-0">
-            <nav className="flex space-x-0">
+          {/* Navigation par onglets - VERSION MOBILE OPTIMISÉE */}
+          <div className="bg-gray-50 border-b border-gray-200 flex-shrink-0 overflow-x-auto">
+            <nav className="flex space-x-0 min-w-max">
               <button
                 onClick={() => setActiveTab('info')}
-                className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
+                className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'info'
                     ? 'border-blue-500 text-blue-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
-                )}
+                }`}
               >
                 <span>📋</span>
-                <span>Informations</span>
+                <span>Info</span>
               </button>
               <button
                 onClick={() => setActiveTab('articles')}
-                className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
+                className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'articles'
                     ? 'border-blue-500 text-blue-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
-                )}
+                }`}
               >
                 <span>📦</span>
                 <span>Articles</span>
                 {items.length > 0 && (
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-1">
+                  <span className="bg-blue-100 text-blue-800 text-xs px-1 sm:px-2 py-1 rounded-full">
                     {items.length}
                   </span>
                 )}
@@ -1173,16 +1161,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               {editingPO && (
                 <button
                   onClick={() => setActiveTab('livraisons')}
-                  className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
+                  className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                     activeTab === 'livraisons'
                       ? 'border-blue-500 text-blue-600 bg-white'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
-                  )}
+                  }`}
                 >
                   <span>🚚</span>
                   <span>Livraisons</span>
                   {deliverySlips.length > 0 && (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-1">
+                    <span className="bg-green-100 text-green-800 text-xs px-1 sm:px-2 py-1 rounded-full">
                       {deliverySlips.length}
                     </span>
                   )}
@@ -1190,16 +1178,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               )}
               <button
                 onClick={() => setActiveTab('documents')}
-                className={'px-6 py-4 h-16 border-b-2 font-medium text-sm flex items-center justify-center gap-2 ' + (
+                className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'documents'
                     ? 'border-blue-500 text-blue-600 bg-white'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
-                )}
+                }`}
               >
                 <span>📎</span>
-                <span>Documents & Achats</span>
+                <span>Docs</span>
                 {attachedFiles.length > 0 && (
-                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full ml-1">
+                  <span className="bg-purple-100 text-purple-800 text-xs px-1 sm:px-2 py-1 rounded-full">
                     {attachedFiles.length}
                   </span>
                 )}
@@ -1209,14 +1197,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
           {/* Message d'erreur */}
           {error && (
-            <div className="mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex-shrink-0">
+            <div className="mx-4 sm:mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex-shrink-0">
               {error}
             </div>
           )}
 
           {/* Alerte soumission existante */}
           {hasExistingSubmission && existingSubmissionData && (
-            <div className="mx-6 mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 flex-shrink-0">
+            <div className="mx-4 sm:mx-6 mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 flex-shrink-0">
               <div className="flex">
                 <div className="flex-shrink-0">⚠️</div>
                 <div className="ml-3">
@@ -1230,18 +1218,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           )}
 
           {/* Contenu des onglets */}
-          <div className="flex-1 p-6 overflow-y-auto min-h-0">
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto min-h-0">
             
             {/* ONGLET INFORMATIONS */}
             {activeTab === 'info' && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                   <h3 className="text-lg font-semibold">Informations du Bon d'Achat</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={loadSubmissions}
                       disabled={hasExistingSubmission}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
                     >
                       {hasExistingSubmission ? 'Soumission Attribuée' : 'Importer Soumission'}
                     </button>
@@ -1386,69 +1374,136 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               </div>
             )}
 
-            {/* ONGLET ARTICLES */}
+            {/* ONGLET ARTICLES - VERSION MOBILE OPTIMISÉE */}
             {activeTab === 'articles' && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col gap-4">
                   <h3 className="text-lg font-semibold">
                     Articles du Bon d'Achat ({items.length})
                   </h3>
-                  <div className="flex gap-2">
+                  
+                  {/* Boutons empilés sur mobile */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
                     <button
                       onClick={loadSubmissions}
                       disabled={hasExistingSubmission}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2"
+                      className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
                     >
-                      Importer depuis Soumission
+                      <span>📋</span>
+                      <span className="hidden sm:inline">Importer depuis</span>
+                      <span>Soumission</span>
                     </button>
                     <button
                       onClick={openSupplierImportModal}
                       disabled={!formData.client_name}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center gap-2"
+                      className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
                       title={!formData.client_name ? 'Sélectionnez d\'abord un client' : 'Importer depuis achats fournisseurs'}
                     >
-                      📋 Importer Achat Fournisseur
+                      <span>🔋</span>
+                      <span className="hidden sm:inline">Import</span>
+                      <span>Fournisseur</span>
                     </button>
                     <button
                       onClick={addNewItem}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                      className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
                     >
-                      + Ajouter Article
+                      <span>+</span>
+                      <span>Ajouter</span>
                     </button>
                   </div>
                 </div>
 
                 {items.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                     <p className="text-gray-500 mb-4">Aucun article dans ce bon d'achat</p>
                     <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
-                    <div className="flex justify-center gap-4">
+                    <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
                       <button
                         onClick={addNewItem}
-                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
                       >
-                        Ajouter un article manuellement
+                        Ajouter manuellement
                       </button>
                       <button
                         onClick={loadSubmissions}
                         disabled={hasExistingSubmission}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
                       >
-                        Importer depuis une soumission
+                        Import soumission
                       </button>
                       <button
                         onClick={openSupplierImportModal}
                         disabled={!formData.client_name}
-                        className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 text-sm"
                       >
-                        Importer depuis achat fournisseur
+                        Import fournisseur
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* TABLE RESPONSIVE POUR MOBILE */}
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full">
+                      {/* Version mobile - Cards */}
+                      <div className="block sm:hidden divide-y divide-gray-200">
+                        {items.map((item, index) => (
+                          <div key={item.id || index} className="p-4 bg-white">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="font-medium text-gray-900 text-sm">{item.product_id}</div>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => {
+                                    // Logic for edit mode would be implemented here
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-300 rounded"
+                                >
+                                  ✏️
+                                </button>
+                                {(item.from_manual || item.from_supplier_purchase) && (
+                                  <button
+                                    onClick={() => deleteItem(index)}
+                                    className="text-red-600 hover:text-red-800 text-xs px-2 py-1 border border-red-300 rounded"
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-600 mb-2">{item.description}</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-gray-500">Qté:</span>
+                                <span className="ml-1 font-medium">{item.quantity}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Prix:</span>
+                                <span className="ml-1 font-medium">${parseFloat(item.selling_price || 0).toFixed(2)}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Livré:</span>
+                                <span className="ml-1 font-medium">{item.delivered_quantity || 0}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Total:</span>
+                                <span className="ml-1 font-bold text-green-600">
+                                  ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                            {item.from_manual && (
+                              <div className="text-xs text-blue-600 mt-1">Article ajouté manuellement</div>
+                            )}
+                            {item.from_supplier_purchase && (
+                              <div className="text-xs text-purple-600 mt-1">
+                                Importé depuis achat #{item.supplier_purchase_number}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Version desktop - Table normale */}
+                      <table className="w-full hidden sm:table">
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code Produit</th>
@@ -1484,6 +1539,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                         </tfoot>
                       </table>
                     </div>
+
+                    {/* Total visible sur mobile */}
+                    <div className="block sm:hidden bg-gray-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-gray-700">Total général:</span>
+                        <span className="font-bold text-lg text-green-600">
+                          ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1492,7 +1557,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             {/* ONGLET LIVRAISONS */}
             {activeTab === 'livraisons' && editingPO && (
               <div className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                   <h3 className="text-lg font-semibold">
                     Livraisons ({deliverySlips.length})
                   </h3>
@@ -1509,7 +1574,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     <button
                       onClick={openDeliveryModal}
                       disabled={!hasExistingSubmission || items.length === 0}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
                     >
                       🚚 Nouvelle Livraison
                     </button>
@@ -1573,7 +1638,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 
                 {/* Section Documents */}
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <h3 className="text-lg font-semibold">Documents Joints ({attachedFiles.length})</h3>
                     <div className="flex items-center gap-4">
                       <input
@@ -1586,7 +1651,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                       />
                       <label
                         htmlFor="fileUpload"
-                        className={'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer flex items-center gap-2 ' + (
+                        className={'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer flex items-center gap-2 text-sm ' + (
                           isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''
                         )}
                       >
@@ -1619,7 +1684,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   ) : (
                     <div className="grid gap-3">
                       {attachedFiles.map((file) => (
-                        <div key={file.id} className="border rounded-lg p-4 flex items-center justify-between hover:bg-gray-50">
+                        <div key={file.id} className="border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-50">
                           <div className="flex items-center gap-3">
                             <div className="flex-shrink-0">
                               {file.type.includes('pdf') ? '📄' :
@@ -1676,57 +1741,59 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     </div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {supplierPurchases.map((purchase) => (
-                            <tr key={purchase.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3">
-                                <div className="font-medium text-gray-900">{purchase.purchase_number}</div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="text-gray-900">{purchase.supplier_name}</div>
-                              </td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="font-medium text-green-600">
-                                  ${parseFloat(purchase.total_amount || 0).toFixed(2)}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                <div className="text-sm text-gray-600">
-                                  {new Date(purchase.created_at).toLocaleDateString()}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
-                                  purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                  purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-gray-100 text-gray-800'
-                                )}>
-                                  {purchase.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                <button
-                                  onClick={() => visualizeSupplierPurchase(purchase)}
-                                  className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
-                                >
-                                  Voir
-                                </button>
-                              </td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {supplierPurchases.map((purchase) => (
+                              <tr key={purchase.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3">
+                                  <div className="font-medium text-gray-900">{purchase.purchase_number}</div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="text-gray-900">{purchase.supplier_name}</div>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="font-medium text-green-600">
+                                    ${parseFloat(purchase.total_amount || 0).toFixed(2)}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <div className="text-sm text-gray-600">
+                                    {new Date(purchase.created_at).toLocaleDateString()}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
+                                    purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                    purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  )}>
+                                    {purchase.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <button
+                                    onClick={() => visualizeSupplierPurchase(purchase)}
+                                    className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
+                                  >
+                                    Voir
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1734,27 +1801,27 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             )}
           </div>
 
-          {/* Footer */}
-          <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t flex-shrink-0">
-            <div className="flex items-center gap-4">
+          {/* Footer adapté mobile */}
+          <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-t flex-shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               {editingPO && (
                 <button
                   onClick={deletePurchaseOrder}
                   disabled={isLoading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center gap-2"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
                 >
                   🗑️ Supprimer BA
                 </button>
               )}
               
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-600 text-center sm:text-left">
                 {items.length > 0 && (
                   <span>
                     Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
                   </span>
                 )}
                 {attachedFiles.length > 0 && (
-                  <span className="ml-4">
+                  <span className={items.length > 0 ? "block sm:ml-4 sm:inline" : ""}>
                     {attachedFiles.length} document(s)
                   </span>
                 )}
@@ -1764,14 +1831,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
               >
                 Fermer
               </button>
               <button
                 onClick={savePurchaseOrder}
                 disabled={isLoading || !formData.client_name || !formData.po_number}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
               >
                 {isLoading ? 'Sauvegarde...' : (editingPO ? 'Mettre à jour' : 'Créer BA')}
               </button>
@@ -1841,10 +1908,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
       {/* Modal import depuis achats fournisseurs */}
       {showSupplierImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden">
-            <div className="bg-purple-600 text-white px-6 py-4 flex justify-between items-center">
-              <h3 className="text-xl font-semibold">Import Achats Fournisseurs - {formData.client_name}</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg w-full h-[95vh] sm:max-w-6xl sm:h-[90vh] overflow-hidden">
+            <div className="bg-purple-600 text-white px-4 sm:px-6 py-4 flex justify-between items-center">
+              <h3 className="text-lg sm:text-xl font-semibold">Import Achats Fournisseurs - {formData.client_name}</h3>
               <button
                 onClick={() => {
                   setShowSupplierImportModal(false);
@@ -1857,9 +1924,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               </button>
             </div>
             
-            <div className="flex h-[calc(90vh-200px)]">
+            <div className="flex flex-col sm:flex-row h-[calc(95vh-200px)] sm:h-[calc(90vh-200px)]">
               {/* Liste des achats fournisseurs */}
-              <div className="w-1/3 border-r bg-gray-50 p-4 overflow-y-auto">
+              <div className="w-full sm:w-1/3 border-r bg-gray-50 p-4 overflow-y-auto">
                 <h4 className="font-semibold mb-4">Achats Fournisseurs Disponibles</h4>
                 
                 {isLoadingSupplierPurchases ? (
@@ -1908,7 +1975,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   </div>
                 ) : (
                   <div>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
                       <h4 className="font-semibold">
                         Articles de #{selectedPurchaseForImport.purchase_number}
                       </h4>
@@ -1929,47 +1996,49 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     </div>
 
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left w-10">✓</th>
-                            <th className="px-3 py-2 text-left">Code</th>
-                            <th className="px-3 py-2 text-left">Description</th>
-                            <th className="px-3 py-2 text-center">Qté</th>
-                            <th className="px-3 py-2 text-center">Prix Unit.</th>
-                            <th className="px-3 py-2 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {(selectedPurchaseForImport.items || []).map((item, index) => {
-                            const quantity = parseFloat(item.quantity || item.qty || 1);
-                            const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
-                            const lineTotal = quantity * unitPrice;
-                            
-                            return (
-                              <tr key={index} className="hover:bg-gray-50">
-                                <td className="px-3 py-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedItemsForImport.includes(index)}
-                                    onChange={() => toggleItemSelection(index)}
-                                    className="rounded"
-                                  />
-                                </td>
-                                <td className="px-3 py-2 font-medium">
-                                  {item.product_id || item.code || item.sku || '-'}
-                                </td>
-                                <td className="px-3 py-2">
-                                  {item.description || item.name || item.product_name || '-'}
-                                </td>
-                                <td className="px-3 py-2 text-center">{quantity}</td>
-                                <td className="px-3 py-2 text-center">${unitPrice.toFixed(2)}</td>
-                                <td className="px-3 py-2 text-right font-medium">${lineTotal.toFixed(2)}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-2 text-left w-10">✓</th>
+                              <th className="px-3 py-2 text-left">Code</th>
+                              <th className="px-3 py-2 text-left">Description</th>
+                              <th className="px-3 py-2 text-center">Qté</th>
+                              <th className="px-3 py-2 text-center">Prix Unit.</th>
+                              <th className="px-3 py-2 text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {(selectedPurchaseForImport.items || []).map((item, index) => {
+                              const quantity = parseFloat(item.quantity || item.qty || 1);
+                              const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
+                              const lineTotal = quantity * unitPrice;
+                              
+                              return (
+                                <tr key={index} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedItemsForImport.includes(index)}
+                                      onChange={() => toggleItemSelection(index)}
+                                      className="rounded"
+                                    />
+                                  </td>
+                                  <td className="px-3 py-2 font-medium">
+                                    {item.product_id || item.code || item.sku || '-'}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {item.description || item.name || item.product_name || '-'}
+                                  </td>
+                                  <td className="px-3 py-2 text-center">{quantity}</td>
+                                  <td className="px-3 py-2 text-center">${unitPrice.toFixed(2)}</td>
+                                  <td className="px-3 py-2 text-right font-medium">${lineTotal.toFixed(2)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
 
                     {selectedItemsForImport.length > 0 && (
@@ -1993,7 +2062,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             </div>
 
             {/* Footer du modal */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-t">
               <div></div>
               <div className="flex gap-3">
                 <button
@@ -2002,14 +2071,14 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                     setSelectedPurchaseForImport(null);
                     setSelectedItemsForImport([]);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
                 >
                   Annuler
                 </button>
                 <button
                   onClick={importSelectedItems}
                   disabled={selectedItemsForImport.length === 0}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
                 >
                   Importer {selectedItemsForImport.length} article(s)
                 </button>
@@ -2021,11 +2090,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
       {/* Modal visualisation achat fournisseur */}
       {showSupplierPurchaseModal && selectedSupplierPurchase && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg w-full h-[95vh] sm:max-w-4xl sm:h-[90vh] overflow-hidden">
             {/* Header du modal */}
-            <div className="bg-white px-6 py-4 flex justify-between items-center border-b">
-              <h3 className="text-xl font-semibold">Achat Fournisseur {selectedSupplierPurchase.purchase_number}</h3>
+            <div className="bg-white px-4 sm:px-6 py-4 flex justify-between items-center border-b">
+              <h3 className="text-lg sm:text-xl font-semibold">Achat Fournisseur {selectedSupplierPurchase.purchase_number}</h3>
               <button
                 onClick={() => setShowSupplierPurchaseModal(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -2035,19 +2104,19 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             </div>
             
             {/* Contenu du modal - Format d'impression */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-120px)]">
               <div className="max-w-3xl mx-auto bg-white">
                 {/* En-tête du document */}
                 <div className="text-center mb-6">
-                  <h1 className="text-2xl font-bold mb-4">ACHAT FOURNISSEUR</h1>
-                  <h2 className="text-xl font-semibold">N°: {selectedSupplierPurchase.purchase_number}</h2>
+                  <h1 className="text-xl sm:text-2xl font-bold mb-4">ACHAT FOURNISSEUR</h1>
+                  <h2 className="text-lg sm:text-xl font-semibold">N°: {selectedSupplierPurchase.purchase_number}</h2>
                   <p className="mt-2">Date: {new Date(selectedSupplierPurchase.created_at).toLocaleDateString()}</p>
                 </div>
                 
                 <hr className="my-6 border-black" />
                 
                 {/* Informations principales */}
-                <div className="grid grid-cols-2 gap-8 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-6">
                   <div>
                     <h3 className="font-bold text-lg mb-2">FOURNISSEUR:</h3>
                     <p className="text-lg">{selectedSupplierPurchase.supplier_name}</p>
@@ -2078,36 +2147,38 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                   <h3 className="font-bold text-lg mb-4">DÉTAIL DES ARTICLES:</h3>
                   
                   {selectedSupplierPurchase.items && selectedSupplierPurchase.items.length > 0 ? (
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border border-gray-300 px-3 py-2 text-left">Code</th>
-                          <th className="border border-gray-300 px-3 py-2 text-left">Description</th>
-                          <th className="border border-gray-300 px-3 py-2 text-center">Qté</th>
-                          <th className="border border-gray-300 px-3 py-2 text-center">Unité</th>
-                          <th className="border border-gray-300 px-3 py-2 text-center">Prix Unit.</th>
-                          <th className="border border-gray-300 px-3 py-2 text-center">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedSupplierPurchase.items.map((item, index) => {
-                          const quantity = parseFloat(item.quantity || item.qty || 1);
-                          const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
-                          const lineTotal = quantity * unitPrice;
-                          
-                          return (
-                            <tr key={index}>
-                              <td className="border border-gray-300 px-3 py-2">{item.product_id || item.code || item.sku || '-'}</td>
-                              <td className="border border-gray-300 px-3 py-2">{item.description || item.name || item.product_name || '-'}</td>
-                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{quantity}</td>
-                              <td className="border border-gray-300 px-3 py-2 text-center">{item.unit || item.unity || 'UN'}</td>
-                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">${unitPrice.toFixed(2)}</td>
-                              <td className="border border-gray-300 px-3 py-2 text-center font-bold text-green-600">${lineTotal.toFixed(2)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse border border-gray-300">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-left text-xs sm:text-sm">Code</th>
+                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-left text-xs sm:text-sm">Description</th>
+                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">Qté</th>
+                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">Unité</th>
+                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">Prix Unit.</th>
+                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedSupplierPurchase.items.map((item, index) => {
+                            const quantity = parseFloat(item.quantity || item.qty || 1);
+                            const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
+                            const lineTotal = quantity * unitPrice;
+                            
+                            return (
+                              <tr key={index}>
+                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-xs sm:text-sm">{item.product_id || item.code || item.sku || '-'}</td>
+                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-xs sm:text-sm">{item.description || item.name || item.product_name || '-'}</td>
+                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm">{quantity}</td>
+                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">{item.unit || item.unity || 'UN'}</td>
+                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm">${unitPrice.toFixed(2)}</td>
+                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center font-bold text-green-600 text-xs sm:text-sm">${lineTotal.toFixed(2)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   ) : (
                     <p className="text-gray-500 italic">Aucun détail d'article disponible</p>
                   )}
@@ -2116,24 +2187,24 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
                 {/* Totaux */}
                 <div className="border-t-2 border-black pt-4">
                   <div className="flex justify-end">
-                    <div className="w-64">
-                      <div className="flex justify-between py-1">
+                    <div className="w-full sm:w-64">
+                      <div className="flex justify-between py-1 text-sm">
                         <span className="font-semibold">Sous-total:</span>
                         <span className="font-semibold">${parseFloat(selectedSupplierPurchase.subtotal || 0).toFixed(2)}</span>
                       </div>
                       {parseFloat(selectedSupplierPurchase.taxes || 0) > 0 && (
-                        <div className="flex justify-between py-1">
+                        <div className="flex justify-between py-1 text-sm">
                           <span>Taxes:</span>
                           <span>${parseFloat(selectedSupplierPurchase.taxes || 0).toFixed(2)}</span>
                         </div>
                       )}
                       {parseFloat(selectedSupplierPurchase.shipping_cost || 0) > 0 && (
-                        <div className="flex justify-between py-1">
+                        <div className="flex justify-between py-1 text-sm">
                           <span>Livraison:</span>
                           <span>${parseFloat(selectedSupplierPurchase.shipping_cost || 0).toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between py-2 border-t border-gray-300 font-bold text-lg">
+                      <div className="flex justify-between py-2 border-t border-gray-300 font-bold text-base sm:text-lg">
                         <span>TOTAL GÉNÉRAL:</span>
                         <span>${parseFloat(selectedSupplierPurchase.total_amount || 0).toFixed(2)}</span>
                       </div>
@@ -2152,18 +2223,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             </div>
             
             {/* Footer avec bouton imprimer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
+            <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-t">
               <div></div>
               <div className="flex gap-3">
                 <button
                   onClick={() => window.print()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
                 >
                   Imprimer
                 </button>
                 <button
                   onClick={() => setShowSupplierPurchaseModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
                 >
                   Fermer
                 </button>
