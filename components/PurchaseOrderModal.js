@@ -1145,6 +1145,82 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
   };
 
+  // Réimprimer un bon de livraison existant
+  const reprintDeliverySlip = async (deliverySlip) => {
+    try {
+      console.log('Réimpression du bon de livraison:', deliverySlip.delivery_number);
+      
+      // Récupérer les articles du bon de livraison
+      const { data: deliveryItems, error: itemsError } = await supabase
+        .from('delivery_slip_items')
+        .select('*')
+        .eq('delivery_slip_id', deliverySlip.id);
+
+      if (itemsError) {
+        setError('Erreur lors du chargement des articles: ' + itemsError.message);
+        return;
+      }
+
+      if (!deliveryItems || deliveryItems.length === 0) {
+        setError('Aucun article trouvé pour ce bon de livraison');
+        return;
+      }
+
+      // Récupérer les détails des articles depuis client_po_items
+      const { data: poItems, error: poItemsError } = await supabase
+        .from('client_po_items')
+        .select('*')
+        .eq('purchase_order_id', deliverySlip.purchase_order_id);
+
+      if (poItemsError) {
+        console.error('Erreur chargement articles BA:', poItemsError);
+        setError('Erreur lors du chargement des détails des articles');
+        return;
+      }
+
+      // Mapper les articles de livraison avec leurs détails
+      const selectedItems = deliveryItems.map(deliveryItem => {
+        // Trouver l'article correspondant dans le BA
+        const poItem = poItems.find(item => 
+          item.product_id === deliveryItem.product_id ||
+          item.id === deliveryItem.client_po_item_id
+        );
+
+        return {
+          product_id: deliveryItem.product_id || poItem?.product_id || 'N/A',
+          description: poItem?.description || deliveryItem.description || 'Article',
+          quantity: poItem?.quantity || 1,
+          unit: poItem?.unit || 'UN',
+          price: poItem?.selling_price || 0,
+          quantity_to_deliver: deliveryItem.quantity_delivered || 0
+        };
+      });
+
+      // Simuler les données du formulaire pour le PDF
+      const mockFormData = {
+        delivery_date: deliverySlip.delivery_date,
+        transport_company: deliverySlip.transport_company || 'Non spécifié',
+        tracking_number: deliverySlip.transport_number || deliverySlip.tracking_number || 'N/A',
+        delivery_contact: deliverySlip.delivery_contact || '',
+        special_instructions: deliverySlip.special_instructions || '',
+        items: selectedItems.map(item => ({
+          ...item,
+          delivered_quantity: 0, // Pour le calcul des quantités restantes
+          remaining_quantity: item.quantity,
+          quantity_delivered_now: item.quantity_to_deliver,
+          remaining_after_delivery: Math.max(0, item.quantity - item.quantity_to_deliver)
+        }))
+      };
+
+      // Appeler la fonction de génération PDF
+      await generateReprinterPDF(deliverySlip, selectedItems, mockFormData);
+
+    } catch (error) {
+      console.error('Erreur réimpression:', error);
+      setError('Erreur lors de la réimpression: ' + error.message);
+    }
+  };
+
   // Fonction de génération PDF pour réimpression - MÊME FORMAT QUE DeliverySlipModal
 const generateReprinterPDF = async (deliverySlip, selectedItems, mockFormData) => {
   console.log('Réimpression PDF avec format TMT pour:', deliverySlip.delivery_number);
@@ -1309,83 +1385,6 @@ const generateReprinterPDF = async (deliverySlip, selectedItems, mockFormData) =
         </div>
       `;
     };
-    
-    return pageGroups.map((pageItems, index) => 
-      generateSinglePage(pageItems, index + 1, pageGroups.length)
-    ).join('');
-  };
-
-  // Préparer les données des articles
-  const allOrderItems = selectedItems.map(item => ({
-    ...item,
-    remaining_after_delivery: Math.max(0, item.quantity - item.quantity_to_deliver)
-  }));
-
-  const fullHTML = `
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-      <meta charset="UTF-8">
-      <title>RÉIMPRESSION-${deliverySlip.delivery_number}.pdf</title>
-      <style>
-        @page { size: letter; margin: 0.25in; }
-        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #000; font-size: 11px; line-height: 1.2; }
-        .copy-container { margin: 0; padding: 0; }
-        .copy-container:first-child { page-break-after: always; }
-        .copy-container:last-child { page-break-after: avoid; }
-        @media print {
-          body { margin: 0; padding: 0; }
-          .copy-container:last-child { page-break-after: never !important; }
-          * { page-break-after: avoid !important; }
-          .copy-container:first-child { page-break-after: always !important; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="copy-container">${generateCopyContent('CLIENT', allOrderItems, false)}</div>
-      <div class="copy-container">${generateCopyContent('STMT', allOrderItems, true)}</div>
-    </body>
-    </html>
-  `;
-  
-  // Sauvegarder le contenu actuel de la page
-  const originalContent = document.body.innerHTML;
-  const originalTitle = document.title;
-
-  // Changer le titre et le contenu pour l'impression
-  document.title = `RÉIMPRESSION-${deliverySlip.delivery_number}.pdf`;
-  document.body.innerHTML = fullHTML;
-
-  // Ajouter les styles d'impression directement
-  const printStyle = document.createElement('style');
-  printStyle.innerHTML = `
-    @page { size: letter; margin: 0.25in; }
-    @media print {
-      body { margin: 0; padding: 0; }
-      .copy-container:last-child { page-break-after: never !important; }
-      * { page-break-after: avoid !important; }
-      .copy-container:first-child { page-break-after: always !important; }
-    }
-  `;
-  document.head.appendChild(printStyle);
-
-  // Lancer l'impression
-  setTimeout(() => {
-    window.print();
-    
-    // Restaurer la page après impression
-    setTimeout(() => {
-      document.body.innerHTML = originalContent;
-      document.title = originalTitle;
-      document.head.removeChild(printStyle);
-      
-      // Déclencher un refresh si nécessaire pour rebinder React
-      if (onRefresh) {
-        onRefresh();
-      }
-    }, 1000);
-  }, 500);
-};
     
     return pageGroups.map((pageItems, index) => 
       generateSinglePage(pageItems, index + 1, pageGroups.length)
