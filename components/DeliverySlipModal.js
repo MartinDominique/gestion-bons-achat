@@ -314,23 +314,21 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               </table>
             </div>
 
-            <!-- NOUVEAU FOOTER SANS INSTRUCTIONS -->
-            <div style="margin-top: auto; border-top: 1px solid #000; padding-top: 6px; flex-shrink: 0;">
-              <div style="text-align: center; margin-bottom: 8px; padding: 6px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase;">
+            <!-- FOOTER ULTRA COMPACT -->
+            <div style="margin-top: auto; border-top: 1px solid #000; padding-top: 3px; flex-shrink: 0;">
+              <div style="text-align: center; margin-bottom: 3px; padding: 3px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 1px solid #000; text-transform: uppercase;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
               
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="text-align: center; flex: 1;">
-                  <div style="border-top: 2px solid #000; width: 150px; margin: 8px auto 5px auto;"></div>
-                  <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
+                  <div style="border-top: 2px solid #000; width: 120px; margin: 3px auto 2px auto;"></div>
+                  <div style="font-size: 8px; font-weight: bold;">SIGNATURE CLIENT</div>
                 </div>
                 
-                <div style="flex: 2; padding: 0 10px; text-align: center;">
-                  <div style="font-size: 8px; font-style: italic; line-height: 1.2; border: 1px solid #ccc; padding: 6px; border-radius: 3px; background: #f9f9f9;">
-                    La marchandise demeure la propriété de Services TMT Inc.<br>
-                    jusqu'au paiement complet. Toute réclamation doit être<br>
-                    faite dans les 48 heures suivant la réception.
+                <div style="flex: 2; padding: 0 5px; text-align: center;">
+                  <div style="font-size: 7px; font-style: italic; line-height: 1.0; border: 1px solid #ccc; padding: 3px; border-radius: 2px; background: #f9f9f9;">
+                    La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet. Toute réclamation doit être faite dans les 48 heures suivant la réception.
                   </div>
                 </div>
               </div>
