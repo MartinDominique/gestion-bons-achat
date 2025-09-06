@@ -202,7 +202,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
     // Template d'impression avec votre design TMT
     const generateCopyContent = (copyType, items, isLastCopy = false) => {
-      const ITEMS_PER_PAGE = 30; // Réduit pour éviter débordement
+      const ITEMS_PER_PAGE = 29; // Réduit pour éviter débordement Martin
       
       // Diviser les articles en groupes par page
       const pageGroups = [];
@@ -406,76 +406,32 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
     printWindow.document.write(fullHTML);
     printWindow.document.close();
     
-    // GESTION AMÉLIORÉE DE L'IMPRESSION ET FERMETURE AUTOMATIQUE
-    const handlePrintAndClose = () => {
-      // Événements pour détecter l'état de l'impression
-      const handleAfterPrint = () => {
-        setTimeout(() => {
-          try {
-            if (printWindow && !printWindow.closed) {
-              printWindow.close();
-            }
-          } catch (error) {
-            console.log('Impossible de fermer automatiquement la fenêtre:', error);
-          }
-        }, 500);
-      };
-
-      const handleBeforePrint = () => {
-        console.log('Impression en cours...');
-      };
-
-      // Ajouter les événements d'impression
-      printWindow.addEventListener('beforeprint', handleBeforePrint);
-      printWindow.addEventListener('afterprint', handleAfterPrint);
-      
-      // Également écouter sur window.print pour certains navigateurs
-      if (printWindow.onbeforeprint !== undefined) {
-        printWindow.onbeforeprint = handleBeforePrint;
-        printWindow.onafterprint = handleAfterPrint;
-      }
-
-      // Lancer l'impression
-      try {
-        printWindow.print();
-      } catch (error) {
-        console.error('Erreur lors de l\'impression:', error);
-        // Fermer la fenêtre en cas d'erreur
-        setTimeout(() => {
-          try {
-            if (printWindow && !printWindow.closed) {
-              printWindow.close();
-            }
-          } catch (e) {
-            console.log('Impossible de fermer la fenêtre après erreur');
-          }
-        }, 1000);
-      }
-
-      // Sécurité : fermeture forcée après 15 secondes
-      setTimeout(() => {
-        try {
-          if (printWindow && !printWindow.closed) {
-            console.log('Fermeture forcée de la fenêtre après 15 secondes');
-            printWindow.close();
-          }
-        } catch (error) {
-          console.log('Fermeture forcée impossible:', error);
-        }
-      }, 15000);
-    };
-
-    // Attendre que le document soit complètement chargé
-    printWindow.onload = function() {
-      setTimeout(handlePrintAndClose, 200);
-    };
-
-    // Fallback si onload ne se déclenche pas
+    // SOLUTION SIMPLE ET FIABLE - FERMETURE AUTOMATIQUE
+printWindow.onload = function() {
+  setTimeout(() => {
+    printWindow.print();
+    
+    // Fermeture après 3 secondes (temps pour que l'impression se lance)
     setTimeout(() => {
-      if (printWindow.document.readyState === 'complete') {
-        handlePrintAndClose();
+      try {
+        printWindow.close();
+      } catch (error) {
+        console.log('Fermeture automatique après impression');
       }
-    }, 1000);
+    }, 3000);
+  }, 500);
+};
+
+// Fallback - fermeture forcée après 8 secondes
+setTimeout(() => {
+  try {
+    if (printWindow && !printWindow.closed) {
+      printWindow.close();
+    }
+  } catch (error) {
+    console.log('Fermeture forcée après 8 secondes');
+  }
+}, 8000);
   };
 
   // Générer le numéro de bon de livraison
