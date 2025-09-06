@@ -247,7 +247,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               </div>
 
               <!-- INSTRUCTIONS SPÉCIALES - POSITION PRIORITAIRE -->
-              <div style="border: 2px solid #dd6b20; padding: 5px 8px; border-radius: 4px; margin-bottom: 10px; background: #fef5e7; font-size: 11px; font-weight: bold; text-align: center;">
+              <div style="border: 2px solid #dd6b20; padding: 5px 8px; border-radius: 4px; margin-bottom: 10px; background: #fef5e7; font-size: 11px; font-weight: bold; text-align: left;">
                 <span style="color: #dd6b20;">INSTRUCTIONS SPÉCIALES:</span> ${formData.special_instructions || '________________________________'}
               </div>
 
@@ -327,13 +327,13 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="text-align: center; flex: 1;">
-                  <div style="border-top: 2px solid #000; width: 120px; margin: 3px auto 2px auto;"></div>
-                  <div style="font-size: 8px; font-weight: bold;">SIGNATURE CLIENT</div>
+                  <div style="border-top: 2px solid #000; width: 120px; margin: 40px auto 2px auto;"></div>
+                  <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
                 </div>
                 
-                <div style="flex: 2; padding: 0 5px; text-align: center;">
-                  <div style="font-size: 7px; font-style: italic; line-height: 1.0; border: 1px solid #ccc; padding: 3px; border-radius: 2px; background: #f9f9f9;">
-                    La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet. Toute réclamation doit être faite dans les 48 heures suivant la réception.
+                  <div style="flex: 2; padding: 0 5px; text-align: center; margin-top: 35px;">
+                  <div style="font-size: 10px; font-style: italic; line-height: 1.0; border: 1px solid #ccc; padding: 3px; border-radius: 2px; background: #f9f9f9;">
+                    La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.
                   </div>
                 </div>
               </div>
