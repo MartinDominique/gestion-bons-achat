@@ -217,7 +217,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
         
         return `
           <!-- PAGE ${pageNumber} ${copyType} -->
-          <div class="print-page" style="height: 10.5in; display: block; position: relative; ${isVeryLastPage ? 'page-break-after: avoid;' : ''}">
+          <div class="print-page" style="min-height: 10.5in; display: flex; flex-direction: column; position: relative; ${isVeryLastPage ? 'page-break-after: avoid;' : ''}">
             
             <!-- HEADER FIXE (2.2 inches - ajusté par Martin) -->
             <div style="height: 2.1in; overflow: hidden;">
@@ -273,7 +273,8 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
             <!-- BODY - TABLEAU (6.1 inches - ajusté par Martin) -->
-            <div style="height: 6.3in; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
+            <!-- BODY - TABLEAU FLEXIBLE -->
+            <div style="flex: 1; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
               <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
                 <thead>
                   <tr>
@@ -314,37 +315,32 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               </table>
             </div>
 
-            <!-- FOOTER FIXE (1.3 inches - ajusté par Martin) -->
-              <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 2in; border-top: 1px solid #000; padding-top: 10px; background: white; page-break-inside: avoid;">
-              <div style="text-align: center; margin-bottom: 10px; padding: 8px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase; letter-spacing: 1px;">
+            <!-- NOUVEAU FOOTER -->
+            <div style="margin-top: 10px; border-top: 1px solid #000; padding-top: 8px;">
+              <div style="text-align: center; margin-bottom: 6px; padding: 6px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
               
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <div style="text-align: center; flex: 1;">
-                <div style="border-top: 2px solid #000; width: 150px; margin: 40px auto 5px auto;"></div>
-                <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
-              </div>
-              
-              <div style="text-align: center; flex: 2; padding: 0 15px;">
-                <div style="font-size: 9px; font-style: italic; line-height: 1.1; border: 1px solid #ccc; padding: 5px; border-radius: 3px; background: #f9f9f9;">
-                  La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet. 
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div style="text-align: center; flex: 1;">
+                  <div style="border-top: 2px solid #000; width: 150px; margin: 10px auto 5px auto;"></div>
+                  <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
+                </div>
+                
+                <div style="flex: 2; padding: 0 10px; text-align: center;">
+                  <div style="font-size: 8px; font-style: italic; line-height: 1.2; border: 1px solid #ccc; padding: 6px; border-radius: 3px; background: #f9f9f9;">
+                    La marchandise demeure la propriété de Services TMT Inc.<br>
+                    jusqu'au paiement complet. Toute réclamation doit être<br>
+                    faite dans les 48 heures suivant la réception.
+                  </div>
                 </div>
               </div>
-            </div>
             
-            </div>
-
-              ${formData.special_instructions && formData.special_instructions !== 'Rien' ? `
-                <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; border-left: 3px solid #000; font-size: 10px;">
-                <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions || 'Aucune instruction particulière'}
-              </div>
-              ` : ''}
+              <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; border-left: 3px solid #000; font-size: 8px;">
+                <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions || '________________________________'}
               </div>
             </div>
-          </div>
-        `;
-      };
+          };
       
       // Générer toutes les pages pour cette copie
       return pageGroups.map((pageItems, index) => 
