@@ -402,44 +402,6 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
       </body>
       </html>
     `;
-
-    // Sauvegarder le contenu actuel de la page
-const originalContent = document.body.innerHTML;
-const originalTitle = document.title;
-
-// Changer le titre et le contenu pour l'impression
-document.title = `${deliverySlip.delivery_number}.pdf`;
-document.body.innerHTML = fullHTML;
-
-// Ajouter les styles d'impression directement
-const printStyle = document.createElement('style');
-printStyle.innerHTML = `
-  @page { size: letter; margin: 0.25in; }
-  @media print {
-    body { margin: 0; padding: 0; }
-    .copy-container:last-child { page-break-after: never !important; }
-    * { page-break-after: avoid !important; }
-    .copy-container:first-child { page-break-after: always !important; }
-  }
-`;
-document.head.appendChild(printStyle);
-
-// Lancer l'impression
-setTimeout(() => {
-  window.print();
-  
-  // Restaurer la page après impression
-  setTimeout(() => {
-    document.body.innerHTML = originalContent;
-    document.title = originalTitle;
-    document.head.removeChild(printStyle);
-    
-    // Déclencher un refresh si nécessaire pour rebinder React
-    if (onRefresh) {
-      onRefresh();
-    }
-  }, 1000);
-}, 500);
     
     printWindow.document.write(fullHTML);
     printWindow.document.close();
