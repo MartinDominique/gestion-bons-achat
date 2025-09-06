@@ -374,13 +374,19 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
         <style>
           @page { size: letter; margin: 0.25in; }
           body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #000; font-size: 11px; line-height: 1.2; }
-          .copy-container { margin-bottom: 20px; page-break-inside: avoid; }
-          .copy-container:not(:last-child) {
+          .copy-container { margin-bottom: 0; page-break-inside: avoid; }
+          .copy-container:first-child {
             page-break-after: always;
+          }
+          .copy-container:last-child {
+            page-break-after: avoid !important;
           }
           @media print {
             body { margin: 0; }
             .no-print { display: none; }
+            .copy-container:last-child {
+              page-break-after: avoid !important;
+            }
             .print-page:last-child {
               page-break-after: avoid !important;
             }
