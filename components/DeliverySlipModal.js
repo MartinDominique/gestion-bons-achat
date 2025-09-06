@@ -202,7 +202,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
     // Template d'impression avec votre design TMT
     const generateCopyContent = (copyType, items, isLastCopy = false) => {
-      const ITEMS_PER_PAGE = 25; // Réduit pour éviter débordement
+      const ITEMS_PER_PAGE = 30; // Réduit pour éviter débordement
       
       // Diviser les articles en groupes par page
       const pageGroups = [];
@@ -327,7 +327,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="text-align: center; flex: 1;">
-                  <div style="border-top: 2px solid #000; width: 120px; margin: 40px auto 2px auto;"></div>
+                  <div style="border-top: 1px solid #000; width: 200px; margin: 40px auto 2px auto;"></div>
                   <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
                 </div>
                 
