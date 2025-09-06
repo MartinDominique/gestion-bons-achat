@@ -1337,7 +1337,7 @@ const generateReprinterPDF = async (deliverySlip, selectedItems, mockFormData) =
               </thead>
               <tbody>
                 ${pageItems.map(item => `
-                  <tr style="height: 20px;">
+                  <tr style="height: 15px;">
                     <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
                     <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; vertical-align: top; overflow: hidden;">
                       ${item.description}
@@ -1350,7 +1350,7 @@ const generateReprinterPDF = async (deliverySlip, selectedItems, mockFormData) =
                 `).join('')}
                 
                 ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
-                  <tr style="height: 20px;">
+                  <tr style="height: 15px;">
                     <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
                     <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
                     <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
