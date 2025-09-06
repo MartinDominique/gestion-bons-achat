@@ -1,0 +1,221 @@
+import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
+import { NextResponse } from 'next/server';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Fonction pour calculer la couleur de la ligne selon la date
+function getRowColor(deliveryDate) {
+  if (!deliveryDate) return '';
+  
+  const today = new Date();
+  const delivery = new Date(deliveryDate);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  
+  // Normaliser les dates pour comparer seulement jour/mois/année
+  today.setHours(0, 0, 0, 0);
+  delivery.setHours(0, 0, 0, 0);
+  tomorrow.setHours(0, 0, 0, 0);
+  
+  // Rouge : aujourd'hui ou passé
+  if (delivery <= today) {
+    return 'background-color: #fca5a5; color: #7f1d1d;'; // Rouge clair avec texte rouge foncé
+  }
+  
+  // Orange : demain (1 jour avant)
+  if (delivery.getTime() === tomorrow.getTime()) {
+    return 'background-color: #fed7aa; color: #9a3412;'; // Orange clair avec texte orange foncé
+  }
+  
+  return '';
+}
+
+// Fonction pour formater la date en français
+function formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('fr-CA'); // Format YYYY-MM-DD
+}
+
+// Fonction pour formater le montant
+function formatAmount(amount) {
+  if (!amount) return '0,00 $';
+  return new Intl.NumberFormat('fr-CA', {
+    style: 'currency',
+    currency: 'CAD'
+  }).format(amount);
+}
+
+// Fonction pour traduire le statut
+function translateStatus(status) {
+  const statusMap = {
+    'draft': 'Brouillon',
+    'ordered': 'Commandé'
+  };
+  return statusMap[status] || status;
+}
+
+export async function POST(request) {
+  try {
+    // Récupérer les achats en cours (draft et ordered) triés par date de création
+    const { data: purchases, error } = await supabase
+      .from('supplier_purchases')
+      .select(`
+        id,
+        purchase_number,
+        supplier_name,
+        ba_acomba,
+        linked_po_number,
+        created_at,
+        delivery_date,
+        total_amount,
+        status
+      `)
+      .in('status', ['draft', 'ordered'])
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Erreur Supabase:', error);
+      return NextResponse.json({ error: 'Erreur lors de la récupération des données' }, { status: 500 });
+    }
+
+    // Si aucun achat, on envoie quand même un email pour confirmer
+    const purchaseRows = purchases && purchases.length > 0 
+      ? purchases.map(purchase => {
+          const rowStyle = getRowColor(purchase.delivery_date);
+          return `
+            <tr style="${rowStyle}">
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${purchase.purchase_number || 'N/A'}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${purchase.supplier_name || 'N/A'}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${purchase.ba_acomba || 'N/A'}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${purchase.linked_po_number || 'N/A'}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${formatDate(purchase.created_at)}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${formatDate(purchase.delivery_date)}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${formatAmount(purchase.total_amount)}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${translateStatus(purchase.status)}</td>
+            </tr>
+          `;
+        }).join('')
+      : `
+        <tr>
+          <td colspan="8" style="padding: 20px; text-align: center; font-style: italic; color: #6b7280;">
+            Aucun achat en cours aujourd'hui
+          </td>
+        </tr>
+      `;
+
+    const currentDate = new Date().toLocaleDateString('fr-CA', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Rapport quotidien des achats fournisseurs</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f9fafb;">
+        <div style="max-width: 1200px; margin: 0 auto; background-color: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          
+          <!-- En-tête -->
+          <div style="padding: 30px; background-color: #1f2937; color: white; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 24px;">📋 Rapport quotidien des achats fournisseurs</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">${currentDate}</p>
+          </div>
+
+          <!-- Contenu -->
+          <div style="padding: 30px;">
+            
+            <!-- Légende des couleurs -->
+            <div style="margin-bottom: 20px; padding: 15px; background-color: #f3f4f6; border-radius: 6px;">
+              <h3 style="margin: 0 0 10px 0; font-size: 16px;">Légende des alertes :</h3>
+              <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 20px; height: 20px; background-color: #fed7aa; border: 1px solid #fdba74; border-radius: 3px;"></div>
+                  <span style="font-size: 14px;">Orange : Livraison demain (1 jour)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 20px; height: 20px; background-color: #fca5a5; border: 1px solid #f87171; border-radius: 3px;"></div>
+                  <span style="font-size: 14px;">Rouge : Livraison aujourd'hui ou en retard</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tableau -->
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+              <thead>
+                <tr style="background-color: #f9fafb;">
+                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">#Commande</th>
+                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Nom du Fournisseur</th>
+                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">BA Acomba</th>
+                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">PO Client lié</th>
+                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Date de Création</th>
+                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Date prévue</th>
+                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Montant</th>
+                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${purchaseRows}
+              </tbody>
+            </table>
+
+            <!-- Résumé -->
+            <div style="margin-top: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px;">
+              <h3 style="margin: 0 0 10px 0; color: #374151;">Résumé :</h3>
+              <p style="margin: 5px 0; color: #6b7280;">
+                📦 <strong>${purchases ? purchases.length : 0}</strong> achat(s) en cours
+              </p>
+              <p style="margin: 5px 0; color: #6b7280;">
+                🔄 Statuts inclus : Brouillon, Commandé
+              </p>
+            </div>
+
+            <!-- Pied de page -->
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+              <p style="margin: 0;">Ce rapport est généré automatiquement tous les jours à 8h00.</p>
+              <p style="margin: 5px 0 0 0;">Système de gestion des achats fournisseurs - Services TMT</p>
+            </div>
+
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Envoyer l'email
+    const { data, error: resendError } = await resend.emails.send({
+      from: 'Système de gestion <servicestmt@gmail.com>',
+      to: ['servicestmt@gmail.com'],
+      subject: `📋 Rapport quotidien des achats - ${purchases ? purchases.length : 0} achat(s) en cours`,
+      html: emailHtml,
+    });
+
+    if (resendError) {
+      console.error('Erreur Resend:', resendError);
+      return NextResponse.json({ error: 'Erreur lors de l\'envoi de l\'email' }, { status: 500 });
+    }
+
+    console.log('Email envoyé avec succès:', data);
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: `Email envoyé avec succès. ${purchases ? purchases.length : 0} achat(s) traité(s).`,
+      emailId: data.id
+    });
+
+  } catch (error) {
+    console.error('Erreur générale:', error);
+    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+  }
+}
