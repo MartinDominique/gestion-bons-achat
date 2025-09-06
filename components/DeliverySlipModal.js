@@ -315,27 +315,26 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
             <!-- NOUVEAU FOOTER EN FLEXBOX -->
-            <div style="margin-top: auto; border-top: 1px solid #000; padding-top: 8px; flex-shrink: 0;">
+            <div style="margin-top: auto; border-top: 1px solid #000; padding-top: 4px; flex-shrink: 0;">
               <div style="text-align: center; margin-bottom: 6px; padding: 6px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
               
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                 <div style="text-align: center; flex: 1;">
-                  <div style="border-top: 2px solid #000; width: 150px; margin: 10px auto 5px auto;"></div>
+                  <div style="border-top: 2px solid #000; width: 150px; margin: 5px auto 3px auto;"></div>
                   <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
                 </div>
                 
                 <div style="flex: 2; padding: 0 10px; text-align: center;">
-                  <div style="font-size: 8px; font-style: italic; line-height: 1.2; border: 1px solid #ccc; padding: 6px; border-radius: 3px; background: #f9f9f9;">
+                  <div style="font-size: 10px; font-style: italic; line-height: 1.1; border: 1px solid #ccc; padding: 4px; border-radius: 3px; background: #f9f9f9;">
                     La marchandise demeure la propriété de Services TMT Inc.<br>
-                    jusqu'au paiement complet. Toute réclamation doit être<br>
-                    faite dans les 48 heures suivant la réception.
+                    jusqu'au paiement complet.
                   </div>
                 </div>
               </div>
 
-              <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; border-left: 3px solid #000; font-size: 8px;">
+              <div style="border: 1px solid #000; padding: 2px 4px; border-radius: 3px; border-left: 3px solid #000; font-size: 7px; margin-top: 2px;">
                 <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions || '________________________________'}
               </div>
             </div>
