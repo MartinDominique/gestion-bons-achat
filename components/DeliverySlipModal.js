@@ -368,36 +368,108 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
       };
     });
 
-   // Créer un iframe caché pour l'impression
-const iframe = document.createElement('iframe');
-iframe.style.position = 'absolute';
-iframe.style.width = '0px';
-iframe.style.height = '0px';
-iframe.style.border = 'none';
-iframe.style.visibility = 'hidden';
-document.body.appendChild(iframe);
+    const printWindow = window.open('', '_blank');
+    
+    // Vérifier si la fenêtre a été bloquée par le navigateur
+    if (!printWindow) {
+      alert('Veuillez autoriser les popups pour cette application afin de générer le PDF.');
+      return;
+    }
+    
+    const fullHTML = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <title>${deliverySlip.delivery_number}.pdf</title>
+        <style>
+          @page { size: letter; margin: 0.25in; }
+          body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #000; font-size: 11px; line-height: 1.2; }
+          .copy-container { margin: 0; padding: 0; }
+          .copy-container:first-child { page-break-after: always; }
+          .copy-container:last-child { page-break-after: avoid; }
+          @media print {
+            body { margin: 0; padding: 0; }
+            .copy-container:last-child { page-break-after: never !important; }
+            * { page-break-after: avoid !important; }
+            .copy-container:first-child { page-break-after: always !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="copy-container">${generateCopyContent('CLIENT', allOrderItems, false)}</div>
+        <div class="copy-container">${generateCopyContent('STMT', allOrderItems, true)}</div>
+      </body>
+      </html>
+    `;
 
-// Écrire le contenu dans l'iframe
-const doc = iframe.contentWindow.document;
-doc.open();
-doc.write(fullHTML);
-doc.close();
+    // Sauvegarder le contenu actuel de la page
+const originalContent = document.body.innerHTML;
+const originalTitle = document.title;
 
-// Imprimer et nettoyer
+// Changer le titre et le contenu pour l'impression
+document.title = `${deliverySlip.delivery_number}.pdf`;
+document.body.innerHTML = fullHTML;
+
+// Ajouter les styles d'impression directement
+const printStyle = document.createElement('style');
+printStyle.innerHTML = `
+  @page { size: letter; margin: 0.25in; }
+  @media print {
+    body { margin: 0; padding: 0; }
+    .copy-container:last-child { page-break-after: never !important; }
+    * { page-break-after: avoid !important; }
+    .copy-container:first-child { page-break-after: always !important; }
+  }
+`;
+document.head.appendChild(printStyle);
+
+// Lancer l'impression
+setTimeout(() => {
+  window.print();
+  
+  // Restaurer la page après impression
+  setTimeout(() => {
+    document.body.innerHTML = originalContent;
+    document.title = originalTitle;
+    document.head.removeChild(printStyle);
+    
+    // Déclencher un refresh si nécessaire pour rebinder React
+    if (onRefresh) {
+      onRefresh();
+    }
+  }, 1000);
+}, 500);
+    
+    printWindow.document.write(fullHTML);
+    printWindow.document.close();
+    
+    // SOLUTION SIMPLE ET FIABLE - FERMETURE AUTOMATIQUE
+printWindow.onload = function() {
+  setTimeout(() => {
+    printWindow.print();
+    
+    // Fermeture après 3 secondes (temps pour que l'impression se lance)
+    setTimeout(() => {
+      try {
+        printWindow.close();
+      } catch (error) {
+        console.log('Fermeture automatique après impression');
+      }
+    }, 3000);
+  }, 500);
+};
+
+// Fallback - fermeture forcée après 8 secondes
 setTimeout(() => {
   try {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    
-    // Supprimer l'iframe après impression
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1000);
+    if (printWindow && !printWindow.closed) {
+      printWindow.close();
+    }
   } catch (error) {
-    console.error('Erreur impression:', error);
-    document.body.removeChild(iframe);
+    console.log('Fermeture forcée après 8 secondes');
   }
-}, 500);
+}, 8000);
   };
 
   // Générer le numéro de bon de livraison
