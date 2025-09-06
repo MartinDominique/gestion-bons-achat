@@ -356,7 +356,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
       
       const previousDeliveryInfo = previousDeliveries
         ?.filter(d => d.notes && d.notes.includes(item.product_id))
-        ?.map(d => `[${d.delivery_slips.delivery_number}] - ${new Date(d.delivery_slips.delivery_date).toLocaleDateString('fr-CA')}`)
+        ?.map(d => '[' + d.delivery_slips.delivery_number + '] - ' + new Date(d.delivery_slips.delivery_date).toLocaleDateString('fr-CA'))
         ?.join('<br>') || '';
       
       return {
