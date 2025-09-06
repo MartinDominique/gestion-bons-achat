@@ -202,7 +202,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
     // Template d'impression avec votre design TMT
     const generateCopyContent = (copyType, items, isLastCopy = false) => {
-      const ITEMS_PER_PAGE = 30; // Ajusté par Martin 30
+      const ITEMS_PER_PAGE = 25; // Réduit pour éviter débordement
       
       // Diviser les articles en groupes par page
       const pageGroups = [];
@@ -219,8 +219,8 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
           <!-- PAGE ${pageNumber} ${copyType} -->
           <div class="print-page" style="min-height: 10.5in; display: flex; flex-direction: column; position: relative; ${isVeryLastPage ? 'page-break-after: avoid;' : ''}">
             
-            <!-- HEADER FIXE (2.2 inches - ajusté par Martin) -->
-            <div style="height: 2.1in; overflow: hidden;">
+            <!-- HEADER FIXE (2.1 inches) -->
+            <div style="flex-shrink: 0; overflow: hidden;">
               <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
                 <div style="display: flex; align-items: start; gap: 20px;">
                   <div style="width: 140px; height: 100px;">
@@ -266,13 +266,12 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               </div>
 
               ${cleanNotes ? `
-              <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin-bottom: 8px; border-left: 3px solid #000; font-size: 10px;">
-              <strong>NOTES:</strong> ${cleanNotes.replace(/[^\x00-\x7F]/g, "")}
-            </div>
-            ` : ''}
+                <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin-bottom: 8px; border-left: 3px solid #000; font-size: 10px;">
+                  <strong>NOTES:</strong> ${cleanNotes.replace(/[^\x00-\x7F]/g, "")}
+                </div>
+              ` : ''}
             </div>
 
-            <!-- BODY - TABLEAU (6.1 inches - ajusté par Martin) -->
             <!-- BODY - TABLEAU FLEXIBLE -->
             <div style="flex: 1; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
               <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
@@ -300,7 +299,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                     </tr>
                   `).join('')}
                   
-                  <!-- Remplir l'espace vide si moins de 30 articles -->
+                  <!-- Remplir l'espace vide si moins de 25 articles -->
                   ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
                     <tr style="height: 20px;">
                       <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
@@ -315,8 +314,8 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
               </table>
             </div>
 
-            <!-- NOUVEAU FOOTER -->
-            <div style="margin-top: 10px; border-top: 1px solid #000; padding-top: 8px;">
+            <!-- NOUVEAU FOOTER EN FLEXBOX -->
+            <div style="margin-top: auto; border-top: 1px solid #000; padding-top: 8px; flex-shrink: 0;">
               <div style="text-align: center; margin-bottom: 6px; padding: 6px; background: #f0f0f0; font-weight: bold; font-size: 14px; border: 2px solid #000; text-transform: uppercase;">
                 ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
               </div>
@@ -335,12 +334,14 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                   </div>
                 </div>
               </div>
-            
+
               <div style="border: 1px solid #000; padding: 4px 6px; border-radius: 3px; border-left: 3px solid #000; font-size: 8px;">
                 <strong>INSTRUCTIONS SPÉCIALES:</strong> ${formData.special_instructions || '________________________________'}
               </div>
             </div>
-          };
+          </div>
+        `;
+      };
       
       // Générer toutes les pages pour cette copie
       return pageGroups.map((pageItems, index) => 
@@ -354,6 +355,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
       const quantityDeliveredNow = deliveredItem ? deliveredItem.quantity_to_deliver : 0;
       const remainingAfterDelivery = item.remaining_quantity - quantityDeliveredNow;
       
+      // CORRECTION: Éviter les template literals imbriqués
       const previousDeliveryInfo = previousDeliveries
         ?.filter(d => d.notes && d.notes.includes(item.product_id))
         ?.map(d => '[' + d.delivery_slips.delivery_number + '] - ' + new Date(d.delivery_slips.delivery_date).toLocaleDateString('fr-CA'))
@@ -378,7 +380,10 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
         <style>
           @page { size: letter; margin: 0.25in; }
           body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #000; font-size: 11px; line-height: 1.2; }
-          .copy-container { margin-bottom: 20px; page-break-inside: avoid; page-break-after: always; }
+          .copy-container { margin-bottom: 20px; page-break-inside: avoid; }
+          .copy-container:not(:last-child) {
+            page-break-after: always;
+          }
           @media print {
             body { margin: 0; }
             .no-print { display: none; }
@@ -389,8 +394,8 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
         </style>
       </head>
       <body>
-        ${generateCopyContent('CLIENT', allOrderItems, false)}
-        ${generateCopyContent('STMT', allOrderItems, true)}
+        <div class="copy-container">${generateCopyContent('CLIENT', allOrderItems, false)}</div>
+        <div class="copy-container">${generateCopyContent('STMT', allOrderItems, true)}</div>
       </body>
       </html>
     `;
