@@ -409,7 +409,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
    printWindow.onload = function() {
   setTimeout(() => {
     printWindow.print();
-    setTimeout(() => printWindow.close(), 3000);
+    setTimeout(() => printWindow.close(), 1000);
   }, 500);
 };
 
