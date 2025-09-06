@@ -1424,43 +1424,32 @@ const generateReprinterPDF = async (deliverySlip, selectedItems, mockFormData) =
     </html>
   `;
   
-  // Sauvegarder le contenu actuel de la page
-  const originalContent = document.body.innerHTML;
-  const originalTitle = document.title;
+  const printWindow = window.open('', '_blank');
 
-  // Changer le titre et le contenu pour l'impression
-  document.title = `RÉIMPRESSION-${deliverySlip.delivery_number}.pdf`;
-  document.body.innerHTML = fullHTML;
+if (!printWindow) {
+  alert('Veuillez autoriser les popups pour cette application afin de générer le PDF.');
+  return;
+}
 
-  // Ajouter les styles d'impression directement
-  const printStyle = document.createElement('style');
-  printStyle.innerHTML = `
-    @page { size: letter; margin: 0.25in; }
-    @media print {
-      body { margin: 0; padding: 0; }
-      .copy-container:last-child { page-break-after: never !important; }
-      * { page-break-after: avoid !important; }
-      .copy-container:first-child { page-break-after: always !important; }
-    }
-  `;
-  document.head.appendChild(printStyle);
+printWindow.document.write(fullHTML);
+printWindow.document.close();
 
-  // Lancer l'impression
+printWindow.onload = function() {
   setTimeout(() => {
-    window.print();
-    
-    // Restaurer la page après impression
-    setTimeout(() => {
-      document.body.innerHTML = originalContent;
-      document.title = originalTitle;
-      document.head.removeChild(printStyle);
-      
-      // Déclencher un refresh si nécessaire pour rebinder React
-      if (onRefresh) {
-        onRefresh();
-      }
-    }, 1000);
+    printWindow.print();
+    setTimeout(() => printWindow.close(), 3000);
   }, 500);
+};
+
+setTimeout(() => {
+  try {
+    if (printWindow && !printWindow.closed) {
+      printWindow.close();
+    }
+  } catch (error) {
+    console.log('Fermeture forcée après 8 secondes');
+  }
+}, 8000);
 };
 
   // Ouvrir le modal de livraison
