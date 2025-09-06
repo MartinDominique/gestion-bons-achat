@@ -406,21 +406,13 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
     printWindow.document.write(fullHTML);
     printWindow.document.close();
     
-    // SOLUTION SIMPLE ET FIABLE - FERMETURE AUTOMATIQUE
-printWindow.onload = function() {
+   printWindow.onload = function() {
   setTimeout(() => {
     printWindow.print();
-    
-    // Fermeture après 3 secondes (temps pour que l'impression se lance)
-    setTimeout(() => {
-      try {
-        printWindow.close();
-      } catch (error) {
-        console.log('Fermeture automatique après impression');
-      }
-    }, 3000);
+    setTimeout(() => printWindow.close(), 3000);
   }, 500);
 };
+
 
 // Fallback - fermeture forcée après 8 secondes
 setTimeout(() => {
