@@ -246,6 +246,11 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                 </div>
               </div>
 
+              <!-- INSTRUCTIONS SPÉCIALES - POSITION PRIORITAIRE -->
+              <div style="border: 2px solid #dd6b20; padding: 5px 8px; border-radius: 4px; margin-bottom: 10px; background: #fef5e7; font-size: 11px; font-weight: bold; text-align: center;">
+                <span style="color: #dd6b20;">INSTRUCTIONS SPÉCIALES:</span> ${formData.special_instructions || '________________________________'}
+              </div>
+
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
                 <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
                   <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Livrer à :</div>
