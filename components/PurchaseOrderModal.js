@@ -1146,185 +1146,246 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   };
 
   // Fonction de génération PDF pour réimpression - MÊME FORMAT QUE DeliverySlipModal
-    const generateReprinterPDF = async (deliverySlip, selectedItems, mockFormData) => {
-    console.log('Réimpression PDF avec format TMT pour:', deliverySlip.delivery_number);
+const generateReprinterPDF = async (deliverySlip, selectedItems, mockFormData) => {
+  console.log('Réimpression PDF avec format TMT pour:', deliverySlip.delivery_number);
+  
+  // Récupérer les informations du BO associé
+  let purchaseOrderInfo = '';
+  if (editingPO.purchase_order_number) {
+    const { data: poData } = await supabase
+      .from('purchase_orders')
+      .select('po_number, supplier_name, order_date')
+      .eq('po_number', editingPO.purchase_order_number)
+      .single();
     
-    // Récupérer les informations du BO associé
-    let purchaseOrderInfo = '';
-    if (purchaseOrder.purchase_order_number) {
-      const { data: poData } = await supabase
-        .from('purchase_orders')
-        .select('po_number, supplier_name, order_date')
-        .eq('po_number', purchaseOrder.purchase_order_number)
-        .single();
-      
-      if (poData) {
-        purchaseOrderInfo = `BO #${poData.po_number} - ${poData.supplier_name}`;
-      }
+    if (poData) {
+      purchaseOrderInfo = `BO #${poData.po_number} - ${poData.supplier_name}`;
     }
+  }
 
-    // Récupérer les livraisons antérieures
-    const { data: previousDeliveries } = await supabase
-      .from('delivery_slip_items')
-      .select(`
-        quantity_delivered,
-        notes,
-        delivery_slips!inner(delivery_number, delivery_date, purchase_order_id)
-      `)
-      .eq('delivery_slips.purchase_order_id', purchaseOrder.id)
-      .neq('delivery_slips.delivery_number', deliverySlip.delivery_number);
+  // Nettoyer les notes
+  let cleanNotes = editingPO.notes || '';
+  cleanNotes = cleanNotes.split('\n')
+    .filter(line => !line.includes('[LIVRAISON'))
+    .join('\n');
+  cleanNotes = cleanNotes.split('\n')
+    .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
+    .join('\n');
+  cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
 
-    // Nettoyer les notes une seule fois
-    let cleanNotes = purchaseOrder.notes || '';
-    cleanNotes = cleanNotes.split('\n')
-      .filter(line => !line.includes('[LIVRAISON'))
-      .join('\n');
-    cleanNotes = cleanNotes.split('\n')
-      .filter(line => !line.match(/\[\d+\/\d+\/\d+\]\s*Bon de livraison.*créé/i))
-      .join('\n');
-    cleanNotes = cleanNotes.replace(/\s+/g, ' ').trim();
-
-    // Template d'impression avec votre design TMT
-    const generateCopyContent = (copyType, items, isLastCopy = false) => {
-      const ITEMS_PER_PAGE = 29; // Réduit pour éviter débordement Martin
+  // Template d'impression avec design TMT
+  const generateCopyContent = (copyType, items, isLastCopy = false) => {
+    const ITEMS_PER_PAGE = 29;
+    
+    const pageGroups = [];
+    for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
+      pageGroups.push(items.slice(i, i + ITEMS_PER_PAGE));
+    }
+    
+    const generateSinglePage = (pageItems, pageNumber, totalPages) => {
+      const isVeryLastPage = isLastCopy && (pageNumber === totalPages);
       
-      // Diviser les articles en groupes par page
-      const pageGroups = [];
-      for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
-        pageGroups.push(items.slice(i, i + ITEMS_PER_PAGE));
-      }
-      
-      // Fonction pour générer UNE page avec hauteur contrôlée
-      const generateSinglePage = (pageItems, pageNumber, totalPages) => {
-        // LOGIQUE : Éviter page-break sur la toute dernière page du document
-        const isVeryLastPage = isLastCopy && (pageNumber === totalPages);
-        
-        return `
-          <!-- PAGE ${pageNumber} ${copyType} -->
-          <div class="print-page" style="min-height: 10.5in; display: flex; flex-direction: column; position: relative; ${isVeryLastPage ? 'page-break-after: avoid;' : ''}">
-            
-            <!-- HEADER FIXE (2.1 inches) -->
-            <div style="flex-shrink: 0; overflow: hidden;">
-              <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
-                <div style="display: flex; align-items: start; gap: 20px;">
-                  <div style="width: 140px; height: 100px;">
-                    <img src="/logo.png" alt="Services TMT" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'">
-                  </div>
-                  <div style="font-size: 11px; line-height: 1.2;">
-                    <div style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">Services TMT Inc.</div>
-                    3195, 42e Rue Nord<br>
-                    Saint-Georges, QC G5Z 0V9<br>
-                    Tél: (418) 225-3875<br>
-                    info.servicestmt@gmail.com
-                  </div>
+      return `
+        <div class="print-page" style="min-height: 10.5in; display: flex; flex-direction: column; position: relative; ${isVeryLastPage ? 'page-break-after: avoid;' : ''}">
+          
+          <!-- HEADER FIXE -->
+          <div style="flex-shrink: 0; overflow: hidden;">
+            <div class="header" style="display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px;">
+              <div style="display: flex; align-items: start; gap: 20px;">
+                <div style="width: 140px; height: 100px;">
+                  <img src="/logo.png" alt="Services TMT" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'">
                 </div>
-                <div style="text-align: right;">
-                  <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">BON DE LIVRAISON</div>
-                  <div style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">${deliverySlip.delivery_number}</div>
-                  <div style="font-size: 10px; line-height: 1.2;">
-                    Date: ${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}<br>
-                    BA Client: ${purchaseOrder.po_number}<br>
-                    ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
-                    ${purchaseOrder.submission_no ? `Soumission: #${purchaseOrder.submission_no}` : ''}
-                  </div>
+                <div style="font-size: 11px; line-height: 1.2;">
+                  <div style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">Services TMT Inc.</div>
+                  3195, 42e Rue Nord<br>
+                  Saint-Georges, QC G5Z 0V9<br>
+                  Tél: (418) 225-3875<br>
+                  info.servicestmt@gmail.com
                 </div>
               </div>
-
-              <!-- INSTRUCTIONS SPÉCIALES - POSITION PRIORITAIRE -->
-              <div style="border: 2px solid #dd6b20; padding: 5px 8px; border-radius: 4px; margin-bottom: 10px; background: #fef5e7; font-size: 11px; font-weight: bold; text-align: left;">
-                <span style="color: #dd6b20;">INSTRUCTIONS SPÉCIALES:</span> ${formData.special_instructions || '________________________________'}
-              </div>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
-                <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
-                  <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Livrer à :</div>
-                  <div style="font-size: 11px; line-height: 1.2;">
-                    <strong>${purchaseOrder.client_name}</strong><br>
-                    ${formData.delivery_contact ? `Contact: ${formData.delivery_contact}<br>` : ''}
-                    ${purchaseOrder.delivery_address || purchaseOrder.client_address || 'Adresse de livraison à confirmer'}
-                  </div>
-                </div>
-                <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
-                  <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Informations de transport:</div>
-                  <div style="font-size: 10px; line-height: 1.2;">
-                    Transporteur: <strong>${formData.transport_company || 'Non spécifié'}</strong><br>
-                    N° de suivi: <strong>${formData.tracking_number || 'N/A'}</strong><br>
-                    Date de livraison: <strong>${new Date(formData.delivery_date).toLocaleDateString('fr-CA')}</strong>
-                  </div>
+              <div style="text-align: right;">
+                <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">BON DE LIVRAISON</div>
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 3px;">${deliverySlip.delivery_number}</div>
+                <div style="font-size: 10px; line-height: 1.2;">
+                  Date: ${new Date(mockFormData.delivery_date).toLocaleDateString('fr-CA')}<br>
+                  BA Client: ${editingPO.po_number}<br>
+                  ${purchaseOrderInfo ? `${purchaseOrderInfo}<br>` : ''}
+                  ${editingPO.submission_no ? `Soumission: #${editingPO.submission_no}` : ''}
                 </div>
               </div>
-
-              ${cleanNotes ? `
-                <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin-bottom: 8px; border-left: 3px solid #000; font-size: 10px;">
-                  <strong>NOTES:</strong> ${cleanNotes.replace(/[^\x00-\x7F]/g, "")}
-                </div>
-              ` : ''}
             </div>
 
-            <!-- BODY - TABLEAU FLEXIBLE -->
-            <div style="flex: 1; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
-              <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
-                <thead>
-                  <tr>
-                    <th style="width: 15%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Code</th>
-                    <th style="width: 65%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Description</th>
-                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Unité</th>
-                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Qté Cmd</th>
-                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Qté Liv.</th>
-                    <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold;">Qté Souff.</th>
+            <!-- INSTRUCTIONS SPÉCIALES -->
+            <div style="border: 2px solid #dd6b20; padding: 5px 8px; border-radius: 4px; margin-bottom: 10px; background: #fef5e7; font-size: 11px; font-weight: bold; text-align: left;">
+              <span style="color: #dd6b20;">INSTRUCTIONS SPÉCIALES:</span> ${mockFormData.special_instructions || '________________________________'}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+              <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
+                <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Livrer à :</div>
+                <div style="font-size: 11px; line-height: 1.2;">
+                  <strong>${editingPO.client_name}</strong><br>
+                  ${mockFormData.delivery_contact ? `Contact: ${mockFormData.delivery_contact}<br>` : ''}
+                  ${editingPO.delivery_address || editingPO.client_address || 'Adresse de livraison à confirmer'}
+                </div>
+              </div>
+              <div style="border: 1px solid #000; padding: 6px; border-radius: 5px; border-left: 4px solid #000;">
+                <div style="font-weight: bold; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px;">Informations de transport:</div>
+                <div style="font-size: 10px; line-height: 1.2;">
+                  Transporteur: <strong>${mockFormData.transport_company || 'Non spécifié'}</strong><br>
+                  N° de suivi: <strong>${mockFormData.tracking_number || 'N/A'}</strong><br>
+                  Date de livraison: <strong>${new Date(mockFormData.delivery_date).toLocaleDateString('fr-CA')}</strong>
+                </div>
+              </div>
+            </div>
+
+            ${cleanNotes ? `
+              <div style="border: 1px solid #000; padding: 4px 8px; border-radius: 3px; margin-bottom: 8px; border-left: 3px solid #000; font-size: 10px;">
+                <strong>NOTES:</strong> ${cleanNotes.replace(/[^\x00-\x7F]/g, "")}
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- BODY - TABLEAU -->
+          <div style="flex: 1; overflow: hidden; border: 1px solid #000; border-radius: 5px; border-left: 4px solid #000; padding: 8px; background: #fff;">
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; table-layout: fixed;">
+              <thead>
+                <tr>
+                  <th style="width: 15%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Code</th>
+                  <th style="width: 65%; background: #f59e0b; color: white; padding: 4px; text-align: left; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Description</th>
+                  <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Unité</th>
+                  <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Qté Cmd</th>
+                  <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold; border-right: 1px solid #000;">Qté Liv.</th>
+                  <th style="width: 5%; background: #f59e0b; color: white; padding: 4px; text-align: center; font-size: 10px; font-weight: bold;">Qté Souff.</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pageItems.map(item => `
+                  <tr style="height: 20px;">
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; vertical-align: top; overflow: hidden;">
+                      ${item.description}
+                    </td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${item.quantity}</td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;"><strong>${item.quantity_to_deliver}</strong></td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${Math.max(0, item.quantity - item.quantity_to_deliver)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  ${pageItems.map(item => `
-                    <tr style="height: 20px;">
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; vertical-align: top; overflow: hidden;"><strong>${item.product_id}</strong></td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; vertical-align: top; overflow: hidden;">
-                        ${item.description}
-                      </td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${item.unit || 'UN'}</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${item.quantity}</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;"><strong>${item.quantity_delivered_now}</strong></td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; font-size: 11px; text-align: center; vertical-align: top;">${item.remaining_after_delivery >= 0 ? item.remaining_after_delivery : '0'}</td>
-                    </tr>
-                  `).join('')}
-                  
-                  <!-- Remplir l'espace vide si moins de 30 articles -->
-                  ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
-                    <tr style="height: 20px;">
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
-                      <td style="padding: 3px; border-bottom: 1px solid #000;">&nbsp;</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
+                `).join('')}
+                
+                ${Array.from({length: Math.max(0, ITEMS_PER_PAGE - pageItems.length)}, () => `
+                  <tr style="height: 20px;">
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000; border-right: 1px solid #000;">&nbsp;</td>
+                    <td style="padding: 3px; border-bottom: 1px solid #000;">&nbsp;</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
 
-            <!-- FOOTER POSITION ABSOLUE HAUTEUR FIXE -->
-            <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.4in; border-top: 1px solid #000; padding-top: 3px; background: white;">
-              <div style="text-align: center; margin-bottom: 3px; padding: 3px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 1px solid #000; text-transform: uppercase;">
-                ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
+          <!-- FOOTER -->
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; height: 1.4in; border-top: 1px solid #000; padding-top: 3px; background: white;">
+            <div style="text-align: center; margin-bottom: 3px; padding: 3px; background: #f0f0f0; font-weight: bold; font-size: 12px; border: 1px solid #000; text-transform: uppercase;">
+              ${copyType === 'CLIENT' ? 'COPIE CLIENT' : 'COPIE SERVICES TMT'}
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="text-align: center; flex: 1;">
+                <div style="border-top: 1px solid #000; width: 200px; margin: 40px auto 2px auto;"></div>
+                <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
               </div>
               
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="text-align: center; flex: 1;">
-                  <div style="border-top: 1px solid #000; width: 200px; margin: 40px auto 2px auto;"></div>
-                  <div style="font-size: 10px; font-weight: bold;">SIGNATURE CLIENT</div>
-                </div>
-                
-                <div style="flex: 2; padding: 0 5px; text-align: center; margin-top: 35px;">
-                  <div style="font-size: 10px; font-style: italic; line-height: 1.0; border: 1px solid #ccc; padding: 3px; border-radius: 2px; background: #f9f9f9;">
-                    La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.
-                  </div>
+              <div style="flex: 2; padding: 0 5px; text-align: center; margin-top: 35px;">
+                <div style="font-size: 10px; font-style: italic; line-height: 1.0; border: 1px solid #ccc; padding: 3px; border-radius: 2px; background: #f9f9f9;">
+                  La marchandise demeure la propriété de Services TMT Inc. jusqu'au paiement complet.
                 </div>
               </div>
             </div>
           </div>
-        `;
-      };
+        </div>
+      `;
+    };
+    
+    return pageGroups.map((pageItems, index) => 
+      generateSinglePage(pageItems, index + 1, pageGroups.length)
+    ).join('');
+  };
+
+  // Préparer les données des articles
+  const allOrderItems = selectedItems.map(item => ({
+    ...item,
+    remaining_after_delivery: Math.max(0, item.quantity - item.quantity_to_deliver)
+  }));
+
+  const fullHTML = `
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+      <meta charset="UTF-8">
+      <title>RÉIMPRESSION-${deliverySlip.delivery_number}.pdf</title>
+      <style>
+        @page { size: letter; margin: 0.25in; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #000; font-size: 11px; line-height: 1.2; }
+        .copy-container { margin: 0; padding: 0; }
+        .copy-container:first-child { page-break-after: always; }
+        .copy-container:last-child { page-break-after: avoid; }
+        @media print {
+          body { margin: 0; padding: 0; }
+          .copy-container:last-child { page-break-after: never !important; }
+          * { page-break-after: avoid !important; }
+          .copy-container:first-child { page-break-after: always !important; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="copy-container">${generateCopyContent('CLIENT', allOrderItems, false)}</div>
+      <div class="copy-container">${generateCopyContent('STMT', allOrderItems, true)}</div>
+    </body>
+    </html>
+  `;
+  
+  // Sauvegarder le contenu actuel de la page
+  const originalContent = document.body.innerHTML;
+  const originalTitle = document.title;
+
+  // Changer le titre et le contenu pour l'impression
+  document.title = `RÉIMPRESSION-${deliverySlip.delivery_number}.pdf`;
+  document.body.innerHTML = fullHTML;
+
+  // Ajouter les styles d'impression directement
+  const printStyle = document.createElement('style');
+  printStyle.innerHTML = `
+    @page { size: letter; margin: 0.25in; }
+    @media print {
+      body { margin: 0; padding: 0; }
+      .copy-container:last-child { page-break-after: never !important; }
+      * { page-break-after: avoid !important; }
+      .copy-container:first-child { page-break-after: always !important; }
+    }
+  `;
+  document.head.appendChild(printStyle);
+
+  // Lancer l'impression
+  setTimeout(() => {
+    window.print();
+    
+    // Restaurer la page après impression
+    setTimeout(() => {
+      document.body.innerHTML = originalContent;
+      document.title = originalTitle;
+      document.head.removeChild(printStyle);
+      
+      // Déclencher un refresh si nécessaire pour rebinder React
+      if (onRefresh) {
+        onRefresh();
+      }
+    }, 1000);
+  }, 500);
+};
     
     return pageGroups.map((pageItems, index) => 
       generateSinglePage(pageItems, index + 1, pageGroups.length)
