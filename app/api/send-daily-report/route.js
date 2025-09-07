@@ -118,80 +118,187 @@ export async function POST(request) {
     });
 
     const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Rapport quotidien des achats fournisseurs</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f9fafb;">
-        <div style="max-width: 1200px; margin: 0 auto; background-color: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-          
-          <!-- En-tête -->
-          <div style="padding: 30px; background-color: #1f2937; color: white; border-radius: 8px 8px 0 0;">
-            <h1 style="margin: 0; font-size: 24px;">📋 Rapport quotidien des achats fournisseurs</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">${currentDate}</p>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rapport quotidien des achats fournisseurs</title>
+  <style>
+    /* CSS responsive pour mobile */
+    @media only screen and (max-width: 600px) {
+      .container {
+        width: 100% !important;
+        padding: 10px !important;
+      }
+      .header {
+        padding: 20px !important;
+      }
+      .content {
+        padding: 15px !important;
+      }
+      .desktop-table {
+        display: none !important;
+      }
+      .mobile-card {
+        display: block !important;
+      }
+      .mobile-card-item {
+        margin-bottom: 15px !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 8px !important;
+        padding: 12px !important;
+        background: white !important;
+      }
+      .mobile-label {
+        font-size: 11px !important;
+        color: #6b7280 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+      }
+      .mobile-value {
+        font-size: 14px !important;
+        margin-top: 2px !important;
+        margin-bottom: 8px !important;
+      }
+      h1 {
+        font-size: 20px !important;
+      }
+    }
+    /* Desktop par défaut */
+    .mobile-card {
+      display: none;
+    }
+  </style>
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f9fafb;">
+  <div class="container" style="max-width: 1200px; margin: 0 auto; background-color: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    
+    <!-- En-tête -->
+    <div class="header" style="padding: 30px; background-color: #1f2937; color: white; border-radius: 8px 8px 0 0;">
+      <h1 style="margin: 0; font-size: 24px;">📋 Rapport quotidien des achats fournisseurs</h1>
+      <p style="margin: 10px 0 0 0; opacity: 0.9;">${currentDate}</p>
+    </div>
+
+    <!-- Contenu -->
+    <div class="content" style="padding: 30px;">
+      
+      <!-- Légende des couleurs -->
+      <div style="margin-bottom: 20px; padding: 15px; background-color: #f3f4f6; border-radius: 6px;">
+        <h3 style="margin: 0 0 10px 0; font-size: 16px;">Légende des alertes :</h3>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background-color: #fed7aa; border: 1px solid #fdba74; border-radius: 3px;"></div>
+            <span style="font-size: 14px;">Orange : Livraison demain</span>
           </div>
-
-          <!-- Contenu -->
-          <div style="padding: 30px;">
-            
-            <!-- Légende des couleurs -->
-            <div style="margin-bottom: 20px; padding: 15px; background-color: #f3f4f6; border-radius: 6px;">
-              <h3 style="margin: 0 0 10px 0; font-size: 16px;">Légende des alertes :</h3>
-              <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="width: 20px; height: 20px; background-color: #fed7aa; border: 1px solid #fdba74; border-radius: 3px;"></div>
-                  <span style="font-size: 14px;">Orange : Livraison demain (1 jour)</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div style="width: 20px; height: 20px; background-color: #fca5a5; border: 1px solid #f87171; border-radius: 3px;"></div>
-                  <span style="font-size: 14px;">Rouge : Livraison aujourd'hui ou en retard</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Tableau -->
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-              <thead>
-                <tr style="background-color: #f9fafb;">
-                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">#Commande</th>
-                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Nom du Fournisseur</th>
-                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">BA Acomba</th>
-                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">PO Client lié</th>
-                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Date de Création</th>
-                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Date prévue</th>
-                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Montant</th>
-                  <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151;">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${purchaseRows}
-              </tbody>
-            </table>
-
-            <!-- Résumé -->
-            <div style="margin-top: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px;">
-              <h3 style="margin: 0 0 10px 0; color: #374151;">Résumé :</h3>
-              <p style="margin: 5px 0; color: #6b7280;">
-                📦 <strong>${purchases ? purchases.length : 0}</strong> achat(s) en cours
-              </p>
-              <p style="margin: 5px 0; color: #6b7280;">
-                🔄 Statuts inclus : Brouillon, Commandé
-              </p>
-            </div>
-
-            <!-- Pied de page -->
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-              <p style="margin: 0;">Ce rapport est généré automatiquement tous les jours à 8h00.</p>
-              <p style="margin: 5px 0 0 0;">Système de gestion des achats fournisseurs - Services TMT</p>
-            </div>
-
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 20px; height: 20px; background-color: #fca5a5; border: 1px solid #f87171; border-radius: 3px;"></div>
+            <span style="font-size: 14px;">Rouge : Livraison en retard</span>
           </div>
         </div>
-      </body>
-      </html>
-    `;
+      </div>
+
+      <!-- Version DESKTOP - Tableau -->
+      <div class="desktop-table">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+          <thead>
+            <tr style="background-color: #f9fafb;">
+              <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; font-size: 12px;">#Commande</th>
+              <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; font-size: 12px;">Fournisseur</th>
+              <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; font-size: 12px;">BA Acomba</th>
+              <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; font-size: 12px;">PO Client</th>
+              <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; font-size: 12px;">Date Création</th>
+              <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; font-size: 12px;">Date prévue</th>
+              <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; font-size: 12px;">Montant</th>
+              <th style="padding: 15px 12px; border: 1px solid #e5e7eb; text-align: left; font-weight: 600; color: #374151; font-size: 12px;">Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${purchaseRows}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Version MOBILE - Cartes -->
+      <div class="mobile-card">
+        ${purchases && purchases.length > 0 
+          ? purchases.map(purchase => {
+              const rowStyle = getRowColor(purchase.delivery_date);
+              return `
+                <div class="mobile-card-item" style="${rowStyle}">
+                  <div class="mobile-label">#Commande</div>
+                  <div class="mobile-value" style="font-weight: bold;">${purchase.purchase_number || 'N/A'}</div>
+                  
+                  <div class="mobile-label">Fournisseur</div>
+                  <div class="mobile-value">${purchase.supplier_name || 'N/A'}</div>
+                  
+                  <div style="display: flex; gap: 15px; margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                      <div class="mobile-label">BA Acomba</div>
+                      <div class="mobile-value">${purchase.ba_acomba || 'N/A'}</div>
+                    </div>
+                    <div style="flex: 1;">
+                      <div class="mobile-label">PO Client</div>
+                      <div class="mobile-value">${purchase.linked_po_number || 'N/A'}</div>
+                    </div>
+                  </div>
+                  
+                  <div style="display: flex; gap: 15px; margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                      <div class="mobile-label">Date Création</div>
+                      <div class="mobile-value">${formatDate(purchase.created_at)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                      <div class="mobile-label">Date prévue</div>
+                      <div class="mobile-value">${formatDate(purchase.delivery_date)}</div>
+                    </div>
+                  </div>
+                  
+                  <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;">
+                      <div class="mobile-label">Montant</div>
+                      <div class="mobile-value" style="color: #059669; font-weight: bold;">${formatAmount(purchase.total_amount)}</div>
+                    </div>
+                    <div style="flex: 1;">
+                      <div class="mobile-label">Statut</div>
+                      <div class="mobile-value">${translateStatus(purchase.status)}</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')
+          : `
+            <div class="mobile-card-item">
+              <div style="text-align: center; padding: 20px; font-style: italic; color: #6b7280;">
+                Aucun achat en cours aujourd'hui
+              </div>
+            </div>
+          `
+        }
+      </div>
+
+      <!-- Résumé -->
+      <div style="margin-top: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px;">
+        <h3 style="margin: 0 0 10px 0; color: #374151;">Résumé :</h3>
+        <p style="margin: 5px 0; color: #6b7280;">
+          📦 <strong>${purchases ? purchases.length : 0}</strong> achat(s) en cours
+        </p>
+        <p style="margin: 5px 0; color: #6b7280;">
+          🔄 Statuts inclus : Brouillon, Commandé
+        </p>
+      </div>
+
+      <!-- Pied de page -->
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+        <p style="margin: 0;">Ce rapport est généré automatiquement tous les jours à 8h00.</p>
+        <p style="margin: 5px 0 0 0;">Système de gestion des achats fournisseurs - Services TMT</p>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
+`;
 
     // Envoyer l'email
     const { data, error: resendError } = await resend.emails.send({
