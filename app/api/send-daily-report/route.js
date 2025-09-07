@@ -25,12 +25,12 @@ function getRowColor(deliveryDate) {
   
   // Rouge : aujourd'hui ou passé
   if (delivery <= today) {
-    return 'background-color: #fca5a5; color: #7f1d1d;'; // Rouge clair avec texte rouge foncé
+    return 'background-color: #ff4444; color: #ffffff; font-weight: bold;'; // Rouge clair avec texte rouge foncé
   }
   
   // Orange : demain (1 jour avant)
   if (delivery.getTime() === tomorrow.getTime()) {
-    return 'background-color: #fed7aa; color: #9a3412;'; // Orange clair avec texte orange foncé
+    return 'background-color: #ff8c00; color: #ffffff; font-weight: bold;'; // Orange clair avec texte orange foncé
   }
   
   return '';
@@ -77,7 +77,7 @@ export async function POST(request) {
         total_amount,
         status
       `)
-      .in('status', ['draft', 'ordered'])
+      .in('status', ['in_order', 'ordered'])
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -189,11 +189,11 @@ export async function POST(request) {
         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <div style="width: 20px; height: 20px; background-color: #fed7aa; border: 1px solid #fdba74; border-radius: 3px;"></div>
-            <span style="font-size: 14px;">Orange : Livraison demain</span>
+            <span style="font-size: 14px;">Orange vif : Livraison demain</span>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
             <div style="width: 20px; height: 20px; background-color: #fca5a5; border: 1px solid #f87171; border-radius: 3px;"></div>
-            <span style="font-size: 14px;">Rouge : Livraison en retard</span>
+            <span style="font-size: 14px;">Rouge vif : Livraison aujourd'hui/retard</span>
           </div>
         </div>
       </div>
@@ -284,7 +284,7 @@ export async function POST(request) {
           📦 <strong>${purchases ? purchases.length : 0}</strong> achat(s) en cours
         </p>
         <p style="margin: 5px 0; color: #6b7280;">
-          🔄 Statuts inclus : Brouillon, Commandé
+          🔄 Statuts inclus : En commande, Commandé
         </p>
       </div>
 
