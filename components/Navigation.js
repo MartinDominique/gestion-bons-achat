@@ -231,7 +231,7 @@ export default function Navigation() {
                   alt="Services TMT Logo"
                   width={315}
                   height={142}
-                  className="w-20 h-auto md:w-32 rounded-lg object-contain"
+                  className="w-20 h-auto md:w-32 rounded-lg object-contain -ml-2 md:-ml-4"
                   priority
                 />
               </div>
