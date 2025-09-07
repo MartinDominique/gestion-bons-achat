@@ -55,7 +55,7 @@ function formatAmount(amount) {
 // Fonction pour traduire le statut
 function translateStatus(status) {
   const statusMap = {
-    'draft': 'Brouillon',
+    'in_order': 'En commande',
     'ordered': 'Commandé'
   };
   return statusMap[status] || status;
