@@ -133,6 +133,29 @@ export default function SupplierPurchaseManager() {
     filteredPurchases
   } = hookData;
 
+  // Fonction pour tester l'email quotidien
+  const testDailyEmail = async () => {
+    try {
+      setEmailStatus('📤 Envoi de l\'email de test en cours...');
+      
+      const response = await fetch('/api/send-daily-report', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setEmailStatus(`✅ Email envoyé avec succès! ${data.message}`);
+      } else {
+        setEmailStatus('❌ Erreur lors de l\'envoi de l\'email de test');
+      }
+    } catch (error) {
+      setEmailStatus('❌ Erreur: ' + error.message);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+  
   // Loading state
   if (loading) {
     return (
@@ -315,6 +338,27 @@ export default function SupplierPurchaseManager() {
               className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
             >
               Nouvel Achat
+            </button>
+            <button
+              onClick={async () => {
+                const newNumber = await generatePurchaseNumber();
+                setPurchaseForm(prev => ({
+                  ...prev,
+                  purchase_number: newNumber
+                }));
+                setShowForm(true);
+              }}
+              className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
+            >
+              Nouvel Achat
+            </button>
+            <button
+              onClick={testDailyEmail}
+              disabled={isLoadingEmail}
+              className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50"
+              title="Tester l'email quotidien des achats en cours"
+            >
+              {isLoadingEmail ? 'Envoi...' : '📧 Test Email Quotidien'}
             </button>
             {/* Bouton test email en développement */}
             {process.env.NODE_ENV === 'development' && (
