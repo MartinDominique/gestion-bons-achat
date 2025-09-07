@@ -426,7 +426,7 @@ export default function SupplierPurchaseManager() {
       {emailStatus && (
         <div className={`mb-4 p-3 rounded-lg border ${
           emailStatus.includes('✅') 
-            ? 'bg-green-500/20 border-green-400/30 text-green-100' 
+            ? 'bg-green-500/20 border-green-400/30 text-white' 
             : emailStatus.includes('❌')
             ? 'bg-red-500/20 border-red-400/30 text-red-100'
             : 'bg-blue-500/20 border-blue-400/30 text-blue-100'
