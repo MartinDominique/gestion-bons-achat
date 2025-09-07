@@ -427,15 +427,7 @@ const PurchaseOrderManager = () => {
               <option value="delivered">Livrés</option>
             </select>
           </div>
-          
-          {/* Info sur la modification rapide du statut */}
-          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-700">
-              💡 <strong>Astuce:</strong> Vous pouvez changer le statut directement en cliquant sur le statut dans la liste, 
-              ou utiliser le bouton "Gérer" pour accéder aux options complètes.
-            </p>
-          </div>
-        </div>
+         </div>
 
         {/* En-têtes de tableau moderne */}
         <div className="hidden lg:grid lg:grid-cols-8 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-100 text-sm font-semibold text-gray-600 uppercase tracking-wider">
