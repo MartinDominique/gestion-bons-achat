@@ -133,6 +133,26 @@ export default function SupplierPurchaseManager() {
     filteredPurchases
   } = hookData;
 
+    // Fonction pour tester l'email quotidien
+  const testDailyEmail = async () => {
+    try {
+      setEmailStatus('📤 Envoi de l\'email de test en cours...');
+      
+      const response = await fetch('/api/send-daily-report', {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setEmailStatus(`✅ Email envoyé avec succès! ${data.message}`);
+      } else {
+        setEmailStatus('❌ Erreur lors de l\'envoi de l\'email de test');
+      }
+    } catch (error) {
+      setEmailStatus('❌ Erreur: ' + error.message);
+    }
+  };
+  
   // Loading state
   if (loading) {
     return (
@@ -316,6 +336,14 @@ export default function SupplierPurchaseManager() {
             >
               Nouvel Achat
             </button>
+            <button
+              onClick={testDailyEmail}
+              disabled={isLoadingEmail}
+              className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50"
+              title="Tester l'email quotidien des achats en cours"
+            >
+              {isLoadingEmail ? 'Envoi...' : '📧 Test Email Quotidien'}
+            </button>
             {/* Bouton test email en développement */}
             {process.env.NODE_ENV === 'development' && (
               <button
@@ -398,7 +426,7 @@ export default function SupplierPurchaseManager() {
       {emailStatus && (
         <div className={`mb-4 p-3 rounded-lg border ${
           emailStatus.includes('✅') 
-            ? 'bg-green-500/20 border-green-400/30 text-green-100' 
+            ? 'bg-green-500/20 border-green-400/30 text-white' 
             : emailStatus.includes('❌')
             ? 'bg-red-500/20 border-red-400/30 text-red-100'
             : 'bg-blue-500/20 border-blue-400/30 text-blue-100'
