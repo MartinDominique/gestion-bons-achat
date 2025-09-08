@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  MoreVertical, Edit, Trash2, Search, Plus, ShoppingCart, Building2, Wrench
+  MoreVertical, Edit, Trash2, Search, Plus, ShoppingCart, Building2, Wrench, Calendar
 } from 'lucide-react';
 
 // Imports des autres fichiers
@@ -54,6 +54,15 @@ export default function SupplierPurchaseManager() {
     setSelectedPurchaseId,
     showSupplierFormModal,
     setShowSupplierFormModal,
+    
+    // NOUVEAUX ÉTATS POUR FILTRES DATE
+    dateFilter,
+    setDateFilter,
+    customStartDate,
+    setCustomStartDate,
+    customEndDate,
+    setCustomEndDate,
+    getDateFilterStats,
     
     // États import soumission
     showImportSubmissionModal,
@@ -133,7 +142,7 @@ export default function SupplierPurchaseManager() {
     filteredPurchases
   } = hookData;
 
-    // Fonction pour tester l'email quotidien
+  // Fonction pour tester l'email quotidien
   const testDailyEmail = async () => {
     try {
       setEmailStatus('📤 Envoi de l\'email de test en cours...');
@@ -359,68 +368,68 @@ export default function SupplierPurchaseManager() {
         </div>
 
         {/* Statistiques */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-  <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-    <div className="flex items-center">
-      <span className="text-2xl sm:text-3xl mr-3">📝</span>
-      <div>
-        <p className="text-xs sm:text-sm font-medium text-white/90">Brouillons</p>
-        <p className="text-xl sm:text-2xl font-bold">
-          {supplierPurchases.filter(p => p.status === 'draft').length}
-        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">📝</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Brouillons</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {supplierPurchases.filter(p => p.status === 'draft').length}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">⏳</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">En commande</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {supplierPurchases.filter(p => p.status === 'in_order').length}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">📤</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Commandés</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {supplierPurchases.filter(p => p.status === 'ordered').length}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">✅</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Reçus</p>
+                <p className="text-xl sm:text-2xl font-bold">
+                  {supplierPurchases.filter(p => p.status === 'received').length}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">💰</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Total</p>
+                <p className="text-lg sm:text-2xl font-bold">
+                  {formatCurrency(supplierPurchases.reduce((sum, p) => sum + (p.total_amount || 0), 0))}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-  
-  <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-    <div className="flex items-center">
-      <span className="text-2xl sm:text-3xl mr-3">⏳</span>
-      <div>
-        <p className="text-xs sm:text-sm font-medium text-white/90">En commande</p>
-        <p className="text-xl sm:text-2xl font-bold">
-          {supplierPurchases.filter(p => p.status === 'in_order').length}
-        </p>
-      </div>
-    </div>
-  </div>
-  
-  <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-    <div className="flex items-center">
-      <span className="text-2xl sm:text-3xl mr-3">📤</span>
-      <div>
-        <p className="text-xs sm:text-sm font-medium text-white/90">Commandés</p>
-        <p className="text-xl sm:text-2xl font-bold">
-          {supplierPurchases.filter(p => p.status === 'ordered').length}
-        </p>
-      </div>
-    </div>
-  </div>
-  
-  <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-    <div className="flex items-center">
-      <span className="text-2xl sm:text-3xl mr-3">✅</span>
-      <div>
-        <p className="text-xs sm:text-sm font-medium text-white/90">Reçus</p>
-        <p className="text-xl sm:text-2xl font-bold">
-          {supplierPurchases.filter(p => p.status === 'received').length}
-        </p>
-      </div>
-    </div>
-  </div>
-  
-  <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-    <div className="flex items-center">
-      <span className="text-2xl sm:text-3xl mr-3">💰</span>
-      <div>
-        <p className="text-xs sm:text-sm font-medium text-white/90">Total</p>
-        <p className="text-lg sm:text-2xl font-bold">
-          {formatCurrency(supplierPurchases.reduce((sum, p) => sum + (p.total_amount || 0), 0))}
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
-</div>
 
       {/* Affichage du statut email global */}
       {emailStatus && (
@@ -443,37 +452,109 @@ export default function SupplierPurchaseManager() {
         </div>
       )}
 
-      {/* Filtres */}
+      {/* Filtres AMÉLIORÉS avec date de création */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Rechercher par numéro, fournisseur, BA Acomba..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
-              />
+        <div className="space-y-4">
+          {/* Première ligne : Recherche et Statut */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par numéro, fournisseur, BA Acomba..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
+                />
+              </div>
+            </div>
+            <div className="w-full sm:w-auto">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+              >
+                <option value="all">Tous les statuts</option>
+                {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
             </div>
           </div>
-          <div className="w-full sm:w-auto">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
-            >
-              <option value="all">Tous les statuts</option>
-              {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
+
+          {/* NOUVELLE LIGNE : Filtres par date de création */}
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              <Calendar className="w-4 h-4 mr-2" />
+              Filtrer par date de création
+            </h4>
+            
+            <div className="flex flex-col lg:flex-row gap-3">
+              {/* Sélecteur de période prédéfinie */}
+              <div className="w-full lg:w-auto">
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm p-2"
+                >
+                  <option value="all">Toutes les dates</option>
+                  <option value="today">Aujourd'hui ({getDateFilterStats().todayCount})</option>
+                  <option value="this_week">Cette semaine ({getDateFilterStats().thisWeekCount})</option>
+                  <option value="this_month">Ce mois ({getDateFilterStats().thisMonthCount})</option>
+                  <option value="custom">Période personnalisée</option>
+                </select>
+              </div>
+
+              {/* Dates personnalisées (affichées seulement si "custom" est sélectionné) */}
+              {dateFilter === 'custom' && (
+                <div className="flex flex-col sm:flex-row gap-2 items-center">
+                  <div className="w-full sm:w-auto">
+                    <label className="block text-xs text-gray-500 mb-1">Du</label>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm p-2"
+                    />
+                  </div>
+                  <div className="w-full sm:w-auto">
+                    <label className="block text-xs text-gray-500 mb-1">Au</label>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm p-2"
+                    />
+                  </div>
+                  {(customStartDate || customEndDate) && (
+                    <button
+                      onClick={() => {
+                        setCustomStartDate('');
+                        setCustomEndDate('');
+                        setDateFilter('all');
+                      }}
+                      className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      title="Effacer les filtres de date"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Indicateur du nombre de résultats */}
+              <div className="flex items-center text-sm text-gray-600 lg:ml-auto">
+                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                  {filteredPurchases.length} résultat{filteredPurchases.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Liste des achats - Desktop AVEC SELECTS STATUTS */}
+      {/* Liste des achats - Desktop AVEC DATE DE CRÉATION */}
       <div className="hidden lg:block bg-white shadow-lg rounded-lg overflow-hidden">
         {filteredPurchases.length === 0 ? (
           <div className="text-center py-12">
@@ -485,6 +566,7 @@ export default function SupplierPurchaseManager() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date Création</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">BA Acomba</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO Client Lié</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
@@ -503,6 +585,20 @@ export default function SupplierPurchaseManager() {
                       <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
                         {purchase.purchase_number}
                       </span>
+                    </td>
+                    {/* NOUVELLE COLONNE - DATE DE CRÉATION */}
+                    <td className="px-3 py-4 whitespace-nowrap">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">
+                          {formatDate(purchase.created_at)}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {purchase.created_at && new Date(purchase.created_at).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap">
                       {purchase.ba_acomba ? (
@@ -533,7 +629,7 @@ export default function SupplierPurchaseManager() {
                         {formatCurrency(purchase.total_amount)}
                       </span>
                     </td>
-                    {/* NOUVEAU - SELECT POUR STATUT */}
+                    {/* SELECT POUR STATUT */}
                     <td className="px-3 py-4 text-center">
                       <select
                         value={purchase.status}
@@ -578,7 +674,7 @@ export default function SupplierPurchaseManager() {
         )}
       </div>
 
-      {/* Liste mobile AVEC SELECTS STATUTS */}
+      {/* Liste mobile AVEC DATE DE CRÉATION */}
       <div className="lg:hidden space-y-4">
         {filteredPurchases.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -592,9 +688,18 @@ export default function SupplierPurchaseManager() {
               <div key={purchase.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
                 <div className="bg-gradient-to-r from-orange-50 to-red-50 px-4 py-3 border-b">
                   <div className="flex justify-between items-center">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">{purchase.purchase_number}</h3>
-                      <p className="text-sm text-gray-600">{purchase.supplier_name}</p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <p className="text-sm text-gray-600">{purchase.supplier_name}</p>
+                        {/* NOUVELLE SECTION - DATE DE CRÉATION */}
+                        <span className="text-gray-400">•</span>
+                        <div className="text-xs text-gray-500">
+                          <span className="bg-gray-100 px-2 py-1 rounded">
+                            Créé le {formatDate(purchase.created_at)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div className="relative">
                       <button
@@ -636,6 +741,28 @@ export default function SupplierPurchaseManager() {
                 </div>
 
                 <div className="p-4 space-y-3">
+                  {/* SECTION DÉTAILS AVEC DATE DE CRÉATION */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500 block">Date création</span>
+                      <div className="font-medium">
+                        {formatDate(purchase.created_at)}
+                        {purchase.created_at && (
+                          <div className="text-xs text-gray-500">
+                            {new Date(purchase.created_at).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Date livraison</span>
+                      <span className="font-medium">{formatDate(purchase.delivery_date)}</span>
+                    </div>
+                  </div>
+                  
                   {purchase.ba_acomba && (
                     <div>
                       <span className="text-gray-500 text-sm">BA Acomba</span>
@@ -652,34 +779,28 @@ export default function SupplierPurchaseManager() {
                   
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-500 block">Date livraison</span>
-                      <span className="font-medium">{formatDate(purchase.delivery_date)}</span>
-                    </div>
-                    <div>
                       <span className="text-gray-500 block">Montant</span>
                       <span className="font-bold text-green-600">{formatCurrency(purchase.total_amount)}</span>
                     </div>
-                  </div>
-
-                  {/* NOUVEAU - SELECT STATUT MOBILE */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500 text-sm">Statut</span>
-                    <select
-                      value={purchase.status}
-                      onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
-                      disabled={isLoadingEmail}
-                      className={`px-2 py-1 rounded text-xs border-0 cursor-pointer ${
-                        purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
-                        purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
-                        purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                        purchase.status === 'received' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
-                        <option key={key} value={key}>{label}</option>
-                      ))}
-                    </select>
+                    <div>
+                      <span className="text-gray-500 block">Statut</span>
+                      <select
+                        value={purchase.status}
+                        onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
+                        disabled={isLoadingEmail}
+                        className={`px-2 py-1 rounded text-xs border-0 cursor-pointer ${
+                          purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
+                          purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
+                          purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                          purchase.status === 'received' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
+                          <option key={key} value={key}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
