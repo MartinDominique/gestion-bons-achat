@@ -358,10 +358,7 @@ export const PurchaseForm = ({
                     {purchaseForm.purchase_number && <span className="hidden sm:inline text-orange-200">•</span>}
                     <div className="text-orange-100 text-sm">
                       <span className="bg-white/20 px-2 py-1 rounded">
-                        📅 Créé le {formatDate(editingPurchase.created_at)} à {new Date(editingPurchase.created_at).toLocaleTimeString('fr-FR', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        📅 Créé le {formatDate(editingPurchase.created_at)}
                       </span>
                     </div>
                   </>
