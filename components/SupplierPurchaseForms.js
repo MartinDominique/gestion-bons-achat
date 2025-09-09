@@ -338,62 +338,59 @@ export const PurchaseForm = ({
       {/* FORMULAIRE */}
       <div className="max-w-6xl mx-auto p-4 no-print">
         <div className="bg-white rounded-xl shadow-lg border border-orange-200 overflow-hidden">
-          
-          {/* En-tête */}
-          <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold">
-                  {editingPurchase ? 'Modifier Achat Fournisseur' : 'Nouvel Achat Fournisseur'}
-                </h2>
-                <p className="text-orange-100 text-sm mt-1">
-                  {purchaseForm.purchase_number && `N°: ${purchaseForm.purchase_number}`}
-                </p>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <button
-                  onClick={() => exportPDF('download', editingPurchase, purchaseForm)}
-                  className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
-                >
-                  Télécharger PDF
-                </button>
-                <button
-                  onClick={() => exportPDF('modal', editingPurchase, purchaseForm)}
-                  className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
-                >
-                  Aperçu Modal
-                </button>
-                <button
-                  onClick={() => exportPDF('view', editingPurchase, purchaseForm)}
-                  className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
-                >
-                  Voir PDF
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
-                >
-                  Imprimer
-                </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-sm font-medium"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  form="purchase-form"
-                  className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
-                  disabled={isLoadingEmail}
-                >
-                  {isLoadingEmail ? 'Envoi...' : (editingPurchase ? 'Mettre à jour' : 'Créer')}
-                </button>
+
+        {/* En-tête */}
+        <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold">
+                {editingPurchase ? 'Modifier Achat Fournisseur' : 'Nouvel Achat Fournisseur'}
+              </h2>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
+                {purchaseForm.purchase_number && (
+                  <p className="text-orange-100 text-sm">
+                    N°: {purchaseForm.purchase_number}
+                  </p>
+                )}
+                {/* NOUVEAU - Date de création en mode édition */}
+                {editingPurchase && editingPurchase.created_at && (
+                  <>
+                    {purchaseForm.purchase_number && <span className="hidden sm:inline text-orange-200">•</span>}
+                    <div className="text-orange-100 text-sm">
+                      <span className="bg-white/20 px-2 py-1 rounded">
+                        📅 {formatDate(editingPurchase.created_at)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
+            
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button
+                onClick={handlePrint}
+                className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
+              >
+                Imprimer
+              </button>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-sm font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                form="purchase-form"
+                className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
+                disabled={isLoadingEmail}
+              >
+                {isLoadingEmail ? 'Envoi...' : (editingPurchase ? 'Mettre à jour' : 'Créer')}
+              </button>
+            </div>
           </div>
+        </div>
 
           {/* Affichage du statut email */}
           {emailStatus && (

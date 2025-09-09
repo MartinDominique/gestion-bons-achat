@@ -54,6 +54,11 @@ export const useSupplierPurchase = () => {
   const [selectedPurchaseId, setSelectedPurchaseId] = useState(null);
   const [showSupplierFormModal, setShowSupplierFormModal] = useState(false);
   
+  // ===== NOUVEAUX ÉTATS POUR FILTRES DATE =====
+  const [dateFilter, setDateFilter] = useState('all'); // all, today, this_week, this_month, custom
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  
   // ===== ÉTATS IMPORT SOUMISSION =====
   const [showImportSubmissionModal, setShowImportSubmissionModal] = useState(false);
   const [availableSubmissions, setAvailableSubmissions] = useState([]);
@@ -126,6 +131,38 @@ export const useSupplierPurchase = () => {
     country: 'Canada',
     is_default: false
   });
+
+  // ===== NOUVELLE FONCTION HELPER POUR STATISTIQUES PAR DATE =====
+  const getDateFilterStats = () => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    const todayCount = supplierPurchases.filter(p => {
+      if (!p.created_at) return false;
+      const purchaseDate = new Date(p.created_at);
+      const startOfToday = new Date(today);
+      startOfToday.setHours(0, 0, 0, 0);
+      return purchaseDate >= startOfToday && purchaseDate <= today;
+    }).length;
+    
+    const thisWeekCount = supplierPurchases.filter(p => {
+      if (!p.created_at) return false;
+      const purchaseDate = new Date(p.created_at);
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return purchaseDate >= startOfWeek && purchaseDate <= today;
+    }).length;
+    
+    const thisMonthCount = supplierPurchases.filter(p => {
+      if (!p.created_at) return false;
+      const purchaseDate = new Date(p.created_at);
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      return purchaseDate >= startOfMonth && purchaseDate <= today;
+    }).length;
+    
+    return { todayCount, thisWeekCount, thisMonthCount };
+  };
 
   // ===== CHARGEMENT INITIAL =====
   useEffect(() => {
@@ -850,17 +887,58 @@ export const useSupplierPurchase = () => {
     }
   };
 
+  // ===== FILTRAGE AMÉLIORÉ AVEC DATE DE CRÉATION =====
   const filteredPurchases = supplierPurchases.filter(purchase => {
+    // Filtrage par texte existant (inchangé)
     const matchesSearch = 
       purchase.purchase_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       purchase.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       purchase.linked_po_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      purchase.ba_acomba?.toLowerCase().includes(searchTerm.toLowerCase()) || // NOUVEAU CHAMP DANS LA RECHERCHE
+      purchase.ba_acomba?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPONumber(purchase, purchaseOrders)?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || purchase.status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    // NOUVEAU - Filtrage par date de création
+    let matchesDate = true;
+    if (dateFilter !== 'all' && purchase.created_at) {
+      const purchaseDate = new Date(purchase.created_at);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      switch (dateFilter) {
+        case 'today':
+          const startOfToday = new Date(today);
+          startOfToday.setHours(0, 0, 0, 0);
+          matchesDate = purchaseDate >= startOfToday && purchaseDate <= today;
+          break;
+          
+        case 'this_week':
+          const startOfWeek = new Date(today);
+          startOfWeek.setDate(today.getDate() - today.getDay());
+          startOfWeek.setHours(0, 0, 0, 0);
+          matchesDate = purchaseDate >= startOfWeek && purchaseDate <= today;
+          break;
+          
+        case 'this_month':
+          const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          matchesDate = purchaseDate >= startOfMonth && purchaseDate <= today;
+          break;
+          
+        case 'custom':
+          if (customStartDate || customEndDate) {
+            const start = customStartDate ? new Date(customStartDate + 'T00:00:00') : new Date(0);
+            const end = customEndDate ? new Date(customEndDate + 'T23:59:59') : new Date();
+            matchesDate = purchaseDate >= start && purchaseDate <= end;
+          }
+          break;
+          
+        default:
+          matchesDate = true;
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   // ===== RETURN DU HOOK =====
@@ -896,6 +974,15 @@ export const useSupplierPurchase = () => {
     setSelectedPurchaseId,
     showSupplierFormModal,
     setShowSupplierFormModal,
+    
+    // NOUVEAUX ÉTATS POUR FILTRES DATE
+    dateFilter,
+    setDateFilter,
+    customStartDate,
+    setCustomStartDate,
+    customEndDate,
+    setCustomEndDate,
+    getDateFilterStats,
     
     // États import soumission
     showImportSubmissionModal,
