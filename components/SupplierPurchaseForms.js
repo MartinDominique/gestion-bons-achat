@@ -366,25 +366,7 @@ export const PurchaseForm = ({
               </div>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <button
-                onClick={() => exportPDF('download', editingPurchase, purchaseForm)}
-                className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
-              >
-                Télécharger PDF
-              </button>
-              <button
-                onClick={() => exportPDF('modal', editingPurchase, purchaseForm)}
-                className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
-              >
-                Aperçu Modal
-              </button>
-              <button
-                onClick={() => exportPDF('view', editingPurchase, purchaseForm)}
-                className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
-              >
-                Voir PDF
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={handlePrint}
                 className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
