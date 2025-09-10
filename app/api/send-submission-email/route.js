@@ -1,10 +1,9 @@
-dimport sgMail from '@sendgrid/mail';
+import sgMail from '@sendgrid/mail';
 
 export async function POST(request) {
   try {
     const { to, subject, html, clientName, submissionNumber } = await request.json();
 
-    // Vérification de la clé API
     if (!process.env.SENDGRID_API_KEY) {
       console.error('SENDGRID_API_KEY manquante');
       return Response.json({ 
@@ -42,14 +41,11 @@ export async function POST(request) {
   } catch (error) {
     console.error('Erreur SendGrid:', error);
     
-    // Messages d'erreur détaillés
     let errorMessage = 'Erreur lors de l\'envoi';
     if (error.code === 401) {
       errorMessage = 'Clé API SendGrid invalide';
     } else if (error.code === 403) {
       errorMessage = 'Email expéditeur non vérifié dans SendGrid';
-    } else if (error.message?.includes('does not contain a valid address')) {
-      errorMessage = 'Adresse email destinataire invalide';
     }
 
     return Response.json({ 
