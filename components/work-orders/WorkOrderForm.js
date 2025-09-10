@@ -15,7 +15,6 @@ export default function WorkOrderForm({
     work_date: new Date().toISOString().split('T')[0],
     start_time: '',
     end_time: '',
-    break_time: 0.5,
     work_description: '',
     additional_notes: '',
     status: 'draft'
@@ -26,6 +25,25 @@ export default function WorkOrderForm({
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
 
+  // Initialisation pour mode édition
+  useEffect(() => {
+    if (workOrder && mode === 'edit') {
+      setFormData({
+        client_id: workOrder.client_id?.toString() || '',
+        work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
+        start_time: workOrder.start_time || '',
+        end_time: workOrder.end_time || '',
+        work_description: workOrder.work_description || '',
+        additional_notes: workOrder.additional_notes || '',
+        status: workOrder.status || 'draft'
+      });
+      
+      if (workOrder.client) {
+        setSelectedClient(workOrder.client);
+      }
+    }
+  }, [workOrder, mode]);
+
   // Charger les clients au démarrage
   useEffect(() => {
     const loadClients = async () => {
@@ -34,6 +52,14 @@ export default function WorkOrderForm({
         if (response.ok) {
           const data = await response.json();
           setClients(data);
+          
+          // Si mode édition, sélectionner le client actuel
+          if (workOrder && mode === 'edit') {
+            const client = data.find(c => c.id === workOrder.client_id);
+            if (client) {
+              setSelectedClient(client);
+            }
+          }
         }
       } catch (error) {
         console.error('Erreur chargement clients:', error);
@@ -41,9 +67,9 @@ export default function WorkOrderForm({
     };
     
     loadClients();
-  }, []);
+  }, [workOrder, mode]);
 
-  // Calcul du temps total
+  // Calcul du temps total (sans pause maintenant)
   const calculateTotalHours = () => {
     if (!formData.start_time || !formData.end_time) return 0;
     
@@ -53,7 +79,7 @@ export default function WorkOrderForm({
     if (end <= start) return 0;
     
     const diffHours = (end - start) / (1000 * 60 * 60);
-    return Math.max(0, diffHours - (formData.break_time || 0));
+    return Math.max(0, diffHours);
   };
 
   // Validation
@@ -89,19 +115,24 @@ export default function WorkOrderForm({
     handleChange('client_id', clientId);
   };
 
-  // Soumission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Soumission avec statut spécifique
+  const handleSubmit = async (status = 'draft') => {
     if (!validateForm()) return;
 
     const dataToSave = {
       ...formData,
       client_id: parseInt(formData.client_id),
       total_hours: calculateTotalHours(),
+      status,
       materials
     };
 
-    onSave(dataToSave);
+    // Si mode édition, ajouter l'ID
+    if (mode === 'edit' && workOrder) {
+      dataToSave.id = workOrder.id;
+    }
+
+    onSave(dataToSave, status);
   };
 
   return (
@@ -109,14 +140,14 @@ export default function WorkOrderForm({
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900">
-          {mode === 'create' ? 'Nouveau Bon de Travail' : 'Édition Bon de Travail'}
+          {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
         </h2>
         <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
           <X size={24} />
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
         {/* Section Client */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -167,8 +198,8 @@ export default function WorkOrderForm({
           )}
         </div>
 
-        {/* Heures */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Heures - Simplifié sans pause */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <Clock className="inline mr-2" size={16} />
@@ -193,24 +224,9 @@ export default function WorkOrderForm({
               onChange={(e) => handleChange('end_time', e.target.value)}
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Pause (heures)
-            </label>
-            <input
-              type="number"
-              step="0.25"
-              min="0"
-              max="8"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.break_time}
-              onChange={(e) => handleChange('break_time', parseFloat(e.target.value) || 0)}
-            />
-          </div>
         </div>
 
-        {/* Total heures */}
+        {/* Total heures - Sans pause */}
         {formData.start_time && formData.end_time && (
           <div className="bg-blue-50 p-3 rounded-lg">
             <p className="text-blue-800 font-medium">
@@ -253,32 +269,78 @@ export default function WorkOrderForm({
           />
         </div>
 
-        {/* Matériaux - Version simplifiée pour commencer */}
+        {/* Matériaux - Placeholder amélioré */}
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Matériaux utilisés</h3>
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <p className="text-gray-500 mb-2">Section matériaux - À développer</p>
             <p className="text-sm text-gray-400">
-              Recherche dans vos {clients.length > 0 ? '6718' : ''} produits à venir
+              Recherche dans vos produits à venir
             </p>
           </div>
         </div>
 
-        {/* Boutons */}
-        <div className="flex gap-3 pt-4 border-t">
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
-          >
-            <Save className="mr-2" size={16} />
-            {saving ? 'Sauvegarde...' : (mode === 'create' ? 'Créer le BT' : 'Mettre à jour')}
-          </button>
+        {/* Boutons d'action - Selon le mode */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+          {mode === 'create' ? (
+            // Boutons création
+            <>
+              <button
+                type="button"
+                onClick={() => handleSubmit('draft')}
+                disabled={saving}
+                className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center"
+              >
+                <Save className="mr-2" size={16} />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder brouillon'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSubmit('completed')}
+                disabled={saving}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center"
+              >
+                {saving ? 'Création...' : 'Créer le BT'}
+              </button>
+            </>
+          ) : (
+            // Boutons édition
+            <>
+              <button
+                type="button"
+                onClick={() => handleSubmit('draft')}
+                disabled={saving}
+                className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center"
+              >
+                <Save className="mr-2" size={16} />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSubmit('completed')}
+                disabled={saving}
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center"
+              >
+                {saving ? 'Finalisation...' : 'Finaliser'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSubmit('sent')}
+                disabled={saving}
+                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center"
+              >
+                {saving ? 'Envoi...' : 'Envoyer'}
+              </button>
+            </>
+          )}
 
           <button
             type="button"
             onClick={onCancel}
-            className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400"
+            className="bg-white border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50"
           >
             Annuler
           </button>
