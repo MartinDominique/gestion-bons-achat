@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '../../../lib/supabase';
+import { createClient } from '../../../../lib/supabase'  
 
 // POST - Création d'un bon de travail
 export async function POST(request) {
