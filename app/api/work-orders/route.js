@@ -1,14 +1,12 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '../../../lib/supabase';
+
 export async function POST(request) {
   try {
     console.log('=== API POST APPELÉE ===');
     
     const body = await request.json();
     console.log('1. Body reçu:', JSON.stringify(body, null, 2));
-    
-    // Vérifiez chaque champ
-    console.log('2. client_id:', body.client_id, 'type:', typeof body.client_id);
-    console.log('3. work_date:', body.work_date);
-    console.log('4. work_description:', body.work_description);
     
     const supabase = createClient();
     
@@ -22,7 +20,7 @@ export async function POST(request) {
       status: 'draft'
     };
     
-    console.log('5. Données à insérer:', JSON.stringify(dataToInsert, null, 2));
+    console.log('2. Données à insérer:', JSON.stringify(dataToInsert, null, 2));
     
     const { data, error } = await supabase
       .from('work_orders')
@@ -30,25 +28,20 @@ export async function POST(request) {
       .select()
       .single();
     
-    console.log('6. Résultat:', { data: !!data, error: error?.message });
-    
     if (error) {
-      console.error('7. Erreur détaillée:', error);
-      return NextResponse.json({ 
-        error: error.message, 
-        details: error,
-        receivedData: body 
-      }, { status: 500 });
+      console.error('Erreur Supabase:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
-    console.log('8. SUCCÈS !');
+    console.log('SUCCÈS! BT créé:', data);
     return NextResponse.json(data, { status: 201 });
     
   } catch (error) {
-    console.error('9. Erreur catch:', error);
-    return NextResponse.json({ 
-      error: error.message,
-      stack: error.stack 
-    }, { status: 500 });
+    console.error('Erreur catch:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ message: 'API Work Orders actif' });
 }
