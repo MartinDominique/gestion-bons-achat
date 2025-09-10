@@ -17,7 +17,6 @@ export async function POST(request) {
       work_description: body.work_description,
       start_time: body.start_time || null,
       end_time: body.end_time || null,
-      break_time: parseFloat(body.break_time) || 0.5,
       additional_notes: body.additional_notes || null,
       status: 'draft'
     };
