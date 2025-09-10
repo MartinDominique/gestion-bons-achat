@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import WorkOrderForm from '@/components/work-orders/WorkOrderForm';
+import WorkOrderForm from '../../../components/work-orders/WorkOrderForm';
 
 export default function NouveauBonTravailPage() {
   const router = useRouter();
