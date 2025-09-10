@@ -1,3 +1,6 @@
+// components/SoumissionsHooks.js
+// INSTRUCTION : Créez ce fichier dans /components/SoumissionsHooks.js
+
 import { useState, useEffect } from 'react';
 import * as API from './SoumissionsServices';
 import { supabase } from '../lib/supabase';
@@ -191,12 +194,17 @@ export const useSoumissions = () => {
   const handleNewSubmission = async () => {
     try {
       const newNumber = await API.generateSubmissionNumber();
-      setEditingSubmission({ submission_number: newNumber });
+      setEditingSubmission(null); // IMPORTANT: null pour nouvelle soumission
       resetForm();
-      setSubmissionForm(prev => ({ ...prev, submission_number: newNumber }));
+      setSubmissionForm(prev => ({ 
+        ...prev, 
+        submission_number: newNumber,
+        status: 'draft'
+      }));
       setShowForm(true);
     } catch (error) {
       console.error('Erreur génération numéro:', error);
+      setEditingSubmission(null);
       setShowForm(true);
     }
   };
