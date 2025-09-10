@@ -1,6 +1,3 @@
-// components/SoumissionsHooks.js
-// INSTRUCTION : Créez ce fichier dans /components/SoumissionsHooks.js
-
 import { useState, useEffect } from 'react';
 import * as API from './SoumissionsServices';
 
