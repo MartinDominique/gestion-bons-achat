@@ -175,67 +175,215 @@ export default function SoumissionsManager() {
   };
 
         // Fonction pour envoyer l'email de soumission
-    const handleSendSubmissionEmail = async () => {
-      if (!submissionForm.client_name) {
-        alert('⚠️ Veuillez sélectionner un client avant d\'envoyer l\'email');
-        return;
-      }
-    
-      if (selectedItems.length === 0) {
-        alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer l\'email');
-        return;
-      }
-    
-      const client = clients.find(c => c.name === submissionForm.client_name);
-      if (!client || !client.email) {
-        alert('⚠️ Aucun email trouvé pour ce client. Veuillez vérifier les informations du client.');
-        return;
-      }
-    
-      setSendingEmail(true);
-      setEmailError('');
-      setEmailSent(false);
-    
-      try {
-        const submissionHTML = generateClientSubmissionHTML();
-        
-        const emailData = {
-          to: client.email,
-          subject: `Soumission ${submissionForm.submission_number || 'N/A'} - Services TMT Inc.`,
-          html: submissionHTML,
-          clientName: submissionForm.client_name,
-          submissionNumber: submissionForm.submission_number
-        };
-    
-        const response = await fetch('/api/send-submission-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(emailData)
-        });
-    
-        if (response.ok) {
-          const result = await response.json();
-          setEmailSent(true);
-          alert(`✅ Email envoyé avec succès à ${client.email}!`);
-          
-          if (submissionForm.status === 'draft') {
-            setSubmissionForm(prev => ({...prev, status: 'sent'}));
-          }
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erreur lors de l\'envoi');
+        const handleSendSubmissionEmail = async () => {
+        if (!submissionForm.client_name) {
+          alert('⚠️ Veuillez sélectionner un client avant d\'envoyer l\'email');
+          return;
         }
+      
+        if (selectedItems.length === 0) {
+          alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer l\'email');
+          return;
+        }
+      
+        const client = clients.find(c => c.name === submissionForm.client_name);
+        if (!client || !client.email) {
+          alert('⚠️ Aucun email trouvé pour ce client. Veuillez vérifier les informations du client.');
+          return;
+        }
+      
+        setSendingEmail(true);
+        setEmailError('');
+        setEmailSent(false);
+      
+        try {
+          console.log('📄 Génération du PDF de soumission...');
+          const pdfBase64 = await generateSubmissionPDF();
+          
+          if (!pdfBase64) {
+            throw new Error('Erreur lors de la génération du PDF');
+          }
+      
+          const emailData = {
+            to: client.email,
+            clientName: submissionForm.client_name,
+            submissionNumber: submissionForm.submission_number,
+            submissionData: {
+              client_name: submissionForm.client_name,
+              description: submissionForm.description,
+              amount: submissionForm.amount,
+              items: selectedItems,
+              submission_number: submissionForm.submission_number,
+              created_at: new Date().toISOString()
+            },
+            pdfBase64: pdfBase64
+          };
+      
+          console.log('📧 Envoi email avec PDF vers:', client.email);
+      
+          const response = await fetch('/api/send-submission-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(emailData)
+          });
+      
+          if (response.ok) {
+            const result = await response.json();
+            setEmailSent(true);
+            alert(`✅ Soumission PDF envoyée avec succès à ${client.email}!`);
+            
+            if (submissionForm.status === 'draft') {
+              setSubmissionForm(prev => ({...prev, status: 'sent'}));
+            }
+          } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Erreur lors de l\'envoi');
+          }
+      
+        } catch (error) {
+          console.error('❌ Erreur envoi PDF:', error);
+          setEmailError(error.message);
+          alert(`❌ Erreur lors de l'envoi: ${error.message}`);
+        } finally {
+          setSendingEmail(false);
+        }
+      };
+
+        const generateSubmissionPDF = async () => {
+  try {
+    const html2canvas = (await import('html2canvas')).default;
+    const jsPDF = (await import('jspdf')).default;
     
-      } catch (error) {
-        console.error('❌ Erreur envoi email:', error);
-        setEmailError(error.message);
-        alert(`❌ Erreur lors de l'envoi: ${error.message}`);
-      } finally {
-        setSendingEmail(false);
+    const printContainer = document.querySelector('.print-area-client');
+    if (!printContainer) {
+      throw new Error('Zone d\'impression client non trouvée');
+    }
+
+    console.log('Génération du PDF professionnel...');
+    
+    const printStyles = document.createElement('style');
+    printStyles.textContent = `
+      .temp-print-view * { visibility: visible !important; }
+      .temp-print-view {
+        position: fixed !important;
+        left: -9999px !important; 
+        top: 0 !important;
+        width: 1024px !important;
+        background: #fff !important;
+        padding: 48px !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        font-family: Arial, sans-serif !important;
+        box-sizing: border-box !important;
       }
-    };
+      .temp-print-view table { 
+        width: 100% !important; 
+        border-collapse: collapse !important; 
+        margin: 20px 0 !important;
+      }
+      .temp-print-view th, .temp-print-view td {
+        border: 1px solid #000 !important; 
+        padding: 12px !important; 
+        text-align: left !important;
+        font-size: 12px !important;
+      }
+      .temp-print-view th { 
+        background-color: #f0f0f0 !important; 
+        font-weight: bold !important;
+      }
+      .temp-print-view .text-right {
+        text-align: right !important;
+      }
+      .temp-print-view .text-center {
+        text-align: center !important;
+      }
+      .temp-print-view h1, .temp-print-view h2, .temp-print-view h3 {
+        margin: 10px 0 !important;
+      }
+    `;
+    document.head.appendChild(printStyles);
+
+    const clonedContainer = printContainer.cloneNode(true);
+    clonedContainer.className = 'temp-print-view';
+    clonedContainer.style.visibility = 'visible';
+    clonedContainer.style.display = 'block';
+    document.body.appendChild(clonedContainer);
+
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    const canvas = await html2canvas(clonedContainer, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: 1024,
+      height: clonedContainer.scrollHeight,
+      windowWidth: 1024,
+      windowHeight: clonedContainer.scrollHeight + 100,
+      allowTaint: true,
+      imageTimeout: 15000
+    });
+
+    document.body.removeChild(clonedContainer);
+    document.head.removeChild(printStyles);
+
+    const pdf = new jsPDF({ 
+      unit: 'pt', 
+      format: 'letter',
+      compress: true
+    });
+    
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 50;
+    const usableWidth = pageWidth - (margin * 2);
+    const usableHeight = pageHeight - (margin * 2);
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const imgWidth = usableWidth;
+    const imgHeight = canvas.height * (imgWidth / canvas.width);
+
+    if (imgHeight <= usableHeight) {
+      pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+    } else {
+      let heightLeft = imgHeight;
+      let positionY = 0;
+
+      while (heightLeft > 0) {
+        if (positionY > 0) pdf.addPage();
+
+        pdf.addImage(
+          imgData,
+          'JPEG',
+          margin,
+          margin + positionY,
+          imgWidth,
+          imgHeight
+        );
+
+        heightLeft -= usableHeight;
+        positionY -= usableHeight;
+      }
+    }
+
+    const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
+    const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
+    
+    console.log(`Taille PDF: ${pdfSizeKB} KB`);
+    
+    if (pdfSizeKB > 5000) {
+      throw new Error(`PDF trop volumineux: ${Math.round(pdfSizeKB/1024 * 10)/10} MB`);
+    }
+
+    return pdfBase64;
+    
+  } catch (error) {
+    console.error('Erreur génération PDF:', error);
+    throw error;
+  }
+};
 
             // Fonction pour générer le HTML de la soumission
       const generateClientSubmissionHTML = () => {
