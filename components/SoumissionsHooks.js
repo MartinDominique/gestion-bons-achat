@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as API from './SoumissionsServices';
+import { supabase } from '../lib/supabase';
 
 export const useSoumissions = () => {
   // ===== ÉTATS PRINCIPAUX =====
