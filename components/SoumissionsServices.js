@@ -1,6 +1,3 @@
-// components/SoumissionsServices.js
-// INSTRUCTION : Créez ce fichier dans /components/SoumissionsServices.js
-
 import { supabase } from '../lib/supabase';
 
 // ===== CONSTANTES =====
