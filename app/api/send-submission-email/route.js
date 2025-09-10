@@ -1,56 +1,41 @@
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function POST(request) {
   try {
-    // Import dynamique de nodemailer
-    const nodemailer = await import('nodemailer');
-    
     const { to, subject, html, clientName, submissionNumber } = await request.json();
 
-    console.log('Variables env:', {
-      user: process.env.GMAIL_USER,
-      passwordExists: !!process.env.GMAIL_APP_PASSWORD
+    // Envoyer à votre email avec instruction de transfert
+    const emailData = await resend.emails.send({
+      from: 'Services TMT <delivered@resend.dev>',
+      to: ['info.servicestmt@gmail.com'], // Remplacez par votre email vérifié
+      subject: `TRANSFÉRER: ${subject}`,
+      html: `
+        <div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 8px;">
+          <h3 style="color: #92400e; margin: 0 0 10px 0;">🔄 À TRANSFÉRER À:</h3>
+          <p style="margin: 5px 0;"><strong>Client:</strong> ${clientName}</p>
+          <p style="margin: 5px 0;"><strong>Email client:</strong> ${to}</p>
+          <p style="margin: 5px 0;"><strong>Objet suggéré:</strong> ${subject}</p>
+          <p style="margin: 10px 0 0 0; font-size: 14px; color: #92400e;">
+            👆 Copiez l'email du client ci-dessus et transférez le contenu ci-dessous
+          </p>
+        </div>
+        <hr style="margin: 20px 0; border: 1px solid #e5e5e5;">
+        ${html}
+      `
     });
 
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      return Response.json(
-        { error: 'Configuration email manquante' },
-        { status: 500 }
-      );
-    }
-
-    // IMPORTANT: Utiliser nodemailer.default pour App Router
-    console.log('nodemailer.default type:', typeof nodemailer.default);
-    console.log('createTransporter type:', typeof nodemailer.default.createTransporter);
-
-    const transporter = nodemailer.default.createTransporter({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD
-      }
-    });
-
-    const mailOptions = {
-      from: {
-        name: 'Services TMT Inc.',
-        address: process.env.GMAIL_USER
-      },
-      to: to,
-      subject: subject,
-      html: html
-    };
-
-    console.log('Envoi vers:', to);
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email envoyé, messageId:', info.messageId);
+    console.log('Email Resend envoyé:', emailData.id);
     
     return Response.json({ 
       success: true,
-      message: `Email envoyé avec succès à ${to}`,
-      messageId: info.messageId
+      message: `Email préparé pour transfert vers ${to}`,
+      id: emailData.id
     });
 
   } catch (error) {
-    console.error('Erreur Gmail SMTP:', error);
+    console.error('Erreur Resend:', error);
     return Response.json(
       { error: 'Erreur lors de l\'envoi', details: error.message },
       { status: 500 }
