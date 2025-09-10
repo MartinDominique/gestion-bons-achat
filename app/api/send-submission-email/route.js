@@ -1,44 +1,61 @@
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+dimport sgMail from '@sendgrid/mail';
 
 export async function POST(request) {
   try {
     const { to, subject, html, clientName, submissionNumber } = await request.json();
 
-    // Envoyer à votre email avec instruction de transfert
-    const emailData = await resend.emails.send({
-      from: 'Services TMT <delivered@resend.dev>',
-      to: ['info.servicestmt@gmail.com'], // Remplacez par votre email vérifié
-      subject: `TRANSFÉRER: ${subject}`,
-      html: `
-        <div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 8px;">
-          <h3 style="color: #92400e; margin: 0 0 10px 0;">🔄 À TRANSFÉRER À:</h3>
-          <p style="margin: 5px 0;"><strong>Client:</strong> ${clientName}</p>
-          <p style="margin: 5px 0;"><strong>Email client:</strong> ${to}</p>
-          <p style="margin: 5px 0;"><strong>Objet suggéré:</strong> ${subject}</p>
-          <p style="margin: 10px 0 0 0; font-size: 14px; color: #92400e;">
-            👆 Copiez l'email du client ci-dessus et transférez le contenu ci-dessous
-          </p>
-        </div>
-        <hr style="margin: 20px 0; border: 1px solid #e5e5e5;">
-        ${html}
-      `
-    });
+    // Vérification de la clé API
+    if (!process.env.SENDGRID_API_KEY) {
+      console.error('SENDGRID_API_KEY manquante');
+      return Response.json({ 
+        error: 'Configuration email manquante',
+        details: 'SENDGRID_API_KEY non définie'
+      }, { status: 500 });
+    }
 
-    console.log('Email Resend envoyé:', emailData.id);
-    
+    console.log('Configuration SendGrid...');
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+    const msg = {
+      to: to,
+      from: {
+        email: 'servicestmt@gmail.com',
+        name: 'Services TMT Inc.'
+      },
+      subject: subject,
+      html: html,
+      text: `Soumission ${submissionNumber} de Services TMT Inc. pour ${clientName}.`
+    };
+
+    console.log('Envoi email vers:', to);
+    console.log('Depuis:', msg.from.email);
+
+    const response = await sgMail.send(msg);
+    console.log('SendGrid response:', response[0].statusCode);
+
     return Response.json({ 
       success: true,
-      message: `Email préparé pour transfert vers ${to}`,
-      id: emailData.id
+      message: `Email envoyé avec succès à ${to}`,
+      statusCode: response[0].statusCode
     });
 
   } catch (error) {
-    console.error('Erreur Resend:', error);
-    return Response.json(
-      { error: 'Erreur lors de l\'envoi', details: error.message },
-      { status: 500 }
-    );
+    console.error('Erreur SendGrid:', error);
+    
+    // Messages d'erreur détaillés
+    let errorMessage = 'Erreur lors de l\'envoi';
+    if (error.code === 401) {
+      errorMessage = 'Clé API SendGrid invalide';
+    } else if (error.code === 403) {
+      errorMessage = 'Email expéditeur non vérifié dans SendGrid';
+    } else if (error.message?.includes('does not contain a valid address')) {
+      errorMessage = 'Adresse email destinataire invalide';
+    }
+
+    return Response.json({ 
+      error: errorMessage,
+      details: error.message,
+      code: error.code
+    }, { status: 500 });
   }
 }
