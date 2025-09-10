@@ -44,6 +44,11 @@ export default function SoumissionsManager() {
   const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
   const [exchangeRateError, setExchangeRateError] = useState('');
 
+    // États pour l'envoi d'emails
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
   // Debounce pour la recherche produits
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -168,6 +173,224 @@ export default function SoumissionsManager() {
     setShowUsdCalculator(false);
     setUsdAmount('');
   };
+
+        // Fonction pour envoyer l'email de soumission
+    const handleSendSubmissionEmail = async () => {
+      if (!submissionForm.client_name) {
+        alert('⚠️ Veuillez sélectionner un client avant d\'envoyer l\'email');
+        return;
+      }
+    
+      if (selectedItems.length === 0) {
+        alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer l\'email');
+        return;
+      }
+    
+      const client = clients.find(c => c.name === submissionForm.client_name);
+      if (!client || !client.email) {
+        alert('⚠️ Aucun email trouvé pour ce client. Veuillez vérifier les informations du client.');
+        return;
+      }
+    
+      setSendingEmail(true);
+      setEmailError('');
+      setEmailSent(false);
+    
+      try {
+        const submissionHTML = generateClientSubmissionHTML();
+        
+        const emailData = {
+          to: client.email,
+          subject: `Soumission ${submissionForm.submission_number || 'N/A'} - Services TMT Inc.`,
+          html: submissionHTML,
+          clientName: submissionForm.client_name,
+          submissionNumber: submissionForm.submission_number
+        };
+    
+        const response = await fetch('/api/send-submission-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(emailData)
+        });
+    
+        if (response.ok) {
+          const result = await response.json();
+          setEmailSent(true);
+          alert(`✅ Email envoyé avec succès à ${client.email}!`);
+          
+          if (submissionForm.status === 'draft') {
+            setSubmissionForm(prev => ({...prev, status: 'sent'}));
+          }
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erreur lors de l\'envoi');
+        }
+    
+      } catch (error) {
+        console.error('❌ Erreur envoi email:', error);
+        setEmailError(error.message);
+        alert(`❌ Erreur lors de l'envoi: ${error.message}`);
+      } finally {
+        setSendingEmail(false);
+      }
+    };
+
+            // Fonction pour générer le HTML de la soumission
+      const generateClientSubmissionHTML = () => {
+        return `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Soumission ${submissionForm.submission_number}</title>
+            <style>
+              body { 
+                font-family: Arial, sans-serif; 
+                margin: 0; 
+                padding: 20px; 
+                background-color: #f9f9f9; 
+              }
+              .container { 
+                max-width: 800px; 
+                margin: 0 auto; 
+                background: white; 
+                padding: 30px; 
+                border-radius: 8px; 
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+              }
+              .header { 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: flex-start; 
+                margin-bottom: 30px; 
+                padding-bottom: 15px; 
+                border-bottom: 2px solid #333; 
+              }
+              .company-info { 
+                font-size: 11px; 
+                line-height: 1.4; 
+              }
+              .submission-header { 
+                text-align: right; 
+              }
+              .submission-header h1 { 
+                font-size: 24px; 
+                margin: 0 0 5px 0; 
+                color: #6b46c1; 
+              }
+              .client-info { 
+                margin: 20px 0; 
+                padding: 15px; 
+                border: 1px solid #ddd; 
+                background-color: #f9f9f9; 
+                border-radius: 6px; 
+              }
+              table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin: 20px 0; 
+              }
+              th, td { 
+                border: 1px solid #333; 
+                padding: 10px; 
+                text-align: left; 
+                font-size: 12px; 
+              }
+              th { 
+                background-color: #f0f0f0; 
+                font-weight: bold; 
+                text-align: center; 
+              }
+              .text-center { text-align: center; }
+              .text-right { text-align: right; }
+              .total-section { 
+                margin-top: 30px; 
+                text-align: right; 
+                font-size: 16px; 
+                font-weight: bold; 
+                color: #059669; 
+              }
+              .comment { 
+                font-style: italic; 
+                color: #666; 
+                font-size: 10px; 
+                margin-top: 3px; 
+              }
+              .footer {
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #e5e5e5;
+                font-size: 11px;
+                color: #666;
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <div class="company-info">
+                  <strong>Services TMT Inc.</strong><br />
+                  195, 42e Rue Nord<br />
+                  Saint-Georges, QC G5Z 0V9<br />
+                  Tél: (418) 225-3875<br />
+                  info.servicestmt@gmail.com
+                </div>
+                <div class="submission-header">
+                  <h1>SOUMISSION</h1>
+                  <p><strong>N°:</strong> ${submissionForm.submission_number}</p>
+                  <p><strong>Date:</strong> ${new Date().toLocaleDateString('fr-CA')}</p>
+                </div>
+              </div>
+      
+              <div class="client-info">
+                <strong>CLIENT:</strong> ${submissionForm.client_name}<br />
+                <strong>DESCRIPTION:</strong> ${submissionForm.description}
+              </div>
+      
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 15%">Code</th>
+                    <th style="width: 45%">Description</th>
+                    <th style="width: 10%">Qté</th>
+                    <th style="width: 10%">Unité</th>
+                    <th style="width: 10%">Prix Unit.</th>
+                    <th style="width: 10%">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${selectedItems.map(item => `
+                    <tr>
+                      <td>${item.product_id}</td>
+                      <td>
+                        ${item.description}
+                        ${item.comment ? `<div class="comment">💬 ${item.comment}</div>` : ''}
+                      </td>
+                      <td class="text-center">${item.quantity}</td>
+                      <td class="text-center">${item.unit}</td>
+                      <td class="text-right">${formatCurrency(item.selling_price)}</td>
+                      <td class="text-right">${formatCurrency(item.selling_price * item.quantity)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+      
+              <div class="total-section">
+                TOTAL: ${formatCurrency(submissionForm.amount)}
+              </div>
+      
+              <div class="footer">
+                <p>Merci de votre confiance ! Cette soumission est valide pour 30 jours.</p>
+                <p>Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+      };
 
   // Fonction pour générer le numéro automatique
   const generateSubmissionNumber = async () => {
@@ -1246,6 +1469,44 @@ const cleanupFilesForSubmission = async (files) => {
                     <Printer className="w-4 h-4 inline mr-1" />
                     Impression Client
                   </button>
+                  
+                  {/* NOUVEAU: Bouton Envoyer Email */}
+                  <button
+                    onClick={handleSendSubmissionEmail}
+                    disabled={sendingEmail || selectedItems.length === 0 || !submissionForm.client_name}
+                    className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center ${
+                      sendingEmail 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : selectedItems.length === 0 || !submissionForm.client_name
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-500/20 hover:bg-blue-500/30 text-white'
+                    }`}
+                    title={
+                      !submissionForm.client_name 
+                        ? 'Sélectionnez un client d\'abord'
+                        : selectedItems.length === 0 
+                        ? 'Ajoutez des produits d\'abord'
+                        : 'Envoyer la soumission par email au client'
+                    }
+                  >
+                    {sendingEmail ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Envoi...
+                      </>
+                    ) : (
+                      <>
+                        📧 Envoyer Email
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handlePrintClient}
+                    className="w-full sm:w-auto px-4 py-2 bg-green-500/20 rounded-lg hover:bg-green-500/30 text-sm font-medium"
+                  >
+                    <Printer className="w-4 h-4 inline mr-1" />
+                    Impression Client
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -2026,6 +2287,29 @@ const cleanupFilesForSubmission = async (files) => {
                     </div>
                   </div>
                 )}
+
+                                    {/* Notifications email */}
+                  {emailSent && (
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+                      <div className="flex items-center">
+                        <span className="text-green-500 mr-2">✅</span>
+                        <span className="font-medium">Email envoyé avec succès !</span>
+                      </div>
+                      <p className="text-sm mt-1">
+                        La soumission a été envoyée à {clients.find(c => c.name === submissionForm.client_name)?.email}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {emailError && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                      <div className="flex items-center">
+                        <span className="text-red-500 mr-2">❌</span>
+                        <span className="font-medium">Erreur d'envoi</span>
+                      </div>
+                      <p className="text-sm mt-1">{emailError}</p>
+                    </div>
+                  )}
 
                   {/* Section Documents - NOUVEAU */}
 <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
