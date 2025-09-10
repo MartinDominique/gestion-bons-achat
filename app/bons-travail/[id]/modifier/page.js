@@ -1,0 +1,191 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { notFound } from 'next/navigation';
+import WorkOrderForm from '../../../../components/work-orders/WorkOrderForm';
+
+export default function ModifierBonTravailPage({ params }) {
+  const router = useRouter();
+  const [workOrder, setWorkOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Charger le bon de travail
+  useEffect(() => {
+    const fetchWorkOrder = async () => {
+      try {
+        const response = await fetch(`/api/work-orders/${params.id}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            notFound();
+          }
+          throw new Error('Erreur chargement bon de travail');
+        }
+
+        const data = await response.json();
+        setWorkOrder(data);
+      } catch (err) {
+        console.error('Erreur:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (params.id) {
+      fetchWorkOrder();
+    }
+  }, [params.id]);
+
+  // Sauvegarder les modifications
+  const handleSave = async (workOrderData, status) => {
+    setSaving(true);
+    setError(null);
+
+    try {
+      const method = 'PUT';
+      const url = '/api/work-orders';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...workOrderData,
+          id: parseInt(params.id)
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la sauvegarde');
+      }
+
+      const savedWorkOrder = await response.json();
+      
+      // Message de succès selon le statut
+      const messages = {
+        draft: 'Bon de travail sauvegardé en brouillon',
+        completed: 'Bon de travail finalisé avec succès',
+        sent: 'Bon de travail envoyé au client'
+      };
+
+      alert(messages[status] || 'Bon de travail mis à jour avec succès');
+      
+      // Redirection vers la liste
+      router.push('/bons-travail');
+
+    } catch (err) {
+      console.error('Erreur sauvegarde:', err);
+      setError(err.message);
+      alert('Erreur: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Annuler et retourner à la liste
+  const handleCancel = () => {
+    if (confirm('Annuler les modifications ? Les changements non sauvegardés seront perdus.')) {
+      router.push('/bons-travail');
+    }
+  };
+
+  // États de chargement
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2">Chargement du bon de travail...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Erreur</h2>
+          <p className="text-red-700">{error}</p>
+          <button
+            onClick={() => router.push('/bons-travail')}
+            className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+          >
+            Retour à la liste
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!workOrder) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Bon de travail introuvable</h2>
+          <p className="text-gray-600 mb-6">Le bon de travail demandé n'existe pas ou a été supprimé.</p>
+          <button
+            onClick={() => router.push('/bons-travail')}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Retour à la liste
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Breadcrumb */}
+      <nav className="mb-6">
+        <ol className="flex items-center space-x-2 text-sm text-gray-500">
+          <li>
+            <button
+              onClick={() => router.push('/bons-travail')}
+              className="hover:text-blue-600"
+            >
+              Bons de Travail
+            </button>
+          </li>
+          <li>/</li>
+          <li className="text-gray-900 font-medium">
+            Modifier {workOrder.bt_number}
+          </li>
+        </ol>
+      </nav>
+
+      {/* Informations du BT */}
+      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-blue-900">
+              Modification du bon de travail {workOrder.bt_number}
+            </h1>
+            <p className="text-blue-700 text-sm mt-1">
+              Créé le {new Date(workOrder.created_at).toLocaleDateString('fr-CA')} - 
+              Statut: <span className="font-medium">{workOrder.status}</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-blue-700">Client:</div>
+            <div className="font-medium text-blue-900">{workOrder.client?.name}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Formulaire d'édition */}
+      <WorkOrderForm
+        workOrder={workOrder}
+        mode="edit"
+        onSave={handleSave}
+        onCancel={handleCancel}
+        saving={saving}
+      />
+    </div>
+  );
+}
