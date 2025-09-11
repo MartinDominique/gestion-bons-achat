@@ -385,7 +385,7 @@ export default function SoumissionsManager() {
   }
 };
 
-            // Fonction pour générer le HTML de la soumission AMÉLIORÉE
+            // Fonction pour générer le HTML de la soumission AMÉLIORÉE - IDENTIQUE à l'impression
 const generateClientSubmissionHTML = () => {
   const clientData = clients.find(c => c.name === submissionForm.client_name);
   const expirationDate = new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('fr-CA');
@@ -412,6 +412,8 @@ const generateClientSubmissionHTML = () => {
           background: white; 
           padding: 0;
         }
+        
+        /* En-tête professionnel identique */
         .header { 
           display: flex; 
           justify-content: space-between; 
@@ -426,11 +428,13 @@ const generateClientSubmissionHTML = () => {
           flex: 1;
         }
         .company-logo {
-          width: 120px;
+          width: 140px;
           height: auto;
-          margin-right: 15px;
+          margin-right: 20px;
+          flex-shrink: 0;
         }
         .company-info { 
+          flex: 1;
           font-size: 11px; 
           line-height: 1.4; 
         }
@@ -438,6 +442,10 @@ const generateClientSubmissionHTML = () => {
           font-size: 16px;
           font-weight: bold;
           margin-bottom: 5px;
+        }
+        .tax-info {
+          margin-top: 5px;
+          font-size: 9px;
         }
         .submission-header { 
           text-align: right; 
@@ -456,6 +464,8 @@ const generateClientSubmissionHTML = () => {
         .submission-details p {
           margin: 2px 0;
         }
+        
+        /* Section client identique */
         .client-section {
           display: flex;
           justify-content: space-between;
@@ -464,15 +474,9 @@ const generateClientSubmissionHTML = () => {
         .client-info { 
           flex: 1;
           margin-right: 20px;
-          padding: 12px 15px; 
-          border: 2px solid #000; 
-          background-color: #f8f9fa; 
         }
         .project-info {
           flex: 1;
-          padding: 12px 15px;
-          border: 2px solid #000;
-          background-color: #f8f9fa;
         }
         .client-label {
           font-weight: bold;
@@ -484,6 +488,12 @@ const generateClientSubmissionHTML = () => {
           font-weight: bold;
           margin-bottom: 8px;
         }
+        .client-details {
+          font-size: 9px;
+          color: #666;
+        }
+        
+        /* Tableau identique */
         table { 
           width: 100%; 
           border-collapse: collapse; 
@@ -508,27 +518,6 @@ const generateClientSubmissionHTML = () => {
         tbody tr:nth-child(even) {
           background-color: #f8f9fa;
         }
-        .totals-section { 
-          margin-top: 25px;
-          border-top: 2px solid #000;
-          padding-top: 15px;
-          text-align: right; 
-          font-size: 12px;
-        }
-        .total-line {
-          display: flex;
-          justify-content: space-between;
-          margin: 5px 0;
-          padding: 3px 0;
-        }
-        .final-total {
-          font-size: 16px;
-          font-weight: bold;
-          border-top: 2px solid #000;
-          border-bottom: 3px double #000;
-          padding: 8px 0;
-          margin-top: 10px;
-        }
         .comment { 
           font-style: italic; 
           color: #666; 
@@ -538,6 +527,45 @@ const generateClientSubmissionHTML = () => {
           background-color: #fff3cd;
           border-left: 3px solid #ffc107;
         }
+        
+        /* Totaux section identique */
+        .totals-section { 
+          margin-top: 30px;
+          border-top: 2px solid #000;
+          padding-top: 15px;
+        }
+        .totals-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+        .conditions {
+          flex: 1;
+          font-size: 9px;
+          margin-right: 20px;
+        }
+        .conditions-title {
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .totals {
+          min-width: 250px;
+          font-size: 12px;
+        }
+        .total-line {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 5px;
+          padding-bottom: 3px;
+        }
+        .final-total {
+          border-top: 2px solid #000;
+          padding-top: 8px;
+          font-weight: bold;
+          font-size: 16px;
+          margin-top: 10px;
+        }
+        
         .validity {
           background-color: #fff3cd;
           border: 1px solid #ffc107;
@@ -548,24 +576,38 @@ const generateClientSubmissionHTML = () => {
           font-size: 11px;
         }
         .footer {
-          margin-top: 30px;
-          padding-top: 15px;
+          margin-top: 20px;
+          padding-top: 10px;
           border-top: 1px solid #000;
-          font-size: 9px;
           text-align: center;
+          font-size: 9px;
+        }
+        .footer-contact {
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .footer-small {
+          margin-top: 10px;
+          font-size: 8px;
         }
       </style>
     </head>
     <body>
       <div class="container">
+        <!-- En-tête identique avec logo -->
         <div class="header">
           <div class="company-section">
+            <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAAyAH0DASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/2Q==" alt="Services TMT" class="company-logo" />
             <div class="company-info">
               <div class="company-name">Services TMT Inc.</div>
-              <div>195, 42e Rue Nord</div>
+              <div>3195, 42e Rue Nord</div>
               <div>Saint-Georges, QC G5Z 0V9</div>
               <div><strong>Tél:</strong> (418) 225-3875</div>
               <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
+              <div class="tax-info">
+                <div><strong>TPS:</strong> 771163672RT0001</div>
+                <div><strong>TVQ:</strong> 1226871523TQ0001</div>
+              </div>
             </div>
           </div>
           <div class="submission-header">
@@ -573,37 +615,31 @@ const generateClientSubmissionHTML = () => {
             <div class="submission-details">
               <p><strong>N°:</strong> ${submissionForm.submission_number}</p>
               <p><strong>Date:</strong> ${new Date().toLocaleDateString('fr-CA')}</p>
-              <p><strong>Expiration:</strong> ${expirationDate}</p>
             </div>
           </div>
         </div>
 
+        <!-- Section client identique -->
         <div class="client-section">
           <div class="client-info">
             <div class="client-label">CLIENT:</div>
             <div class="client-name">${submissionForm.client_name}</div>
-            ${clientData && (clientData.address || clientData.phone || clientData.email) ? `
-              <div style="font-size: 10px; color: #666; margin-top: 5px;">
-                ${clientData.address ? `<div>${clientData.address}</div>` : ''}
-                ${clientData.phone ? `<div>Tél.: ${clientData.phone}</div>` : ''}
-                ${clientData.email ? `<div>Email: ${clientData.email}</div>` : ''}
+            ${clientData && (clientData.address || clientData.phone) ? `
+              <div class="client-details">
+                ${clientData.address && clientData.phone 
+                  ? `${clientData.address} • Tél.: ${clientData.phone}`
+                  : clientData.address || `Tél.: ${clientData.phone}`
+                }
               </div>
             ` : ''}
-            <div style="margin-top: 8px;">
-              <div class="client-label">DESCRIPTION:</div>
-              <div>${submissionForm.description}</div>
-            </div>
           </div>
           <div class="project-info">
-            <div class="client-label">INFORMATIONS:</div>
-            <div style="font-size: 10px;">
-              <div><strong>Validité:</strong> 30 jours</div>
-              <div><strong>Items:</strong> ${selectedItems.length}</div>
-              <div><strong>Quantité totale:</strong> ${selectedItems.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(1)}</div>
-            </div>
+            <div class="client-label">DESCRIPTION:</div>
+            <div style="font-size: 11px; font-weight: bold;">${submissionForm.description}</div>
           </div>
         </div>
 
+        <!-- Tableau identique -->
         <table>
           <thead>
             <tr>
@@ -632,103 +668,60 @@ const generateClientSubmissionHTML = () => {
           </tbody>
         </table>
 
+        <!-- Totaux identiques -->
         <div class="totals-section">
-          <div class="total-line final-total">
-            <span>TOTAL:</span>
-            <span style="font-family: monospace;">${formatCurrency(submissionForm.amount)}</span>
+          <div class="totals-content">
+            <div class="conditions">
+              <div class="conditions-title">CONDITIONS GÉNÉRALES:</div>
+              <div>• Prix valides pour 30 jours</div>
+              <div>• Paiement: Net 30 jours</div>
+              <div>• Installation selon disponibilité</div>
+              <div>• Prix sujets à changement sans préavis</div>
+            </div>
+            
+            <div class="totals">
+              ${(() => {
+                const sousTotal = submissionForm.amount;
+                const tps = sousTotal * 0.05;
+                const tvq = sousTotal * 0.09975;
+                const total = sousTotal + tps + tvq;
+                
+                return `
+                  <div class="total-line">
+                    <span>Sous-total:</span>
+                    <span style="font-family: monospace; font-weight: bold;">${formatCurrency(sousTotal)}</span>
+                  </div>
+                  <div class="total-line">
+                    <span>TPS (5%):</span>
+                    <span style="font-family: monospace;">${formatCurrency(tps)}</span>
+                  </div>
+                  <div class="total-line">
+                    <span>TVQ (9.975%):</span>
+                    <span style="font-family: monospace;">${formatCurrency(tvq)}</span>
+                  </div>
+                  <div class="total-line final-total">
+                    <span>TOTAL:</span>
+                    <span style="font-family: monospace;">${formatCurrency(total)}</span>
+                  </div>
+                `;
+              })()}
+            </div>
           </div>
         </div>
 
-          {/* Totaux avec taxes pour client */}
-              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  
-                  {/* Conditions à gauche */}
-                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                    <div>• Prix valides pour 30 jours</div>
-                    <div>• Paiement: Net 30 jours</div>
-                    <div>• Installation selon disponibilité</div>
-                    <div>• Prix sujets à changement sans préavis</div>
-                  </div>
-                  
-                  {/* Totaux avec taxes à droite */}
-                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
-                    ${(() => {
-                      const sousTotal = submissionForm.amount;
-                      const tps = sousTotal * 0.05;
-                      const tvq = sousTotal * 0.09975;
-                      const total = sousTotal + tps + tvq;
-                      
-                      return `
-                        <div>
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>Sous-total:</span>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                              ${formatCurrency(sousTotal)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>TPS (5%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              ${formatCurrency(tps)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '10px',
-                            paddingBottom: '5px'
-                          }}>
-                            <span>TVQ (9.975%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              ${formatCurrency(tvq)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            borderTop: '2px solid #000', 
-                            paddingTop: '8px',
-                            fontWeight: 'bold',
-                            fontSize: '16px'
-                          }}>
-                            <span>TOTAL:</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              ${formatCurrency(total)}
-                            </span>
-                          </div>
-                        </div>
-                      `;
-                    })()}
-                  </div>
-                </div>
-              </div>
-        
+        <!-- Validité identique -->
         <div class="validity">
           ⏰ Cette soumission est valide pour 30 jours • Merci de votre confiance!
         </div>
 
+        <!-- Footer identique -->
         <div class="footer">
-          <div style="font-weight: bold; margin-bottom: 5px;">
+          <div class="footer-contact">
             Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
           </div>
-          <div>Services TMT Inc. • 195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
+          <div>Services TMT Inc. • 3195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
           <div>info.servicestmt@gmail.com</div>
-          <div style="margin-top: 10px; font-size: 8px;">
+          <div class="footer-small">
             Prix sujets à changement sans préavis • Taxes en sus si applicable
           </div>
         </div>
