@@ -1496,9 +1496,9 @@ const cleanupFilesForSubmission = async (files) => {
             .print-client-info {
               flex: 1;
               margin-right: 20px;
-              padding: 12px 15px;
-              border: 2px solid #000;
-              background-color: #f8f9fa !important;
+              padding: 0;
+              border: none;
+              background: none !important;
             }
             
             .print-client-label {
@@ -1516,9 +1516,9 @@ const cleanupFilesForSubmission = async (files) => {
             
             .print-project-info {
               flex: 1;
-              padding: 12px 15px;
-              border: 2px solid #000;
-              background-color: #f8f9fa !important;
+              padding: 0;
+              border: none;
+              background: none !important;
             }
             
             /* Références et informations */
@@ -1687,7 +1687,8 @@ const cleanupFilesForSubmission = async (files) => {
             .print-footer-content {
               display: flex !important;
               justify-content: space-between !important;
-              align-items: center !important;
+              align-items: flex-start !important;
+              gap: 20px !important;
             }
             
             .print-conditions {
@@ -1701,7 +1702,13 @@ const cleanupFilesForSubmission = async (files) => {
               flex-shrink: 0;
               font-size: 8px !important;
             }
-            
+
+            .print-totals-footer {
+              min-width: 200px !important;
+              flex-shrink: 0 !important;
+              margin-left: 20px !important;
+            }
+                        
             .print-validity {
               background-color: #fff3cd !important;
               border: 1px solid #ffc107 !important;
@@ -1741,8 +1748,9 @@ const cleanupFilesForSubmission = async (files) => {
                     <div>Saint-Georges, QC G5Z 0V9</div>
                     <div><strong>Tél:</strong> (418) 225-3875</div>
                     <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
-                    <div style={{ marginTop: '8px', fontSize: '9px' }}>
-                      <strong>TPS:</strong> 771163672RT0001 • <strong>TVQ:</strong> 1226871523TQ0001
+                    <div style={{ marginTop: '5px', fontSize: '9px' }}>
+                      <div><strong>TPS:</strong> 771163672RT0001</div>
+                      <div><strong>TVQ:</strong> 1226871523TQ0001</div>
                     </div>
                   </div>
                 </div>
@@ -1751,8 +1759,6 @@ const cleanupFilesForSubmission = async (files) => {
                   <div className="print-submission-details">
                     <p><strong>N°:</strong> {submissionForm.submission_number}</p>
                     <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                    <p><strong>Expiration:</strong> {new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('fr-CA')}</p>
-                    <p><strong>Page:</strong> 1 de 1</p>
                   </div>
                 </div>
               </div>
@@ -1827,29 +1833,54 @@ const cleanupFilesForSubmission = async (files) => {
                 </tbody>
               </table>
 
-              {/* Section totaux professionnelle */}
-              <div className="print-totals-section">
-                <div className="print-totals">
-                  <div className="total-line">
-                    <span>Sous-total:</span>
-                    <span style={{ fontFamily: 'monospace' }}>{formatCurrency(submissionForm.amount)}</span>
-                  </div>
-                  <div className="total-line">
-                    <span>Coût total:</span>
-                    <span style={{ fontFamily: 'monospace' }}>{formatCurrency(calculatedCostTotal)}</span>
-                  </div>
-                  <div className="total-line final-total">
-                    <span>TOTAL VENTE:</span>
-                    <span style={{ fontFamily: 'monospace' }}>{formatCurrency(submissionForm.amount)}</span>
-                  </div>
-                  {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
-                    <div className="profit-margin">
-                      <div>MARGE BÉNÉFICIAIRE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}</div>
-                      <div>Pourcentage: {((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%</div>
+              {/* Footer avec totaux */}
+                <div className="print-footer">
+                  <div className="print-footer-content">
+                    <div className="print-conditions">
+                      <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
+                      <div>• Prix valides pour 30 jours</div>
+                      <div>• Paiement: Net 30 jours</div>
+                      <div>• Installation selon disponibilité</div>
+                      <div>• Taxes en sus si applicable</div>
                     </div>
-                  )}
+                    <div className="print-totals-footer">
+                      {(() => {
+                        const sousTotal = submissionForm.amount;
+                        const tps = sousTotal * 0.05; // 5% TPS
+                        const tvq = sousTotal * 0.09975; // 9.975% TVQ
+                        const total = sousTotal + tps + tvq;
+                        
+                        return (
+                          <div style={{ fontSize: '12px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                              <span>Sous-total:</span>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{formatCurrency(sousTotal)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                              <span>TPS (5%):</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(tps)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                              <span>TVQ (9.975%):</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(tvq)}</span>
+                            </div>
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              borderTop: '2px solid #000', 
+                              paddingTop: '5px', 
+                              fontWeight: 'bold',
+                              fontSize: '14px'
+                            }}>
+                              <span>TOTAL:</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(total)}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </div>
-              </div>
 
               {/* Validité et conditions */}
               <div className="print-validity">
@@ -1890,10 +1921,14 @@ const cleanupFilesForSubmission = async (files) => {
                   <img src="/logo.png" alt="Services TMT" className="print-logo" />
                   <div className="print-company-info">
                     <div className="print-company-name">Services TMT Inc.</div>
-                    <div>195, 42e Rue Nord</div>
+                    <div>3195, 42e Rue Nord</div>
                     <div>Saint-Georges, QC G5Z 0V9</div>
                     <div><strong>Tél:</strong> (418) 225-3875</div>
                     <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
+                    <div style={{ marginTop: '5px', fontSize: '9px' }}>
+                      <div><strong>TPS:</strong> 771163672RT0001</div>
+                      <div><strong>TVQ:</strong> 1226871523TQ0001</div>
+                    </div>
                   </div>
                 </div>
                 <div className="print-submission-header">
@@ -1901,7 +1936,6 @@ const cleanupFilesForSubmission = async (files) => {
                   <div className="print-submission-details">
                     <p><strong>N°:</strong> {submissionForm.submission_number}</p>
                     <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                    <p><strong>Expiration:</strong> {new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('fr-CA')}</p>
                   </div>
                 </div>
               </div>
