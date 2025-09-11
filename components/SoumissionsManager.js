@@ -1922,34 +1922,6 @@ const cleanupFilesForSubmission = async (files) => {
                   <div>info.servicestmt@gmail.com</div>
                 </div>
               </div>
-
-              {/* Validité et conditions */}
-              <div className="print-validity">
-                ⏰ Cette soumission est valide pour 30 jours à compter de la date d'émission
-              </div>
-
-              {/* Footer professionnel */}
-              <div className="print-footer">
-                <div className="print-footer-content">
-                  <div className="print-conditions">
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                    <div>• Prix valides pour 30 jours</div>
-                    <div>• Paiement: Net 30 jours</div>
-                    <div>• Installation selon disponibilité</div>
-                    <div>• Prix sujets à changement sans préavis</div>
-                    <div>• Taxes en sus si applicable</div>
-                  </div>
-                  <div className="print-contact-footer">
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONTACT:</div>
-                    <div>Services TMT Inc.</div>
-                    <div>(418) 225-3875</div>
-                    <div>info.servicestmt@gmail.com</div>
-                    <div style={{ marginTop: '5px', fontStyle: 'italic' }}>
-                      Merci de votre confiance!
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
