@@ -639,6 +639,85 @@ const generateClientSubmissionHTML = () => {
           </div>
         </div>
 
+          {/* Totaux avec taxes pour client */}
+              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  
+                  {/* Conditions à gauche */}
+                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
+                    <div>• Prix valides pour 30 jours</div>
+                    <div>• Paiement: Net 30 jours</div>
+                    <div>• Installation selon disponibilité</div>
+                    <div>• Prix sujets à changement sans préavis</div>
+                  </div>
+                  
+                  {/* Totaux avec taxes à droite */}
+                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
+                    ${(() => {
+                      const sousTotal = submissionForm.amount;
+                      const tps = sousTotal * 0.05;
+                      const tvq = sousTotal * 0.09975;
+                      const total = sousTotal + tps + tvq;
+                      
+                      return `
+                        <div>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>Sous-total:</span>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                              ${formatCurrency(sousTotal)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>TPS (5%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              ${formatCurrency(tps)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '10px',
+                            paddingBottom: '5px'
+                          }}>
+                            <span>TVQ (9.975%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              ${formatCurrency(tvq)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            borderTop: '2px solid #000', 
+                            paddingTop: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '16px'
+                          }}>
+                            <span>TOTAL:</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              ${formatCurrency(total)}
+                            </span>
+                          </div>
+                        </div>
+                      `;
+                    })()}
+                  </div>
+                </div>
+              </div>
+        
         <div class="validity">
           ⏰ Cette soumission est valide pour 30 jours • Merci de votre confiance!
         </div>
@@ -2011,6 +2090,85 @@ const cleanupFilesForSubmission = async (files) => {
                   ))}
                 </tbody>
               </table>
+
+                {/* Totaux avec taxes pour client - Version directe */}
+              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  
+                  {/* Conditions à gauche */}
+                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
+                    <div>• Prix valides pour 30 jours</div>
+                    <div>• Paiement: Net 30 jours</div>
+                    <div>• Installation selon disponibilité</div>
+                    <div>• Prix sujets à changement sans préavis</div>
+                  </div>
+                  
+                  {/* Totaux avec taxes à droite */}
+                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
+                    {(() => {
+                      const sousTotal = submissionForm.amount;
+                      const tps = sousTotal * 0.05;
+                      const tvq = sousTotal * 0.09975;
+                      const total = sousTotal + tps + tvq;
+                      
+                      return (
+                        <div>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>Sous-total:</span>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                              {formatCurrency(sousTotal)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>TPS (5%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(tps)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '10px',
+                            paddingBottom: '5px'
+                          }}>
+                            <span>TVQ (9.975%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(tvq)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            borderTop: '2px solid #000', 
+                            paddingTop: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '16px'
+                          }}>
+                            <span>TOTAL:</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(total)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
 
               {/* Validité */}
               <div className="print-validity">
