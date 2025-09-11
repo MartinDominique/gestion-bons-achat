@@ -1386,9 +1386,14 @@ const cleanupFilesForSubmission = async (files) => {
           {`
           /* CSS d'impression professionnel amélioré */
           @media print {
-            @page {
+           @page {
               size: letter;
-              margin: 0.4in 0.6in;
+              margin: 0.4in 0.6in 0.8in 0.6in; /* bottom margin plus grand pour footer */
+              @bottom-center {
+                content: "Pour toute question: (418) 225-3875 • Services TMT Inc. • info.servicestmt@gmail.com";
+                font-size: 8px;
+                color: #666;
+              }
             }
             
             body * {
@@ -1439,9 +1444,9 @@ const cleanupFilesForSubmission = async (files) => {
             }
             
             .print-logo {
-              width: 120px !important;
+              width: 140px !important;
               height: auto !important;
-              margin-right: 15px !important;
+              margin-right: 20px !important;
               flex-shrink: 0 !important;
             }
             
@@ -1665,29 +1670,36 @@ const cleanupFilesForSubmission = async (files) => {
             }
             
             /* Footer professionnel */
-            .print-footer {
-              margin-top: 30px !important;
-              padding-top: 15px !important;
+              .print-footer {
+              position: fixed !important;
+              bottom: 0.3in !important;
+              left: 0.6in !important;
+              right: 0.6in !important;
+              margin-top: 0 !important;
+              padding-top: 8px !important;
               border-top: 1px solid #000 !important;
-              font-size: 9px !important;
+              font-size: 8px !important;
               color: #000 !important;
               page-break-inside: avoid;
+              background: white !important;
             }
             
             .print-footer-content {
               display: flex !important;
               justify-content: space-between !important;
-              align-items: flex-start !important;
+              align-items: center !important;
             }
             
             .print-conditions {
               flex: 1;
-              margin-right: 20px;
+              margin-right: 15px;
+              font-size: 7px !important;
             }
             
             .print-contact-footer {
               text-align: right;
               flex-shrink: 0;
+              font-size: 8px !important;
             }
             
             .print-validity {
@@ -1725,7 +1737,7 @@ const cleanupFilesForSubmission = async (files) => {
                   <img src="/logo.png" alt="Services TMT" className="print-logo" />
                   <div className="print-company-info">
                     <div className="print-company-name">Services TMT Inc.</div>
-                    <div>195, 42e Rue Nord</div>
+                    <div>3195, 42e Rue Nord</div>
                     <div>Saint-Georges, QC G5Z 0V9</div>
                     <div><strong>Tél:</strong> (418) 225-3875</div>
                     <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
@@ -1745,48 +1757,29 @@ const cleanupFilesForSubmission = async (files) => {
                 </div>
               </div>
 
-              {/* Section client et projet améliorée */}
+              {/* Section client compacte */}
               <div className="print-client-section">
                 <div className="print-client-info">
                   <div className="print-client-label">CLIENT:</div>
                   <div className="print-client-name">{submissionForm.client_name}</div>
-                  <div style={{ fontSize: '10px', color: '#666', marginTop: '5px' }}>
-                    {(() => {
-                      const clientData = clients.find(c => c.name === submissionForm.client_name);
-                      return clientData ? (
-                        <>
-                          {clientData.address && <div>{clientData.address}</div>}
-                          {clientData.phone && <div>Tél.: {clientData.phone}</div>}
-                          {clientData.email && <div>Email: {clientData.email}</div>}
-                        </>
-                      ) : null;
-                    })()}
-                  </div>
+                  {(() => {
+                    const clientData = clients.find(c => c.name === submissionForm.client_name);
+                    if (clientData && (clientData.address || clientData.phone)) {
+                      return (
+                        <div style={{ fontSize: '9px', color: '#666' }}>
+                          {clientData.address && clientData.phone 
+                            ? `${clientData.address} • Tél.: ${clientData.phone}`
+                            : clientData.address || `Tél.: ${clientData.phone}`
+                          }
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div className="print-project-info">
-                  <div className="print-client-label">DESCRIPTION DU PROJET:</div>
+                  <div className="print-client-label">DESCRIPTION:</div>
                   <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
-                  <div style={{ marginTop: '8px', fontSize: '9px' }}>
-                    <div><strong>Statut:</strong> {submissionForm.status === 'draft' ? 'Brouillon' : submissionForm.status === 'sent' ? 'Envoyée' : 'Acceptée'}</div>
-                    <div><strong>Validité:</strong> 30 jours</div>
-                    <div><strong>Items:</strong> {selectedItems.length}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Références et informations */}
-              <div className="print-reference-section">
-                <div className="print-ref-item">
-                  <div className="print-ref-label">Référence:</div>
-                  <div>{submissionForm.submission_number}</div>
-                </div>
-                <div className="print-ref-item">
-                  <div className="print-ref-label">Nombre d'items:</div>
-                  <div>{selectedItems.length}</div>
-                </div>
-                <div className="print-ref-item">
-                  <div className="print-ref-label">Quantité totale:</div>
-                  <div>{selectedItems.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(1)}</div>
                 </div>
               </div>
 
@@ -1913,35 +1906,29 @@ const cleanupFilesForSubmission = async (files) => {
                 </div>
               </div>
 
-              {/* Section client */}
+              {/* Section client compacte - REMPLACE la section actuelle */}
               <div className="print-client-section">
                 <div className="print-client-info">
                   <div className="print-client-label">CLIENT:</div>
                   <div className="print-client-name">{submissionForm.client_name}</div>
-                  <div style={{ fontSize: '10px', color: '#666', marginTop: '5px' }}>
-                    {(() => {
-                      const clientData = clients.find(c => c.name === submissionForm.client_name);
-                      return clientData ? (
-                        <>
-                          {clientData.address && <div>{clientData.address}</div>}
-                          {clientData.phone && <div>Tél.: {clientData.phone}</div>}
-                          {clientData.email && <div>Email: {clientData.email}</div>}
-                        </>
-                      ) : null;
-                    })()}
-                  </div>
-                  <div style={{ marginTop: '8px' }}>
-                    <div className="print-client-label">DESCRIPTION:</div>
-                    <div>{submissionForm.description}</div>
-                  </div>
+                  {(() => {
+                    const clientData = clients.find(c => c.name === submissionForm.client_name);
+                    if (clientData && (clientData.address || clientData.phone)) {
+                      return (
+                        <div style={{ fontSize: '9px', color: '#666' }}>
+                          {clientData.address && clientData.phone 
+                            ? `${clientData.address} • Tél.: ${clientData.phone}`
+                            : clientData.address || `Tél.: ${clientData.phone}`
+                          }
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div className="print-project-info">
-                  <div className="print-client-label">INFORMATIONS:</div>
-                  <div style={{ fontSize: '10px' }}>
-                    <div><strong>Validité:</strong> 30 jours</div>
-                    <div><strong>Items:</strong> {selectedItems.length}</div>
-                    <div><strong>Quantité totale:</strong> {selectedItems.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(1)}</div>
-                  </div>
+                  <div className="print-client-label">DESCRIPTION:</div>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
                 </div>
               </div>
 
