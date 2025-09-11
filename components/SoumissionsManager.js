@@ -1671,14 +1671,10 @@ const cleanupFilesForSubmission = async (files) => {
             
             /* Footer professionnel */
               .print-footer {
-              position: fixed !important;
-              bottom: 0.3in !important;
-              left: 0.6in !important;
-              right: 0.6in !important;
-              margin-top: 0 !important;
-              padding-top: 8px !important;
-              border-top: 1px solid #000 !important;
-              font-size: 8px !important;
+              margin-top: 30px !important;
+              padding-top: 15px !important;
+              border-top: 2px solid #000 !important;
+              font-size: 10px !important;
               color: #000 !important;
               page-break-inside: avoid;
               background: white !important;
@@ -1833,54 +1829,99 @@ const cleanupFilesForSubmission = async (files) => {
                 </tbody>
               </table>
 
-              {/* Footer avec totaux */}
-                <div className="print-footer">
-                  <div className="print-footer-content">
-                    <div className="print-conditions">
-                      <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                      <div>• Prix valides pour 30 jours</div>
-                      <div>• Paiement: Net 30 jours</div>
-                      <div>• Installation selon disponibilité</div>
-                      <div>• Taxes en sus si applicable</div>
-                    </div>
-                    <div className="print-totals-footer">
-                      {(() => {
-                        const sousTotal = submissionForm.amount;
-                        const tps = sousTotal * 0.05; // 5% TPS
-                        const tvq = sousTotal * 0.09975; // 9.975% TVQ
-                        const total = sousTotal + tps + tvq;
-                        
-                        return (
-                          <div style={{ fontSize: '12px', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                              <span>Sous-total:</span>
-                              <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{formatCurrency(sousTotal)}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                              <span>TPS (5%):</span>
-                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(tps)}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                              <span>TVQ (9.975%):</span>
-                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(tvq)}</span>
-                            </div>
-                            <div style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              borderTop: '2px solid #000', 
-                              paddingTop: '5px', 
-                              fontWeight: 'bold',
-                              fontSize: '14px'
-                            }}>
-                              <span>TOTAL:</span>
-                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(total)}</span>
-                            </div>
+              {/* Totaux avec taxes - Version qui fonctionne */}
+              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  
+                  {/* Conditions à gauche */}
+                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
+                    <div>• Prix valides pour 30 jours</div>
+                    <div>• Paiement: Net 30 jours</div>
+                    <div>• Installation selon disponibilité</div>
+                    <div>• Prix sujets à changement sans préavis</div>
+                  </div>
+                  
+                  {/* Totaux avec taxes à droite */}
+                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
+                    {(() => {
+                      const sousTotal = submissionForm.amount;
+                      const tps = sousTotal * 0.05;
+                      const tvq = sousTotal * 0.09975;
+                      const total = sousTotal + tps + tvq;
+                      
+                      return (
+                        <div>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>Sous-total:</span>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                              {formatCurrency(sousTotal)}
+                            </span>
                           </div>
-                        );
-                      })()}
-                    </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>TPS (5%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(tps)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '10px',
+                            paddingBottom: '5px'
+                          }}>
+                            <span>TVQ (9.975%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(tvq)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            borderTop: '2px solid #000', 
+                            paddingTop: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '16px'
+                          }}>
+                            <span>TOTAL:</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(total)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
+                
+                {/* Contact en bas */}
+                <div style={{ 
+                  marginTop: '20px', 
+                  paddingTop: '10px', 
+                  borderTop: '1px solid #000',
+                  textAlign: 'center',
+                  fontSize: '9px'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                    Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
+                  </div>
+                  <div>Services TMT Inc. • 195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
+                  <div>info.servicestmt@gmail.com</div>
+                </div>
+              </div>
 
               {/* Validité et conditions */}
               <div className="print-validity">
@@ -1998,16 +2039,6 @@ const cleanupFilesForSubmission = async (files) => {
                   ))}
                 </tbody>
               </table>
-
-              {/* Total client */}
-              <div className="print-totals-section">
-                <div className="print-totals">
-                  <div className="total-line final-total">
-                    <span>TOTAL:</span>
-                    <span style={{ fontFamily: 'monospace' }}>{formatCurrency(submissionForm.amount)}</span>
-                  </div>
-                </div>
-              </div>
 
               {/* Validité */}
               <div className="print-validity">
