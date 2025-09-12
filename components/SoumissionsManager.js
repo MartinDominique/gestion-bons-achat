@@ -1963,7 +1963,7 @@ const cleanupFilesForSubmission = async (files) => {
               <div className="print-footer">
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                    Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
+                    Pour toute question, n'hésitez pas à nous contacter au (418) 444-3875
                   </div>
                 </div>
               </div>
