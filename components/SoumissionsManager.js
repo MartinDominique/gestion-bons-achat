@@ -264,135 +264,46 @@ export default function SoumissionsManager() {
 
     console.log('Génération du PDF professionnel...');
     
+    const printStyles = document.createElement('style');
     printStyles.textContent = `
-  .temp-print-view * { visibility: visible !important; }
-  .temp-print-view {
-    position: fixed !important;
-    left: -9999px !important;
-    top: 0 !important;
-    width: 1024px !important;
-    background: #fff !important;
-    padding: 48px !important;
-    font-size: 14px !important;
-    line-height: 1.5 !important;
-    font-family: Arial, sans-serif !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Header */
-  .temp-print-view .print-header{
-    display:flex !important;
-    justify-content:space-between !important;
-    align-items:flex-start !important;
-    margin-bottom:25px !important;
-    padding-bottom:12px !important;
-    border-bottom:3px solid #000 !important;
-  }
-  .temp-print-view .print-company-section{
-    display:flex !important;
-    align-items:flex-start !important;
-    gap:20px !important;
-    flex:1 1 auto !important;
-  }
-  .temp-print-view .print-logo{
-    width:140px !important;
-    height:auto !important;
-    margin-right:20px !important;
-    flex-shrink:0 !important;
-  }
-  .temp-print-view .print-company-info{
-    flex:1 1 auto !important;
-    font-size:11px !important;
-    line-height:1.4 !important;
-  }
-  .temp-print-view .print-company-name{
-    font-size:16px !important;
-    font-weight:bold !important;
-    margin-bottom:5px !important;
-  }
-  .temp-print-view .print-submission-header{
-    text-align:right !important;
-    min-width:200px !important;
-  }
-  .temp-print-view .print-submission-title{
-    font-size:28px !important;
-    font-weight:bold !important;
-    margin:0 0 8px 0 !important;
-    letter-spacing:2px !important;
-  }
-  .temp-print-view .print-submission-details{
-    font-size:12px !important;
-    line-height:1.5 !important;
-  }
-
-  /* Section client */
-  .temp-print-view .print-client-section{
-    display:flex !important;
-    justify-content:space-between !important;
-    margin:20px 0 25px 0 !important;
-  }
-  .temp-print-view .print-client-info{ flex:1 1 0 !important; margin-right:20px !important; }
-  .temp-print-view .print-project-info{ flex:1 1 0 !important; }
-
-  /* Tableau */
-  .temp-print-view .print-table{
-    width:100% !important;
-    border-collapse:collapse !important;
-    margin:20px 0 !important;
-    table-layout:fixed !important;
-    font-size:10px !important;
-  }
-  .temp-print-view .print-table th,
-  .temp-print-view .print-table td{
-    border:2px solid #000 !important;
-    padding:8px 6px !important;
-    font-size:10px !important;
-  }
-  .temp-print-view .print-table th{
-    background:#e9ecef !important;
-    font-weight:bold !important;
-    text-align:center !important;
-  }
-  .temp-print-view .print-table.client th:nth-child(1),
-  .temp-print-view .print-table.client td:nth-child(1){ width:15% !important; }
-  .temp-print-view .print-table.client th:nth-child(2),
-  .temp-print-view .print-table.client td:nth-child(2){ width:45% !important; }
-  .temp-print-view .print-table.client th:nth-child(3),
-  .temp-print-view .print-table.client td:nth-child(3){ width:10% !important; text-align:center !important; }
-  .temp-print-view .print-table.client th:nth-child(4),
-  .temp-print-view .print-table.client td:nth-child(4){ width:10% !important; text-align:center !important; }
-  .temp-print-view .print-table.client th:nth-child(5),
-  .temp-print-view .print-table.client td:nth-child(5){ width:10% !important; text-align:right !important; }
-  .temp-print-view .print-table.client th:nth-child(6),
-  .temp-print-view .print-table.client td:nth-child(6){ width:10% !important; text-align:right !important; }
-
-  /* Commentaires */
-  .temp-print-view .print-comment{
-    font-style:italic !important;
-    color:#666 !important;
-    font-size:9px !important;
-    margin-top:3px !important;
-    padding:2px 4px !important;
-    background:#fff3cd !important;
-    border-left:3px solid #ffc107 !important;
-  }
-
-  /* Totaux */
-  .temp-print-view .print-totals-section{
-    margin-top:25px !important;
-    border-top:2px solid #000 !important;
-    padding-top:15px !important;
-  }
-  .temp-print-view .print-totals{ text-align:right !important; font-size:12px !important; }
-  .temp-print-view .print-totals .total-line{
-    display:flex !important; justify-content:space-between !important;
-  }
-  .temp-print-view .print-totals .final-total{
-    font-size:16px !important; font-weight:bold !important; border-top:2px solid #000 !important;
-    padding:8px 0 !important; margin-top:10px !important;
-  }
-`;
-
+      .temp-print-view * { visibility: visible !important; }
+      .temp-print-view {
+        position: fixed !important;
+        left: -9999px !important; 
+        top: 0 !important;
+        width: 1024px !important;
+        background: #fff !important;
+        padding: 48px !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        font-family: Arial, sans-serif !important;
+        box-sizing: border-box !important;
+      }
+      .temp-print-view table { 
+        width: 100% !important; 
+        border-collapse: collapse !important; 
+        margin: 20px 0 !important;
+      }
+      .temp-print-view th, .temp-print-view td {
+        border: 1px solid #000 !important; 
+        padding: 12px !important; 
+        text-align: left !important;
+        font-size: 12px !important;
+      }
+      .temp-print-view th { 
+        background-color: #f0f0f0 !important; 
+        font-weight: bold !important;
+      }
+      .temp-print-view .text-right {
+        text-align: right !important;
+      }
+      .temp-print-view .text-center {
+        text-align: center !important;
+      }
+      .temp-print-view h1, .temp-print-view h2, .temp-print-view h3 {
+        margin: 10px 0 !important;
+      }
+    `;
     document.head.appendChild(printStyles);
 
     const clonedContainer = printContainer.cloneNode(true);
@@ -496,7 +407,7 @@ export default function SoumissionsManager() {
         .submission-header h1 { font-size: 28px; margin: 0 0 8px 0; font-weight: bold; letter-spacing: 2px; }
         .client-section { display: flex; justify-content: space-between; margin: 20px 0; }
         .client-info, .project-info { flex: 1; }
-        .client-info { margin-right: 20px; }
+        .client-info { margin-right: 20px;<table style="width: 100%; margin-bottom: 25px; border-bottom: 3px solid #000;"> }
         .client-label { font-weight: bold; font-size: 12px; margin-bottom: 5px; }
         .client-name { font-size: 14px; font-weight: bold; margin-bottom: 8px; }
         table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 10px; }
