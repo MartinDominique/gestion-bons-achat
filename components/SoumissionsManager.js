@@ -1790,7 +1790,7 @@ const cleanupFilesForSubmission = async (files) => {
                   <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
                     Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
                   </div>
-                  <div>Services TMT Inc. • 195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
+                  <div>Services TMT Inc. • 123, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
                   <div>info.servicestmt@gmail.com</div>
                 </div>
               </div>
