@@ -1787,11 +1787,6 @@ const cleanupFilesForSubmission = async (files) => {
                   textAlign: 'center',
                   fontSize: '9px'
                 }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                    Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
-                  </div>
-                  <div>Services TMT Inc. • 123, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
-                  <div>info.servicestmt@gmail.com</div>
                 </div>
               </div>
             </div>
@@ -1969,11 +1964,6 @@ const cleanupFilesForSubmission = async (files) => {
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
                     Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
-                  </div>
-                  <div>Services TMT Inc. • 195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
-                  <div>info.servicestmt@gmail.com</div>
-                  <div style={{ marginTop: '10px', fontSize: '8px' }}>
-                    Prix sujets à changement sans préavis • Taxes en sus si applicable
                   </div>
                 </div>
               </div>
