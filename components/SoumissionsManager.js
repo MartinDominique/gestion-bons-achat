@@ -722,81 +722,64 @@ const handlePrintClient = () => {
 
    const imprimerEtProposerEmail = async () => {
   if (!submissionForm.client_name) {
-    alert('Veuillez sélectionner un client avant d\'imprimer');
+    alert('⚠️ Veuillez sélectionner un client avant d\'imprimer');
     return;
   }
 
   if (selectedItems.length === 0) {
-    alert('Veuillez ajouter au moins un produit avant d\'imprimer');
+    alert('⚠️ Veuillez ajouter au moins un produit avant d\'imprimer');
     return;
   }
 
   const client = clients.find(c => c.name === submissionForm.client_name);
   if (!client || !client.email) {
-    alert('Aucun email trouvé pour ce client. Vérifiez les informations du client.');
+    alert('⚠️ Aucun email trouvé pour ce client.');
     return;
   }
 
   try {
-    // 1. Déclencher l'impression client (comme Ctrl+P)
+    // BUG 3: Changer le titre pour le nom du fichier PDF
+    const originalTitle = document.title;
+    document.title = `Soumission_${submissionForm.submission_number}`;
+    
     document.body.classList.add('print-client');
     window.print();
     
-    // 2. Nettoyer après impression
     setTimeout(() => {
       document.body.classList.remove('print-client');
+      document.title = originalTitle;  // Restaurer le titre
     }, 1000);
 
-    // 3. Attendre 3 secondes puis proposer l'email
     setTimeout(() => {
       const confirmation = confirm(
-        `PDF sauvegardé avec succès !\n\n` +
-        `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n` +
-        `${client.email} ?\n\n` +
-        `(Vous devrez glisser-déposer le PDF dans l'email)`
+        `✅ PDF sauvegardé : Soumission_${submissionForm.submission_number}.pdf\n\n` +
+        `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${client.email} ?`
       );
 
       if (confirmation) {
-        // Préparer l'email
-        const sousTotal = submissionForm.amount;
-        const tps = sousTotal * 0.05;
-        const tvq = sousTotal * 0.09975;
-        const total = sousTotal + tps + tvq;
-        
+        // BUG 2: Méthode qui ne déconnecte pas
         const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
-        const corpsEmail = `Bonjour,
-
-Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
-
-RÉSUMÉ:
-• Sous-total: ${formatCurrency(sousTotal)}
-• TPS (5%): ${formatCurrency(tps)}
-• TVQ (9.975%): ${formatCurrency(tvq)}
-• TOTAL: ${formatCurrency(total)}
-
-Détails:
-• Nombre d'articles: ${selectedItems.length}
-• Validité: 30 jours
-• Paiement: Net 30 jours
-
-N'hésitez pas à nous contacter pour toute question.
-
-Cordialement,
-Services TMT Inc.
-(418) 225-3875
-info.servicestmt@gmail.com`;
-
-        // Ouvrir eM Client
-        const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
-        window.location.href = mailtoLink;
+        const corps = `Bonjour,\n\nVeuillez trouver ci-joint notre soumission.\n\nCordialement,\nServices TMT Inc.`;
+        const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+        
+        // Iframe invisible pour éviter la navigation
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = mailtoLink;
+        document.body.appendChild(iframe);
+        
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 3000);
       }
     }, 3000);
 
   } catch (error) {
-    console.error('Erreur:', error);
-    alert(`Erreur: ${error.message}`);
+    alert(`❌ Erreur: ${error.message}`);
   }
-}; 
+};
   
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-CA');
@@ -1713,14 +1696,7 @@ const cleanupFilesForSubmission = async (files) => {
                   >
                     🖨️ Imprimer
                   </button>
-                  <button
-                    onClick={handlePrintClient}
-                    className="w-full sm:w-auto px-4 py-2 bg-green-500/20 rounded-lg hover:bg-green-500/30 text-sm font-medium"
-                  >
-                    <Printer className="w-4 h-4 inline mr-1" />
-                    Impression Client
-                  </button>
-                  
+                                    
                   <button
                     onClick={imprimerEtProposerEmail}
                     disabled={selectedItems.length === 0 || !submissionForm.client_name}
@@ -1737,7 +1713,7 @@ const cleanupFilesForSubmission = async (files) => {
                         : 'Imprimer en PDF et proposer email'    // ← NOUVEAU TEXTE
                     }
                   >
-                    📧 Email Client
+                    📧 🖨️ Client
                   </button>
                   
                   <button
