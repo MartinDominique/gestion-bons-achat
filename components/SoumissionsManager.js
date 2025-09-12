@@ -386,7 +386,7 @@ export default function SoumissionsManager() {
   }
 };
 
-            // FORMAT EMAIL-----Fonction pour générer le HTML de la soumission AMÉLIORÉE - IDENTIQUE à l'impression
+            // FORMAT EMAIL----
     const generateClientSubmissionHTML = () => {
   const clientData = clients.find(c => c.name === submissionForm.client_name);
   
