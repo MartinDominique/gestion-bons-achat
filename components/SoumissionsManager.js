@@ -407,7 +407,7 @@ export default function SoumissionsManager() {
         .submission-header h1 { font-size: 28px; margin: 0 0 8px 0; font-weight: bold; letter-spacing: 2px; }
         .client-section { display: flex; justify-content: space-between; margin: 20px 0; }
         .client-info, .project-info { flex: 1; }
-        .client-info { margin-right: 20px;<table style="width: 100%; margin-bottom: 25px; border-bottom: 3px solid #000;"> }
+        .client-info { margin-right: 20px; }
         .client-label { font-weight: bold; font-size: 12px; margin-bottom: 5px; }
         .client-name { font-size: 14px; font-weight: bold; margin-bottom: 8px; }
         table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 10px; }
