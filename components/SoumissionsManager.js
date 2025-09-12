@@ -386,344 +386,151 @@ export default function SoumissionsManager() {
   }
 };
 
-            // Fonction pour générer le HTML de la soumission AMÉLIORÉE - IDENTIQUE à l'impression
-const generateClientSubmissionHTML = () => {
+            // FORMAT EMAIL-----Fonction pour générer le HTML de la soumission AMÉLIORÉE - IDENTIQUE à l'impression
+    const generateClientSubmissionHTML = () => {
   const clientData = clients.find(c => c.name === submissionForm.client_name);
-  const expirationDate = new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('fr-CA');
   
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Soumission ${submissionForm.submission_number} - Services TMT</title>
+      <title>Soumission ${submissionForm.submission_number}</title>
       <style>
-        body { 
-          font-family: 'Arial', sans-serif; 
-          margin: 0; 
-          padding: 15px; 
-          background-color: #ffffff; 
-          color: #000;
-          font-size: 11px;
-          line-height: 1.4;
-        }
-        .container { 
-          max-width: 800px; 
-          margin: 0 auto; 
-          background: white; 
-          padding: 0;
-        }
-        
-        /* En-tête professionnel identique */
-        .header { 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: flex-start; 
-          margin-bottom: 25px; 
-          padding-bottom: 12px; 
-          border-bottom: 3px solid #000; 
-        }
-        .company-section {
-          display: flex;
-          align-items: flex-start;
-          flex: 1;
-        }
-        .company-logo {
-          width: 140px;
-          height: auto;
-          margin-right: 20px;
-          flex-shrink: 0;
-        }
-        .company-info { 
-          flex: 1;
-          font-size: 11px; 
-          line-height: 1.4; 
-        }
-        .company-name {
-          font-size: 16px;
-          font-weight: bold;
-          margin-bottom: 5px;
-        }
-        .tax-info {
-          margin-top: 5px;
-          font-size: 9px;
-        }
-        .submission-header { 
-          text-align: right; 
-          min-width: 200px;
-        }
-        .submission-header h1 { 
-          font-size: 28px; 
-          margin: 0 0 8px 0; 
-          font-weight: bold;
-          letter-spacing: 2px;
-        }
-        .submission-details {
-          font-size: 12px;
-          line-height: 1.5;
-        }
-        .submission-details p {
-          margin: 2px 0;
-        }
-        
-        /* Section client identique */
-        .client-section {
-          display: flex;
-          justify-content: space-between;
-          margin: 20px 0 25px 0;
-        }
-        .client-info { 
-          flex: 1;
-          margin-right: 20px;
-        }
-        .project-info {
-          flex: 1;
-        }
-        .client-label {
-          font-weight: bold;
-          font-size: 12px;
-          margin-bottom: 5px;
-        }
-        .client-name {
-          font-size: 14px;
-          font-weight: bold;
-          margin-bottom: 8px;
-        }
-        .client-details {
-          font-size: 9px;
-          color: #666;
-        }
-        
-        /* Tableau identique */
-        table { 
-          width: 100%; 
-          border-collapse: collapse; 
-          margin: 20px 0; 
-          font-size: 10px;
-        }
-        th, td { 
-          border: 2px solid #000; 
-          padding: 8px 6px; 
-          text-align: left; 
-          vertical-align: top;
-        }
-        th { 
-          background-color: #e9ecef; 
-          font-weight: bold; 
-          text-align: center;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        tbody tr:nth-child(even) {
-          background-color: #f8f9fa;
-        }
-        .comment { 
-          font-style: italic; 
-          color: #666; 
-          font-size: 9px; 
-          margin-top: 3px;
-          padding: 2px 4px;
-          background-color: #fff3cd;
-          border-left: 3px solid #ffc107;
-        }
-        
-        /* Totaux section identique */
-        .totals-section { 
-          margin-top: 30px;
-          border-top: 2px solid #000;
-          padding-top: 15px;
-        }
-        .totals-content {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-        }
-        .conditions {
-          flex: 1;
-          font-size: 9px;
-          margin-right: 20px;
-        }
-        .conditions-title {
-          font-weight: bold;
-          margin-bottom: 5px;
-        }
-        .totals {
-          min-width: 250px;
-          font-size: 12px;
-        }
-        .total-line {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 5px;
-          padding-bottom: 3px;
-        }
-        .final-total {
-          border-top: 2px solid #000;
-          padding-top: 8px;
-          font-weight: bold;
-          font-size: 16px;
-          margin-top: 10px;
-        }
-        
-        .validity {
-          background-color: #fff3cd;
-          border: 1px solid #ffc107;
-          padding: 8px;
-          margin: 15px 0;
-          text-align: center;
-          font-weight: bold;
-          font-size: 11px;
-        }
-        .footer {
-          margin-top: 20px;
-          padding-top: 10px;
-          border-top: 1px solid #000;
-          text-align: center;
-          font-size: 9px;
-        }
-        .footer-contact {
-          font-weight: bold;
-          margin-bottom: 5px;
-        }
-        .footer-small {
-          margin-top: 10px;
-          font-size: 8px;
-        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 15px; font-size: 11px; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 12px; border-bottom: 3px solid #000; }
+        .company-section { display: flex; flex: 1; }
+        .company-logo { width: 140px; margin-right: 20px; }
+        .company-info { font-size: 11px; }
+        .company-name { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        .submission-header { text-align: right; }
+        .submission-header h1 { font-size: 28px; margin: 0 0 8px 0; font-weight: bold; letter-spacing: 2px; }
+        .client-section { display: flex; justify-content: space-between; margin: 20px 0; }
+        .client-info, .project-info { flex: 1; }
+        .client-info { margin-right: 20px; }
+        .client-label { font-weight: bold; font-size: 12px; margin-bottom: 5px; }
+        .client-name { font-size: 14px; font-weight: bold; margin-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 10px; }
+        th, td { border: 2px solid #000; padding: 8px 6px; }
+        th { background-color: #e9ecef; font-weight: bold; text-align: center; text-transform: uppercase; }
+        .totals-section { margin-top: 30px; border-top: 2px solid #000; padding-top: 15px; }
+        .totals-content { display: flex; justify-content: space-between; }
+        .conditions { flex: 1; font-size: 9px; margin-right: 20px; }
+        .totals { min-width: 250px; font-size: 12px; }
+        .total-line { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .final-total { border-top: 2px solid #000; padding-top: 8px; font-weight: bold; font-size: 16px; margin-top: 10px; }
+        .validity { background-color: #fff3cd; border: 1px solid #ffc107; padding: 8px; margin: 15px 0; text-align: center; font-weight: bold; }
+        .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #000; text-align: center; font-size: 9px; }
       </style>
     </head>
     <body>
-      <div class="container">
-        <!-- En-tête identique avec logo -->
-        <div class="header">
-          <div class="company-section">
-            <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAAyAH0DASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9/KKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP/2Q==" alt="Services TMT" class="company-logo" />
-            <div class="company-info">
-              <div class="company-name">Services TMT Inc.</div>
-              <div>3195, 42e Rue Nord</div>
-              <div>Saint-Georges, QC G5Z 0V9</div>
-              <div><strong>Tél:</strong> (418) 225-3875</div>
-              <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
-              <div class="tax-info">
-                <div><strong>TPS:</strong> 771163672RT0001</div>
-                <div><strong>TVQ:</strong> 1226871523TQ0001</div>
-              </div>
-            </div>
-          </div>
-          <div class="submission-header">
-            <h1>SOUMISSION</h1>
-            <div class="submission-details">
-              <p><strong>N°:</strong> ${submissionForm.submission_number}</p>
-              <p><strong>Date:</strong> ${new Date().toLocaleDateString('fr-CA')}</p>
-            </div>
+      <div class="header">
+        <div class="company-section">
+          <img src="/logo.png" alt="Services TMT" class="company-logo" />
+          <div class="company-info">
+            <div class="company-name">Services TMT Inc.</div>
+            <div>3195, 42e Rue Nord</div>
+            <div>Saint-Georges, QC G5Z 0V9</div>
+            <div><strong>Tél:</strong> (418) 225-3875</div>
+            <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
           </div>
         </div>
-
-        <!-- Section client identique -->
-        <div class="client-section">
-          <div class="client-info">
-            <div class="client-label">CLIENT:</div>
-            <div class="client-name">${submissionForm.client_name}</div>
-            ${clientData && (clientData.address || clientData.phone) ? `
-              <div class="client-details">
-                ${clientData.address && clientData.phone 
-                  ? `${clientData.address} • Tél.: ${clientData.phone}`
-                  : clientData.address || `Tél.: ${clientData.phone}`
-                }
-              </div>
-            ` : ''}
-          </div>
-          <div class="project-info">
-            <div class="client-label">DESCRIPTION:</div>
-            <div style="font-size: 11px; font-weight: bold;">${submissionForm.description}</div>
+        <div class="submission-header">
+          <h1>SOUMISSION</h1>
+          <div>
+            <p><strong>N°:</strong> ${submissionForm.submission_number}</p>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString('fr-CA')}</p>
           </div>
         </div>
+      </div>
 
-        <!-- Tableau identique -->
-        <table>
-          <thead>
+      <div class="client-section">
+        <div class="client-info">
+          <div class="client-label">CLIENT:</div>
+          <div class="client-name">${submissionForm.client_name}</div>
+          ${clientData && (clientData.address || clientData.phone) ? `
+            <div style="font-size: 9px; color: #666;">
+              ${clientData.address && clientData.phone 
+                ? `${clientData.address} • Tél.: ${clientData.phone}`
+                : clientData.address || `Tél.: ${clientData.phone}`}
+            </div>
+          ` : ''}
+        </div>
+        <div class="project-info">
+          <div class="client-label">DESCRIPTION:</div>
+          <div style="font-size: 11px; font-weight: bold;">${submissionForm.description}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>CODE</th><th>DESCRIPTION</th><th>QTÉ</th><th>UNITÉ</th><th>PRIX UNIT.</th><th>TOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${selectedItems.map(item => `
             <tr>
-              <th style="width: 15%">Code</th>
-              <th style="width: 45%">Description</th>
-              <th style="width: 10%">Qté</th>
-              <th style="width: 10%">Unité</th>
-              <th style="width: 10%">Prix Unit.</th>
-              <th style="width: 10%">Total</th>
+              <td style="font-family: monospace; font-weight: bold;">${item.product_id}</td>
+              <td><div style="font-weight: bold;">${item.description}</div></td>
+              <td style="text-align: center; font-weight: bold;">${item.quantity}</td>
+              <td style="text-align: center;">${item.unit}</td>
+              <td style="text-align: right; font-family: monospace;">${formatCurrency(item.selling_price)}</td>
+              <td style="text-align: right; font-family: monospace; font-weight: bold;">${formatCurrency(item.selling_price * item.quantity)}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${selectedItems.map(item => `
-              <tr>
-                <td style="font-family: monospace; font-weight: bold;">${item.product_id}</td>
-                <td>
-                  <div style="font-weight: bold;">${item.description}</div>
-                  ${item.comment ? `<div class="comment">💬 ${item.comment}</div>` : ''}
-                </td>
-                <td class="text-center" style="font-weight: bold;">${item.quantity}</td>
-                <td class="text-center">${item.unit}</td>
-                <td class="text-right" style="font-family: monospace;">${formatCurrency(item.selling_price)}</td>
-                <td class="text-right" style="font-family: monospace; font-weight: bold;">${formatCurrency(item.selling_price * item.quantity)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+          `).join('')}
+        </tbody>
+      </table>
 
-        <!-- Totaux identiques -->
-        <div class="totals-section">
-          <div class="totals-content">
-            <div class="conditions">
-              <div class="conditions-title">CONDITIONS GÉNÉRALES:</div>
-              <div>• Prix valides pour 30 jours</div>
-              <div>• Paiement: Net 30 jours</div>
-              <div>• Installation selon disponibilité</div>
-              <div>• Prix sujets à changement sans préavis</div>
-            </div>
-            
-            <div class="totals">
-              ${(() => {
-                const sousTotal = submissionForm.amount;
-                const tps = sousTotal * 0.05;
-                const tvq = sousTotal * 0.09975;
-                const total = sousTotal + tps + tvq;
-                
-                return `
-                  <div class="total-line">
-                    <span>Sous-total:</span>
-                    <span style="font-family: monospace; font-weight: bold;">${formatCurrency(sousTotal)}</span>
-                  </div>
-                  <div class="total-line">
-                    <span>TPS (5%):</span>
-                    <span style="font-family: monospace;">${formatCurrency(tps)}</span>
-                  </div>
-                  <div class="total-line">
-                    <span>TVQ (9.975%):</span>
-                    <span style="font-family: monospace;">${formatCurrency(tvq)}</span>
-                  </div>
-                  <div class="total-line final-total">
-                    <span>TOTAL:</span>
-                    <span style="font-family: monospace;">${formatCurrency(total)}</span>
-                  </div>
-                `;
-              })()}
-            </div>
+      <div class="totals-section">
+        <div class="totals-content">
+          <div class="conditions">
+            <div style="font-weight: bold; margin-bottom: 5px;">CONDITIONS GÉNÉRALES:</div>
+            <div>• Prix valides pour 30 jours</div>
+            <div>• Paiement: Net 30 jours</div>
+            <div>• Installation selon disponibilité</div>
+            <div>• Prix sujets à changement sans préavis</div>
+          </div>
+          <div class="totals">
+            ${(() => {
+              const sousTotal = submissionForm.amount;
+              const tps = sousTotal * 0.05;
+              const tvq = sousTotal * 0.09975;
+              const total = sousTotal + tps + tvq;
+              return `
+                <div class="total-line">
+                  <span>Sous-total:</span>
+                  <span style="font-family: monospace; font-weight: bold;">${formatCurrency(sousTotal)}</span>
+                </div>
+                <div class="total-line">
+                  <span>TPS (5%):</span>
+                  <span style="font-family: monospace;">${formatCurrency(tps)}</span>
+                </div>
+                <div class="total-line">
+                  <span>TVQ (9.975%):</span>
+                  <span style="font-family: monospace;">${formatCurrency(tvq)}</span>
+                </div>
+                <div class="total-line final-total">
+                  <span>TOTAL:</span>
+                  <span style="font-family: monospace;">${formatCurrency(total)}</span>
+                </div>
+              `;
+            })()}
           </div>
         </div>
+      </div>
 
-        <!-- Validité identique -->
-        <div class="validity">
-          ⏰ Cette soumission est valide pour 30 jours • Merci de votre confiance!
+      <div class="validity">
+        Cette soumission est valide pour 30 jours • Merci de votre confiance!
+      </div>
+
+      <div class="footer">
+        <div style="font-weight: bold; margin-bottom: 5px;">
+          Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
         </div>
-
-        <!-- Footer corrigé -->
-        <div class="footer">
-          <div class="footer-contact">
-            Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
-          </div>
-          <div>info.servicestmt@gmail.com</div>
-          <div class="footer-small">
-            Prix sujets à changement sans préavis • Taxes en sus si applicable
-          </div>
+        <div>info.servicestmt@gmail.com</div>
+        <div style="margin-top: 10px; font-size: 8px;">
+          Prix sujets à changement sans préavis • Taxes en sus si applicable
         </div>
       </div>
     </body>
