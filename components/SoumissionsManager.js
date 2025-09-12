@@ -168,468 +168,8 @@ export default function SoumissionsManager() {
     setShowUsdCalculator(false);
     setUsdAmount('');
   };
-
-  // ===== NOUVELLES FONCTIONS .EML (REMPLACEMENT DE L'EMAIL DÉFAILLANT) =====
-
-  // Fonction pour générer spécifiquement le PDF CLIENT avec le BON FORMAT
-  const generateClientSubmissionPDF = async () => {
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const jsPDF = (await import('jspdf')).default;
-      
-      const printContainer = document.querySelector('.print-area-client');
-      if (!printContainer) {
-        throw new Error('Zone d\'impression client non trouvée');
-      }
-
-      console.log('Génération du PDF CLIENT (format impression, pas SendGrid)...');
-      
-      // STYLES COMPLETS POUR FORMAT IMPRESSION CLIENT
-      const printStyles = document.createElement('style');
-      printStyles.textContent = `
-        .temp-client-print-view * { visibility: visible !important; }
-        .temp-client-print-view {
-          position: fixed !important;
-          left: -9999px !important; 
-          top: 0 !important;
-          width: 1024px !important;
-          background: #fff !important;
-          padding: 48px !important;
-          font-size: 14px !important;
-          line-height: 1.5 !important;
-          font-family: Arial, sans-serif !important;
-          box-sizing: border-box !important;
-          color: #000 !important;
-        }
-
-        /* EN-TÊTE PROFESSIONNEL COMME IMPRESSION */
-        .temp-client-print-view .print-header {
-          display: flex !important;
-          justify-content: space-between !important;
-          align-items: flex-start !important;
-          margin-bottom: 25px !important;
-          padding-bottom: 12px !important;
-          border-bottom: 3px solid #000 !important;
-          page-break-inside: avoid !important;
-        }
-        
-        .temp-client-print-view .print-company-section {
-          display: flex !important;
-          align-items: flex-start !important;
-          flex: 1 !important;
-        }
-        
-        .temp-client-print-view .print-logo {
-          width: 140px !important;
-          height: auto !important;
-          margin-right: 20px !important;
-          flex-shrink: 0 !important;
-        }
-        
-        .temp-client-print-view .print-company-info {
-          flex: 1 !important;
-          font-size: 11px !important;
-          line-height: 1.4 !important;
-        }
-        
-        .temp-client-print-view .print-company-name {
-          font-size: 16px !important;
-          font-weight: bold !important;
-          color: #000 !important;
-          margin-bottom: 5px !important;
-        }
-        
-        .temp-client-print-view .print-submission-header {
-          text-align: right !important;
-          min-width: 200px !important;
-        }
-        
-        .temp-client-print-view .print-submission-title {
-          font-size: 28px !important;
-          font-weight: bold !important;
-          margin: 0 0 8px 0 !important;
-          color: #000 !important;
-          letter-spacing: 2px !important;
-        }
-        
-        .temp-client-print-view .print-submission-details {
-          font-size: 12px !important;
-          line-height: 1.5 !important;
-        }
-
-        /* SECTION CLIENT */
-        .temp-client-print-view .print-client-section {
-          display: flex !important;
-          justify-content: space-between !important;
-          margin: 20px 0 25px 0 !important;
-          page-break-inside: avoid !important;
-        }
-        
-        .temp-client-print-view .print-client-info {
-          flex: 1 !important;
-          margin-right: 20px !important;
-          padding: 0 !important;
-          border: none !important;
-          background: none !important;
-        }
-        
-        .temp-client-print-view .print-client-label {
-          font-weight: bold !important;
-          font-size: 12px !important;
-          color: #000 !important;
-          margin-bottom: 5px !important;
-        }
-        
-        .temp-client-print-view .print-client-name {
-          font-size: 14px !important;
-          font-weight: bold !important;
-          margin-bottom: 8px !important;
-        }
-        
-        .temp-client-print-view .print-project-info {
-          flex: 1 !important;
-          padding: 0 !important;
-          border: none !important;
-          background: none !important;
-        }
-
-        /* TABLEAU PROFESSIONNEL COMME IMPRESSION CLIENT */
-        .temp-client-print-view .print-table {
-          width: 100% !important;
-          border-collapse: collapse !important;
-          margin: 20px 0 !important;
-          table-layout: fixed !important;
-          display: table !important;
-          font-size: 10px !important;
-        }
-        
-        .temp-client-print-view .print-table thead {
-          display: table-header-group !important;
-        }
-        
-        .temp-client-print-view .print-table tbody {
-          display: table-row-group !important;
-        }
-        
-        .temp-client-print-view .print-table tr {
-          display: table-row !important;
-          page-break-inside: avoid !important;
-        }
-        
-        .temp-client-print-view .print-table th,
-        .temp-client-print-view .print-table td {
-          display: table-cell !important;
-          border: 2px solid #000 !important;
-          padding: 8px 6px !important;
-          text-align: left !important;
-          vertical-align: top !important;
-          word-wrap: break-word !important;
-          font-size: 10px !important;
-        }
-        
-        .temp-client-print-view .print-table th {
-          background-color: #e9ecef !important;
-          font-weight: bold !important;
-          text-align: center !important;
-          font-size: 10px !important;
-          text-transform: uppercase !important;
-          letter-spacing: 0.5px !important;
-        }
-
-        /* LARGEURS COLONNES VERSION CLIENT */
-        .temp-client-print-view .print-table.client th:nth-child(1),
-        .temp-client-print-view .print-table.client td:nth-child(1) { width: 15% !important; }
-        .temp-client-print-view .print-table.client th:nth-child(2),
-        .temp-client-print-view .print-table.client td:nth-child(2) { width: 45% !important; }
-        .temp-client-print-view .print-table.client th:nth-child(3),
-        .temp-client-print-view .print-table.client td:nth-child(3) { width: 10% !important; text-align: center !important; }
-        .temp-client-print-view .print-table.client th:nth-child(4),
-        .temp-client-print-view .print-table.client td:nth-child(4) { width: 10% !important; text-align: center !important; }
-        .temp-client-print-view .print-table.client th:nth-child(5),
-        .temp-client-print-view .print-table.client td:nth-child(5) { width: 10% !important; text-align: right !important; }
-        .temp-client-print-view .print-table.client th:nth-child(6),
-        .temp-client-print-view .print-table.client td:nth-child(6) { width: 10% !important; text-align: right !important; }
-
-        /* LIGNES ALTERNÉES */
-        .temp-client-print-view .print-table tbody tr:nth-child(even) {
-          background-color: #f8f9fa !important;
-        }
-
-        /* COMMENTAIRES */
-        .temp-client-print-view .print-comment {
-          font-style: italic !important;
-          color: #666 !important;
-          font-size: 9px !important;
-          margin-top: 3px !important;
-          padding: 2px 4px !important;
-          background-color: #fff3cd !important;
-          border-left: 3px solid #ffc107 !important;
-        }
-
-        /* SECTION TOTAUX COMME IMPRESSION */
-        .temp-client-print-view div[style*="marginTop: '30px'"] {
-          margin-top: 30px !important;
-          border-top: 2px solid #000 !important;
-          padding-top: 15px !important;
-        }
-
-        /* VALIDITÉ */
-        .temp-client-print-view .print-validity {
-          background-color: #fff3cd !important;
-          border: 1px solid #ffc107 !important;
-          padding: 8px !important;
-          margin: 15px 0 !important;
-          text-align: center !important;
-          font-weight: bold !important;
-          font-size: 11px !important;
-        }
-
-        /* FOOTER */
-        .temp-client-print-view .print-footer {
-          margin-top: 30px !important;
-          padding-top: 15px !important;
-          border-top: 2px solid #000 !important;
-          font-size: 10px !important;
-          color: #000 !important;
-          page-break-inside: avoid !important;
-          background: white !important;
-        }
-
-        /* ALIGNEMENTS SPÉCIFIQUES */
-        .temp-client-print-view *[style*="textAlign: 'right'"] {
-          text-align: right !important;
-        }
-        .temp-client-print-view *[style*="textAlign: 'center'"] {
-          text-align: center !important;
-        }
-        .temp-client-print-view *[style*="fontFamily: 'monospace'"] {
-          font-family: monospace !important;
-        }
-        .temp-client-print-view *[style*="fontWeight: 'bold'"] {
-          font-weight: bold !important;
-        }
-
-        /* ASSURER QUE TOUS LES ÉLÉMENTS SONT VISIBLES */
-        .temp-client-print-view h1, .temp-client-print-view h2, .temp-client-print-view h3,
-        .temp-client-print-view p, .temp-client-print-view div, .temp-client-print-view span {
-          margin: 10px 0 !important;
-          color: #000 !important;
-        }
-      `;
-      document.head.appendChild(printStyles);
-
-      const clonedContainer = printContainer.cloneNode(true);
-      clonedContainer.className = 'temp-client-print-view';
-      clonedContainer.style.visibility = 'visible';
-      clonedContainer.style.display = 'block';
-      document.body.appendChild(clonedContainer);
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const canvas = await html2canvas(clonedContainer, {
-        scale: 0.75,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: true,
-        width: 1024,
-        height: clonedContainer.scrollHeight,
-        windowWidth: 1024,
-        windowHeight: clonedContainer.scrollHeight + 100,
-        allowTaint: false,
-        imageTimeout: 15000,
-        removeContainer: true,
-        onclone: function(clonedDoc) {
-          const allElements = clonedDoc.querySelectorAll('*');
-          allElements.forEach(el => {
-            el.style.visibility = 'visible';
-            el.style.opacity = '1';
-            el.style.color = '#000000';
-          });
-        }
-      });
-
-      document.body.removeChild(clonedContainer);
-      document.head.removeChild(printStyles);
-
-      const pdf = new jsPDF({ 
-        unit: 'pt', 
-        format: 'letter',
-        compress: true
-      });
-      
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 40;
-      const usableWidth = pageWidth - (margin * 2);
-      const usableHeight = pageHeight - (margin * 2);
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const imgWidth = usableWidth;
-      const imgHeight = canvas.height * (imgWidth / canvas.width);
-
-      if (imgHeight <= usableHeight) {
-        pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
-      } else {
-        let heightLeft = imgHeight;
-        let positionY = 0;
-
-        while (heightLeft > 0) {
-          if (positionY > 0) pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', margin, margin + positionY, imgWidth, imgHeight);
-          heightLeft -= usableHeight;
-          positionY -= usableHeight;
-        }
-      }
-
-      return pdf.output('arraybuffer');
-      
-    } catch (error) {
-      console.error('Erreur génération PDF client:', error);
-      throw error;
-    }
-  };
-
-  // Fonction pour encoder en Base64
-  const arrayBufferToBase64 = (buffer) => {
-    const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    let binary = '';
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  };
-
-  // Fonction pour générer le contenu .EML
-  const generateEMLContent = (options) => {
-    const {
-      destinataire,
-      sujet,
-      message,
-      nomFichier,
-      pdfBase64,
-      nomComplet = "Services TMT Inc."
-    } = options;
-
-    const boundary = `boundary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const date = new Date().toUTCString();
-
-    return `From: ${nomComplet} <info.servicestmt@gmail.com>
-To: ${destinataire}
-Subject: ${sujet}
-Date: ${date}
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="${boundary}"
-
---${boundary}
-Content-Type: text/html; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-
-${message}
-
---${boundary}
-Content-Type: application/pdf
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="${nomFichier}"
-
-${pdfBase64}
-
---${boundary}--`;
-  };
   
-        const ouvrirEmailSansNaviguer = (mailtoLink) => {
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = mailtoLink;
-          document.body.appendChild(iframe);
-          
-          setTimeout(() => {
-            if (document.body.contains(iframe)) {
-              document.body.removeChild(iframe);
-            }
-          }, 3000);
-        };
-        
-        // Ensuite, voici la fonction corrigée :
-        const envoyerSoumissionAvecPDFEtEmail = async () => {
-          if (!submissionForm.client_name) {
-            alert('⚠️ Veuillez sélectionner un client avant d\'envoyer');
-            return;
-          }
-        
-          if (selectedItems.length === 0) {
-            alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer');
-            return;
-          }
-        
-          const client = clients.find(c => c.name === submissionForm.client_name);
-          if (!client || !client.email) {
-            alert('⚠️ Aucun email trouvé pour ce client. Veuillez vérifier les informations du client.');
-            return;
-          }
-        
-          try {
-            console.log('📄 Génération et téléchargement du PDF...');
-            
-            // 1. Générer le PDF
-            const pdfArrayBuffer = await generateClientSubmissionPDF();
-            const blob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
-            
-            // 2. Télécharger automatiquement le PDF
-            const nomFichier = `Soumission_${submissionForm.submission_number}.pdf`;
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = nomFichier;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        
-            // 3. Préparer le contenu de l'email
-            const sousTotal = submissionForm.amount;
-            const tps = sousTotal * 0.05;
-            const tvq = sousTotal * 0.09975;
-            const total = sousTotal + tps + tvq;
-            
-            const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
-            const corpsEmail = `Bonjour,
-        
-        Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
-        
-        RÉSUMÉ:
-        • Sous-total: ${formatCurrency(sousTotal)}
-        • TPS (5%): ${formatCurrency(tps)}
-        • TVQ (9.975%): ${formatCurrency(tvq)}
-        • TOTAL: ${formatCurrency(total)}
-        
-        Détails:
-        • Nombre d'articles: ${selectedItems.length}
-        • Validité: 30 jours
-        • Paiement: Net 30 jours
-        
-        N'hésitez pas à nous contacter pour toute question.
-        
-        Cordialement,
-        Services TMT Inc.
-        (418) 225-3875
-        info.servicestmt@gmail.com`;
-        
-            // 4. Créer le lien mailto et ouvrir eM Client
-            const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
-            
-            // Attendre 5 secondes puis ouvrir l'email
-            setTimeout(() => {
-              ouvrirEmailSansNaviguer(mailtoLink);
-            }, 5000);
-        
-          } catch (error) {
-            console.error('❌ Erreur:', error);
-            alert(`❌ Erreur: ${error.message}`);
-          }
-        };  
-
-  // Fonction pour générer le numéro automatique
+      // Fonction pour générer le numéro automatique
   const generateSubmissionNumber = async () => {
     const now = new Date();
     const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -1180,6 +720,84 @@ const handlePrintClient = () => {
     }).format(amount || 0);
   };
 
+   const imprimerEtProposerEmail = async () => {
+  if (!submissionForm.client_name) {
+    alert('Veuillez sélectionner un client avant d\'imprimer');
+    return;
+  }
+
+  if (selectedItems.length === 0) {
+    alert('Veuillez ajouter au moins un produit avant d\'imprimer');
+    return;
+  }
+
+  const client = clients.find(c => c.name === submissionForm.client_name);
+  if (!client || !client.email) {
+    alert('Aucun email trouvé pour ce client. Vérifiez les informations du client.');
+    return;
+  }
+
+  try {
+    // 1. Déclencher l'impression client (comme Ctrl+P)
+    document.body.classList.add('print-client');
+    window.print();
+    
+    // 2. Nettoyer après impression
+    setTimeout(() => {
+      document.body.classList.remove('print-client');
+    }, 1000);
+
+    // 3. Attendre 3 secondes puis proposer l'email
+    setTimeout(() => {
+      const confirmation = confirm(
+        `PDF sauvegardé avec succès !\n\n` +
+        `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n` +
+        `${client.email} ?\n\n` +
+        `(Vous devrez glisser-déposer le PDF dans l'email)`
+      );
+
+      if (confirmation) {
+        // Préparer l'email
+        const sousTotal = submissionForm.amount;
+        const tps = sousTotal * 0.05;
+        const tvq = sousTotal * 0.09975;
+        const total = sousTotal + tps + tvq;
+        
+        const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
+        const corpsEmail = `Bonjour,
+
+Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
+
+RÉSUMÉ:
+• Sous-total: ${formatCurrency(sousTotal)}
+• TPS (5%): ${formatCurrency(tps)}
+• TVQ (9.975%): ${formatCurrency(tvq)}
+• TOTAL: ${formatCurrency(total)}
+
+Détails:
+• Nombre d'articles: ${selectedItems.length}
+• Validité: 30 jours
+• Paiement: Net 30 jours
+
+N'hésitez pas à nous contacter pour toute question.
+
+Cordialement,
+Services TMT Inc.
+(418) 225-3875
+info.servicestmt@gmail.com`;
+
+        // Ouvrir eM Client
+        const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+        window.location.href = mailtoLink;
+      }
+    }, 3000);
+
+  } catch (error) {
+    console.error('Erreur:', error);
+    alert(`Erreur: ${error.message}`);
+  }
+}; 
+  
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-CA');
   };
@@ -2103,9 +1721,8 @@ const cleanupFilesForSubmission = async (files) => {
                     Impression Client
                   </button>
                   
-                  {/* NOUVEAU: Bouton .EML qui remplace l'email défaillant */}
                   <button
-                    onClick={envoyerSoumissionAvecPDFEtEmail}
+                    onClick={imprimerEtProposerEmail}
                     disabled={selectedItems.length === 0 || !submissionForm.client_name}
                     className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center ${
                       selectedItems.length === 0 || !submissionForm.client_name
@@ -2117,7 +1734,7 @@ const cleanupFilesForSubmission = async (files) => {
                         ? 'Sélectionnez un client d\'abord'
                         : selectedItems.length === 0 
                         ? 'Ajoutez des produits d\'abord'
-                        : 'Télécharger PDF et ouvrir eM Client' 
+                        : 'Imprimer en PDF et proposer email'    // ← NOUVEAU TEXTE
                     }
                   >
                     📧 Email Client
