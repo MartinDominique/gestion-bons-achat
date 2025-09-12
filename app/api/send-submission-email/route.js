@@ -2,7 +2,7 @@ import sgMail from '@sendgrid/mail';
 
 export async function POST(request) {
   try {
-    const { to, clientName, submissionNumber, submissionData, pdfBase64 } = await request.json();
+    const { to, clientName, submissionNumber, submissionData, pdfBase64, fileName } = await request.json();
 
     if (!process.env.SENDGRID_API_KEY) {
       console.error('SENDGRID_API_KEY manquante');
@@ -27,7 +27,7 @@ export async function POST(request) {
             <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #6b46c1;">
               <h1 style="color: #6b46c1; margin: 0; font-size: 24px;">Services TMT Inc.</h1>
               <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">
-                195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9<br>
+                3195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9<br>
                 Tél: (418) 225-3875 | servicestmt@gmail.com
               </p>
             </div>
@@ -100,7 +100,7 @@ export async function POST(request) {
       attachments: [
         {
           content: pdfBase64,
-          filename: `Soumission_${submissionNumber}_${clientName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+          filename: `SOU-${submissionNumber}.pdf`,
           type: 'application/pdf',
           disposition: 'attachment'
         }
