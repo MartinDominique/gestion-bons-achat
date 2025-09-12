@@ -302,7 +302,7 @@ export async function POST(request) {
 
     // Envoyer l'email
     const { data, error: resendError } = await resend.emails.send({
-      from: 'Système de gestion <delivered@resend.dev>',
+      from: 'Système de gestion <onboarding@resend.dev>',
       to: ['servicestmt@gmail.com', 'info.servicestmt@gmail.com'],
       subject: `📋 Rapport quotidien des achats - ${purchases ? purchases.length : 0} achat(s) en cours`,
       html: emailHtml,
