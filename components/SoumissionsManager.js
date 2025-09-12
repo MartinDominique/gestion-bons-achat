@@ -171,7 +171,7 @@ export default function SoumissionsManager() {
 
   // ===== NOUVELLES FONCTIONS .EML (REMPLACEMENT DE L'EMAIL DÉFAILLANT) =====
 
-  // Fonction pour générer spécifiquement le PDF CLIENT
+  // Fonction pour générer spécifiquement le PDF CLIENT avec le BON FORMAT
   const generateClientSubmissionPDF = async () => {
     try {
       const html2canvas = (await import('html2canvas')).default;
@@ -182,8 +182,9 @@ export default function SoumissionsManager() {
         throw new Error('Zone d\'impression client non trouvée');
       }
 
-      console.log('Génération du PDF CLIENT (sans coûts)...');
+      console.log('Génération du PDF CLIENT (format impression, pas SendGrid)...');
       
+      // STYLES COMPLETS POUR FORMAT IMPRESSION CLIENT
       const printStyles = document.createElement('style');
       printStyles.textContent = `
         .temp-client-print-view * { visibility: visible !important; }
@@ -198,30 +199,221 @@ export default function SoumissionsManager() {
           line-height: 1.5 !important;
           font-family: Arial, sans-serif !important;
           box-sizing: border-box !important;
+          color: #000 !important;
         }
-        .temp-client-print-view table { 
-          width: 100% !important; 
-          border-collapse: collapse !important; 
-          margin: 20px 0 !important;
+
+        /* EN-TÊTE PROFESSIONNEL COMME IMPRESSION */
+        .temp-client-print-view .print-header {
+          display: flex !important;
+          justify-content: space-between !important;
+          align-items: flex-start !important;
+          margin-bottom: 25px !important;
+          padding-bottom: 12px !important;
+          border-bottom: 3px solid #000 !important;
+          page-break-inside: avoid !important;
         }
-        .temp-client-print-view th, .temp-client-print-view td {
-          border: 1px solid #000 !important; 
-          padding: 12px !important; 
-          text-align: left !important;
-          font-size: 12px !important;
+        
+        .temp-client-print-view .print-company-section {
+          display: flex !important;
+          align-items: flex-start !important;
+          flex: 1 !important;
         }
-        .temp-client-print-view th { 
-          background-color: #f0f0f0 !important; 
+        
+        .temp-client-print-view .print-logo {
+          width: 140px !important;
+          height: auto !important;
+          margin-right: 20px !important;
+          flex-shrink: 0 !important;
+        }
+        
+        .temp-client-print-view .print-company-info {
+          flex: 1 !important;
+          font-size: 11px !important;
+          line-height: 1.4 !important;
+        }
+        
+        .temp-client-print-view .print-company-name {
+          font-size: 16px !important;
           font-weight: bold !important;
+          color: #000 !important;
+          margin-bottom: 5px !important;
         }
-        .temp-client-print-view .text-right {
+        
+        .temp-client-print-view .print-submission-header {
+          text-align: right !important;
+          min-width: 200px !important;
+        }
+        
+        .temp-client-print-view .print-submission-title {
+          font-size: 28px !important;
+          font-weight: bold !important;
+          margin: 0 0 8px 0 !important;
+          color: #000 !important;
+          letter-spacing: 2px !important;
+        }
+        
+        .temp-client-print-view .print-submission-details {
+          font-size: 12px !important;
+          line-height: 1.5 !important;
+        }
+
+        /* SECTION CLIENT */
+        .temp-client-print-view .print-client-section {
+          display: flex !important;
+          justify-content: space-between !important;
+          margin: 20px 0 25px 0 !important;
+          page-break-inside: avoid !important;
+        }
+        
+        .temp-client-print-view .print-client-info {
+          flex: 1 !important;
+          margin-right: 20px !important;
+          padding: 0 !important;
+          border: none !important;
+          background: none !important;
+        }
+        
+        .temp-client-print-view .print-client-label {
+          font-weight: bold !important;
+          font-size: 12px !important;
+          color: #000 !important;
+          margin-bottom: 5px !important;
+        }
+        
+        .temp-client-print-view .print-client-name {
+          font-size: 14px !important;
+          font-weight: bold !important;
+          margin-bottom: 8px !important;
+        }
+        
+        .temp-client-print-view .print-project-info {
+          flex: 1 !important;
+          padding: 0 !important;
+          border: none !important;
+          background: none !important;
+        }
+
+        /* TABLEAU PROFESSIONNEL COMME IMPRESSION CLIENT */
+        .temp-client-print-view .print-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          margin: 20px 0 !important;
+          table-layout: fixed !important;
+          display: table !important;
+          font-size: 10px !important;
+        }
+        
+        .temp-client-print-view .print-table thead {
+          display: table-header-group !important;
+        }
+        
+        .temp-client-print-view .print-table tbody {
+          display: table-row-group !important;
+        }
+        
+        .temp-client-print-view .print-table tr {
+          display: table-row !important;
+          page-break-inside: avoid !important;
+        }
+        
+        .temp-client-print-view .print-table th,
+        .temp-client-print-view .print-table td {
+          display: table-cell !important;
+          border: 2px solid #000 !important;
+          padding: 8px 6px !important;
+          text-align: left !important;
+          vertical-align: top !important;
+          word-wrap: break-word !important;
+          font-size: 10px !important;
+        }
+        
+        .temp-client-print-view .print-table th {
+          background-color: #e9ecef !important;
+          font-weight: bold !important;
+          text-align: center !important;
+          font-size: 10px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.5px !important;
+        }
+
+        /* LARGEURS COLONNES VERSION CLIENT */
+        .temp-client-print-view .print-table.client th:nth-child(1),
+        .temp-client-print-view .print-table.client td:nth-child(1) { width: 15% !important; }
+        .temp-client-print-view .print-table.client th:nth-child(2),
+        .temp-client-print-view .print-table.client td:nth-child(2) { width: 45% !important; }
+        .temp-client-print-view .print-table.client th:nth-child(3),
+        .temp-client-print-view .print-table.client td:nth-child(3) { width: 10% !important; text-align: center !important; }
+        .temp-client-print-view .print-table.client th:nth-child(4),
+        .temp-client-print-view .print-table.client td:nth-child(4) { width: 10% !important; text-align: center !important; }
+        .temp-client-print-view .print-table.client th:nth-child(5),
+        .temp-client-print-view .print-table.client td:nth-child(5) { width: 10% !important; text-align: right !important; }
+        .temp-client-print-view .print-table.client th:nth-child(6),
+        .temp-client-print-view .print-table.client td:nth-child(6) { width: 10% !important; text-align: right !important; }
+
+        /* LIGNES ALTERNÉES */
+        .temp-client-print-view .print-table tbody tr:nth-child(even) {
+          background-color: #f8f9fa !important;
+        }
+
+        /* COMMENTAIRES */
+        .temp-client-print-view .print-comment {
+          font-style: italic !important;
+          color: #666 !important;
+          font-size: 9px !important;
+          margin-top: 3px !important;
+          padding: 2px 4px !important;
+          background-color: #fff3cd !important;
+          border-left: 3px solid #ffc107 !important;
+        }
+
+        /* SECTION TOTAUX COMME IMPRESSION */
+        .temp-client-print-view div[style*="marginTop: '30px'"] {
+          margin-top: 30px !important;
+          border-top: 2px solid #000 !important;
+          padding-top: 15px !important;
+        }
+
+        /* VALIDITÉ */
+        .temp-client-print-view .print-validity {
+          background-color: #fff3cd !important;
+          border: 1px solid #ffc107 !important;
+          padding: 8px !important;
+          margin: 15px 0 !important;
+          text-align: center !important;
+          font-weight: bold !important;
+          font-size: 11px !important;
+        }
+
+        /* FOOTER */
+        .temp-client-print-view .print-footer {
+          margin-top: 30px !important;
+          padding-top: 15px !important;
+          border-top: 2px solid #000 !important;
+          font-size: 10px !important;
+          color: #000 !important;
+          page-break-inside: avoid !important;
+          background: white !important;
+        }
+
+        /* ALIGNEMENTS SPÉCIFIQUES */
+        .temp-client-print-view *[style*="textAlign: 'right'"] {
           text-align: right !important;
         }
-        .temp-client-print-view .text-center {
+        .temp-client-print-view *[style*="textAlign: 'center'"] {
           text-align: center !important;
         }
-        .temp-client-print-view h1, .temp-client-print-view h2, .temp-client-print-view h3 {
+        .temp-client-print-view *[style*="fontFamily: 'monospace'"] {
+          font-family: monospace !important;
+        }
+        .temp-client-print-view *[style*="fontWeight: 'bold'"] {
+          font-weight: bold !important;
+        }
+
+        /* ASSURER QUE TOUS LES ÉLÉMENTS SONT VISIBLES */
+        .temp-client-print-view h1, .temp-client-print-view h2, .temp-client-print-view h3,
+        .temp-client-print-view p, .temp-client-print-view div, .temp-client-print-view span {
           margin: 10px 0 !important;
+          color: #000 !important;
         }
       `;
       document.head.appendChild(printStyles);
@@ -232,7 +424,7 @@ export default function SoumissionsManager() {
       clonedContainer.style.display = 'block';
       document.body.appendChild(clonedContainer);
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(clonedContainer, {
         scale: 2,
