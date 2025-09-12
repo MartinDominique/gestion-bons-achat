@@ -97,16 +97,14 @@ export async function POST(request) {
           </div>
         </div>
       `,
-     attachments: [
-      {
-        content: pdfBase64,
-        filename: `Soumission_${submissionNumber}_${clientName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
-        type: 'application/pdf',
-        disposition: 'attachment',
-        encoding: 'base64'   // ✅ ajout essentiel
-      }
-    ]
-
+      attachments: [
+        {
+          content: pdfBase64,
+          filename: `SOU-${submissionNumber}.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }
+      ]
     };
 
     console.log('Envoi email avec PDF vers:', to);
