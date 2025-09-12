@@ -498,7 +498,7 @@ export default function SoumissionsManager() {
         <div class="totals-content">
           <div class="conditions">
             <div style="font-weight: bold; margin-bottom: 5px;">CONDITIONS GÉNÉRALES:</div>
-            <div>• Prix valides pour 30 jours</div>
+            <div>• Prix valides pour 100 jours</div>
             <div>• Paiement: Net 30 jours</div>
             <div>• Installation selon disponibilité</div>
             <div>• Prix sujets à changement sans préavis</div>
