@@ -427,16 +427,18 @@ export default function SoumissionsManager() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(clonedContainer, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
-        width: 1024,
+        width: 1200,
         height: clonedContainer.scrollHeight,
-        windowWidth: 1024,
+        windowWidth: 1200,
         windowHeight: clonedContainer.scrollHeight + 100,
         allowTaint: true,
-        imageTimeout: 15000
+        imageTimeout: 15000,
+        dpi: 300,
+        foreignObjectRendering: true
       });
 
       document.body.removeChild(clonedContainer);
@@ -597,20 +599,24 @@ info.servicestmt@gmail.com`;
     
     // Attendre un peu pour que le téléchargement se termine
     setTimeout(() => {
-      window.location.href = mailtoLink;
-      
-      // Afficher les instructions à l'utilisateur
-      setTimeout(() => {
-        alert(`✅ PDF téléchargé : ${nomFichier}
-📧 eM Client va s'ouvrir avec l'email pré-rempli
+      // Ajouter cette fonction avant envoyerSoumissionAvecPDFEtEmail
+const ouvrirEmailSansNaviguer = (mailtoLink) => {
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = mailtoLink;
+  document.body.appendChild(iframe);
+  
+  setTimeout(() => {
+    if (document.body.contains(iframe)) {
+      document.body.removeChild(iframe);
+    }
+  }, 3000);
+};
 
-📎 ÉTAPE FINALE : 
-Glissez-déposez le fichier PDF téléchargé dans l'email avant d'envoyer.
-
-Destinataire: ${client.email}`);
-      }, 1000);
-      
-    }, 500);
+// Et remplacer l'appel par :
+setTimeout(() => {
+  ouvrirEmailSansNaviguer(mailtoLink);
+}, 5000);
 
   } catch (error) {
     console.error('❌ Erreur:', error);
