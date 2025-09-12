@@ -427,13 +427,13 @@ export default function SoumissionsManager() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(clonedContainer, {
-        scale: 1.5,
+        scale: 0.75,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: true,
-        width: 900,
+        width: 1024,
         height: clonedContainer.scrollHeight,
-        windowWidth: 900,
+        windowWidth: 1024,
         windowHeight: clonedContainer.scrollHeight + 100,
         allowTaint: false,
         imageTimeout: 15000,
