@@ -529,9 +529,6 @@ export default function SoumissionsManager() {
           Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
         </div>
         <div>info.servicestmt@gmail.com</div>
-        <div style="margin-top: 10px; font-size: 8px;">
-          Prix sujets à changement sans préavis • Taxes en sus si applicable
-        </div>
       </div>
     </body>
     </html>
@@ -1623,10 +1620,6 @@ const cleanupFilesForSubmission = async (files) => {
                     <div>Saint-Georges, QC G5Z 0V9</div>
                     <div><strong>Tél:</strong> (418) 225-3875</div>
                     <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
-                    <div style={{ marginTop: '5px', fontSize: '9px' }}>
-                      <div><strong>TPS:</strong> 771163672RT0001</div>
-                      <div><strong>TVQ:</strong> 1226871523TQ0001</div>
-                    </div>
                   </div>
                 </div>
                 <div className="print-submission-header">
@@ -1817,10 +1810,6 @@ const cleanupFilesForSubmission = async (files) => {
                     <div>Saint-Georges, QC G5Z 0V9</div>
                     <div><strong>Tél:</strong> (418) 225-3875</div>
                     <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
-                    <div style={{ marginTop: '5px', fontSize: '9px' }}>
-                      <div><strong>TPS:</strong> 771163672RT0001</div>
-                      <div><strong>TVQ:</strong> 1226871523TQ0001</div>
-                    </div>
                   </div>
                 </div>
                 <div className="print-submission-header">
