@@ -253,227 +253,189 @@ export default function SoumissionsManager() {
       };
 
         const generateSubmissionPDF = async () => {
+  let printStylesEl = null;
+  let cloned = null;
+
   try {
     const html2canvas = (await import('html2canvas')).default;
     const jsPDF = (await import('jspdf')).default;
-    
+
+    // ⚠️ La source doit être la version client (identique à l'impression client)
     const printContainer = document.querySelector('.print-area-client');
     if (!printContainer) {
-      throw new Error('Zone d\'impression client non trouvée');
+      throw new Error("Zone d'impression client non trouvée");
     }
 
-    console.log('Génération du PDF professionnel...');
-    
-    printStyles.textContent = `
-  .temp-print-view * { visibility: visible !important; }
-  .temp-print-view {
-    position: fixed !important;
-    left: -9999px !important;
-    top: 0 !important;
-    width: 1024px !important;
-    background: #fff !important;
-    padding: 48px !important;
-    font-size: 14px !important;
-    line-height: 1.5 !important;
-    font-family: Arial, sans-serif !important;
-    box-sizing: border-box !important;
-  }
+    // === 1) Styles pour le clone (SANS @media) ===
+    printStylesEl = document.createElement('style');
+    printStylesEl.textContent = `
+      .temp-print-view * { visibility: visible !important; }
+      .temp-print-view {
+        position: fixed !important;
+        left: -9999px !important;
+        top: 0 !important;
+        width: 1024px !important;
+        background: #fff !important;
+        padding: 48px !important;
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+        font-family: Arial, sans-serif !important;
+        box-sizing: border-box !important;
+      }
 
-  /* Header */
-  .temp-print-view .print-header{
-    display:flex !important;
-    justify-content:space-between !important;
-    align-items:flex-start !important;
-    margin-bottom:25px !important;
-    padding-bottom:12px !important;
-    border-bottom:3px solid #000 !important;
-  }
-  .temp-print-view .print-company-section{
-    display:flex !important;
-    align-items:flex-start !important;
-    gap:20px !important;
-    flex:1 1 auto !important;
-  }
-  .temp-print-view .print-logo{
-    width:140px !important;
-    height:auto !important;
-    margin-right:20px !important;
-    flex-shrink:0 !important;
-  }
-  .temp-print-view .print-company-info{
-    flex:1 1 auto !important;
-    font-size:11px !important;
-    line-height:1.4 !important;
-  }
-  .temp-print-view .print-company-name{
-    font-size:16px !important;
-    font-weight:bold !important;
-    margin-bottom:5px !important;
-  }
-  .temp-print-view .print-submission-header{
-    text-align:right !important;
-    min-width:200px !important;
-  }
-  .temp-print-view .print-submission-title{
-    font-size:28px !important;
-    font-weight:bold !important;
-    margin:0 0 8px 0 !important;
-    letter-spacing:2px !important;
-  }
-  .temp-print-view .print-submission-details{
-    font-size:12px !important;
-    line-height:1.5 !important;
-  }
+      /* Header */
+      .temp-print-view .print-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        margin-bottom: 25px !important;
+        padding-bottom: 12px !important;
+        border-bottom: 3px solid #000 !important;
+      }
+      .temp-print-view .print-company-section {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 20px !important;
+        flex: 1 1 auto !important;
+      }
+      .temp-print-view .print-logo {
+        width: 140px !important;
+        height: auto !important;
+        margin-right: 20px !important;
+        flex-shrink: 0 !important;
+      }
+      .temp-print-view .print-company-info {
+        flex: 1 1 auto !important;
+        font-size: 11px !important;
+        line-height: 1.4 !important;
+      }
+      .temp-print-view .print-company-name {
+        font-size: 16px !important;
+        font-weight: bold !important;
+        margin-bottom: 5px !important;
+      }
+      .temp-print-view .print-submission-header {
+        text-align: right !important;
+        min-width: 200px !important;
+      }
+      .temp-print-view .print-submission-title {
+        font-size: 28px !important;
+        font-weight: bold !important;
+        margin: 0 0 8px 0 !important;
+        letter-spacing: 2px !important;
+      }
+      .temp-print-view .print-submission-details {
+        font-size: 12px !important;
+        line-height: 1.5 !important;
+      }
 
-  /* Section client */
-  .temp-print-view .print-client-section{
-    display:flex !important;
-    justify-content:space-between !important;
-    margin:20px 0 25px 0 !important;
-  }
-  .temp-print-view .print-client-info{ flex:1 1 0 !important; margin-right:20px !important; }
-  .temp-print-view .print-project-info{ flex:1 1 0 !important; }
+      /* Section client */
+      .temp-print-view .print-client-section {
+        display: flex !important;
+        justify-content: space-between !important;
+        margin: 20px 0 25px 0 !important;
+      }
+      .temp-print-view .print-client-info { flex: 1 1 0 !important; margin-right: 20px !important; }
+      .temp-print-view .print-project-info { flex: 1 1 0 !important; }
 
-  /* Tableau */
-  .temp-print-view .print-table{
-    width:100% !important;
-    border-collapse:collapse !important;
-    margin:20px 0 !important;
-    table-layout:fixed !important;
-    font-size:10px !important;
-  }
-  .temp-print-view .print-table th,
-  .temp-print-view .print-table td{
-    border:2px solid #000 !important;
-    padding:8px 6px !important;
-    font-size:10px !important;
-  }
-  .temp-print-view .print-table th{
-    background:#e9ecef !important;
-    font-weight:bold !important;
-    text-align:center !important;
-  }
-  .temp-print-view .print-table.client th:nth-child(1),
-  .temp-print-view .print-table.client td:nth-child(1){ width:15% !important; }
-  .temp-print-view .print-table.client th:nth-child(2),
-  .temp-print-view .print-table.client td:nth-child(2){ width:45% !important; }
-  .temp-print-view .print-table.client th:nth-child(3),
-  .temp-print-view .print-table.client td:nth-child(3){ width:10% !important; text-align:center !important; }
-  .temp-print-view .print-table.client th:nth-child(4),
-  .temp-print-view .print-table.client td:nth-child(4){ width:10% !important; text-align:center !important; }
-  .temp-print-view .print-table.client th:nth-child(5),
-  .temp-print-view .print-table.client td:nth-child(5){ width:10% !important; text-align:right !important; }
-  .temp-print-view .print-table.client th:nth-child(6),
-  .temp-print-view .print-table.client td:nth-child(6){ width:10% !important; text-align:right !important; }
+      /* Tableau */
+      .temp-print-view .print-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin: 20px 0 !important;
+        table-layout: fixed !important;
+        font-size: 10px !important;
+      }
+      .temp-print-view .print-table th,
+      .temp-print-view .print-table td {
+        border: 2px solid #000 !important;
+        padding: 8px 6px !important;
+        font-size: 10px !important;
+      }
+      .temp-print-view .print-table th {
+        background: #e9ecef !important;
+        font-weight: bold !important;
+        text-align: center !important;
+      }
 
-  /* Commentaires */
-  .temp-print-view .print-comment{
-    font-style:italic !important;
-    color:#666 !important;
-    font-size:9px !important;
-    margin-top:3px !important;
-    padding:2px 4px !important;
-    background:#fff3cd !important;
-    border-left:3px solid #ffc107 !important;
-  }
+      /* Largeurs version client (source envoyée par email) */
+      .temp-print-view .print-table.client th:nth-child(1),
+      .temp-print-view .print-table.client td:nth-child(1) { width: 15% !important; }
+      .temp-print-view .print-table.client th:nth-child(2),
+      .temp-print-view .print-table.client td:nth-child(2) { width: 45% !important; }
+      .temp-print-view .print-table.client th:nth-child(3),
+      .temp-print-view .print-table.client td:nth-child(3) { width: 10% !important; text-align: center !important; }
+      .temp-print-view .print-table.client th:nth-child(4),
+      .temp-print-view .print-table.client td:nth-child(4) { width: 10% !important; text-align: center !important; }
+      .temp-print-view .print-table.client th:nth-child(5),
+      .temp-print-view .print-table.client td:nth-child(5) { width: 10% !important; text-align: right !important; }
+      .temp-print-view .print-table.client th:nth-child(6),
+      .temp-print-view .print-table.client td:nth-child(6) { width: 10% !important; text-align: right !important; }
 
-  /* Totaux */
-  .temp-print-view .print-totals-section{
-    margin-top:25px !important;
-    border-top:2px solid #000 !important;
-    padding-top:15px !important;
-  }
-  .temp-print-view .print-totals{ text-align:right !important; font-size:12px !important; }
-  .temp-print-view .print-totals .total-line{
-    display:flex !important; justify-content:space-between !important;
-  }
-  .temp-print-view .print-totals .final-total{
-    font-size:16px !important; font-weight:bold !important; border-top:2px solid #000 !important;
-    padding:8px 0 !important; margin-top:10px !important;
-  }
-`;
+      /* Commentaires */
+      .temp-print-view .print-comment {
+        font-style: italic !important;
+        color: #666 !important;
+        font-size: 9px !important;
+        margin-top: 3px !important;
+        padding: 2px 4px !important;
+        background: #fff3cd !important;
+        border-left: 3px solid #ffc107 !important;
+      }
 
-    document.head.appendChild(printStyles);
+      /* Totaux */
+      .temp-print-view .print-totals-section {
+        margin-top: 25px !important;
+        border-top: 2px solid #000 !important;
+        padding-top: 15px !important;
+      }
+      .temp-print-view .print-totals { text-align: right !important; font-size: 12px !important; }
+      .temp-print-view .print-totals .total-line {
+        display: flex !important;
+        justify-content: space-between !important;
+      }
+      .temp-print-view .print-totals .final-total {
+        font-size: 16px !important;
+        font-weight: bold !important;
+        border-top: 2px solid #000 !important;
+        padding: 8px 0 !important;
+        margin-top: 10px !important;
+      }
+    `;
+    document.head.appendChild(printStylesEl);
 
-    const clonedContainer = printContainer.cloneNode(true);
-    clonedContainer.className = 'temp-print-view';
-    clonedContainer.style.visibility = 'visible';
-    clonedContainer.style.display = 'block';
-    document.body.appendChild(clonedContainer);
+    // === 2) Clone de la zone à capturer ===
+    cloned = printContainer.cloneNode(true);
+    cloned.classList.add('temp-print-view');
+    cloned.style.visibility = 'visible';
+    cloned.style.display = 'block';
+    document.body.appendChild(cloned);
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Laisse le navigateur appliquer les styles
+    await new Promise(resolve => setTimeout(resolve, 150));
 
-    const canvas = await html2canvas(clonedContainer, {
-      scale: 2,
+    // === 3) Capture canvas ===
+    const canvas = await html2canvas(cloned, {
+      scale: 1.5,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
       width: 1024,
-      height: clonedContainer.scrollHeight,
+      height: cloned.scrollHeight,
       windowWidth: 1024,
-      windowHeight: clonedContainer.scrollHeight + 100,
+      windowHeight: cloned.scrollHeight + 100,
       allowTaint: true,
       imageTimeout: 15000
     });
 
-    document.body.removeChild(clonedContainer);
-    document.head.removeChild(printStyles);
-
-    const pdf = new jsPDF({ 
-      unit: 'pt', 
-      format: 'letter',
-      compress: true
-    });
-    
+    // === 4) Construction du PDF ===
+    const pdf = new jsPDF({ unit: 'pt', format: 'letter', compress: true });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 50;
-    const usableWidth = pageWidth - (margin * 2);
-    const usableHeight = pageHeight - (margin * 2);
+    const usableWidth = pageWidth - margin * 2;
+    const usableHeight = pageHeight - m
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const imgWidth = usableWidth;
-    const imgHeight = canvas.height * (imgWidth / canvas.width);
-
-    if (imgHeight <= usableHeight) {
-      pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
-    } else {
-      let heightLeft = imgHeight;
-      let positionY = 0;
-
-      while (heightLeft > 0) {
-        if (positionY > 0) pdf.addPage();
-
-        pdf.addImage(
-          imgData,
-          'JPEG',
-          margin,
-          margin + positionY,
-          imgWidth,
-          imgHeight
-        );
-
-        heightLeft -= usableHeight;
-        positionY -= usableHeight;
-      }
-    }
-
-    const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
-    const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
-    
-    console.log(`Taille PDF: ${pdfSizeKB} KB`);
-    
-    if (pdfSizeKB > 5000) {
-      throw new Error(`PDF trop volumineux: ${Math.round(pdfSizeKB/1024 * 10)/10} MB`);
-    }
-
-    return pdfBase64;
-    
-  } catch (error) {
-    console.error('Erreur génération PDF:', error);
-    throw error;
-  }
-};
 
             // FORMAT EMAIL----
     const generateClientSubmissionHTML = () => {
