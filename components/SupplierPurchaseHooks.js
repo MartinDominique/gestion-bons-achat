@@ -372,8 +372,7 @@ export const useSupplierPurchase = () => {
     setPurchaseForm(prev => ({
       ...prev,
       linked_submission_id: selectedSubmissionForImport.id,
-      notes: prev.notes + 
-        `\nImporté depuis soumission ${selectedSubmissionForImport.submission_number} - ${selectedSubmissionForImport.client_name}`
+      
     }));
 
     setShowImportSubmissionModal(false);
