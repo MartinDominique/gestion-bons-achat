@@ -427,13 +427,13 @@ export default function SoumissionsManager() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(clonedContainer, {
-        scale: 3,
+        scale: 1.5,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: true,
-        width: 1200,
+        width: 1400,
         height: clonedContainer.scrollHeight,
-        windowWidth: 1200,
+        windowWidth: 1400,
         windowHeight: clonedContainer.scrollHeight + 100,
         allowTaint: false,
         imageTimeout: 15000,
@@ -459,7 +459,7 @@ export default function SoumissionsManager() {
       
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 50;
+      const margin = 40;
       const usableWidth = pageWidth - (margin * 2);
       const usableHeight = pageHeight - (margin * 2);
 
