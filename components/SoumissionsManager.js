@@ -528,126 +528,95 @@ ${pdfBase64}
 --${boundary}--`;
   };
 
-  // Fonction principale pour créer et télécharger le fichier .EML
-  const envoyerSoumissionParEML = async () => {
-    if (!submissionForm.client_name) {
-      alert('⚠️ Veuillez sélectionner un client avant d\'envoyer');
-      return;
-    }
+  const envoyerSoumissionAvecPDFEtEmail = async () => {
+  if (!submissionForm.client_name) {
+    alert('⚠️ Veuillez sélectionner un client avant d\'envoyer');
+    return;
+  }
 
-    if (selectedItems.length === 0) {
-      alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer');
-      return;
-    }
+  if (selectedItems.length === 0) {
+    alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer');
+    return;
+  }
 
-    const client = clients.find(c => c.name === submissionForm.client_name);
-    if (!client || !client.email) {
-      alert('⚠️ Aucun email trouvé pour ce client. Veuillez vérifier les informations du client.');
-      return;
-    }
+  const client = clients.find(c => c.name === submissionForm.client_name);
+  if (!client || !client.email) {
+    alert('⚠️ Aucun email trouvé pour ce client. Veuillez vérifier les informations du client.');
+    return;
+  }
 
-    try {
-      console.log('🔄 Génération du PDF client pour email...');
-      
-      const pdfArrayBuffer = await generateClientSubmissionPDF();
-      const pdfBase64 = arrayBufferToBase64(pdfArrayBuffer);
-      
-      const nomFichier = `Soumission_${submissionForm.submission_number}.pdf`;
-      const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
-      
-      const sousTotal = submissionForm.amount;
-      const tps = sousTotal * 0.05;
-      const tvq = sousTotal * 0.09975;
-      const total = sousTotal + tps + tvq;
-      
-      const messageHTML = `
-        <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px;">
-              Soumission ${submissionForm.submission_number}
-            </h2>
-            
-            <p>Bonjour,</p>
-            
-            <p>Veuillez trouver ci-joint notre soumission pour :</p>
-            <p style="background-color: #F3F4F6; padding: 15px; border-left: 4px solid #4F46E5; margin: 15px 0;">
-              <strong>${submissionForm.description}</strong>
-            </p>
-            
-            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-              <tr>
-                <td style="padding: 10px; border: 1px solid #E5E7EB;"><strong>Sous-total:</strong></td>
-                <td style="padding: 10px; border: 1px solid #E5E7EB; text-align: right;">${formatCurrency(sousTotal)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #E5E7EB;"><strong>TPS (5%):</strong></td>
-                <td style="padding: 10px; border: 1px solid #E5E7EB; text-align: right;">${formatCurrency(tps)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #E5E7EB;"><strong>TVQ (9.975%):</strong></td>
-                <td style="padding: 10px; border: 1px solid #E5E7EB; text-align: right;">${formatCurrency(tvq)}</td>
-              </tr>
-              <tr style="background-color: #F3F4F6; font-weight: bold;">
-                <td style="padding: 10px; border: 1px solid #E5E7EB;"><strong>TOTAL:</strong></td>
-                <td style="padding: 10px; border: 1px solid #E5E7EB; text-align: right; color: #059669;">${formatCurrency(total)}</td>
-              </tr>
-            </table>
-            
-            <div style="background-color: #FEF3C7; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>📋 Détails:</strong></p>
-              <ul style="margin: 10px 0;">
-                <li>Nombre d'articles: ${selectedItems.length}</li>
-                <li>Validité: 30 jours</li>
-                <li>Paiement: Net 30 jours</li>
-              </ul>
-            </div>
-            
-            <p>N'hésitez pas à nous contacter pour toute question ou précision.</p>
-            
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
-              <p><strong>Services TMT Inc.</strong></p>
-              <p style="margin: 5px 0;">📞 (418) 225-3875</p>
-              <p style="margin: 5px 0;">📧 info.servicestmt@gmail.com</p>
-              <p style="margin: 5px 0;">📍 3195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</p>
-            </div>
-            
-            <p style="font-size: 12px; color: #6B7280; margin-top: 20px;">
-              Merci de votre confiance !
-            </p>
-          </div>
-        </body>
-        </html>
-      `;
+  try {
+    console.log('📄 Génération et téléchargement du PDF...');
+    
+    // 1. Générer le PDF
+    const pdfArrayBuffer = await generateClientSubmissionPDF();
+    const blob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    
+    // 2. Télécharger automatiquement le PDF
+    const nomFichier = `Soumission_${submissionForm.submission_number}.pdf`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomFichier;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-      const emlContent = generateEMLContent({
-        destinataire: client.email,
-        sujet: sujet,
-        message: messageHTML,
-        nomFichier: nomFichier,
-        pdfBase64: pdfBase64
-      });
+    // 3. Préparer le contenu de l'email
+    const sousTotal = submissionForm.amount;
+    const tps = sousTotal * 0.05;
+    const tvq = sousTotal * 0.09975;
+    const total = sousTotal + tps + tvq;
+    
+    const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
+    const corpsEmail = `Bonjour,
 
-      const blob = new Blob([emlContent], { type: 'message/rfc822' });
-      const url = URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Email_Soumission_${submissionForm.submission_number}.eml`;
-      
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      URL.revokeObjectURL(url);
+Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
 
-      alert(`✅ Fichier email créé !\n\n📧 Destinataire: ${client.email}\n📄 Fichier: ${a.download}\n\n💡 Double-cliquez sur le fichier téléchargé pour ouvrir eM Client avec tout pré-rempli.`);
+RÉSUMÉ:
+• Sous-total: ${formatCurrency(sousTotal)}
+• TPS (5%): ${formatCurrency(tps)}
+• TVQ (9.975%): ${formatCurrency(tvq)}
+• TOTAL: ${formatCurrency(total)}
 
-    } catch (error) {
-      console.error('❌ Erreur création email:', error);
-      alert(`❌ Erreur: ${error.message}`);
-    }
-  };
+Détails:
+• Nombre d'articles: ${selectedItems.length}
+• Validité: 30 jours
+• Paiement: Net 30 jours
+
+N'hésitez pas à nous contacter pour toute question.
+
+Cordialement,
+Services TMT Inc.
+(418) 225-3875
+info.servicestmt@gmail.com`;
+
+    // 4. Créer le lien mailto et ouvrir eM Client
+    const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+    
+    // Attendre un peu pour que le téléchargement se termine
+    setTimeout(() => {
+      window.location.href = mailtoLink;
+      
+      // Afficher les instructions à l'utilisateur
+      setTimeout(() => {
+        alert(`✅ PDF téléchargé : ${nomFichier}
+📧 eM Client va s'ouvrir avec l'email pré-rempli
+
+📎 ÉTAPE FINALE : 
+Glissez-déposez le fichier PDF téléchargé dans l'email avant d'envoyer.
+
+Destinataire: ${client.email}`);
+      }, 1000);
+      
+    }, 500);
+
+  } catch (error) {
+    console.error('❌ Erreur:', error);
+    alert(`❌ Erreur: ${error.message}`);
+  }
+};
 
   // ===== RESTE DES FONCTIONS EXISTANTES =====
 
@@ -2127,7 +2096,7 @@ const cleanupFilesForSubmission = async (files) => {
                   
                   {/* NOUVEAU: Bouton .EML qui remplace l'email défaillant */}
                   <button
-                    onClick={envoyerSoumissionParEML}
+                    onClick={envoyerSoumissionAvecPDFEtEmail}
                     disabled={selectedItems.length === 0 || !submissionForm.client_name}
                     className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center ${
                       selectedItems.length === 0 || !submissionForm.client_name
@@ -2139,7 +2108,7 @@ const cleanupFilesForSubmission = async (files) => {
                         ? 'Sélectionnez un client d\'abord'
                         : selectedItems.length === 0 
                         ? 'Ajoutez des produits d\'abord'
-                        : 'Créer email .EML pour eM Client'
+                        : 'Télécharger PDF et ouvrir eM Client' 
                     }
                   >
                     📧 Email Client
