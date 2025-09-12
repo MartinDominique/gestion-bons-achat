@@ -424,25 +424,26 @@ export default function SoumissionsManager() {
       </style>
     </head>
     <body>
-      <table style="width: 100%; margin-bottom: 25px; border-bottom: 3px solid #000;">
-        <tr>
-          <td style="width: 60%; vertical-align: top;">
-            <img src="/logo.png" alt="Services TMT" style="width: 140px; margin-right: 20px; vertical-align: top; display: inline-block;" />
-            <div style="display: inline-block; vertical-align: top;">
-              <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">Services TMT Inc.</div>
-              <div style="font-size: 11px;">3195, 42e Rue Nord</div>
-              <div style="font-size: 11px;">Saint-Georges, QC G5Z 0V9</div>
-              <div style="font-size: 11px;"><strong>Tél:</strong> (418) 225-3875</div>
-              <div style="font-size: 11px;"><strong>Email:</strong> info.servicestmt@gmail.com</div>
-            </div>
-          </td>
-          <td style="width: 40%; text-align: right; vertical-align: top;">
-            <h1 style="font-size: 28px; margin: 0 0 8px 0; font-weight: bold; letter-spacing: 2px;">SOUMISSION</h1>
-            <p style="margin: 5px 0;"><strong>N°:</strong> ${submissionForm.submission_number}</p>
-            <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-CA')}</p>
-          </td>
-        </tr>
-      </table>
+      <div style="overflow: hidden; margin-bottom: 25px; padding-bottom: 12px; border-bottom: 3px solid #000;">
+        <div style="float: left; width: 60%;">
+          <img src="/logo.png" alt="Services TMT" style="float: left; width: 140px; height: auto; margin-right: 20px;" />
+          <div style="float: left;">
+            <div style="font-size: 16px; font-weight: bold; color: #000; margin-bottom: 5px;">Services TMT Inc.</div>
+            <div style="font-size: 11px;">3195, 42e Rue Nord</div>
+            <div style="font-size: 11px;">Saint-Georges, QC G5Z 0V9</div>
+            <div style="font-size: 11px;"><strong>Tél:</strong> (418) 225-3875</div>
+            <div style="font-size: 11px;"><strong>Email:</strong> info.servicestmt@gmail.com</div>
+          </div>
+        </div>
+        <div style="float: right; text-align: right; width: 35%;">
+          <h1 style="font-size: 28px; font-weight: bold; margin: 0 0 8px 0; color: #000; letter-spacing: 2px;">SOUMISSION</h1>
+          <div style="font-size: 12px; line-height: 1.5;">
+            <p style="margin: 2px 0;"><strong>N°:</strong> ${submissionForm.submission_number}</p>
+            <p style="margin: 2px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString('fr-CA')}</p>
+          </div>
+        </div>
+        <div style="clear: both;"></div>
+      </div>
 
       <div class="client-section">
         <div class="client-info">
