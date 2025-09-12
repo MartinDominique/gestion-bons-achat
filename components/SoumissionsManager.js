@@ -208,6 +208,7 @@ export default function SoumissionsManager() {
             to: client.email,
             clientName: submissionForm.client_name,
             submissionNumber: submissionForm.submission_number,
+            fileName: `SOU-${submissionForm.submission_number}.pdf`,
             submissionData: {
               client_name: submissionForm.client_name,
               description: submissionForm.description,
@@ -714,12 +715,11 @@ const generateClientSubmissionHTML = () => {
           ⏰ Cette soumission est valide pour 30 jours • Merci de votre confiance!
         </div>
 
-        <!-- Footer identique -->
+        <!-- Footer corrigé -->
         <div class="footer">
           <div class="footer-contact">
             Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
           </div>
-          <div>Services TMT Inc. • 3195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
           <div>info.servicestmt@gmail.com</div>
           <div class="footer-small">
             Prix sujets à changement sans préavis • Taxes en sus si applicable
