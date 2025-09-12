@@ -529,19 +529,6 @@ ${pdfBase64}
 
 --${boundary}--`;
   };
-
-      const ouvrirEmailSansNaviguer = (mailtoLink) => {
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = mailtoLink;
-          document.body.appendChild(iframe);
-          
-          setTimeout(() => {
-            if (document.body.contains(iframe)) {
-              document.body.removeChild(iframe);
-            }
-          }, 3000);
-        };
   
         const ouvrirEmailSansNaviguer = (mailtoLink) => {
           const iframe = document.createElement('iframe');
