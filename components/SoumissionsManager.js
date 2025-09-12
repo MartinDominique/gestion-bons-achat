@@ -530,101 +530,110 @@ ${pdfBase64}
 --${boundary}--`;
   };
 
-  const envoyerSoumissionAvecPDFEtEmail = async () => {
-  if (!submissionForm.client_name) {
-    alert('⚠️ Veuillez sélectionner un client avant d\'envoyer');
-    return;
-  }
-
-  if (selectedItems.length === 0) {
-    alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer');
-    return;
-  }
-
-  const client = clients.find(c => c.name === submissionForm.client_name);
-  if (!client || !client.email) {
-    alert('⚠️ Aucun email trouvé pour ce client. Veuillez vérifier les informations du client.');
-    return;
-  }
-
-  try {
-    console.log('📄 Génération et téléchargement du PDF...');
-    
-    // 1. Générer le PDF
-    const pdfArrayBuffer = await generateClientSubmissionPDF();
-    const blob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    
-    // 2. Télécharger automatiquement le PDF
-    const nomFichier = `Soumission_${submissionForm.submission_number}.pdf`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nomFichier;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    // 3. Préparer le contenu de l'email
-    const sousTotal = submissionForm.amount;
-    const tps = sousTotal * 0.05;
-    const tvq = sousTotal * 0.09975;
-    const total = sousTotal + tps + tvq;
-    
-    const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
-    const corpsEmail = `Bonjour,
-
-Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
-
-RÉSUMÉ:
-• Sous-total: ${formatCurrency(sousTotal)}
-• TPS (5%): ${formatCurrency(tps)}
-• TVQ (9.975%): ${formatCurrency(tvq)}
-• TOTAL: ${formatCurrency(total)}
-
-Détails:
-• Nombre d'articles: ${selectedItems.length}
-• Validité: 30 jours
-• Paiement: Net 30 jours
-
-N'hésitez pas à nous contacter pour toute question.
-
-Cordialement,
-Services TMT Inc.
-(418) 225-3875
-info.servicestmt@gmail.com`;
-
-    // 4. Créer le lien mailto et ouvrir eM Client
-    const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
-    
-    // Attendre un peu pour que le téléchargement se termine
-    setTimeout(() => {
-      // Ajouter cette fonction avant envoyerSoumissionAvecPDFEtEmail
-const ouvrirEmailSansNaviguer = (mailtoLink) => {
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.src = mailtoLink;
-  document.body.appendChild(iframe);
+      const ouvrirEmailSansNaviguer = (mailtoLink) => {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = mailtoLink;
+          document.body.appendChild(iframe);
+          
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 3000);
+        };
   
-  setTimeout(() => {
-    if (document.body.contains(iframe)) {
-      document.body.removeChild(iframe);
-    }
-  }, 3000);
-};
-
-// Et remplacer l'appel par :
-setTimeout(() => {
-  ouvrirEmailSansNaviguer(mailtoLink);
-}, 5000);
-
-  } catch (error) {
-    console.error('❌ Erreur:', error);
-    alert(`❌ Erreur: ${error.message}`);
-  }
-};
-
-  // ===== RESTE DES FONCTIONS EXISTANTES =====
+        const ouvrirEmailSansNaviguer = (mailtoLink) => {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = mailtoLink;
+          document.body.appendChild(iframe);
+          
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 3000);
+        };
+        
+        // Ensuite, voici la fonction corrigée :
+        const envoyerSoumissionAvecPDFEtEmail = async () => {
+          if (!submissionForm.client_name) {
+            alert('⚠️ Veuillez sélectionner un client avant d\'envoyer');
+            return;
+          }
+        
+          if (selectedItems.length === 0) {
+            alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer');
+            return;
+          }
+        
+          const client = clients.find(c => c.name === submissionForm.client_name);
+          if (!client || !client.email) {
+            alert('⚠️ Aucun email trouvé pour ce client. Veuillez vérifier les informations du client.');
+            return;
+          }
+        
+          try {
+            console.log('📄 Génération et téléchargement du PDF...');
+            
+            // 1. Générer le PDF
+            const pdfArrayBuffer = await generateClientSubmissionPDF();
+            const blob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            
+            // 2. Télécharger automatiquement le PDF
+            const nomFichier = `Soumission_${submissionForm.submission_number}.pdf`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomFichier;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        
+            // 3. Préparer le contenu de l'email
+            const sousTotal = submissionForm.amount;
+            const tps = sousTotal * 0.05;
+            const tvq = sousTotal * 0.09975;
+            const total = sousTotal + tps + tvq;
+            
+            const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
+            const corpsEmail = `Bonjour,
+        
+        Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
+        
+        RÉSUMÉ:
+        • Sous-total: ${formatCurrency(sousTotal)}
+        • TPS (5%): ${formatCurrency(tps)}
+        • TVQ (9.975%): ${formatCurrency(tvq)}
+        • TOTAL: ${formatCurrency(total)}
+        
+        Détails:
+        • Nombre d'articles: ${selectedItems.length}
+        • Validité: 30 jours
+        • Paiement: Net 30 jours
+        
+        N'hésitez pas à nous contacter pour toute question.
+        
+        Cordialement,
+        Services TMT Inc.
+        (418) 225-3875
+        info.servicestmt@gmail.com`;
+        
+            // 4. Créer le lien mailto et ouvrir eM Client
+            const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+            
+            // Attendre 5 secondes puis ouvrir l'email
+            setTimeout(() => {
+              ouvrirEmailSansNaviguer(mailtoLink);
+            }, 5000);
+        
+          } catch (error) {
+            console.error('❌ Erreur:', error);
+            alert(`❌ Erreur: ${error.message}`);
+          }
+        };  
 
   // Fonction pour générer le numéro automatique
   const generateSubmissionNumber = async () => {
