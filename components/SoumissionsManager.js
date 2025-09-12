@@ -398,12 +398,12 @@ export default function SoumissionsManager() {
       <title>Soumission ${submissionForm.submission_number}</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 15px; font-size: 11px; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 25px; padding-bottom: 12px; border-bottom: 3px solid #000; }
-        .company-section { display: flex; flex: 1; }
+        .header { position: relative; margin-bottom: 25px; padding-bottom: 12px; border-bottom: 3px solid #000; overflow: hidden; }
+        .company-section { float: left; width: 60%; }
         .company-logo { width: 140px; margin-right: 20px; }
         .company-info { font-size: 11px; }
         .company-name { font-size: 16px; font-weight: bold; margin-bottom: 5px; }
-        .submission-header { text-align: right; }
+        .submission-header { position: absolute; right: 0; top: 0; text-align: right; }
         .submission-header h1 { font-size: 28px; margin: 0 0 8px 0; font-weight: bold; letter-spacing: 2px; }
         .client-section { display: flex; justify-content: space-between; margin: 20px 0; }
         .client-info, .project-info { flex: 1; }
@@ -425,9 +425,9 @@ export default function SoumissionsManager() {
     </head>
     <body>
       <div class="header">
-        <div class="company-section">
-          <img src="/logo.png" alt="Services TMT" class="company-logo" />
-          <div class="company-info">
+          <div class="company-section">
+            <img src="/logo.png" alt="Services TMT" class="company-logo" style="float: left;" />
+            <div class="company-info" style="float: left;">
             <div class="company-name">Services TMT Inc.</div>
             <div>3195, 42e Rue Nord</div>
             <div>Saint-Georges, QC G5Z 0V9</div>
@@ -523,13 +523,9 @@ export default function SoumissionsManager() {
       <div class="validity">
         Cette soumission est valide pour 30 jours • Merci de votre confiance!
       </div>
-
-      <div class="footer">
-        <div style="font-weight: bold; margin-bottom: 5px;">
-          Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
-        </div>
-        <div>info.servicestmt@gmail.com</div>
-      </div>
+       <div class="footer">
+      <div>(418) 225-3875 • info.servicestmt@gmail.com</div>
+    </div>
     </body>
     </html>
   `;
@@ -1816,7 +1812,7 @@ const cleanupFilesForSubmission = async (files) => {
                 </div>
               </div>
 
-              {/* Section client compacte - REMPLACE la section actuelle */}
+              {/* Section Impression client */}
               <div className="print-client-section">
                 <div className="print-client-info">
                   <div className="print-client-label">CLIENT:</div>
@@ -1963,7 +1959,7 @@ const cleanupFilesForSubmission = async (files) => {
               <div className="print-footer">
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                    Pour toute question, n'hésitez pas à nous contacter au (418) 444-3875
+                    Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
                   </div>
                 </div>
               </div>
