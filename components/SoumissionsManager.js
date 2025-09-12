@@ -1624,6 +1624,8 @@ const cleanupFilesForSubmission = async (files) => {
                     <div><strong>Tél:</strong> (418) 225-3875</div>
                     <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
                     <div style={{ marginTop: '5px', fontSize: '9px' }}>
+                      <div><strong>TPS:</strong> 771163672RT0001</div>
+                      <div><strong>TVQ:</strong> 1226871523TQ0001</div>
                     </div>
                   </div>
                 </div>
@@ -1792,7 +1794,11 @@ const cleanupFilesForSubmission = async (files) => {
                   textAlign: 'center',
                   fontSize: '9px'
                 }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                    Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
                   </div>
+                  <div>Services TMT Inc. • 195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
+                  <div>info.servicestmt@gmail.com</div>
                 </div>
               </div>
             </div>
@@ -1812,6 +1818,8 @@ const cleanupFilesForSubmission = async (files) => {
                     <div><strong>Tél:</strong> (418) 225-3875</div>
                     <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
                     <div style={{ marginTop: '5px', fontSize: '9px' }}>
+                      <div><strong>TPS:</strong> 771163672RT0001</div>
+                      <div><strong>TVQ:</strong> 1226871523TQ0001</div>
                     </div>
                   </div>
                 </div>
@@ -1970,6 +1978,11 @@ const cleanupFilesForSubmission = async (files) => {
               {/* Footer client */}
               <div className="print-footer">
                 <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                    Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
+                  </div>
+                  <div>Services TMT Inc. • 195, 42e Rue Nord, Saint-Georges, QC G5Z 0V9</div>
+                  <div>info.servicestmt@gmail.com</div>
                   <div style={{ marginTop: '10px', fontSize: '8px' }}>
                     Prix sujets à changement sans préavis • Taxes en sus si applicable
                   </div>
