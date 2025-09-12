@@ -427,18 +427,25 @@ export default function SoumissionsManager() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(clonedContainer, {
-        scale: 3,
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: false,
-        width: 1200,
+        logging: true,
+        width: 1024,
         height: clonedContainer.scrollHeight,
-        windowWidth: 1200,
+        windowWidth: 1024,
         windowHeight: clonedContainer.scrollHeight + 100,
-        allowTaint: true,
+        allowTaint: false,
         imageTimeout: 15000,
-        dpi: 300,
-        foreignObjectRendering: true
+        removeContainer: true,
+        onclone: function(clonedDoc) {
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach(el => {
+            el.style.visibility = 'visible';
+            el.style.opacity = '1';
+            el.style.color = '#000000';
+          });
+        }
       });
 
       document.body.removeChild(clonedContainer);
