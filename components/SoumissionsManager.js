@@ -738,7 +738,7 @@ const handlePrintClient = () => {
   }
 
   try {
-    // BUG 3: Changer le titre pour le nom du fichier PDF
+    // Changer le titre pour le nom du fichier PDF
     const originalTitle = document.title;
     document.title = `Soumission_${submissionForm.submission_number}`;
     
@@ -747,7 +747,7 @@ const handlePrintClient = () => {
     
     setTimeout(() => {
       document.body.classList.remove('print-client');
-      document.title = originalTitle;  // Restaurer le titre
+      document.title = originalTitle;
     }, 1000);
 
     setTimeout(() => {
@@ -757,10 +757,32 @@ const handlePrintClient = () => {
       );
 
       if (confirmation) {
-        // BUG 2: Méthode qui ne déconnecte pas
+        // RÉSUMÉ COMPLET RESTAURÉ
         const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
-        const corps = `Bonjour,\n\nVeuillez trouver ci-joint notre soumission.\n\nCordialement,\nServices TMT Inc.`;
-        const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+        
+        const sousTotal = submissionForm.amount;
+        const tps = sousTotal * 0.05;
+        const tvq = sousTotal * 0.09975;
+        const total = sousTotal + tps + tvq;
+        
+        const corpsEmail = `Bonjour,
+
+Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
+
+RÉSUMÉ:
+• Sous-total: ${formatCurrency(sousTotal)}
+• TPS (5%): ${formatCurrency(tps)}
+• TVQ (9.975%): ${formatCurrency(tvq)}
+• TOTAL: ${formatCurrency(total)}
+
+Détails:
+• Nombre d'articles: ${selectedItems.length}
+• Validité: 30 jours
+• Paiement: Net 30 jours
+
+N'hésitez pas à nous contacter pour toute question.`;
+
+        const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
         
         // Iframe invisible pour éviter la navigation
         const iframe = document.createElement('iframe');
