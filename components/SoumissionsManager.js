@@ -427,7 +427,7 @@ export default function SoumissionsManager() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(clonedContainer, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: true,
