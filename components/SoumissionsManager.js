@@ -1038,7 +1038,7 @@ const cleanupFilesForSubmission = async (files) => {
             }
             
             .print-logo {
-              width: 140px !important;
+              width: 160px !important;
               height: auto !important;
               margin-right: 20px !important;
               flex-shrink: 0 !important;
