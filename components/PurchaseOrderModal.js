@@ -553,7 +553,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         client_phone: submission.client_phone || prev.client_phone,
         client_address: submission.client_address || prev.client_address,
         submission_no: submission.submission_number,
-        amount: parseFloat(submission.amount) || 0
+        amount: totalFromItems > 0 ? totalFromItems : (parseFloat(submission.amount) || 0)
       }));
       
       const submissionItems = submission.items || [];
@@ -563,7 +563,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         description: item.name || item.description || 'Article',
         quantity: parseFloat(item.quantity) || 0,
         unit: item.unit || 'unité',
-        selling_price: parseFloat(item.price) || 0,
+        selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
         delivered_quantity: 0,
         from_submission: true
       }));
