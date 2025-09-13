@@ -1917,210 +1917,210 @@ setTimeout(() => {
                     <h3 className="text-lg font-semibold">
                       Articles du Bon d'Achat ({items.length})
                     </h3>
-      
-                  {/* Boutons avec le nouveau bouton Valider */}
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
-                    <button
-                      onClick={loadSubmissions}
-                      disabled={hasExistingSubmission}
-                      className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
-                    >
-                      <span>📋</span>
-                      <span className="hidden sm:inline">Importer depuis</span>
-                      <span>Soumission</span>
-                    </button>
-                    <button
-                      onClick={openSupplierImportModal}
-                      disabled={!formData.client_name}
-                      className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
-                      title={!formData.client_name ? 'Sélectionnez d\'abord un client' : 'Importer depuis achats fournisseurs'}
-                    >
-                      <span>📋</span>
-                      <span className="hidden sm:inline">Import</span>
-                      <span>Fournisseur</span>
-                    </button>
-                    <button
-                      onClick={addNewItem}
-                      className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
-                    >
-                      <span>+</span>
-                      <span>Ajouter</span>
-                    </button>
                     
-                    {/* NOUVEAU BOUTON VALIDER */}
-                    {editingPO && items.length > 0 && (
-                      <button
-                        onClick={validateArticles}
-                        disabled={isValidatingArticles || articlesValidated}
-                        className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 text-sm ${
-                          articlesValidated 
-                            ? 'bg-green-600 text-white cursor-default' 
-                            : 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400'
-                        }`}
-                        title={articlesValidated ? 'Articles validés et sauvegardés' : 'Valider et sauvegarder les articles en base'}
-                      >
-                        <span>{articlesValidated ? '✅' : '💾'}</span>
-                        <span className="hidden sm:inline">
-                          {isValidatingArticles ? 'Validation...' : (articlesValidated ? 'Articles Validés' : 'Valider Articles')}
-                        </span>
-                        <span className="sm:hidden">
-                          {isValidatingArticles ? 'Valid...' : (articlesValidated ? 'Validé' : 'Valider')}
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {items.length === 0 ? (
-                  <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                    <p className="text-gray-500 mb-4">Aucun article dans ce bon d'achat</p>
-                    <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
-                    <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
-                      <button
-                        onClick={addNewItem}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
-                      >
-                        Ajouter manuellement
-                      </button>
+                    {/* Boutons avec le nouveau bouton Valider */}
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
                       <button
                         onClick={loadSubmissions}
                         disabled={hasExistingSubmission}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
+                        className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
                       >
-                        Import soumission
+                        <span>📋</span>
+                        <span className="hidden sm:inline">Importer depuis</span>
+                        <span>Soumission</span>
                       </button>
                       <button
                         onClick={openSupplierImportModal}
                         disabled={!formData.client_name}
-                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 text-sm"
+                        className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
+                        title={!formData.client_name ? 'Sélectionnez d\'abord un client' : 'Importer depuis achats fournisseurs'}
                       >
-                        Import fournisseur
+                        <span>📋</span>
+                        <span className="hidden sm:inline">Import</span>
+                        <span>Fournisseur</span>
                       </button>
+                      <button
+                        onClick={addNewItem}
+                        className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
+                      >
+                        <span>+</span>
+                        <span>Ajouter</span>
+                      </button>
+                      
+                      {/* NOUVEAU BOUTON VALIDER */}
+                      {editingPO && items.length > 0 && (
+                        <button
+                          onClick={validateArticles}
+                          disabled={isValidatingArticles || articlesValidated}
+                          className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 text-sm ${
+                            articlesValidated 
+                              ? 'bg-green-600 text-white cursor-default' 
+                              : 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400'
+                          }`}
+                          title={articlesValidated ? 'Articles validés et sauvegardés' : 'Valider et sauvegarder les articles en base'}
+                        >
+                          <span>{articlesValidated ? '✅' : '💾'}</span>
+                          <span className="hidden sm:inline">
+                            {isValidatingArticles ? 'Validation...' : (articlesValidated ? 'Articles Validés' : 'Valider Articles')}
+                          </span>
+                          <span className="sm:hidden">
+                            {isValidatingArticles ? 'Valid...' : (articlesValidated ? 'Validé' : 'Valider')}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* TABLE RESPONSIVE POUR MOBILE */}
-                    <div className="border rounded-lg overflow-hidden">
-                      {/* Version mobile - Cards */}
-                      <div className="block sm:hidden divide-y divide-gray-200">
-                        {items.map((item, index) => (
-                          <div key={item.id || index} className="p-4 bg-white">
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="font-medium text-gray-900 text-sm">{item.product_id}</div>
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => startEditingItem(index)}
-                                  className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-300 rounded"
-                                >
-                                  ✏️
-                                </button>
-                                {(item.from_manual || item.from_supplier_purchase) && (
-                                  <button
-                                    onClick={() => deleteItem(index)}
-                                    className="text-red-600 hover:text-red-800 text-xs px-2 py-1 border border-red-300 rounded"
-                                  >
-                                    🗑️
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-sm text-gray-600 mb-2">{item.description}</div>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div>
-                                <span className="text-gray-500">Qté:</span>
-                                <span className="ml-1 font-medium">{item.quantity}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Prix:</span>
-                                <span className="ml-1 font-medium">${parseFloat(item.selling_price || 0).toFixed(2)}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Livré:</span>
-                                <span className="ml-1 font-medium">{item.delivered_quantity || 0}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Total:</span>
-                                <span className="ml-1 font-bold text-green-600">
-                                  ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
-                            {item.from_manual && (
-                              <div className="text-xs text-blue-600 mt-1">Article ajouté manuellement</div>
-                            )}
-                            {item.from_supplier_purchase && (
-                              <div className="text-xs text-purple-600 mt-1">
-                                Importé depuis achat #{item.supplier_purchase_number}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+              
+                  {items.length === 0 ? (
+                    <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                      <p className="text-gray-500 mb-4">Aucun article dans ce bon d'achat</p>
+                      <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
+                      <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
+                        <button
+                          onClick={addNewItem}
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
+                        >
+                          Ajouter manuellement
+                        </button>
+                        <button
+                          onClick={loadSubmissions}
+                          disabled={hasExistingSubmission}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
+                        >
+                          Import soumission
+                        </button>
+                        <button
+                          onClick={openSupplierImportModal}
+                          disabled={!formData.client_name}
+                          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 text-sm"
+                        >
+                          Import fournisseur
+                        </button>
                       </div>
-
-                      {/* Version desktop - Table normale */}
-                      <table className="w-full hidden sm:table">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code Produit</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantité</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unité</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix Unit.</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sous-Total</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* TABLE RESPONSIVE POUR MOBILE */}
+                      <div className="border rounded-lg overflow-hidden">
+                        {/* Version mobile - Cards */}
+                        <div className="block sm:hidden divide-y divide-gray-200">
                           {items.map((item, index) => (
-                            <ItemRow
-                              key={item.id || index}
-                              item={item}
-                              onUpdate={(updatedItem) => updateItem(index, updatedItem)}
-                              onDelete={() => deleteItem(index)}
-                            />
+                            <div key={item.id || index} className="p-4 bg-white">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="font-medium text-gray-900 text-sm">{item.product_id}</div>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => startEditingItem(index)}
+                                    className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-300 rounded"
+                                  >
+                                    ✏️
+                                  </button>
+                                  {(item.from_manual || item.from_supplier_purchase) && (
+                                    <button
+                                      onClick={() => deleteItem(index)}
+                                      className="text-red-600 hover:text-red-800 text-xs px-2 py-1 border border-red-300 rounded"
+                                    >
+                                      🗑️
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-sm text-gray-600 mb-2">{item.description}</div>
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                  <span className="text-gray-500">Qté:</span>
+                                  <span className="ml-1 font-medium">{item.quantity}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Prix:</span>
+                                  <span className="ml-1 font-medium">${parseFloat(item.selling_price || 0).toFixed(2)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Livré:</span>
+                                  <span className="ml-1 font-medium">{item.delivered_quantity || 0}</span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Total:</span>
+                                  <span className="ml-1 font-bold text-green-600">
+                                    ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                              {item.from_manual && (
+                                <div className="text-xs text-blue-600 mt-1">Article ajouté manuellement</div>
+                              )}
+                              {item.from_supplier_purchase && (
+                                <div className="text-xs text-purple-600 mt-1">
+                                  Importé depuis achat #{item.supplier_purchase_number}
+                                </div>
+                              )}
+                            </div>
                           ))}
-                        </tbody>
-                        <tfoot className="bg-gray-50">
-                          <tr>
-                            <td colSpan="6" className="px-4 py-3 text-right font-semibold">
-                              Total:
-                            </td>
-                            <td className="px-4 py-3 text-right font-bold text-lg">
-                              ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
-                            </td>
-                            <td className="px-4 py-3"></td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-
-                    {/* Total visible sur mobile avec indicateur de validation */}
-                    <div className={`block sm:hidden rounded-lg p-4 ${articlesValidated ? 'bg-green-50' : 'bg-gray-50'}`}>
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-gray-700">Total général:</span>
-                        <span className="font-bold text-lg text-green-600">
-                          ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
-                        </span>
+                        </div>
+              
+                        {/* Version desktop - Table normale */}
+                        <table className="w-full hidden sm:table">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code Produit</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantité</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unité</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix Unit.</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sous-Total</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {items.map((item, index) => (
+                              <ItemRow
+                                key={item.id || index}
+                                item={item}
+                                onUpdate={(updatedItem) => updateItem(index, updatedItem)}
+                                onDelete={() => deleteItem(index)}
+                              />
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-gray-50">
+                            <tr>
+                              <td colSpan="6" className="px-4 py-3 text-right font-semibold">
+                                Total:
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-lg">
+                                ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                              </td>
+                              <td className="px-4 py-3"></td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
-                      {articlesValidated && (
-                        <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                          <span>✅</span>
-                          <span>Articles validés et sauvegardés</span>
+              
+                      {/* Total visible sur mobile avec indicateur de validation */}
+                      <div className={`block sm:hidden rounded-lg p-4 ${articlesValidated ? 'bg-green-50' : 'bg-gray-50'}`}>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-700">Total général:</span>
+                          <span className="font-bold text-lg text-green-600">
+                            ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                          </span>
                         </div>
-                      )}
-                      {editingPO && items.length > 0 && !articlesValidated && (
-                        <div className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                          <span>⚠️</span>
-                          <span>Articles non validés - Cliquez sur "Valider Articles"</span>
-                        </div>
-                      )}
+                        {articlesValidated && (
+                          <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                            <span>✅</span>
+                            <span>Articles validés et sauvegardés</span>
+                          </div>
+                        )}
+                        {editingPO && items.length > 0 && !articlesValidated && (
+                          <div className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                            <span>⚠️</span>
+                            <span>Articles non validés - Cliquez sur "Valider Articles"</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
 
             {/* ONGLET LIVRAISONS */}
             {activeTab === 'livraisons' && editingPO && (
