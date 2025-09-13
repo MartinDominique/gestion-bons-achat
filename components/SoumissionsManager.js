@@ -1714,7 +1714,7 @@ const cleanupFilesForSubmission = async (files) => {
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <button
                     onClick={handlePrint}
-                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
+                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"  
                   >
                     🖨️ Imprimer Coutants
                   </button>
@@ -1725,7 +1725,7 @@ const cleanupFilesForSubmission = async (files) => {
                     className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center ${
                       selectedItems.length === 0 || !submissionForm.client_name
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-500/20 hover:bg-blue-500/30 text-white'
+                        : 'bg-orange-500/20 hover:bg-orange-500/30 text-white'
                     }`}
                     title={
                       !submissionForm.client_name 
