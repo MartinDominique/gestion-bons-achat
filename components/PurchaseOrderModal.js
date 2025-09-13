@@ -1911,58 +1911,65 @@ setTimeout(() => {
             )}
 
             {/* ONGLET ARTICLES - VERSION MOBILE OPTIMISÉE */}
-            {/* Boutons avec le nouveau bouton Valider */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
-                <button
-                  onClick={loadSubmissions}
-                  disabled={hasExistingSubmission}
-                  className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
-                >
-                  <span>📋</span>
-                  <span className="hidden sm:inline">Importer depuis</span>
-                  <span>Soumission</span>
-                </button>
-                <button
-                  onClick={openSupplierImportModal}
-                  disabled={!formData.client_name}
-                  className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
-                  title={!formData.client_name ? 'Sélectionnez d\'abord un client' : 'Importer depuis achats fournisseurs'}
-                >
-                  <span>📋</span>
-                  <span className="hidden sm:inline">Import</span>
-                  <span>Fournisseur</span>
-                </button>
-                <button
-                  onClick={addNewItem}
-                  className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
-                >
-                  <span>+</span>
-                  <span>Ajouter</span>
-                </button>
-                
-                {/* NOUVEAU BOUTON VALIDER */}
-                {editingPO && items.length > 0 && (
-                  <button
-                    onClick={validateArticles}
-                    disabled={isValidatingArticles || articlesValidated}
-                    className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 text-sm ${
-                      articlesValidated 
-                        ? 'bg-green-600 text-white cursor-default' 
-                        : 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400'
-                    }`}
-                    title={articlesValidated ? 'Articles validés et sauvegardés' : 'Valider et sauvegarder les articles en base'}
-                  >
-                    <span>{articlesValidated ? '✅' : '💾'}</span>
-                    <span className="hidden sm:inline">
-                      {isValidatingArticles ? 'Validation...' : (articlesValidated ? 'Articles Validés' : 'Valider Articles')}
-                    </span>
-                    <span className="sm:hidden">
-                      {isValidatingArticles ? 'Valid...' : (articlesValidated ? 'Validé' : 'Valider')}
-                    </span>
-                  </button>
-                )}
-              </div>
-             </div>
+              {activeTab === 'articles' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-4">
+                    <h3 className="text-lg font-semibold">
+                      Articles du Bon d'Achat ({items.length})
+                    </h3>
+      
+                  {/* Boutons avec le nouveau bouton Valider */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+                    <button
+                      onClick={loadSubmissions}
+                      disabled={hasExistingSubmission}
+                      className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
+                    >
+                      <span>📋</span>
+                      <span className="hidden sm:inline">Importer depuis</span>
+                      <span>Soumission</span>
+                    </button>
+                    <button
+                      onClick={openSupplierImportModal}
+                      disabled={!formData.client_name}
+                      className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
+                      title={!formData.client_name ? 'Sélectionnez d\'abord un client' : 'Importer depuis achats fournisseurs'}
+                    >
+                      <span>📋</span>
+                      <span className="hidden sm:inline">Import</span>
+                      <span>Fournisseur</span>
+                    </button>
+                    <button
+                      onClick={addNewItem}
+                      className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
+                    >
+                      <span>+</span>
+                      <span>Ajouter</span>
+                    </button>
+                    
+                    {/* NOUVEAU BOUTON VALIDER */}
+                    {editingPO && items.length > 0 && (
+                      <button
+                        onClick={validateArticles}
+                        disabled={isValidatingArticles || articlesValidated}
+                        className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 text-sm ${
+                          articlesValidated 
+                            ? 'bg-green-600 text-white cursor-default' 
+                            : 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400'
+                        }`}
+                        title={articlesValidated ? 'Articles validés et sauvegardés' : 'Valider et sauvegarder les articles en base'}
+                      >
+                        <span>{articlesValidated ? '✅' : '💾'}</span>
+                        <span className="hidden sm:inline">
+                          {isValidatingArticles ? 'Validation...' : (articlesValidated ? 'Articles Validés' : 'Valider Articles')}
+                        </span>
+                        <span className="sm:hidden">
+                          {isValidatingArticles ? 'Valid...' : (articlesValidated ? 'Validé' : 'Valider')}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 {items.length === 0 ? (
                   <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
