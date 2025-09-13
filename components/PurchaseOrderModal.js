@@ -1911,12 +1911,12 @@ setTimeout(() => {
             )}
 
             {/* ONGLET ARTICLES - VERSION MOBILE OPTIMISÉE */}
-              {activeTab === 'articles' && (
-                <div className="space-y-6">
-                  <div className="flex flex-col gap-4">
-                    <h3 className="text-lg font-semibold">
-                      Articles du Bon d'Achat ({items.length})
-                    </h3>
+                {activeTab === 'articles' && (
+                  <div className="space-y-6">
+                    <div className="flex flex-col gap-4">
+                      <h3 className="text-lg font-semibold">
+                        Articles du Bon d'Achat ({items.length})
+                      </h3>
                     
                     {/* Boutons avec le nouveau bouton Valider */}
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
@@ -2118,8 +2118,7 @@ setTimeout(() => {
                         )}
                       </div>
                     </div>
-                  )}
-                </div>
+                 </div>
               )}
 
             {/* ONGLET LIVRAISONS */}
