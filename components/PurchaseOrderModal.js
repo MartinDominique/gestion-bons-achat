@@ -1941,26 +1941,26 @@ setTimeout(() => {
                 </button>
                 
                 {/* NOUVEAU BOUTON VALIDER */}
-                  {editingPO && items.length > 0 && (
-                    <button
-                      onClick={validateArticles}
-                      disabled={isValidatingArticles || articlesValidated}
-                      className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 text-sm ${
-                        articlesValidated 
-                          ? 'bg-green-600 text-white cursor-default' 
-                          : 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400'
-                      }`}
-                      title={articlesValidated ? 'Articles validés et sauvegardés' : 'Valider et sauvegarder les articles en base'}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${articlesValidated ? 'bg-white' : 'bg-orange-200'}`}></span>
-                      <span className="hidden sm:inline">
-                        {isValidatingArticles ? 'Validation...' : (articlesValidated ? 'Articles Validés' : 'Valider Articles')}
-                      </span>
-                      <span className="sm:hidden">
-                        {isValidatingArticles ? 'Valid...' : (articlesValidated ? 'Validé' : 'Valider')}
-                      </span>
-                    </button>
-                  )}
+                {editingPO && items.length > 0 && (
+                  <button
+                    onClick={validateArticles}
+                    disabled={isValidatingArticles || articlesValidated}
+                    className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 text-sm ${
+                      articlesValidated 
+                        ? 'bg-green-600 text-white cursor-default' 
+                        : 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400'
+                    }`}
+                    title={articlesValidated ? 'Articles validés et sauvegardés' : 'Valider et sauvegarder les articles en base'}
+                  >
+                    <span>{articlesValidated ? '✅' : '💾'}</span>
+                    <span className="hidden sm:inline">
+                      {isValidatingArticles ? 'Validation...' : (articlesValidated ? 'Articles Validés' : 'Valider Articles')}
+                    </span>
+                    <span className="sm:hidden">
+                      {isValidatingArticles ? 'Valid...' : (articlesValidated ? 'Validé' : 'Valider')}
+                    </span>
+                  </button>
+                )}
               </div>
              </div>
 
@@ -2089,7 +2089,7 @@ setTimeout(() => {
                       </table>
                     </div>
 
-                   {/* Total visible sur mobile avec indicateur de validation */}
+                    {/* Total visible sur mobile avec indicateur de validation */}
                     <div className={`block sm:hidden rounded-lg p-4 ${articlesValidated ? 'bg-green-50' : 'bg-gray-50'}`}>
                       <div className="flex justify-between items-center">
                         <span className="font-semibold text-gray-700">Total général:</span>
@@ -2099,13 +2099,13 @@ setTimeout(() => {
                       </div>
                       {articlesValidated && (
                         <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span>✅</span>
                           <span>Articles validés et sauvegardés</span>
                         </div>
                       )}
                       {editingPO && items.length > 0 && !articlesValidated && (
                         <div className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                          <span>⚠️</span>
                           <span>Articles non validés - Cliquez sur "Valider Articles"</span>
                         </div>
                       )}
@@ -2438,6 +2438,7 @@ setTimeout(() => {
           </div>
         </div>
      </div>
+    </div>
 
       {/* Modal import soumissions */}
       {showSubmissionModal && (
