@@ -542,43 +542,48 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   };
 
   // Importer une soumission
-  const importSubmission = async (submission) => {
-    try {
-      console.log('Import soumission:', submission.submission_number);
-      
-      setFormData(prev => ({
-        ...prev,
-        client_name: submission.client_name || prev.client_name,
-        client_email: submission.client_email || prev.client_email,
-        client_phone: submission.client_phone || prev.client_phone,
-        client_address: submission.client_address || prev.client_address,
-        submission_no: submission.submission_number,
-        amount: totalFromItems > 0 ? totalFromItems : (parseFloat(submission.amount) || 0)
-      }));
-      
-      const submissionItems = submission.items || [];
-      const importedItems = submissionItems.map((item, index) => ({
-        id: 'temp-' + index,
-        product_id: item.product_id || item.code || 'ITEM-' + (index + 1),
-        description: item.name || item.description || 'Article',
-        quantity: parseFloat(item.quantity) || 0,
-        unit: item.unit || 'unité',
-        selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
-        delivered_quantity: 0,
-        from_submission: true
-      }));
-      
-      setItems(importedItems);
-      setShowSubmissionModal(false);
-      setActiveTab('articles');
-      
-      console.log('Soumission ' + submission.submission_number + ' importée avec ' + importedItems.length + ' articles');
-      
-    } catch (err) {
-      console.error('Erreur import soumission:', err);
-      setError(err.message);
-    }
-  };
+    const importSubmission = async (submission) => {
+      try {
+        console.log('Import soumission:', submission.submission_number);
+        
+        const submissionItems = submission.items || [];
+        const importedItems = submissionItems.map((item, index) => ({
+          id: 'temp-' + index,
+          product_id: item.product_id || item.code || 'ITEM-' + (index + 1),
+          description: item.name || item.description || 'Article',
+          quantity: parseFloat(item.quantity) || 0,
+          unit: item.unit || 'unité',
+          selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0), // ← Prix corrigé
+          delivered_quantity: 0,
+          from_submission: true
+        }));
+    
+        // Calculer le montant total basé sur les articles importés
+        const totalFromItems = importedItems.reduce((sum, item) => 
+          sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+        );
+        
+        setFormData(prev => ({
+          ...prev,
+          client_name: submission.client_name || prev.client_name,
+          client_email: submission.client_email || prev.client_email,
+          client_phone: submission.client_phone || prev.client_phone,
+          client_address: submission.client_address || prev.client_address,
+          submission_no: submission.submission_number,
+          amount: totalFromItems > 0 ? totalFromItems : (parseFloat(submission.amount) || 0) // ← Utilise le total calculé
+        }));
+        
+        setItems(importedItems);
+        setShowSubmissionModal(false);
+        setActiveTab('articles');
+        
+        console.log('Soumission ' + submission.submission_number + ' importée avec ' + importedItems.length + ' articles');
+        
+      } catch (err) {
+        console.error('Erreur import soumission:', err);
+        setError(err.message);
+      }
+    };
 
   // Ajouter un nouvel article manuellement
   const addNewItem = () => {
