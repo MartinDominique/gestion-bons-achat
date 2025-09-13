@@ -10,6 +10,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     client_email: '',
     client_phone: '',
     client_address: '',
+    description: '',
     date: new Date().toISOString().split('T')[0],
     delivery_date: '',
     payment_terms: '',
@@ -457,6 +458,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       client_email: '',
       client_phone: '',
       client_address: '',
+      description: '',
       date: new Date().toISOString().split('T')[0],
       delivery_date: '',
       payment_terms: '',
@@ -1055,6 +1057,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             client_email: formData.client_email || null,
             client_phone: formData.client_phone || null,
             client_address: formData.client_address || null,
+            description: formData.description,
             date: formData.date,
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
@@ -1081,6 +1084,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             client_email: formData.client_email || null,
             client_phone: formData.client_phone || null,
             client_address: formData.client_address || null,
+            description: formData.description,
             date: formData.date,
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
@@ -1720,6 +1724,20 @@ setTimeout(() => {
                     />
                   </div>
 
+                    <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description du BA
+                    </label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      placeholder="Description du bon d'achat..."
+                      rows="3"
+                    />
+                  </div>
+                        
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       No Soumission
