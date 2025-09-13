@@ -478,7 +478,7 @@ const PurchaseOrderManager = () => {
                   <div>
                     <div className="font-semibold text-gray-900">{po.client_name || 'N/A'}</div>
                     <div className="text-sm text-gray-600">
-                      {po.submission_no ? `Soumission: #${po.submission_no}` : 'Aucune description'}
+                     {po.description || (po.submission_no ? `Soumission: #${po.submission_no}` : 'Aucune description')}
                     </div>
                   </div>
                 </div>
