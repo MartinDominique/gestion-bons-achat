@@ -1426,11 +1426,7 @@ const cleanupFilesForSubmission = async (files) => {
                   {/* Conditions à gauche */}
                   <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                    <div>• Prix valides pour 30 jours</div>
-                    <div>• Paiement: Net 30 jours</div>
-                    <div>• Installation selon disponibilité</div>
-                    <div>• Prix sujets à changement sans préavis</div>
-                  </div>
+                   </div>
                   
                   {/* Totaux avec taxes à droite */}
                   <div style={{ minWidth: '250px', fontSize: '12px' }}>
@@ -1602,7 +1598,6 @@ const cleanupFilesForSubmission = async (files) => {
                     <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
                     <div>• Prix valides pour 30 jours</div>
                     <div>• Paiement: Net 30 jours</div>
-                    <div>• Installation selon disponibilité</div>
                     <div>• Prix sujets à changement sans préavis</div>
                   </div>
                   
@@ -1672,17 +1667,9 @@ const cleanupFilesForSubmission = async (files) => {
                 </div>
               </div>
 
-              {/* Validité */}
-              <div className="print-validity">
-                ⏰ Cette soumission est valide pour 30 jours • Merci de votre confiance!
-              </div>
-
               {/* Footer client */}
               <div className="print-footer">
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                    Pour toute question, n'hésitez pas à nous contacter au (418) 225-3875
-                  </div>
                 </div>
               </div>
             </div>
