@@ -740,7 +740,7 @@ const handlePrintClient = () => {
   try {
     // Changer le titre pour le nom du fichier PDF
     const originalTitle = document.title;
-    document.title = `Soumission_${submissionForm.submission_number}`;
+    document.title = `SOU-${submissionForm.submission_number}`;
     
     document.body.classList.add('print-client');
     window.print();
@@ -794,7 +794,7 @@ N'hésitez pas à nous contacter pour toute question.`;
           if (document.body.contains(iframe)) {
             document.body.removeChild(iframe);
           }
-        }, 3000);
+        }, 1000);
       }
     }, 3000);
 
@@ -1716,7 +1716,7 @@ const cleanupFilesForSubmission = async (files) => {
                     onClick={handlePrint}
                     className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
                   >
-                    🖨️ Imprimer
+                    🖨️ Imprimer Coutants
                   </button>
                                     
                   <button
