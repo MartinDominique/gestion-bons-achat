@@ -1969,8 +1969,7 @@ setTimeout(() => {
                         </button>
                       )}
                     </div>
-                  </div>
-              
+                                
                   {items.length === 0 ? (
                     <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                       <p className="text-gray-500 mb-4">Aucun article dans ce bon d'achat</p>
