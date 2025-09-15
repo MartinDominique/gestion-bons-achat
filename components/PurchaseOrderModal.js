@@ -10,7 +10,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     client_email: '',
     client_phone: '',
     client_address: '',
-    description: '',
     date: new Date().toISOString().split('T')[0],
     delivery_date: '',
     payment_terms: '',
@@ -54,9 +53,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   // États pour upload de fichiers
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isValidatingArticles, setIsValidatingArticles] = useState(false);
-  const [articlesValidated, setArticlesValidated] = useState(false);
-  
   // États pour l'édition mobile
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingItemData, setEditingItemData] = useState(null);
@@ -201,7 +197,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setSelectedPurchaseForImport(null);
       setSelectedItemsForImport([]);
       setActiveTab('articles');
-      setArticlesValidated(false);
 
       console.log(`${itemsToImport.length} articles importés depuis l'achat fournisseur ${selectedPurchaseForImport.purchase_number}`);
 
@@ -462,7 +457,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       client_email: '',
       client_phone: '',
       client_address: '',
-      description: '',
       date: new Date().toISOString().split('T')[0],
       delivery_date: '',
       payment_terms: '',
@@ -546,48 +540,43 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   };
 
   // Importer une soumission
-    const importSubmission = async (submission) => {
-      try {
-        console.log('Import soumission:', submission.submission_number);
-        
-        const submissionItems = submission.items || [];
-        const importedItems = submissionItems.map((item, index) => ({
-          id: 'temp-' + index,
-          product_id: item.product_id || item.code || 'ITEM-' + (index + 1),
-          description: item.name || item.description || 'Article',
-          quantity: parseFloat(item.quantity) || 0,
-          unit: item.unit || 'unité',
-          selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0), // ← Prix corrigé
-          delivered_quantity: 0,
-          from_submission: true
-        }));
-    
-        // Calculer le montant total basé sur les articles importés
-        const totalFromItems = importedItems.reduce((sum, item) => 
-          sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
-        );
-        
-        setFormData(prev => ({
-          ...prev,
-          client_name: submission.client_name || prev.client_name,
-          client_email: submission.client_email || prev.client_email,
-          client_phone: submission.client_phone || prev.client_phone,
-          client_address: submission.client_address || prev.client_address,
-          submission_no: submission.submission_number,
-          amount: totalFromItems > 0 ? totalFromItems : (parseFloat(submission.amount) || 0) // ← Utilise le total calculé
-        }));
-        
-        setItems(importedItems);
-        setShowSubmissionModal(false);
-        setActiveTab('articles');
-        
-        console.log('Soumission ' + submission.submission_number + ' importée avec ' + importedItems.length + ' articles');
-        
-      } catch (err) {
-        console.error('Erreur import soumission:', err);
-        setError(err.message);
-      }
-    };
+  const importSubmission = async (submission) => {
+    try {
+      console.log('Import soumission:', submission.submission_number);
+      
+      setFormData(prev => ({
+        ...prev,
+        client_name: submission.client_name || prev.client_name,
+        client_email: submission.client_email || prev.client_email,
+        client_phone: submission.client_phone || prev.client_phone,
+        client_address: submission.client_address || prev.client_address,
+        submission_no: submission.submission_number,
+        amount: parseFloat(submission.amount) || 0
+      }));
+      
+      const submissionItems = submission.items || [];
+      const importedItems = submissionItems.map((item, index) => ({
+        id: 'temp-' + index,
+        product_id: item.product_id || item.code || 'ITEM-' + (index + 1),
+        description: item.name || item.description || 'Article',
+        quantity: parseFloat(item.quantity) || 0,
+        unit: item.unit || 'unité',
+        selling_price: parseFloat(item.price) || 0,
+        delivered_quantity: 0,
+        from_submission: true
+      }));
+      
+      setItems(importedItems);
+      setShowSubmissionModal(false);
+      setActiveTab('articles');
+      
+      console.log('Soumission ' + submission.submission_number + ' importée avec ' + importedItems.length + ' articles');
+      
+    } catch (err) {
+      console.error('Erreur import soumission:', err);
+      setError(err.message);
+    }
+  };
 
   // Ajouter un nouvel article manuellement
   const addNewItem = () => {
@@ -622,7 +611,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       };
       setItems([...items, newItem]);
       setActiveTab('articles');
-      setArticlesValidated(false);
     }
   };
 
@@ -631,7 +619,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     const newItems = [...items];
     newItems[index] = updatedItem;
     setItems(newItems);
-    setArticlesValidated(false);
     
     // Calculer le montant total automatiquement lors de la modification d'articles
     const totalAmount = newItems.reduce((sum, item) => 
@@ -644,7 +631,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const deleteItem = (index) => {
     const newItems = items.filter((_, i) => i !== index);
     setItems(newItems);
-    setArticlesValidated(false);
     
     // Recalculer le montant total après suppression
     const totalAmount = newItems.reduce((sum, item) => 
@@ -1030,74 +1016,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     }
   };
 
-    // Valider et sauvegarder uniquement les articles
-      const validateArticles = async () => {
-        if (!editingPO) {
-          setError('Veuillez d\'abord créer et sauvegarder le bon d\'achat avant de valider les articles.');
-          return;
-        }
-      
-        if (items.length === 0) {
-          setError('Aucun article à valider.');
-          return;
-        }
-      
-        try {
-          setIsValidatingArticles(true);
-          setError('');
-      
-          // Supprimer les anciens articles
-          const { error: deleteError } = await supabase
-            .from('client_po_items')
-            .delete()
-            .eq('purchase_order_id', editingPO.id);
-      
-          if (deleteError) throw new Error('Erreur suppression anciens articles: ' + deleteError.message);
-      
-          // Insérer les nouveaux articles
-          const itemsData = items.map(item => ({
-            purchase_order_id: editingPO.id,
-            product_id: item.product_id,
-            description: item.description,
-            quantity: parseFloat(item.quantity) || 0,
-            unit: item.unit || 'unité',
-            selling_price: parseFloat(item.selling_price) || 0,
-            delivered_quantity: parseFloat(item.delivered_quantity) || 0
-          }));
-      
-          const { error: itemsError } = await supabase
-            .from('client_po_items')
-            .insert(itemsData);
-      
-          if (itemsError) throw new Error('Erreur sauvegarde articles: ' + itemsError.message);
-      
-          // Calculer et mettre à jour le montant total du BA
-          const totalAmount = itemsData.reduce((sum, item) => sum + (item.quantity * item.selling_price), 0);
-      
-          const { error: updateError } = await supabase
-            .from('purchase_orders')
-            .update({ 
-              amount: totalAmount,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', editingPO.id);
-      
-          if (updateError) throw new Error('Erreur mise à jour montant: ' + updateError.message);
-      
-          // Mettre à jour l'état local
-          setFormData(prev => ({ ...prev, amount: totalAmount }));
-          setArticlesValidated(true);
-      
-          console.log(`Articles validés et sauvegardés pour le BA ${editingPO.po_number} - Total: ${totalAmount}`);
-      
-        } catch (err) {
-          console.error('Erreur validation articles:', err);
-          setError('Erreur lors de la validation des articles: ' + err.message);
-        } finally {
-          setIsValidatingArticles(false);
-        }
-      };
-
   // Sauvegarder le BA
   const savePurchaseOrder = async () => {
     try {
@@ -1137,7 +1055,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             client_email: formData.client_email || null,
             client_phone: formData.client_phone || null,
             client_address: formData.client_address || null,
-            description: formData.description,
             date: formData.date,
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
@@ -1164,7 +1081,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             client_email: formData.client_email || null,
             client_phone: formData.client_phone || null,
             client_address: formData.client_address || null,
-            description: formData.description,
             date: formData.date,
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
@@ -1804,20 +1720,6 @@ setTimeout(() => {
                     />
                   </div>
 
-                    <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description du BA
-                    </label>
-                    <textarea
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Description du bon d'achat..."
-                      rows="3"
-                    />
-                  </div>
-                        
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       No Soumission
@@ -1911,214 +1813,182 @@ setTimeout(() => {
             )}
 
             {/* ONGLET ARTICLES - VERSION MOBILE OPTIMISÉE */}
-                {activeTab === 'articles' && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-4">
-                      <h3 className="text-lg font-semibold">
-                        Articles du Bon d'Achat ({items.length})
-                      </h3>
-                    
-                    {/* Boutons avec le nouveau bouton Valider */}
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+            {activeTab === 'articles' && (
+              <div className="space-y-6">
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-lg font-semibold">
+                    Articles du Bon d'Achat ({items.length})
+                  </h3>
+                  
+                  {/* Boutons empilés sur mobile */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+                    <button
+                      onClick={loadSubmissions}
+                      disabled={hasExistingSubmission}
+                      className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
+                    >
+                      <span>📋</span>
+                      <span className="hidden sm:inline">Importer depuis</span>
+                      <span>Soumission</span>
+                    </button>
+                    <button
+                      onClick={openSupplierImportModal}
+                      disabled={!formData.client_name}
+                      className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
+                      title={!formData.client_name ? 'Sélectionnez d\'abord un client' : 'Importer depuis achats fournisseurs'}
+                    >
+                      <span>📋</span>
+                      <span className="hidden sm:inline">Import</span>
+                      <span>Fournisseur</span>
+                    </button>
+                    <button
+                      onClick={addNewItem}
+                      className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
+                    >
+                      <span>+</span>
+                      <span>Ajouter</span>
+                    </button>
+                  </div>
+                </div>
+
+                {items.length === 0 ? (
+                  <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <p className="text-gray-500 mb-4">Aucun article dans ce bon d'achat</p>
+                    <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
+                    <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
+                      <button
+                        onClick={addNewItem}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
+                      >
+                        Ajouter manuellement
+                      </button>
                       <button
                         onClick={loadSubmissions}
                         disabled={hasExistingSubmission}
-                        className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
                       >
-                        <span>📋</span>
-                        <span className="hidden sm:inline">Importer depuis</span>
-                        <span>Soumission</span>
+                        Import soumission
                       </button>
                       <button
                         onClick={openSupplierImportModal}
                         disabled={!formData.client_name}
-                        className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2 text-sm"
-                        title={!formData.client_name ? 'Sélectionnez d\'abord un client' : 'Importer depuis achats fournisseurs'}
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 text-sm"
                       >
-                        <span>📋</span>
-                        <span className="hidden sm:inline">Import</span>
-                        <span>Fournisseur</span>
+                        Import fournisseur
                       </button>
-                      <button
-                        onClick={addNewItem}
-                        className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 text-sm"
-                      >
-                        <span>+</span>
-                        <span>Ajouter</span>
-                      </button>
-                      
-                      {/* NOUVEAU BOUTON VALIDER */}
-                      {editingPO && items.length > 0 && (
-                        <button
-                          onClick={validateArticles}
-                          disabled={isValidatingArticles || articlesValidated}
-                          className={`px-3 py-2 rounded-lg flex items-center justify-center gap-2 text-sm ${
-                            articlesValidated 
-                              ? 'bg-green-600 text-white cursor-default' 
-                              : 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400'
-                          }`}
-                          title={articlesValidated ? 'Articles validés et sauvegardés' : 'Valider et sauvegarder les articles en base'}
-                        >
-                          <span>{articlesValidated ? '✅' : '💾'}</span>
-                          <span className="hidden sm:inline">
-                            {isValidatingArticles ? 'Validation...' : (articlesValidated ? 'Articles Validés' : 'Valider Articles')}
-                          </span>
-                          <span className="sm:hidden">
-                            {isValidatingArticles ? 'Valid...' : (articlesValidated ? 'Validé' : 'Valider')}
-                          </span>
-                        </button>
-                      )}
                     </div>
-                                
-                  {items.length === 0 ? (
-                    <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                      <p className="text-gray-500 mb-4">Aucun article dans ce bon d'achat</p>
-                      <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
-                      <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
-                        <button
-                          onClick={addNewItem}
-                          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
-                        >
-                          Ajouter manuellement
-                        </button>
-                        <button
-                          onClick={loadSubmissions}
-                          disabled={hasExistingSubmission}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
-                        >
-                          Import soumission
-                        </button>
-                        <button
-                          onClick={openSupplierImportModal}
-                          disabled={!formData.client_name}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 text-sm"
-                        >
-                          Import fournisseur
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {/* TABLE RESPONSIVE POUR MOBILE */}
-                      <div className="border rounded-lg overflow-hidden">
-                        {/* Version mobile - Cards */}
-                        <div className="block sm:hidden divide-y divide-gray-200">
-                          {items.map((item, index) => (
-                            <div key={item.id || index} className="p-4 bg-white">
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="font-medium text-gray-900 text-sm">{item.product_id}</div>
-                                <div className="flex gap-1">
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* TABLE RESPONSIVE POUR MOBILE */}
+                    <div className="border rounded-lg overflow-hidden">
+                      {/* Version mobile - Cards */}
+                      <div className="block sm:hidden divide-y divide-gray-200">
+                        {items.map((item, index) => (
+                          <div key={item.id || index} className="p-4 bg-white">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="font-medium text-gray-900 text-sm">{item.product_id}</div>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => startEditingItem(index)}
+                                  className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-300 rounded"
+                                >
+                                  ✏️
+                                </button>
+                                {(item.from_manual || item.from_supplier_purchase) && (
                                   <button
-                                    onClick={() => startEditingItem(index)}
-                                    className="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 border border-blue-300 rounded"
+                                    onClick={() => deleteItem(index)}
+                                    className="text-red-600 hover:text-red-800 text-xs px-2 py-1 border border-red-300 rounded"
                                   >
-                                    ✏️
+                                    🗑️
                                   </button>
-                                  {(item.from_manual || item.from_supplier_purchase) && (
-                                    <button
-                                      onClick={() => deleteItem(index)}
-                                      className="text-red-600 hover:text-red-800 text-xs px-2 py-1 border border-red-300 rounded"
-                                    >
-                                      🗑️
-                                    </button>
-                                  )}
-                                </div>
+                                )}
                               </div>
-                              <div className="text-sm text-gray-600 mb-2">{item.description}</div>
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>
-                                  <span className="text-gray-500">Qté:</span>
-                                  <span className="ml-1 font-medium">{item.quantity}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Prix:</span>
-                                  <span className="ml-1 font-medium">${parseFloat(item.selling_price || 0).toFixed(2)}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Livré:</span>
-                                  <span className="ml-1 font-medium">{item.delivered_quantity || 0}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Total:</span>
-                                  <span className="ml-1 font-bold text-green-600">
-                                    ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                              {item.from_manual && (
-                                <div className="text-xs text-blue-600 mt-1">Article ajouté manuellement</div>
-                              )}
-                              {item.from_supplier_purchase && (
-                                <div className="text-xs text-purple-600 mt-1">
-                                  Importé depuis achat #{item.supplier_purchase_number}
-                                </div>
-                              )}
                             </div>
-                          ))}
-                        </div>
-              
-                        {/* Version desktop - Table normale */}
-                        <table className="w-full hidden sm:table">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code Produit</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantité</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unité</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix Unit.</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sous-Total</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {items.map((item, index) => (
-                              <ItemRow
-                                key={item.id || index}
-                                item={item}
-                                onUpdate={(updatedItem) => updateItem(index, updatedItem)}
-                                onDelete={() => deleteItem(index)}
-                              />
-                            ))}
-                          </tbody>
-                          <tfoot className="bg-gray-50">
-                            <tr>
-                              <td colSpan="6" className="px-4 py-3 text-right font-semibold">
-                                Total:
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-lg">
-                                ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
-                              </td>
-                              <td className="px-4 py-3"></td>
-                            </tr>
-                          </tfoot>
-                        </table>
+                            <div className="text-sm text-gray-600 mb-2">{item.description}</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="text-gray-500">Qté:</span>
+                                <span className="ml-1 font-medium">{item.quantity}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Prix:</span>
+                                <span className="ml-1 font-medium">${parseFloat(item.selling_price || 0).toFixed(2)}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Livré:</span>
+                                <span className="ml-1 font-medium">{item.delivered_quantity || 0}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Total:</span>
+                                <span className="ml-1 font-bold text-green-600">
+                                  ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                            {item.from_manual && (
+                              <div className="text-xs text-blue-600 mt-1">Article ajouté manuellement</div>
+                            )}
+                            {item.from_supplier_purchase && (
+                              <div className="text-xs text-purple-600 mt-1">
+                                Importé depuis achat #{item.supplier_purchase_number}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
-              
-                      {/* Total visible sur mobile avec indicateur de validation */}
-                      <div className={`block sm:hidden rounded-lg p-4 ${articlesValidated ? 'bg-green-50' : 'bg-gray-50'}`}>
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-gray-700">Total général:</span>
-                          <span className="font-bold text-lg text-green-600">
-                            ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
-                          </span>
-                        </div>
-                        {articlesValidated && (
-                          <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                            <span>✅</span>
-                            <span>Articles validés et sauvegardés</span>
-                          </div>
-                        )}
-                        {editingPO && items.length > 0 && !articlesValidated && (
-                          <div className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                            <span>⚠️</span>
-                            <span>Articles non validés - Cliquez sur "Valider Articles"</span>
-                          </div>
-                        )}
+
+                      {/* Version desktop - Table normale */}
+                      <table className="w-full hidden sm:table">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code Produit</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantité</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unité</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix Unit.</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sous-Total</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {items.map((item, index) => (
+                            <ItemRow
+                              key={item.id || index}
+                              item={item}
+                              onUpdate={(updatedItem) => updateItem(index, updatedItem)}
+                              onDelete={() => deleteItem(index)}
+                            />
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-gray-50">
+                          <tr>
+                            <td colSpan="6" className="px-4 py-3 text-right font-semibold">
+                              Total:
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-lg">
+                              ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3"></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {/* Total visible sur mobile */}
+                    <div className="block sm:hidden bg-gray-50 rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-gray-700">Total général:</span>
+                        <span className="font-bold text-lg text-green-600">
+                          ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
+                        </span>
                       </div>
                     </div>
-                 </div>
-              )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ONGLET LIVRAISONS */}
             {activeTab === 'livraisons' && editingPO && (
@@ -2442,8 +2312,7 @@ setTimeout(() => {
             </div>
           </div>
         </div>
-     </div>
-    </div>
+      </div>
 
       {/* Modal import soumissions */}
       {showSubmissionModal && (
