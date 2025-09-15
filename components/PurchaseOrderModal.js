@@ -1791,7 +1791,21 @@ setTimeout(() => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Notes complémentaires (optionnel)
+                        Description du BA
+                      </label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Description détaillée du bon d'achat..."
+                        rows="3"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">                      
+                        Notes complémentaires (optionnel)
                   </label>
                   <input
                     type="text"
