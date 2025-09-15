@@ -569,6 +569,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       }));
       
       setItems(importedItems);
+      
+      // Recalculer le montant total basé sur les articles importés
+      const totalAmount = importedItems.reduce((sum, item) => 
+        sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+      );
+      setFormData(prev => ({ ...prev, amount: Math.max(totalAmount, parseFloat(submission.amount) || 0) }));
       setShowSubmissionModal(false);
       setActiveTab('articles');
       
