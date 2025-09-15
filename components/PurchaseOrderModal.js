@@ -563,7 +563,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         description: item.name || item.description || 'Article',
         quantity: parseFloat(item.quantity) || 0,
         unit: item.unit || 'unité',
-        selling_price: parseFloat(item.price) || 0,
+        selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
         delivered_quantity: 0,
         from_submission: true
       }));
