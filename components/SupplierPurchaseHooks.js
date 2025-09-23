@@ -550,7 +550,7 @@ export const useSupplierPurchase = () => {
           sendEmailToDominique(savedPurchase, pdfBlob)
             .then(() => {
               console.log('📧 EMAIL AUTOMATIQUE ENVOYÉ');
-              setEmailStatus('✅ Email envoyé automatiquement');
+              setEmailStatus('✅ Email envoyé automatiquement à Dominique');
             })
             .catch((emailError) => {
               console.error('📧 ERREUR EMAIL:', emailError);
