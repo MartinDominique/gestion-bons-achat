@@ -22,7 +22,7 @@ export async function POST(request) {
 
     const emailData = {
       from: 'delivered@resend.dev',
-      to: ['info.servicestmt@gmail.com'],
+      to: ['servicestmt@gmail.com'],
       subject: `🛒 ${isApproved ? 'Achat Fournisseur Approuvé' : 'Nouvel Achat Fournisseur'} - #${body.purchase.purchase_number}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
