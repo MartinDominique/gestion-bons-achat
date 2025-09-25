@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Save, X, Calendar, Clock, FileText, User } from 'lucide-react';
+import MaterialSelector from './MaterialSelector';
 
 export default function WorkOrderForm({ 
   workOrder = null, 
@@ -269,15 +270,26 @@ export default function WorkOrderForm({
           />
         </div>
 
-        {/* Matériaux - Placeholder amélioré */}
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-3">Matériaux utilisés</h3>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <p className="text-gray-500 mb-2">Section matériaux - À développer</p>
-            <p className="text-sm text-gray-400">
-              Recherche dans vos produits à venir
-            </p>
-          </div>
+       {/* Section Matériaux */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
+              <span className="text-blue-600 font-bold text-sm">4</span>
+            </div>
+            Matériaux et Produits
+          </h3>
+          
+          <MaterialSelector
+            materials={materials}
+            onMaterialsChange={handleMaterialsChange}
+          />
+          
+          {errors.materials && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded flex items-center">
+              <AlertCircle className="text-yellow-600 mr-2" size={16} />
+              <p className="text-yellow-800 text-sm">{errors.materials}</p>
+            </div>
+          )}
         </div>
 
         {/* Boutons d'action - Selon le mode */}
