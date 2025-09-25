@@ -25,8 +25,13 @@ export default function ModifierBonTravailPage({ params }) {
           throw new Error('Erreur chargement bon de travail');
         }
 
-        const data = await response.json();
-        setWorkOrder(data);
+        const responseData = await response.json();
+        console.log('Données BT chargées:', responseData);
+        
+        // CORRECTION: Gérer le format {success: true, data: ...}
+        const workOrderData = responseData.success ? responseData.data : responseData;
+        setWorkOrder(workOrderData);
+        
       } catch (err) {
         console.error('Erreur:', err);
         setError(err.message);
@@ -46,15 +51,13 @@ export default function ModifierBonTravailPage({ params }) {
     setError(null);
 
     try {
-      const method = 'PUT';
-      const url = '/api/work-orders';
-
-      const response = await fetch(url, {
-        method,
+      // CORRECTION: Utiliser la bonne URL avec l'ID
+      const response = await fetch(`/api/work-orders/${params.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...workOrderData,
-          id: parseInt(params.id)
+          status: status || workOrderData.status || 'draft'
         })
       });
 
@@ -63,16 +66,18 @@ export default function ModifierBonTravailPage({ params }) {
         throw new Error(errorData.error || 'Erreur lors de la sauvegarde');
       }
 
-      const savedWorkOrder = await response.json();
+      const responseData = await response.json();
+      console.log('BT sauvegardé:', responseData);
       
-      // Message de succès selon le statut
+      // Messages de succès selon le statut
       const messages = {
         draft: 'Bon de travail sauvegardé en brouillon',
         completed: 'Bon de travail finalisé avec succès',
         sent: 'Bon de travail envoyé au client'
       };
 
-      alert(messages[status] || 'Bon de travail mis à jour avec succès');
+      const finalStatus = status || workOrderData.status || 'draft';
+      alert(messages[finalStatus] || 'Bon de travail mis à jour avec succès');
       
       // Redirection vers la liste
       router.push('/bons-travail');
@@ -169,11 +174,14 @@ export default function ModifierBonTravailPage({ params }) {
             <p className="text-blue-700 text-sm mt-1">
               Créé le {new Date(workOrder.created_at).toLocaleDateString('fr-CA')} - 
               Statut: <span className="font-medium">{workOrder.status}</span>
+              {workOrder.materials && workOrder.materials.length > 0 && (
+                <span> - {workOrder.materials.length} matériau(x)</span>
+              )}
             </p>
           </div>
           <div className="text-right">
             <div className="text-sm text-blue-700">Client:</div>
-            <div className="font-medium text-blue-900">{workOrder.client?.name}</div>
+            <div className="font-medium text-blue-900">{workOrder.client?.name || 'Client non défini'}</div>
           </div>
         </div>
       </div>
