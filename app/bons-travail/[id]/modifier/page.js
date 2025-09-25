@@ -50,15 +50,28 @@ export default function ModifierBonTravailPage({ params }) {
     setSaving(true);
     setError(null);
 
+    // DEBUG CRITIQUE - AJOUTER CES LIGNES
+    console.log('🔍 PARENT REÇOIT - workOrderData complet:', workOrderData);
+    console.log('🔍 PARENT REÇOIT - materials:', workOrderData.materials);
+    console.log('🔍 PARENT REÇOIT - materials.length:', workOrderData.materials?.length || 0);
+    console.log('🔍 PARENT REÇOIT - work_description:', workOrderData.work_description);
+
     try {
+      const payload = {
+        ...workOrderData,
+        status: status || workOrderData.status || 'draft'
+      };
+
+      console.log('🔍 PAYLOAD ENVOYÉ À L\'API:', payload);
+      console.log('🔍 PAYLOAD.materials:', payload.materials);
+      console.log('🔍 PAYLOAD.materials.length:', payload.materials?.length || 0);
+      console.log('🔍 PAYLOAD.work_description:', payload.work_description);
+
       // CORRECTION: Utiliser la bonne URL avec l'ID
       const response = await fetch(`/api/work-orders/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...workOrderData,
-          status: status || workOrderData.status || 'draft'
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -67,6 +80,9 @@ export default function ModifierBonTravailPage({ params }) {
       }
 
       const responseData = await response.json();
+      console.log('🔍 RETOUR API COMPLET:', responseData);
+      console.log('🔍 RETOUR API - data.materials:', responseData.data?.materials);
+      console.log('🔍 RETOUR API - data.work_description:', responseData.data?.work_description);
       console.log('BT sauvegardé:', responseData);
       
       // Messages de succès selon le statut
