@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '../../../../lib/supabase';
+import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 
 // GET - Récupérer un bon de travail spécifique avec toutes ses relations
 export async function GET(request, { params }) {
@@ -7,7 +7,7 @@ export async function GET(request, { params }) {
     console.log('=== API GET SINGLE WORK ORDER ===');
     console.log('ID demandé:', params.id);
     
-    const supabase = createClient();
+    const supabase = supabaseAdmin;
     const workOrderId = parseInt(params.id);
 
     if (isNaN(workOrderId)) {
@@ -64,7 +64,7 @@ export async function PUT(request, { params }) {
     console.log('🔍 API REÇOIT - materials:', body.materials);
     console.log('🔍 API REÇOIT - materials.length:', body.materials?.length || 0);
     
-    const supabase = createClient();
+    const supabase = supabaseAdmin;
     const workOrderId = parseInt(params.id);
 
     const { materials = [], client, linked_po, ...updateData } = body;
