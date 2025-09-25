@@ -123,7 +123,8 @@ export default function WorkOrderForm({
 
   // FONCTION MANQUANTE - Gestion des matériaux
   const handleMaterialsChange = (updatedMaterials) => {
-    console.log('🔄 Materials updated:', updatedMaterials); // DEBUG
+     console.log('🔄 MATERIALS CHANGED:', updatedMaterials);
+  console.log('🔄 MATERIALS COUNT:', updatedMaterials.length);
     setMaterials(updatedMaterials);
     // Supprimer l'erreur des matériaux si elle existe
     if (errors.materials) {
@@ -139,9 +140,10 @@ export default function WorkOrderForm({
   const handleSubmit = async (status = 'draft') => {
     if (!validateForm()) return;
 
-  console.log('🔍 DEBUG AVANT SAUVEGARDE:');
-  console.log('Materials dans l\'état:', materials);
-  console.log('FormData.work_description:', formData.work_description);
+   console.log('🔍 ÉTAT ACTUEL:');
+  console.log('- formData.work_description:', formData.work_description);
+  console.log('- materials:', materials);
+  console.log('- materials.length:', materials.length);
 
     const dataToSave = {
       ...formData,
@@ -150,8 +152,9 @@ export default function WorkOrderForm({
       status,
       materials
     };
-
-    console.log('🔍 DataToSave.materials:', dataToSave.materials);
+    
+   console.log('🔍 DATASAVE.MATERIALS:', dataToSave.materials);
+  console.log('🔍 DATASAVE.WORK_DESCRIPTION:', dataToSave.work_description);
 
     // Si mode édition, ajouter l'ID
     if (mode === 'edit' && workOrder) {
