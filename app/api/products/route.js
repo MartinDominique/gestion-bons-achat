@@ -42,16 +42,19 @@ export async function GET(request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Format compatible avec MaterialSelector
+    // Format compatible avec MaterialSelector existant
     const formattedData = data?.map(product => ({
-      id: product.product_id, // Utilise product_id comme id
+      id: product.product_id, // MaterialSelector utilise 'id' au lieu de 'product_id' 
+      product_id: product.product_id, // Garder aussi product_id pour compatibilité
       name: product.description,
+      description: product.description, // Ajouter description aussi
       category: product.product_group || 'Divers',
+      product_group: product.product_group, // Garder product_group pour filtrage
       unit: product.unit || 'unité',
       price: product.selling_price || 0,
       cost_price: product.cost_price || 0,
-      stock_qty: product.stock_qty || 0,
-      description: product.description
+      selling_price: product.selling_price || 0, // MaterialSelector utilise selling_price
+      stock_qty: product.stock_qty || 0
     })) || [];
 
     // Retourner directement l'array pour compatibilité MaterialSelector
