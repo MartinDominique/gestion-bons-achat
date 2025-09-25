@@ -20,9 +20,9 @@ export async function GET(request) {
         product_group
       `);
 
-    // Recherche par description ou product_id
+    // Recherche par description, product_id et product_group (comme SoumissionsManager)
     if (search) {
-      query = query.or(`description.ilike.%${search}%,product_id.ilike.%${search}%`);
+      query = query.or(`description.ilike.%${search}%,product_id.ilike.%${search}%,product_group.ilike.%${search}%`);
     }
 
     // Tri par description
@@ -54,12 +54,8 @@ export async function GET(request) {
       description: product.description
     })) || [];
 
-    return NextResponse.json({
-      products: formattedData,
-      total: count || formattedData.length,
-      page,
-      limit
-    });
+    // Retourner directement l'array pour compatibilité MaterialSelector
+    return NextResponse.json(formattedData);
 
   } catch (error) {
     console.error('Erreur API products:', error);
