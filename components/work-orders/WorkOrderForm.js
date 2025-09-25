@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, X, Calendar, Clock, FileText, User } from 'lucide-react';
+import { Save, X, Calendar, Clock, FileText, User, AlertCircle } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
 
 export default function WorkOrderForm({ 
@@ -41,6 +41,11 @@ export default function WorkOrderForm({
       
       if (workOrder.client) {
         setSelectedClient(workOrder.client);
+      }
+
+      // Charger les matériaux existants
+      if (workOrder.materials) {
+        setMaterials(workOrder.materials);
       }
     }
   }, [workOrder, mode]);
@@ -114,6 +119,19 @@ export default function WorkOrderForm({
     const client = clients.find(c => c.id === parseInt(clientId));
     setSelectedClient(client);
     handleChange('client_id', clientId);
+  };
+
+  // FONCTION MANQUANTE - Gestion des matériaux
+  const handleMaterialsChange = (updatedMaterials) => {
+    setMaterials(updatedMaterials);
+    // Supprimer l'erreur des matériaux si elle existe
+    if (errors.materials) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.materials;
+        return newErrors;
+      });
+    }
   };
 
   // Soumission avec statut spécifique
