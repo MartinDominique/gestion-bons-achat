@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, X, Calendar, Clock, FileText, User, AlertCircle } from 'lucide-react';
+import { Save, X, Calendar, Clock, FileText, User, AlertCircle, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
 
 export default function WorkOrderForm({ 
@@ -21,6 +21,12 @@ export default function WorkOrderForm({
     status: 'draft'
   });
 
+  // NOUVEAU: État pour descriptions multiligne
+  const [descriptions, setDescriptions] = useState(['']);
+  
+  // NOUVEAU: État pour checkbox prix
+  const [showPrices, setShowPrices] = useState(false);
+
   const [materials, setMaterials] = useState([]);
   const [errors, setErrors] = useState({});
   const [clients, setClients] = useState([]);
@@ -38,6 +44,12 @@ export default function WorkOrderForm({
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft'
       });
+      
+      // NOUVEAU: Convertir description en tableau de paragraphes
+      if (workOrder.work_description) {
+        const paragraphs = workOrder.work_description.split('\n\n').filter(p => p.trim());
+        setDescriptions(paragraphs.length > 0 ? paragraphs : ['']);
+      }
       
       if (workOrder.client) {
         setSelectedClient(workOrder.client);
@@ -75,6 +87,33 @@ export default function WorkOrderForm({
     loadClients();
   }, [workOrder, mode]);
 
+  // NOUVEAU: Synchroniser descriptions avec work_description
+  useEffect(() => {
+    const combinedDescription = descriptions
+      .filter(desc => desc.trim()) // Enlever les paragraphes vides
+      .join('\n\n'); // Joindre avec double saut de ligne
+    
+    setFormData(prev => ({ ...prev, work_description: combinedDescription }));
+  }, [descriptions]);
+
+  // NOUVEAU: Gestion des descriptions multiligne
+  const handleDescriptionChange = (index, value) => {
+    const newDescriptions = [...descriptions];
+    newDescriptions[index] = value;
+    setDescriptions(newDescriptions);
+  };
+
+  const addDescription = () => {
+    setDescriptions([...descriptions, '']);
+  };
+
+  const removeDescription = (index) => {
+    if (descriptions.length > 1) {
+      const newDescriptions = descriptions.filter((_, i) => i !== index);
+      setDescriptions(newDescriptions);
+    }
+  };
+
   // Calcul du temps total (sans pause maintenant)
   const calculateTotalHours = () => {
     if (!formData.start_time || !formData.end_time) return 0;
@@ -94,8 +133,11 @@ export default function WorkOrderForm({
 
     if (!formData.client_id) newErrors.client_id = 'Client requis';
     if (!formData.work_date) newErrors.work_date = 'Date requise';
-    if (!formData.work_description || formData.work_description.length < 10) {
-      newErrors.work_description = 'Description requise (min 10 caractères)';
+    
+    // MODIFIÉ: Validation sur descriptions combinées
+    const hasValidDescription = descriptions.some(desc => desc.trim().length >= 10);
+    if (!hasValidDescription) {
+      newErrors.work_description = 'Au moins une description de 10 caractères minimum requise';
     }
 
     setErrors(newErrors);
@@ -121,10 +163,10 @@ export default function WorkOrderForm({
     handleChange('client_id', clientId);
   };
 
-  // FONCTION MANQUANTE - Gestion des matériaux
+  // Gestion des matériaux
   const handleMaterialsChange = (updatedMaterials) => {
-     console.log('🔄 MATERIALS CHANGED:', updatedMaterials);
-  console.log('🔄 MATERIALS COUNT:', updatedMaterials.length);
+    console.log('🔄 MATERIALS CHANGED:', updatedMaterials);
+    console.log('🔄 MATERIALS COUNT:', updatedMaterials.length);
     setMaterials(updatedMaterials);
     // Supprimer l'erreur des matériaux si elle existe
     if (errors.materials) {
@@ -136,14 +178,15 @@ export default function WorkOrderForm({
     }
   };
 
-  // Soumission avec statut spécifique
+  // MODIFIÉ: Soumission avec nouveaux statuts
   const handleSubmit = async (status = 'draft') => {
     if (!validateForm()) return;
 
-   console.log('🔍 ÉTAT ACTUEL:');
-  console.log('- formData.work_description:', formData.work_description);
-  console.log('- materials:', materials);
-  console.log('- materials.length:', materials.length);
+    console.log('📝 ÉTAT ACTUEL:');
+    console.log('- descriptions:', descriptions);
+    console.log('- formData.work_description:', formData.work_description);
+    console.log('- materials:', materials);
+    console.log('- materials.length:', materials.length);
 
     const dataToSave = {
       ...formData,
@@ -153,8 +196,8 @@ export default function WorkOrderForm({
       materials
     };
     
-   console.log('🔍 DATASAVE.MATERIALS:', dataToSave.materials);
-  console.log('🔍 DATASAVE.WORK_DESCRIPTION:', dataToSave.work_description);
+    console.log('📝 DATASAVE.MATERIALS:', dataToSave.materials);
+    console.log('📝 DATASAVE.WORK_DESCRIPTION:', dataToSave.work_description);
 
     // Si mode édition, ajouter l'ID
     if (mode === 'edit' && workOrder) {
@@ -178,7 +221,7 @@ export default function WorkOrderForm({
 
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
         {/* Section Client */}
-        <div>
+        <div className="bg-blue-50 p-4 rounded-lg">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <User className="inline mr-2" size={16} />
             Client *
@@ -201,7 +244,7 @@ export default function WorkOrderForm({
             <p className="text-red-500 text-sm mt-1">{errors.client_id}</p>
           )}
           {selectedClient && (
-            <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-800">
+            <div className="mt-2 p-2 bg-white rounded text-sm text-blue-800">
               {selectedClient.address && <div>{selectedClient.address}</div>}
               {selectedClient.email && <div>{selectedClient.email}</div>}
             </div>
@@ -264,23 +307,61 @@ export default function WorkOrderForm({
           </div>
         )}
 
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <FileText className="inline mr-2" size={16} />
-            Description du travail *
-          </label>
-          <textarea
-            rows={4}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-              errors.work_description ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder="Décrire les travaux effectués, installations, réparations..."
-            value={formData.work_description}
-            onChange={(e) => handleChange('work_description', e.target.value)}
-          />
+        {/* NOUVEAU: Descriptions multiligne avec ajout de lignes */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-sm font-medium text-gray-700">
+              <FileText className="inline mr-2" size={16} />
+              Descriptions du travail *
+            </label>
+            <button
+              type="button"
+              onClick={addDescription}
+              className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 flex items-center text-sm"
+            >
+              <Plus className="mr-1" size={14} />
+              Ajouter ligne
+            </button>
+          </div>
+          
+          {descriptions.map((description, index) => (
+            <div key={index} className="mb-3 flex gap-2">
+              <div className="flex-1">
+                <textarea
+                  rows={2}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                    errors.work_description && index === 0 ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder={index === 0 ? "Description principale des travaux effectués..." : "Description additionnelle..."}
+                  value={description}
+                  onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                />
+              </div>
+              {descriptions.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeDescription(index)}
+                  className="text-red-500 hover:text-red-700 p-2"
+                  title="Supprimer cette ligne"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+          
           {errors.work_description && (
             <p className="text-red-500 text-sm mt-1">{errors.work_description}</p>
+          )}
+          
+          {/* Aperçu combiné */}
+          {descriptions.some(d => d.trim()) && (
+            <div className="mt-3 p-3 bg-white border rounded-lg">
+              <div className="text-xs text-gray-500 mb-2">Aperçu final:</div>
+              <div className="text-sm text-gray-700 whitespace-pre-line">
+                {descriptions.filter(d => d.trim()).join('\n\n')}
+              </div>
+            </div>
           )}
         </div>
 
@@ -298,18 +379,39 @@ export default function WorkOrderForm({
           />
         </div>
 
-       {/* Section Matériaux */}
+        {/* NOUVEAU: Section Matériaux avec checkbox prix */}
         <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-              <span className="text-blue-600 font-bold text-sm">4</span>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-medium text-gray-900 flex items-center">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
+                <span className="text-blue-600 font-bold text-sm">4</span>
+              </div>
+              Matériaux et Produits
+            </h3>
+            
+            {/* NOUVEAU: Checkbox afficher prix */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="showPrices"
+                checked={showPrices}
+                onChange={(e) => setShowPrices(e.target.checked)}
+                className="mr-2 rounded"
+              />
+              <label 
+                htmlFor="showPrices" 
+                className="text-sm text-gray-700 flex items-center cursor-pointer"
+              >
+                {showPrices ? <Eye size={16} className="mr-1" /> : <EyeOff size={16} className="mr-1" />}
+                Afficher prix de vente
+              </label>
             </div>
-            Matériaux et Produits
-          </h3>
+          </div>
           
           <MaterialSelector
             materials={materials}
             onMaterialsChange={handleMaterialsChange}
+            showPrices={showPrices} // NOUVEAU: Passer le paramètre
           />
           
           {errors.materials && (
@@ -320,70 +422,48 @@ export default function WorkOrderForm({
           )}
         </div>
 
-        {/* Boutons d'action - Selon le mode */}
+        {/* MODIFIÉ: Nouveaux boutons workflow terrain */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-          {mode === 'create' ? (
-            // Boutons création
-            <>
-              <button
-                type="button"
-                onClick={() => handleSubmit('draft')}
-                disabled={saving}
-                className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center"
-              >
-                <Save className="mr-2" size={16} />
-                {saving ? 'Sauvegarde...' : 'Sauvegarder brouillon'}
-              </button>
+          {/* Bouton Sauvegarder brouillon - toujours disponible */}
+          <button
+            type="button"
+            onClick={() => handleSubmit('draft')}
+            disabled={saving}
+            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium"
+          >
+            <Save className="mr-2" size={16} />
+            {saving ? 'Sauvegarde...' : 'Sauvegarder pour plus tard'}
+          </button>
 
-              <button
-                type="button"
-                onClick={() => handleSubmit('completed')}
-                disabled={saving}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center"
-              >
-                {saving ? 'Création...' : 'Créer le BT'}
-              </button>
-            </>
-          ) : (
-            // Boutons édition
-            <>
-              <button
-                type="button"
-                onClick={() => handleSubmit('draft')}
-                disabled={saving}
-                className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center"
-              >
-                <Save className="mr-2" size={16} />
-                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-              </button>
+          {/* Bouton Présenter au client - workflow principal */}
+          <button
+            type="button"
+            onClick={() => handleSubmit('ready_for_signature')}
+            disabled={saving}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium"
+          >
+            <FileText className="mr-2" size={16} />
+            {saving ? 'Préparation...' : 'Présenter au client'}
+          </button>
 
-              <button
-                type="button"
-                onClick={() => handleSubmit('completed')}
-                disabled={saving}
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center"
-              >
-                {saving ? 'Finalisation...' : 'Finaliser'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSubmit('sent')}
-                disabled={saving}
-                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center"
-              >
-                {saving ? 'Envoi...' : 'Envoyer'}
-              </button>
-            </>
-          )}
-
+          {/* Bouton Annuler */}
           <button
             type="button"
             onClick={onCancel}
-            className="bg-white border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50"
+            className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-medium"
           >
             Annuler
           </button>
+        </div>
+
+        {/* NOUVEAU: Aide contextuelle workflow */}
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h4 className="font-medium text-blue-900 mb-2">💡 Workflow Terrain</h4>
+          <div className="text-sm text-blue-800 space-y-1">
+            <p><strong>Sauvegarder pour plus tard:</strong> Garde le BT en brouillon, vous pourrez le reprendre</p>
+            <p><strong>Présenter au client:</strong> Prépare le BT pour signature sur tablette</p>
+            <p><strong>Afficher prix:</strong> Cochez si le client doit voir les prix des matériaux</p>
+          </div>
         </div>
       </form>
     </div>
