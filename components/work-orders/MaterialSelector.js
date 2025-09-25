@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Package, Plus, Minus, X, Edit, Save, 
-  AlertCircle, CheckCircle, RotateCcw, Hash
+  AlertCircle, CheckCircle, RotateCcw, Hash, Eye, EyeOff
 } from 'lucide-react';
 
-export default function MaterialSelector({ materials = [], onMaterialsChange }) {
+// NOUVEAU: Ajout du paramètre showPrices
+export default function MaterialSelector({ 
+  materials = [], 
+  onMaterialsChange, 
+  showPrices = false // NOUVEAU: Prix cachés par défaut
+}) {
   // États principaux (pattern InventoryManager)
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -218,26 +223,43 @@ export default function MaterialSelector({ materials = [], onMaterialsChange }) 
 
   return (
     <div className="space-y-4">
-      {/* Header avec bouton d'ajout */}
+      {/* Header avec bouton d'ajout et indicateur prix */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-gray-900">
           Matériaux utilisés ({(materials || []).length})
         </h3>
-        <button
-          type="button"
-          onClick={() => {
-            setShowProductSearch(true);
-            setTimeout(() => {
-              if (searchRef.current) {
-                searchRef.current.focus();
-              }
-            }, 100);
-          }}
-          className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm"
-        >
-          <Plus className="mr-1" size={16} />
-          Ajouter matériau
-        </button>
+        <div className="flex items-center gap-3">
+          {/* NOUVEAU: Indicateur prix */}
+          <div className="flex items-center text-sm text-gray-600">
+            {showPrices ? (
+              <div className="flex items-center">
+                <Eye size={14} className="mr-1 text-green-600" />
+                <span className="text-green-600">Prix affichés</span>
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <EyeOff size={14} className="mr-1 text-gray-400" />
+                <span className="text-gray-400">Prix cachés</span>
+              </div>
+            )}
+          </div>
+          
+          <button
+            type="button"
+            onClick={() => {
+              setShowProductSearch(true);
+              setTimeout(() => {
+                if (searchRef.current) {
+                  searchRef.current.focus();
+                }
+              }, 100);
+            }}
+            className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm"
+          >
+            <Plus className="mr-1" size={16} />
+            Ajouter matériau
+          </button>
+        </div>
       </div>
 
       {/* Liste des matériaux ajoutés */}
@@ -313,7 +335,7 @@ export default function MaterialSelector({ materials = [], onMaterialsChange }) 
                   </div>
                 </div>
               ) : (
-                // Mode affichage
+                // Mode affichage - MODIFIÉ: Prix conditionnels
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
@@ -335,11 +357,21 @@ export default function MaterialSelector({ materials = [], onMaterialsChange }) 
                       <span className="font-medium">
                         Qté: {material.quantity} {material.unit}
                       </span>
-                      {material.product?.cost_price && (
-                        <span>
+                      
+                      {/* MODIFIÉ: Prix conditionnel */}
+                      {showPrices && material.product?.cost_price && (
+                        <span className="text-green-600 font-medium">
                           Coût unitaire: {formatCurrency(material.product.cost_price)}
                         </span>
                       )}
+                      
+                      {/* NOUVEAU: Total si prix affiché */}
+                      {showPrices && material.product?.cost_price && (
+                        <span className="text-green-700 font-bold">
+                          Total: {formatCurrency(material.product.cost_price * material.quantity)}
+                        </span>
+                      )}
+                      
                       {material.notes && (
                         <span className="text-blue-600">
                           Note: {material.notes}
@@ -394,16 +426,47 @@ export default function MaterialSelector({ materials = [], onMaterialsChange }) 
               )}
             </div>
           ))}
+          
+          {/* NOUVEAU: Total général si prix affichés */}
+          {showPrices && materials && materials.length > 0 && (
+            <div className="p-4 bg-green-50 border-t">
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-green-900">Total matériaux:</span>
+                <span className="text-lg font-bold text-green-900">
+                  {formatCurrency(
+                    materials.reduce((total, m) => 
+                      total + (m.product?.cost_price || 0) * (m.quantity || 0), 0
+                    )
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Modal de recherche de produits */}
+      {/* Modal de recherche de produits - MODIFIÉ: Prix conditionnels */}
       {showProductSearch && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Rechercher un produit</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-semibold">Rechercher un produit</h3>
+                {/* NOUVEAU: Indicateur prix dans modal */}
+                {showPrices ? (
+                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs flex items-center">
+                    <Eye size={12} className="mr-1" />
+                    Prix affichés
+                  </span>
+                ) : (
+                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs flex items-center">
+                    <EyeOff size={12} className="mr-1" />
+                    Prix cachés
+                  </span>
+                )}
+              </div>
+              
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => loadProducts(true)}
@@ -497,8 +560,12 @@ export default function MaterialSelector({ materials = [], onMaterialsChange }) 
                           <div className="flex gap-4 text-xs text-gray-600">
                             {product.unit && <span>Unité: {product.unit}</span>}
                             <span>Stock: {product.stock_qty || 0}</span>
-                            {product.cost_price && (
-                              <span>Prix: {formatCurrency(product.cost_price)}</span>
+                            
+                            {/* MODIFIÉ: Prix conditionnel dans recherche */}
+                            {showPrices && product.cost_price && (
+                              <span className="text-green-600 font-medium">
+                                Prix: {formatCurrency(product.cost_price)}
+                              </span>
                             )}
                           </div>
                         </div>
