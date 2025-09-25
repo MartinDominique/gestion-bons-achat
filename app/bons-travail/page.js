@@ -16,15 +16,34 @@ export default function BonsTravailPage() {
       const response = await fetch('/api/work-orders');
       if (response.ok) {
         const data = await response.json();
-        setWorkOrders(data);
+        
+        // AJOUTER CETTE VÉRIFICATION :
+        console.log('Données reçues:', data);
+        console.log('Type:', typeof data);
+        console.log('Est un Array:', Array.isArray(data));
+        
+        // Gérer différents formats de réponse
+        let workOrdersData = [];
+        if (Array.isArray(data)) {
+          workOrdersData = data;
+        } else if (data.data && Array.isArray(data.data)) {
+          workOrdersData = data.data;
+        } else if (data.success && data.data && Array.isArray(data.data)) {
+          workOrdersData = data.data;
+        } else {
+          console.warn('Format de réponse inattendu:', data);
+          workOrdersData = [];
+        }
+        
+        setWorkOrders(workOrdersData);
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
+      setWorkOrders([]); // IMPORTANT: Toujours un array
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchWorkOrders();
   }, []);
