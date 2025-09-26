@@ -161,28 +161,28 @@ export default function WorkOrderForm({
     setSelectedClient(client);
     handleChange('client_id', clientId);
     
-    // Charger les bons d'achat du client
-    if (clientId) {
-      loadClientPurchaseOrders(clientId);
-    } else {
-      setClientPurchaseOrders([]);
-      handleChange('linked_po_id', '');
-    }
+    // TEMPORAIREMENT DÉSACTIVÉ: Chargement purchase orders
+    // if (clientId) {
+    //   loadClientPurchaseOrders(clientId);
+    // } else {
+    //   setClientPurchaseOrders([]);
+    //   handleChange('linked_po_id', '');
+    // }
   };
 
-  // Charger les bons d'achat d'un client
-  const loadClientPurchaseOrders = async (clientId) => {
-    try {
-      const response = await fetch(`/api/purchase-orders?client_id=${clientId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setClientPurchaseOrders(data || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement bons d\'achat:', error);
-      setClientPurchaseOrders([]);
-    }
-  };
+  // TEMPORAIREMENT DÉSACTIVÉ: Charger les bons d'achat d'un client
+  // const loadClientPurchaseOrders = async (clientId) => {
+  //   try {
+  //     const response = await fetch(`/api/purchase-orders?client_id=${clientId}`);
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       setClientPurchaseOrders(data || []);
+  //     }
+  //   } catch (error) {
+  //     console.error('Erreur chargement bons d\'achat:', error);
+  //     setClientPurchaseOrders([]);
+  //   }
+  // };
 
   // Gestion des matériaux
   const handleMaterialsChange = (updatedMaterials) => {
@@ -212,7 +212,6 @@ export default function WorkOrderForm({
     const dataToSave = {
       ...formData,
       client_id: parseInt(formData.client_id),
-      total_hours: calculateTotalHours(),
       status,
       materials
     };
