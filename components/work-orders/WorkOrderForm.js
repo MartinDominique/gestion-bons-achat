@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, X, Calendar, Clock, FileText, User, AlertCircle, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
+import TimeTracker from './TimeTracker'; // NOUVEAU
 
 export default function WorkOrderForm({ 
   workOrder = null, 
@@ -25,8 +26,7 @@ export default function WorkOrderForm({
   // NOUVEAU: État pour descriptions multiligne
   const [descriptions, setDescriptions] = useState(['']);
   
-  // NOUVEAU: État pour checkbox prix
-  const [showPrices, setShowPrices] = useState(false);
+  // SUPPRIMÉ: showPrices (maintenant géré par ligne dans MaterialSelector)
 
   const [materials, setMaterials] = useState([]);
   const [errors, setErrors] = useState({});
@@ -116,17 +116,14 @@ export default function WorkOrderForm({
     }
   };
 
-  // Calcul du temps total (sans pause maintenant)
-  const calculateTotalHours = () => {
-    if (!formData.start_time || !formData.end_time) return 0;
-    
-    const start = new Date(`2000-01-01T${formData.start_time}:00`);
-    const end = new Date(`2000-01-01T${formData.end_time}:00`);
-    
-    if (end <= start) return 0;
-    
-    const diffHours = (end - start) / (1000 * 60 * 60);
-    return Math.max(0, diffHours);
+  // Gestion des changements de temps via TimeTracker
+  const handleTimeChange = (timeData) => {
+    setFormData(prev => ({
+      ...prev,
+      start_time: timeData.start_time,
+      end_time: timeData.end_time,
+      total_hours: timeData.total_hours
+    }));
   };
 
   // Validation
@@ -313,42 +310,13 @@ export default function WorkOrderForm({
           )}
         </div>
 
-        {/* Heures - Simplifié sans pause */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Clock className="inline mr-2" size={16} />
-              Heure début
-            </label>
-            <input
-              type="time"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.start_time}
-              onChange={(e) => handleChange('start_time', e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Heure fin
-            </label>
-            <input
-              type="time"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.end_time}
-              onChange={(e) => handleChange('end_time', e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Total heures - Sans pause */}
-        {formData.start_time && formData.end_time && (
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <p className="text-blue-800 font-medium">
-              Total heures: {calculateTotalHours().toFixed(2)}h
-            </p>
-          </div>
-        )}
+        {/* NOUVEAU: Système Punch-in/Punch-out */}
+        <TimeTracker
+          onTimeChange={handleTimeChange}
+          initialStartTime={formData.start_time}
+          initialEndTime={formData.end_time}
+          workDate={formData.work_date}
+        />
 
         {/* NOUVEAU: Descriptions multiligne avec ajout de lignes */}
         <div className="bg-gray-50 p-4 rounded-lg">
@@ -422,39 +390,18 @@ export default function WorkOrderForm({
           />
         </div>
 
-        {/* NOUVEAU: Section Matériaux avec checkbox prix */}
+        {/* Section Matériaux */}
         <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-medium text-gray-900 flex items-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-                <span className="text-blue-600 font-bold text-sm">4</span>
-              </div>
-              Matériaux et Produits
-            </h3>
-            
-            {/* NOUVEAU: Checkbox afficher prix */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="showPrices"
-                checked={showPrices}
-                onChange={(e) => setShowPrices(e.target.checked)}
-                className="mr-2 rounded"
-              />
-              <label 
-                htmlFor="showPrices" 
-                className="text-sm text-gray-700 flex items-center cursor-pointer"
-              >
-                {showPrices ? <Eye size={16} className="mr-1" /> : <EyeOff size={16} className="mr-1" />}
-                Afficher prix de vente
-              </label>
+          <h3 className="text-lg font-medium text-gray-900 flex items-center mb-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
+              <span className="text-blue-600 font-bold text-sm">4</span>
             </div>
-          </div>
+            Matériaux et Produits
+          </h3>
           
           <MaterialSelector
             materials={materials}
             onMaterialsChange={handleMaterialsChange}
-            showPrices={showPrices} // NOUVEAU: Passer le paramètre
           />
           
           {errors.materials && (
