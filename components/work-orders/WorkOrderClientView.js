@@ -164,11 +164,11 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   return (
     <div className="min-h-screen bg-white">
       {/* Header avec logo entreprise */}
-      <div className="bg-blue-600 text-white p-6 print:bg-white print:text-black">
+      <div className="bg-orange-500 text-white p-6 print:bg-white print:text-black">
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center">
-              <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center mr-4 p-1">
+              <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center mr-6 p-2">
                 <img 
                   src="/logo.png" 
                   alt="Logo Entreprise" 
@@ -178,17 +178,17 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                     e.target.nextSibling.style.display = 'block';
                   }}
                 />
-                <span className="text-blue-600 font-bold text-sm hidden">LOGO</span>
+                <span className="text-orange-500 font-bold text-sm hidden">LOGO</span>
               </div>
               <div>
-                <h1 className="text-3xl font-bold">Services TMT Inc.</h1>
-                <p className="text-blue-100">3195, 42E Rue Nord, Saint-Georges, QC, G5Z 0V9</p>
-                <p className="text-blue-100">Tél: (418) 225-3875| Email: info.servicestmt@gmail.com</p>
+                <h1 className="text-3xl font-bold">VOTRE ENTREPRISE</h1>
+                <p className="text-orange-100">123 Rue Exemple, Ville QC G1A 1A1</p>
+                <p className="text-orange-100">Tél: (418) 123-4567 | Email: info@entreprise.ca</p>
               </div>
             </div>
             <div className="text-right">
-              <div className="bg-white text-blue-600 px-4 py-2 rounded-lg font-bold text-lg mb-2">
-                BT #{workOrder.work_order_number || workOrder.id}
+              <div className="bg-white text-orange-500 px-4 py-2 rounded-lg font-bold text-lg mb-2">
+                BT-2025-{String(workOrder.id).padStart(3, '0')}
               </div>
               <p className="text-sm">{new Date(workOrder.created_at).toLocaleDateString('fr-CA')}</p>
               <div className="flex items-center justify-end mt-1">
@@ -242,9 +242,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             Description des Travaux
           </h2>
           <div className="bg-white border rounded-lg p-6">
-            <p className="text-gray-800 leading-relaxed">
+            <div className="text-gray-800 leading-relaxed whitespace-pre-line">
               {workOrder.description || workOrder.work_description || 'Aucune description disponible'}
-            </p>
+            </div>
           </div>
         </div>
 
@@ -272,20 +272,24 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                   {workOrder.materials.map((material, index) => (
                     <tr key={index} className="border-t">
                       <td className="px-4 py-3 font-mono text-sm">
-                        {material.code || material.product_code || 'N/A'}
+                        {material.code || material.product_code || material.product?.code || 'N/A'}
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-semibold">{material.name || material.product_name}</p>
-                          {(material.description || material.product_description) && (
+                          <p className="font-semibold">
+                            {material.name || material.product_name || material.product?.name || 'Matériau sans nom'}
+                          </p>
+                          {(material.description || material.product_description || material.product?.description) && (
                             <p className="text-sm text-gray-600 mt-1">
-                              {material.description || material.product_description}
+                              {material.description || material.product_description || material.product?.description}
                             </p>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center font-semibold">{material.quantity}</td>
-                      <td className="px-4 py-3 text-center">{material.unit || material.product_unit}</td>
+                      <td className="px-4 py-3 text-center">
+                        {material.unit || material.product_unit || material.product?.unit || 'UN'}
+                      </td>
                       {workOrder.show_prices && (
                         <>
                           <td className="px-4 py-3 text-right">
@@ -318,13 +322,13 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
         {/* Zone de signature */}
         {workOrder.status === 'ready_for_signature' && (
-          <div className="border-2 border-blue-200 rounded-lg p-6 mb-6">
+          <div className="border-2 border-orange-200 rounded-lg p-6 mb-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-blue-800">
+              <h2 className="text-xl font-semibold text-orange-700">
                 Signature du Client - Acceptation des Travaux
               </h2>
               <button
-                onClick={() => window.history.back()}
+                onClick={() => window.location.href = `/bons-travail/${workOrder.id}/edit`}
                 className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center"
               >
                 ← Retour pour Modifier
@@ -416,7 +420,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 disabled={!isOnline}
                 className={`px-6 py-3 rounded-lg font-semibold flex items-center ${
                   isOnline 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    ? 'bg-orange-600 text-white hover:bg-orange-700' 
                     : 'bg-gray-400 text-gray-600 cursor-not-allowed'
                 }`}
               >
@@ -439,7 +443,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             {isOnline && (
               <button
                 onClick={handleSendWork}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700"
               >
                 <Send className="inline mr-2" size={16} />
                 Envoyer Maintenant
@@ -450,11 +454,11 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
         {/* Travaux envoyés */}
         {workOrder.status === 'sent' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-center">
-            <h3 className="text-lg font-semibold text-blue-800 mb-2">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6 text-center">
+            <h3 className="text-lg font-semibold text-orange-800 mb-2">
               📧 Bon de Travail Envoyé avec Succès
             </h3>
-            <p className="text-blue-700">
+            <p className="text-orange-700">
               Envoyé le {workOrder.sent_at ? new Date(workOrder.sent_at).toLocaleString('fr-CA') : 'maintenant'}
             </p>
             <button
