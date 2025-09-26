@@ -163,28 +163,6 @@ export default function WorkOrderForm({
     const client = clients.find(c => c.id === parseInt(clientId));
     setSelectedClient(client);
     handleChange('client_id', clientId);
-    
-    // NOUVEAU: Charger les bons d'achat du client
-    if (clientId) {
-      loadClientPurchaseOrders(clientId);
-    } else {
-      setClientPurchaseOrders([]);
-      handleChange('linked_po_id', '');
-    }
-  };
-
-  // NOUVEAU: Charger les bons d'achat d'un client
-  const loadClientPurchaseOrders = async (clientId) => {
-    try {
-      const response = await fetch(`/api/purchase-orders?client_id=${clientId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setClientPurchaseOrders(data || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement bons d\'achat:', error);
-      setClientPurchaseOrders([]);
-    }
   };
 
   // Gestion des matériaux
