@@ -189,9 +189,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
             {/* Colonne 2: Informations Entreprise */}
             <div className="text-center">
-              <h1 className="text-xl font-bold text-gray-900 mb-2">Services TMT Inc..</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-2">Services TMT Inc.</h1>
               <div className="text-sm text-gray-700 space-y-0.5">
-                <p>3195, 42e Rue</p>
+                <p>3195, 42e Rue Nord</p>
                 <p>Saint-Georges, QC G5Z 0V9</p>
                 <p>Tél: (418) 225-3875</p>
                 <p>info.servicestmt@gmail.com</p>
@@ -202,8 +202,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             <div className="text-right">
               <h2 className="text-xl font-bold text-gray-900 mb-2">BON DE TRAVAIL</h2>
               <div className="text-sm text-gray-700 space-y-1">
-                <p><strong>N°:</strong> BT-2025-{String(workOrder.id).padStart(3, '0')}</p>
-                <p><strong>Date:</strong> {new Date(workOrder.created_at).toLocaleDateString('fr-CA')}</p>
+                <p><strong>N°:</strong> {workOrder.bt_number || `BT-2025-${String(workOrder.id).padStart(3, '0')}`}</p>
+                <p><strong>Date:</strong> {new Date(workOrder.work_date).toLocaleDateString('fr-CA')}</p>
                 <div className="flex items-center justify-end mt-2">
                   {isOnline ? (
                     <>
@@ -345,10 +345,17 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 Signature du Client - Acceptation des Travaux
               </h2>
               <button
-                onClick={() => window.location.href = `/bons-travail/${workOrder.id}/edit`}
+                onClick={() => {
+                  // Fermer cet onglet et retourner au formulaire principal
+                  window.close();
+                  // Si ça ne ferme pas (popup bloqué), rediriger
+                  setTimeout(() => {
+                    window.location.href = `/bons-travail`;
+                  }, 100);
+                }}
                 className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center"
               >
-                ← Retour pour Modifier
+                ← Fermer
               </button>
             </div>
             
