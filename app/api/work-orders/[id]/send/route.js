@@ -1,4 +1,5 @@
-import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
+// CORRIGÉ: Chemin avec un niveau de plus
+import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
 
 export async function POST(request, { params }) {
   try {
