@@ -4,7 +4,7 @@ import {
   AlertCircle, CheckCircle, RotateCcw, Hash, Eye, EyeOff
 } from 'lucide-react';
 
-// NOUVEAU: Ajout du paramètre showPrices ENLEVÉ - géré par ligne
+// NOUVEAU: Plus de paramètre showPrices global - géré par ligne
 export default function MaterialSelector({ 
   materials = [], 
   onMaterialsChange
@@ -455,27 +455,13 @@ export default function MaterialSelector({
         </div>
       )}
 
-      {/* Modal de recherche de produits - MODIFIÉ: Prix conditionnels */}
+      {/* Modal de recherche de produits */}
       {showProductSearch && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
-              <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold">Rechercher un produit</h3>
-                {/* NOUVEAU: Indicateur prix dans modal */}
-                {showPrices ? (
-                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs flex items-center">
-                    <Eye size={12} className="mr-1" />
-                    Prix affichés
-                  </span>
-                ) : (
-                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs flex items-center">
-                    <EyeOff size={12} className="mr-1" />
-                    Prix cachés
-                  </span>
-                )}
-              </div>
+              <h3 className="text-lg font-semibold">Rechercher un produit</h3>
               
               <div className="flex items-center gap-2">
                 <button
