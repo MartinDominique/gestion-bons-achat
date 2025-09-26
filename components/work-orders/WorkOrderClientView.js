@@ -189,7 +189,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             </div>
 
             {/* Colonne 2: Informations Entreprise */}
-            <div className="text-center">
+            <div className="flex flex-col items-start">
               <h1 className="text-xl font-bold text-gray-900 mb-2">Services TMT Inc.</h1>
               <div className="text-sm text-gray-700 space-y-0.5">
                 <p>3195, 42e Rue Nord</p>
@@ -197,14 +197,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 <p>Tél: (418) 225-3875</p>
                 <p>info.servicestmt@gmail.com</p>
               </div>
-            </div>700 space-y-0.5">
-                <p>123, Rue Exemple</p>
-                <p>Saint-Georges, QC G5Z 0V9</p>
-                <p>Tél: (418) 123-4567</p>
-                <p>info@votreentreprise.ca</p>
-              </div>
             </div>
-
+         
             {/* Colonne 3: Information Document */}
             <div className="text-right">
               <h2 className="text-xl font-bold text-gray-900 mb-2">BON DE TRAVAIL</h2>
