@@ -13,6 +13,7 @@ export default function WorkOrderForm({
 }) {
   const [formData, setFormData] = useState({
     client_id: '',
+    client_po_number: '', // NOUVEAU: Numéro bon d'achat client
     work_date: new Date().toISOString().split('T')[0],
     start_time: '',
     end_time: '',
@@ -37,6 +38,7 @@ export default function WorkOrderForm({
     if (workOrder && mode === 'edit') {
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
+        linked_po_id: workOrder.linked_po_id || '', // Lien vers purchase_orders
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
         start_time: workOrder.start_time || '',
         end_time: workOrder.end_time || '',
@@ -161,6 +163,28 @@ export default function WorkOrderForm({
     const client = clients.find(c => c.id === parseInt(clientId));
     setSelectedClient(client);
     handleChange('client_id', clientId);
+    
+    // NOUVEAU: Charger les bons d'achat du client
+    if (clientId) {
+      loadClientPurchaseOrders(clientId);
+    } else {
+      setClientPurchaseOrders([]);
+      handleChange('linked_po_id', '');
+    }
+  };
+
+  // NOUVEAU: Charger les bons d'achat d'un client
+  const loadClientPurchaseOrders = async (clientId) => {
+    try {
+      const response = await fetch(`/api/purchase-orders?client_id=${clientId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setClientPurchaseOrders(data || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement bons d\'achat:', error);
+      setClientPurchaseOrders([]);
+    }
   };
 
   // Gestion des matériaux
@@ -220,33 +244,68 @@ export default function WorkOrderForm({
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
-        {/* Section Client */}
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <User className="inline mr-2" size={16} />
-            Client *
-          </label>
-          <select
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-              errors.client_id ? 'border-red-500' : 'border-gray-300'
-            }`}
-            value={formData.client_id}
-            onChange={(e) => handleClientSelect(e.target.value)}
-          >
-            <option value="">Sélectionner un client</option>
-            {clients.map(client => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-          {errors.client_id && (
-            <p className="text-red-500 text-sm mt-1">{errors.client_id}</p>
-          )}
+        {/* Section Client + Bon d'achat */}
+        <div className="bg-blue-50 p-4 rounded-lg space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <User className="inline mr-2" size={16} />
+              Client *
+            </label>
+            <select
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                errors.client_id ? 'border-red-500' : 'border-gray-300'
+              }`}
+              value={formData.client_id}
+              onChange={(e) => handleClientSelect(e.target.value)}
+            >
+              <option value="">Sélectionner un client</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+            {errors.client_id && (
+              <p className="text-red-500 text-sm mt-1">{errors.client_id}</p>
+            )}
+            {selectedClient && (
+              <div className="mt-2 p-2 bg-white rounded text-sm text-blue-800">
+                {selectedClient.address && <div>{selectedClient.address}</div>}
+                {selectedClient.email && <div>{selectedClient.email}</div>}
+              </div>
+            )}
+          </div>
+
+          {/* NOUVEAU: Sélection bon d'achat client */}
           {selectedClient && (
-            <div className="mt-2 p-2 bg-white rounded text-sm text-blue-800">
-              {selectedClient.address && <div>{selectedClient.address}</div>}
-              {selectedClient.email && <div>{selectedClient.email}</div>}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                📋 Bon d'achat / Job client (optionnel)
+              </label>
+              <select
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={formData.linked_po_id}
+                onChange={(e) => handleChange('linked_po_id', e.target.value)}
+              >
+                <option value="">Aucun bon d'achat associé</option>
+                {clientPurchaseOrders.map(po => (
+                  <option key={po.id} value={po.id}>
+                    {po.po_number} - {po.status} 
+                    {po.total_amount && ` - ${new Intl.NumberFormat('en-CA', {
+                      style: 'currency',
+                      currency: 'CAD'
+                    }).format(po.total_amount)}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Lier ce BT à un bon d'achat existant pour le suivi comptable
+              </p>
+              {clientPurchaseOrders.length === 0 && (
+                <p className="text-xs text-yellow-600 mt-1">
+                  Aucun bon d'achat trouvé pour ce client
+                </p>
+              )}
             </div>
           )}
         </div>
