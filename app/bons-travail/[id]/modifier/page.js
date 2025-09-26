@@ -51,10 +51,11 @@ export default function ModifierBonTravailPage({ params }) {
     setError(null);
 
     // DEBUG CRITIQUE - AJOUTER CES LIGNES
-    console.log('🔍 PARENT REÇOIT - workOrderData complet:', workOrderData);
-    console.log('🔍 PARENT REÇOIT - materials:', workOrderData.materials);
-    console.log('🔍 PARENT REÇOIT - materials.length:', workOrderData.materials?.length || 0);
-    console.log('🔍 PARENT REÇOIT - work_description:', workOrderData.work_description);
+    console.log('🔍 MODIFICATION - PARENT REÇOIT - workOrderData complet:', workOrderData);
+    console.log('🔍 MODIFICATION - PARENT REÇOIT - materials:', workOrderData.materials);
+    console.log('🔍 MODIFICATION - PARENT REÇOIT - materials.length:', workOrderData.materials?.length || 0);
+    console.log('🔍 MODIFICATION - PARENT REÇOIT - work_description:', workOrderData.work_description);
+    console.log('🔍 MODIFICATION - status reçu:', status);
 
     try {
       const payload = {
@@ -62,10 +63,11 @@ export default function ModifierBonTravailPage({ params }) {
         status: status || workOrderData.status || 'draft'
       };
 
-      console.log('🔍 PAYLOAD ENVOYÉ À L\'API:', payload);
-      console.log('🔍 PAYLOAD.materials:', payload.materials);
-      console.log('🔍 PAYLOAD.materials.length:', payload.materials?.length || 0);
-      console.log('🔍 PAYLOAD.work_description:', payload.work_description);
+      console.log('🔍 MODIFICATION - PAYLOAD ENVOYÉ À L\'API:', payload);
+      console.log('🔍 MODIFICATION - PAYLOAD.materials:', payload.materials);
+      console.log('🔍 MODIFICATION - PAYLOAD.materials.length:', payload.materials?.length || 0);
+      console.log('🔍 MODIFICATION - PAYLOAD.work_description:', payload.work_description);
+      console.log('🔍 MODIFICATION - PAYLOAD.status:', payload.status);
 
       // CORRECTION: Utiliser la bonne URL avec l'ID
       const response = await fetch(`/api/work-orders/${params.id}`, {
@@ -80,28 +82,35 @@ export default function ModifierBonTravailPage({ params }) {
       }
 
       const responseData = await response.json();
-      console.log('🔍 RETOUR API COMPLET:', responseData);
-      console.log('🔍 RETOUR API - data.materials:', responseData.data?.materials);
-      console.log('🔍 RETOUR API - data.work_description:', responseData.data?.work_description);
-      console.log('BT sauvegardé:', responseData);
+      console.log('🔍 MODIFICATION - RETOUR API COMPLET:', responseData);
+      console.log('🔍 MODIFICATION - RETOUR API - data.materials:', responseData.data?.materials);
+      console.log('🔍 MODIFICATION - RETOUR API - data.work_description:', responseData.data?.work_description);
       
-      // Messages de succès selon le statut
-      const messages = {
-        draft: 'Bon de travail sauvegardé en brouillon',
-        completed: 'Bon de travail finalisé avec succès',
-        sent: 'Bon de travail envoyé au client'
-      };
+      // MODIFICATION: Extraire le work order selon le format de l'API
+      const savedWorkOrder = responseData.success ? responseData.data : responseData;
+      console.log('🔍 MODIFICATION - savedWorkOrder extrait:', savedWorkOrder);
+      
+      // Messages selon statut (MODIFIÉ: seulement si pas "présenter client")
+      if (status !== 'ready_for_signature') {
+        const messages = {
+          draft: 'Bon de travail sauvegardé en brouillon',
+          completed: 'Bon de travail finalisé avec succès',
+          sent: 'Bon de travail envoyé au client'
+        };
 
-      const finalStatus = status || workOrderData.status || 'draft';
-      alert(messages[finalStatus] || 'Bon de travail mis à jour avec succès');
+        const finalStatus = status || workOrderData.status || 'draft';
+        alert(messages[finalStatus] || 'Bon de travail mis à jour avec succès');
+        router.push('/bons-travail');
+      }
       
-      // Redirection vers la liste
-      router.push('/bons-travail');
+      // IMPORTANT: Retourner le work order sauvegardé pour WorkOrderForm
+      return savedWorkOrder;
 
     } catch (err) {
-      console.error('Erreur sauvegarde:', err);
+      console.error('🔍 MODIFICATION - Erreur sauvegarde:', err);
       setError(err.message);
       alert('Erreur: ' + err.message);
+      throw err; // Re-throw pour que WorkOrderForm puisse gérer
     } finally {
       setSaving(false);
     }
