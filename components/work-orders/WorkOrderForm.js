@@ -200,46 +200,46 @@ export default function WorkOrderForm({
   };
 
   // MODIFIÉ: Soumission avec nouveaux statuts
-  const handleSubmit = async (status = 'draft') => {
-    if (!validateForm()) return;
+const handleSubmit = async (status = 'draft') => {
+  if (!validateForm()) return;
 
-    console.log('📝 ÉTAT ACTUEL:');
-    console.log('- descriptions:', descriptions);
-    console.log('- formData.work_description:', formData.work_description);
-    console.log('- materials:', materials);
-    console.log('- materials.length:', materials.length);
+  console.log('📝 ÉTAT ACTUEL:');
+  console.log('- descriptions:', descriptions);
+  console.log('- formData.work_description:', formData.work_description);
+  console.log('- materials:', materials);
+  console.log('- materials.length:', materials.length);
 
-    const dataToSave = {
-      ...formData,
-      client_id: parseInt(formData.client_id),
-      status,
-      materials
-    };
-    
-    console.log('📝 DATASAVE.MATERIALS:', dataToSave.materials);
-    console.log('📝 DATASAVE.WORK_DESCRIPTION:', dataToSave.work_description);
-
-    // Si mode édition, ajouter l'ID
-    if (mode === 'edit' && workOrder) {
-      dataToSave.id = workOrder.id;
-    }
-
-    onSave(dataToSave, status);
+  const dataToSave = {
+    ...formData,
+    client_id: parseInt(formData.client_id),
+    status,
+    materials
   };
+  
+  console.log('📝 DATASAVE.MATERIALS:', dataToSave.materials);
+  console.log('📝 DATASAVE.WORK_DESCRIPTION:', dataToSave.work_description);
 
-  return (
-    <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900">
-          {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
-        </h2>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
-          <X size={24} />
-        </button>
-      </div>
+  // Si mode édition, ajouter l'ID
+  if (mode === 'edit' && workOrder) {
+    dataToSave.id = workOrder.id;
+  }
 
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
+  try {
+    const savedWorkOrder = await onSave(dataToSave, status);
+    
+    // NOUVEAU: Si "Présenter au client", ouvrir vue client
+    if (status === 'ready_for_signature' && savedWorkOrder) {
+      const workOrderId = savedWorkOrder.id || workOrder?.id;
+      if (workOrderId) {
+        // Ouvrir dans nouvel onglet/fenêtre pour tablette
+        window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+      }
+    }
+  } catch (error) {
+    console.error('Erreur sauvegarde:', error);
+    // Gérer l'erreur selon votre pattern habituel
+  }
+}; // ← FERMETURE DE LA FONCTION MANQUANTE className="space-y-6">
         {/* Section Client + Bon d'achat */}
         <div className="bg-blue-50 p-4 rounded-lg space-y-4">
           <div>
