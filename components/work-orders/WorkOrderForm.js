@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
-import TimeTracker from './TimeTracker'; // NOUVEAU
+import TimeTracker from './TimeTracker';
 
 export default function WorkOrderForm({ 
   workOrder = null, 
@@ -14,7 +14,7 @@ export default function WorkOrderForm({
 }) {
   const [formData, setFormData] = useState({
     client_id: '',
-    client_po_number: '', // NOUVEAU: Numéro bon d'achat client
+    linked_po_id: '',
     work_date: new Date().toISOString().split('T')[0],
     start_time: '',
     end_time: '',
@@ -23,10 +23,8 @@ export default function WorkOrderForm({
     status: 'draft'
   });
 
-  // NOUVEAU: État pour descriptions multiligne
+  // État pour descriptions multiligne
   const [descriptions, setDescriptions] = useState(['']);
-  
-  // SUPPRIMÉ: showPrices (maintenant géré par ligne dans MaterialSelector)
 
   const [materials, setMaterials] = useState([]);
   const [errors, setErrors] = useState({});
@@ -38,7 +36,7 @@ export default function WorkOrderForm({
     if (workOrder && mode === 'edit') {
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
-        linked_po_id: workOrder.linked_po_id || '', // Lien vers purchase_orders
+        linked_po_id: workOrder.linked_po_id || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
         start_time: workOrder.start_time || '',
         end_time: workOrder.end_time || '',
@@ -47,7 +45,7 @@ export default function WorkOrderForm({
         status: workOrder.status || 'draft'
       });
       
-      // NOUVEAU: Convertir description en tableau de paragraphes
+      // Convertir description en tableau de paragraphes
       if (workOrder.work_description) {
         const paragraphs = workOrder.work_description.split('\n\n').filter(p => p.trim());
         setDescriptions(paragraphs.length > 0 ? paragraphs : ['']);
@@ -89,7 +87,7 @@ export default function WorkOrderForm({
     loadClients();
   }, [workOrder, mode]);
 
-  // NOUVEAU: Synchroniser descriptions avec work_description
+  // Synchroniser descriptions avec work_description
   useEffect(() => {
     const combinedDescription = descriptions
       .filter(desc => desc.trim()) // Enlever les paragraphes vides
@@ -98,7 +96,7 @@ export default function WorkOrderForm({
     setFormData(prev => ({ ...prev, work_description: combinedDescription }));
   }, [descriptions]);
 
-  // NOUVEAU: Gestion des descriptions multiligne
+  // Gestion des descriptions multiligne
   const handleDescriptionChange = (index, value) => {
     const newDescriptions = [...descriptions];
     newDescriptions[index] = value;
@@ -133,7 +131,7 @@ export default function WorkOrderForm({
     if (!formData.client_id) newErrors.client_id = 'Client requis';
     if (!formData.work_date) newErrors.work_date = 'Date requise';
     
-    // MODIFIÉ: Validation sur descriptions combinées
+    // Validation sur descriptions combinées
     const hasValidDescription = descriptions.some(desc => desc.trim().length >= 10);
     if (!hasValidDescription) {
       newErrors.work_description = 'Au moins une description de 10 caractères minimum requise';
@@ -160,29 +158,7 @@ export default function WorkOrderForm({
     const client = clients.find(c => c.id === parseInt(clientId));
     setSelectedClient(client);
     handleChange('client_id', clientId);
-    
-    // TEMPORAIREMENT DÉSACTIVÉ: Chargement purchase orders
-    // if (clientId) {
-    //   loadClientPurchaseOrders(clientId);
-    // } else {
-    //   setClientPurchaseOrders([]);
-    //   handleChange('linked_po_id', '');
-    // }
   };
-
-  // TEMPORAIREMENT DÉSACTIVÉ: Charger les bons d'achat d'un client
-  // const loadClientPurchaseOrders = async (clientId) => {
-  //   try {
-  //     const response = await fetch(`/api/purchase-orders?client_id=${clientId}`);
-  //     if (response.ok) {
-  //       const data = await response.json();
-  //       setClientPurchaseOrders(data || []);
-  //     }
-  //   } catch (error) {
-  //     console.error('Erreur chargement bons d\'achat:', error);
-  //     setClientPurchaseOrders([]);
-  //   }
-  // };
 
   // Gestion des matériaux
   const handleMaterialsChange = (updatedMaterials) => {
@@ -199,47 +175,61 @@ export default function WorkOrderForm({
     }
   };
 
-  // MODIFIÉ: Soumission avec nouveaux statuts
-const handleSubmit = async (status = 'draft') => {
-  if (!validateForm()) return;
+  // Soumission avec nouveaux statuts
+  const handleSubmit = async (status = 'draft') => {
+    if (!validateForm()) return;
 
-  console.log('📝 ÉTAT ACTUEL:');
-  console.log('- descriptions:', descriptions);
-  console.log('- formData.work_description:', formData.work_description);
-  console.log('- materials:', materials);
-  console.log('- materials.length:', materials.length);
+    console.log('📝 ÉTAT ACTUEL:');
+    console.log('- descriptions:', descriptions);
+    console.log('- formData.work_description:', formData.work_description);
+    console.log('- materials:', materials);
+    console.log('- materials.length:', materials.length);
 
-  const dataToSave = {
-    ...formData,
-    client_id: parseInt(formData.client_id),
-    status,
-    materials
-  };
-  
-  console.log('📝 DATASAVE.MATERIALS:', dataToSave.materials);
-  console.log('📝 DATASAVE.WORK_DESCRIPTION:', dataToSave.work_description);
-
-  // Si mode édition, ajouter l'ID
-  if (mode === 'edit' && workOrder) {
-    dataToSave.id = workOrder.id;
-  }
-
-  try {
-    const savedWorkOrder = await onSave(dataToSave, status);
+    const dataToSave = {
+      ...formData,
+      client_id: parseInt(formData.client_id),
+      status,
+      materials
+    };
     
-    // NOUVEAU: Si "Présenter au client", ouvrir vue client
-    if (status === 'ready_for_signature' && savedWorkOrder) {
-      const workOrderId = savedWorkOrder.id || workOrder?.id;
-      if (workOrderId) {
-        // Ouvrir dans nouvel onglet/fenêtre pour tablette
-        window.open(`/bons-travail/${workOrderId}/client`, '_blank');
-      }
+    console.log('📝 DATASAVE.MATERIALS:', dataToSave.materials);
+    console.log('📝 DATASAVE.WORK_DESCRIPTION:', dataToSave.work_description);
+
+    // Si mode édition, ajouter l'ID
+    if (mode === 'edit' && workOrder) {
+      dataToSave.id = workOrder.id;
     }
-  } catch (error) {
-    console.error('Erreur sauvegarde:', error);
-    // Gérer l'erreur selon votre pattern habituel
-  }
-}; // ← FERMETURE DE LA FONCTION MANQUANTE className="space-y-6">
+
+    try {
+      const savedWorkOrder = await onSave(dataToSave, status);
+      
+      // Si "Présenter au client", ouvrir vue client
+      if (status === 'ready_for_signature' && savedWorkOrder) {
+        const workOrderId = savedWorkOrder.id || workOrder?.id;
+        if (workOrderId) {
+          // Ouvrir dans nouvel onglet/fenêtre pour tablette
+          window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+        }
+      }
+    } catch (error) {
+      console.error('Erreur sauvegarde:', error);
+      // Gérer l'erreur selon votre pattern habituel
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-900">
+          {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
+        </h2>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+          <X size={24} />
+        </button>
+      </div>
+
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
         {/* Section Client + Bon d'achat */}
         <div className="bg-blue-50 p-4 rounded-lg space-y-4">
           <div>
@@ -272,7 +262,7 @@ const handleSubmit = async (status = 'draft') => {
             )}
           </div>
 
-          {/* TEMPORAIRE: Champ texte simple pour PO */}
+          {/* Champ texte simple pour PO */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               📋 Numéro bon d'achat / Job client (optionnel)
@@ -309,7 +299,7 @@ const handleSubmit = async (status = 'draft') => {
           )}
         </div>
 
-        {/* NOUVEAU: Système Punch-in/Punch-out */}
+        {/* Système Punch-in/Punch-out */}
         <TimeTracker
           onTimeChange={handleTimeChange}
           initialStartTime={formData.start_time}
@@ -317,7 +307,7 @@ const handleSubmit = async (status = 'draft') => {
           workDate={formData.work_date}
         />
 
-        {/* NOUVEAU: Descriptions multiligne avec ajout de lignes */}
+        {/* Descriptions multiligne avec ajout de lignes */}
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex items-center justify-between mb-3">
             <label className="block text-sm font-medium text-gray-700">
@@ -411,9 +401,9 @@ const handleSubmit = async (status = 'draft') => {
           )}
         </div>
 
-        {/* MODIFIÉ: Nouveaux boutons workflow terrain */}
+        {/* Nouveaux boutons workflow terrain */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-          {/* Bouton Sauvegarder brouillon - toujours disponible */}
+          {/* Bouton Sauvegarder brouillon */}
           <button
             type="button"
             onClick={() => handleSubmit('draft')}
@@ -424,7 +414,7 @@ const handleSubmit = async (status = 'draft') => {
             {saving ? 'Sauvegarde...' : 'Sauvegarder pour plus tard'}
           </button>
 
-          {/* Bouton Présenter au client - workflow principal */}
+          {/* Bouton Présenter au client */}
           <button
             type="button"
             onClick={() => handleSubmit('ready_for_signature')}
@@ -445,7 +435,7 @@ const handleSubmit = async (status = 'draft') => {
           </button>
         </div>
 
-        {/* NOUVEAU: Aide contextuelle workflow */}
+        {/* Aide contextuelle workflow */}
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <h4 className="font-medium text-blue-900 mb-2">💡 Workflow Terrain</h4>
           <div className="text-sm text-blue-800 space-y-1">
