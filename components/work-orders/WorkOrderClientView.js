@@ -172,7 +172,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             
             {/* Colonne 1: Logo */}
             <div className="flex items-center">
-              <div className="w-24 h-16 flex items-center justify-center">
+              <div className="w-40 h-24 flex items-center justify-center">
                 <img 
                   src="/logo.png" 
                   alt="Logo Entreprise" 
