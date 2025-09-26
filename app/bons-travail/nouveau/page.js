@@ -42,25 +42,36 @@ export default function NouveauBonTravailPage() {
         console.log('🔍 CRÉATION - RETOUR API - data.materials:', responseData.data?.materials);
         console.log('🔍 CRÉATION - RETOUR API - data.work_description:', responseData.data?.work_description);
         
-        // Messages de succès selon le statut
-        const messages = {
-          draft: 'Bon de travail sauvegardé en brouillon',
-          completed: 'Bon de travail créé et finalisé avec succès',
-          sent: 'Bon de travail créé et envoyé au client'
-        };
-
-        const finalStatus = status || workOrderData.status || 'draft';
-        alert(messages[finalStatus] || 'Bon de travail créé avec succès');
+        // MODIFICATION: Extraire le work order selon le format de l'API
+        const savedWorkOrder = responseData.success ? responseData.data : responseData;
+        console.log('🔍 CRÉATION - savedWorkOrder extrait:', savedWorkOrder);
         
-        router.push('/bons-travail');
+        // Messages selon statut (MODIFIÉ: seulement si pas "présenter client")
+        if (status !== 'ready_for_signature') {
+          const messages = {
+            draft: 'Bon de travail sauvegardé en brouillon',
+            completed: 'Bon de travail créé et finalisé avec succès',
+            sent: 'Bon de travail créé et envoyé au client'
+          };
+
+          const finalStatus = status || workOrderData.status || 'draft';
+          alert(messages[finalStatus] || 'Bon de travail créé avec succès');
+          router.push('/bons-travail');
+        }
+        
+        // IMPORTANT: Retourner le work order sauvegardé pour WorkOrderForm
+        return savedWorkOrder;
+        
       } else {
         const errorData = await response.json();
         console.error('🔍 CRÉATION - ERREUR API:', errorData);
         alert('Erreur lors de la création: ' + (errorData.error || 'Erreur inconnue'));
+        throw new Error(errorData.error || 'Erreur API');
       }
     } catch (error) {
       console.error('🔍 CRÉATION - ERREUR CATCH:', error);
       alert('Erreur: ' + error.message);
+      throw error; // Re-throw pour que WorkOrderForm puisse gérer
     } finally {
       setSaving(false);
     }
