@@ -10,6 +10,7 @@ export default function TimeTracker({
   // États principaux
   const [isWorking, setIsWorking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [pauseStart, setPauseStart] = useState(null); // AJOUTÉ
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [pausedTime, setPausedTime] = useState(0); // Temps pause en ms
@@ -81,7 +82,7 @@ export default function TimeTracker({
     setStartTime(now);
     setEndTime(null);
     setIsWorking(true);
-    setPaused(false);
+    setIsPaused(false);
     setPausedTime(0);
   };
 
@@ -90,7 +91,7 @@ export default function TimeTracker({
     const now = new Date();
     setEndTime(now);
     setIsWorking(false);
-    setPaused(false);
+    setIsPaused(false);
   };
 
   // Pause/Reprendre
@@ -100,11 +101,12 @@ export default function TimeTracker({
       const pauseEnd = new Date();
       const pauseDuration = pauseEnd.getTime() - pauseStart.getTime();
       setPausedTime(prev => prev + pauseDuration);
-      setPaused(false);
+      setIsPaused(false);
+      setPauseStart(null);
     } else {
       // Mettre en pause
       setPauseStart(new Date());
-      setPaused(true);
+      setIsPaused(true);
     }
   };
 
@@ -149,8 +151,7 @@ export default function TimeTracker({
     setManualEnd('');
   };
 
-  // État pause (variable manquante)
-  const [pauseStart, setPauseStart] = useState(null);
+
 
   return (
     <div className="bg-gray-50 p-4 rounded-lg space-y-4">
