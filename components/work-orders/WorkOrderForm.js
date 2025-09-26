@@ -163,6 +163,28 @@ export default function WorkOrderForm({
     const client = clients.find(c => c.id === parseInt(clientId));
     setSelectedClient(client);
     handleChange('client_id', clientId);
+    
+    // Charger les bons d'achat du client
+    if (clientId) {
+      loadClientPurchaseOrders(clientId);
+    } else {
+      setClientPurchaseOrders([]);
+      handleChange('linked_po_id', '');
+    }
+  };
+
+  // Charger les bons d'achat d'un client
+  const loadClientPurchaseOrders = async (clientId) => {
+    try {
+      const response = await fetch(`/api/purchase-orders?client_id=${clientId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setClientPurchaseOrders(data || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement bons d\'achat:', error);
+      setClientPurchaseOrders([]);
+    }
   };
 
   // Gestion des matériaux
@@ -254,38 +276,22 @@ export default function WorkOrderForm({
             )}
           </div>
 
-          {/* NOUVEAU: Sélection bon d'achat client */}
-          {selectedClient && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                📋 Bon d'achat / Job client (optionnel)
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                value={formData.linked_po_id}
-                onChange={(e) => handleChange('linked_po_id', e.target.value)}
-              >
-                <option value="">Aucun bon d'achat associé</option>
-                {clientPurchaseOrders.map(po => (
-                  <option key={po.id} value={po.id}>
-                    {po.po_number} - {po.status} 
-                    {po.total_amount && ` - ${new Intl.NumberFormat('en-CA', {
-                      style: 'currency',
-                      currency: 'CAD'
-                    }).format(po.total_amount)}`}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Lier ce BT à un bon d'achat existant pour le suivi comptable
-              </p>
-              {clientPurchaseOrders.length === 0 && (
-                <p className="text-xs text-yellow-600 mt-1">
-                  Aucun bon d'achat trouvé pour ce client
-                </p>
-              )}
-            </div>
-          )}
+          {/* TEMPORAIRE: Champ texte simple pour PO */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              📋 Numéro bon d'achat / Job client (optionnel)
+            </label>
+            <input
+              type="text"
+              placeholder="Ex: BA-2025-001, Job#12345, PO-ABC-789..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.linked_po_id}
+              onChange={(e) => handleChange('linked_po_id', e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Référence du bon d'achat ou job client pour votre suivi
+            </p>
+          </div>
         </div>
 
         {/* Date de travail */}
