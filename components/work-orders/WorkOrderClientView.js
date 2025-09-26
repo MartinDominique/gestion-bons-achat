@@ -163,12 +163,15 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header avec logo entreprise */}
-      <div className="bg-orange-500 text-white p-6 print:bg-white print:text-black">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-start mb-4">
+      {/* Header professionnel style TMT */}
+      <div className="bg-white p-6 print:bg-white">
+        <div className="max-w-6xl mx-auto">
+          {/* Layout 3 colonnes : Logo - Infos Entreprise - Document */}
+          <div className="grid grid-cols-3 items-start gap-6 pb-4">
+            
+            {/* Colonne 1: Logo */}
             <div className="flex items-center">
-              <div className="w-20 h-20 bg-white rounded-lg flex items-center justify-center mr-6 p-2">
+              <div className="w-24 h-16 flex items-center justify-center">
                 <img 
                   src="/logo.png" 
                   alt="Logo Entreprise" 
@@ -178,34 +181,48 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                     e.target.nextSibling.style.display = 'block';
                   }}
                 />
-                <span className="text-orange-500 font-bold text-sm hidden">LOGO</span>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">VOTRE ENTREPRISE</h1>
-                <p className="text-orange-100">123 Rue Exemple, Ville QC G1A 1A1</p>
-                <p className="text-orange-100">Tél: (418) 123-4567 | Email: info@entreprise.ca</p>
+                <div className="text-2xl font-bold text-gray-800 hidden">
+                  LOGO
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="bg-white text-orange-500 px-4 py-2 rounded-lg font-bold text-lg mb-2">
-                BT-2025-{String(workOrder.id).padStart(3, '0')}
+
+            {/* Colonne 2: Informations Entreprise */}
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-gray-900 mb-2">Services TMT Inc..</h1>
+              <div className="text-sm text-gray-700 space-y-0.5">
+                <p>3195, 42e Rue</p>
+                <p>Saint-Georges, QC G5Z 0V9</p>
+                <p>Tél: (418) 225-3875</p>
+                <p>info.servicestmt@gmail.com</p>
               </div>
-              <p className="text-sm">{new Date(workOrder.created_at).toLocaleDateString('fr-CA')}</p>
-              <div className="flex items-center justify-end mt-1">
-                {isOnline ? (
-                  <>
-                    <Wifi size={16} className="mr-1" />
-                    <span className="text-sm">En ligne</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff size={16} className="mr-1" />
-                    <span className="text-sm">Hors ligne</span>
-                  </>
-                )}
+            </div>
+
+            {/* Colonne 3: Information Document */}
+            <div className="text-right">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">BON DE TRAVAIL</h2>
+              <div className="text-sm text-gray-700 space-y-1">
+                <p><strong>N°:</strong> BT-2025-{String(workOrder.id).padStart(3, '0')}</p>
+                <p><strong>Date:</strong> {new Date(workOrder.created_at).toLocaleDateString('fr-CA')}</p>
+                <div className="flex items-center justify-end mt-2">
+                  {isOnline ? (
+                    <>
+                      <Wifi size={14} className="mr-1 text-green-600" />
+                      <span className="text-xs text-green-600">En ligne</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff size={14} className="mr-1 text-red-600" />
+                      <span className="text-xs text-red-600">Hors ligne</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Ligne de séparation */}
+          <div className="border-t-2 border-gray-900"></div>
         </div>
       </div>
 
@@ -272,23 +289,23 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                   {workOrder.materials.map((material, index) => (
                     <tr key={index} className="border-t">
                       <td className="px-4 py-3 font-mono text-sm">
-                        {material.code || material.product_code || material.product?.code || 'N/A'}
+                        {material.product?.code || material.code || 'N/A'}
                       </td>
                       <td className="px-4 py-3">
                         <div>
                           <p className="font-semibold">
-                            {material.name || material.product_name || material.product?.name || 'Matériau sans nom'}
+                            {material.product?.name || material.name || 'Matériau sans nom'}
                           </p>
-                          {(material.description || material.product_description || material.product?.description) && (
+                          {(material.product?.description || material.description) && (
                             <p className="text-sm text-gray-600 mt-1">
-                              {material.description || material.product_description || material.product?.description}
+                              {material.product?.description || material.description}
                             </p>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center font-semibold">{material.quantity}</td>
                       <td className="px-4 py-3 text-center">
-                        {material.unit || material.product_unit || material.product?.unit || 'UN'}
+                        {material.unit || material.product?.unit || 'UN'}
                       </td>
                       {workOrder.show_prices && (
                         <>
