@@ -143,6 +143,14 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     }).format(amount || 0);
   };
 
+  const calculateTotalHours = () => {
+    if (!workOrder.start_time || !workOrder.end_time) return 0;
+    const start = new Date(`1970-01-01T${workOrder.start_time}`);
+    const end = new Date(`1970-01-01T${workOrder.end_time}`);
+    const diffInHours = (end - start) / (1000 * 60 * 60);
+    return diffInHours > 0 ? diffInHours.toFixed(1) : 0;
+  };
+
   const calculateTotal = () => {
     return workOrder.materials?.reduce((total, material) => {
       return total + (material.quantity * material.unit_price);
@@ -156,26 +164,46 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   return (
     <div className="min-h-screen bg-white">
       {/* Header avec logo entreprise */}
-      <div className="bg-blue-600 text-white p-4 print:bg-white print:text-black">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">VOTRE ENTREPRISE</h1>
-            <p className="text-blue-100 print:text-gray-600">Bon de Travail #{workOrder.work_order_number}</p>
-          </div>
-          <div className="text-right text-sm">
-            <p>{new Date(workOrder.created_at).toLocaleDateString('fr-CA')}</p>
-            <div className="flex items-center mt-1">
-              {isOnline ? (
-                <>
-                  <Wifi size={16} className="mr-1" />
-                  <span>En ligne</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff size={16} className="mr-1" />
-                  <span>Hors ligne</span>
-                </>
-              )}
+      <div className="bg-blue-600 text-white p-6 print:bg-white print:text-black">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center">
+              <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center mr-4 p-1">
+                <img 
+                  src="/logo.png" 
+                  alt="Logo Entreprise" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'block';
+                  }}
+                />
+                <span className="text-blue-600 font-bold text-sm hidden">LOGO</span>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Services TMT Inc.</h1>
+                <p className="text-blue-100">3195, 42E Rue Nord, Saint-Georges, QC, G5Z 0V9</p>
+                <p className="text-blue-100">Tél: (418) 225-3875| Email: info.servicestmt@gmail.com</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="bg-white text-blue-600 px-4 py-2 rounded-lg font-bold text-lg mb-2">
+                BT #{workOrder.work_order_number || workOrder.id}
+              </div>
+              <p className="text-sm">{new Date(workOrder.created_at).toLocaleDateString('fr-CA')}</p>
+              <div className="flex items-center justify-end mt-1">
+                {isOnline ? (
+                  <>
+                    <Wifi size={16} className="mr-1" />
+                    <span className="text-sm">En ligne</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff size={16} className="mr-1" />
+                    <span className="text-sm">Hors ligne</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -183,43 +211,53 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
       <div className="max-w-4xl mx-auto p-6">
         {/* Informations client */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <h2 className="text-lg font-semibold mb-2 flex items-center">
-            <User className="mr-2" size={20} />
+        <div className="bg-gray-50 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <User className="mr-2" size={24} />
             Informations Client
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <p><strong>Client:</strong> {workOrder.client?.name || 'N/A'}</p>
-              <p><strong>Contact:</strong> {workOrder.client?.contact_person || 'N/A'}</p>
+              <p className="mb-2"><strong>Nom:</strong> {workOrder.client?.name || 'N/A'}</p>
+              <p className="mb-2"><strong>Contact:</strong> {workOrder.client?.contact_person || 'N/A'}</p>
+              <p className="mb-2"><strong>Téléphone:</strong> {workOrder.client?.phone || 'N/A'}</p>
             </div>
             <div>
-              <p><strong>Date:</strong> {workOrder.work_date}</p>
-              <p><strong>Heure:</strong> {workOrder.start_time} - {workOrder.end_time}</p>
+              <p className="mb-2"><strong>Email:</strong> {workOrder.client?.email || 'N/A'}</p>
+              <p className="mb-2"><strong>Adresse:</strong> {workOrder.client?.address || 'N/A'}</p>
+              <p className="mb-2"><strong>Ville:</strong> {workOrder.client?.city || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="mb-2"><strong>Date:</strong> {workOrder.work_date || 'N/A'}</p>
+              <p className="mb-2"><strong>Heures totales:</strong> {workOrder.total_hours || calculateTotalHours()} h</p>
+              <p className="mb-2"><strong>Technicien:</strong> {workOrder.technician || 'N/A'}</p>
             </div>
           </div>
         </div>
 
         {/* Description des travaux */}
         <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-2 flex items-center">
-            <FileText className="mr-2" size={20} />
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <FileText className="mr-2" size={24} />
             Description des Travaux
           </h2>
-          <p className="bg-white border rounded-lg p-4">
-            {workOrder.description || 'Aucune description'}
-          </p>
+          <div className="bg-white border rounded-lg p-6">
+            <p className="text-gray-800 leading-relaxed">
+              {workOrder.description || workOrder.work_description || 'Aucune description disponible'}
+            </p>
+          </div>
         </div>
 
         {/* Matériaux utilisés */}
         {workOrder.materials && workOrder.materials.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-4">Matériaux Utilisés</h2>
+            <h2 className="text-xl font-semibold mb-4">Matériaux Utilisés</h2>
             <div className="bg-white border rounded-lg overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left">Matériau</th>
+                    <th className="px-4 py-3 text-left">Code</th>
+                    <th className="px-4 py-3 text-left">Matériau / Description</th>
                     <th className="px-4 py-3 text-center">Quantité</th>
                     <th className="px-4 py-3 text-center">Unité</th>
                     {workOrder.show_prices && (
@@ -233,9 +271,21 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 <tbody>
                   {workOrder.materials.map((material, index) => (
                     <tr key={index} className="border-t">
-                      <td className="px-4 py-3">{material.name}</td>
-                      <td className="px-4 py-3 text-center">{material.quantity}</td>
-                      <td className="px-4 py-3 text-center">{material.unit}</td>
+                      <td className="px-4 py-3 font-mono text-sm">
+                        {material.code || material.product_code || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-semibold">{material.name || material.product_name}</p>
+                          {(material.description || material.product_description) && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {material.description || material.product_description}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center font-semibold">{material.quantity}</td>
+                      <td className="px-4 py-3 text-center">{material.unit || material.product_unit}</td>
                       {workOrder.show_prices && (
                         <>
                           <td className="px-4 py-3 text-right">
@@ -252,7 +302,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 {workOrder.show_prices && (
                   <tfoot className="bg-gray-50 border-t-2">
                     <tr>
-                      <td colSpan="4" className="px-4 py-3 text-right font-bold">
+                      <td colSpan={workOrder.show_prices ? "5" : "4"} className="px-4 py-3 text-right font-bold">
                         Total:
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-lg">
@@ -269,20 +319,28 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
         {/* Zone de signature */}
         {workOrder.status === 'ready_for_signature' && (
           <div className="border-2 border-blue-200 rounded-lg p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4 text-blue-800">
-              Signature du Client - Acceptation des Travaux
-            </h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-blue-800">
+                Signature du Client - Acceptation des Travaux
+              </h2>
+              <button
+                onClick={() => window.history.back()}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center"
+              >
+                ← Retour pour Modifier
+              </button>
+            </div>
             
             {!isSigning ? (
               <div className="text-center">
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 mb-6 text-lg">
                   En signant ci-dessous, vous confirmez que les travaux ont été réalisés à votre satisfaction.
                 </p>
                 <button
                   onClick={() => setIsSigning(true)}
-                  className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 text-lg font-semibold"
+                  className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 text-xl font-semibold"
                 >
-                  <Check className="inline mr-2" size={20} />
+                  <Check className="inline mr-2" size={24} />
                   Accepter et Signer
                 </button>
               </div>
