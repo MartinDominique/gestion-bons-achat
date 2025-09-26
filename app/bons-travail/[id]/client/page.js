@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { notFound } from 'next/navigation';
-import WorkOrderClientView from '../../../../../components/work-orders/WorkOrderClientView';
+import WorkOrderClientView from '../../../components/work-orders/WorkOrderClientView';
 
 export default function ClientViewPage() {
   const { id } = useParams();
