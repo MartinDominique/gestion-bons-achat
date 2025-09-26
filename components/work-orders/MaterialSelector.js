@@ -4,11 +4,10 @@ import {
   AlertCircle, CheckCircle, RotateCcw, Hash, Eye, EyeOff
 } from 'lucide-react';
 
-// NOUVEAU: Ajout du paramètre showPrices
+// NOUVEAU: Ajout du paramètre showPrices ENLEVÉ - géré par ligne
 export default function MaterialSelector({ 
   materials = [], 
-  onMaterialsChange, 
-  showPrices = false // NOUVEAU: Prix cachés par défaut
+  onMaterialsChange
 }) {
   // États principaux (pattern InventoryManager)
   const [products, setProducts] = useState([]);
@@ -159,7 +158,8 @@ export default function MaterialSelector({
       product: product,
       quantity: 1,
       unit: product.unit || 'pcs',
-      notes: ''
+      notes: '',
+      showPrice: false // NOUVEAU: Prix caché par défaut par ligne
     };
     
     onMaterialsChange([...safeMaterials, newMaterial]);
@@ -179,6 +179,16 @@ export default function MaterialSelector({
     onMaterialsChange(safeMaterials.map(m => 
       m.id === materialId 
         ? { ...m, quantity: Math.max(0, (m.quantity || 0) + change) }
+        : m
+    ));
+  };
+
+  // NOUVEAU: Toggle prix de vente par ligne
+  const toggleMaterialPrice = (materialId) => {
+    const safeMaterials = materials || [];
+    onMaterialsChange(safeMaterials.map(m => 
+      m.id === materialId 
+        ? { ...m, showPrice: !m.showPrice }
         : m
     ));
   };
@@ -223,43 +233,27 @@ export default function MaterialSelector({
 
   return (
     <div className="space-y-4">
-      {/* Header avec bouton d'ajout et indicateur prix */}
+      {/* Header avec bouton d'ajout */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-gray-900">
           Matériaux utilisés ({(materials || []).length})
         </h3>
-        <div className="flex items-center gap-3">
-          {/* NOUVEAU: Indicateur prix */}
-          <div className="flex items-center text-sm text-gray-600">
-            {showPrices ? (
-              <div className="flex items-center">
-                <Eye size={14} className="mr-1 text-green-600" />
-                <span className="text-green-600">Prix affichés</span>
-              </div>
-            ) : (
-              <div className="flex items-center">
-                <EyeOff size={14} className="mr-1 text-gray-400" />
-                <span className="text-gray-400">Prix cachés</span>
-              </div>
-            )}
-          </div>
-          
-          <button
-            type="button"
-            onClick={() => {
-              setShowProductSearch(true);
-              setTimeout(() => {
-                if (searchRef.current) {
-                  searchRef.current.focus();
-                }
-              }, 100);
-            }}
-            className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm"
-          >
-            <Plus className="mr-1" size={16} />
-            Ajouter matériau
-          </button>
-        </div>
+        
+        <button
+          type="button"
+          onClick={() => {
+            setShowProductSearch(true);
+            setTimeout(() => {
+              if (searchRef.current) {
+                searchRef.current.focus();
+              }
+            }, 100);
+          }}
+          className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm"
+        >
+          <Plus className="mr-1" size={16} />
+          Ajouter matériau
+        </button>
       </div>
 
       {/* Liste des matériaux ajoutés */}
@@ -335,7 +329,7 @@ export default function MaterialSelector({
                   </div>
                 </div>
               ) : (
-                // Mode affichage - MODIFIÉ: Prix conditionnels
+                // Mode affichage - MODIFIÉ: Prix par ligne individuel
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
@@ -358,17 +352,17 @@ export default function MaterialSelector({
                         Qté: {material.quantity} {material.unit}
                       </span>
                       
-                      {/* MODIFIÉ: Prix conditionnel */}
-                      {showPrices && material.product?.cost_price && (
+                      {/* NOUVEAU: Prix de vente conditionnel par ligne */}
+                      {material.showPrice && material.product?.selling_price && (
                         <span className="text-green-600 font-medium">
-                          Coût unitaire: {formatCurrency(material.product.cost_price)}
+                          Prix unitaire: {formatCurrency(material.product.selling_price)}
                         </span>
                       )}
                       
                       {/* NOUVEAU: Total si prix affiché */}
-                      {showPrices && material.product?.cost_price && (
+                      {material.showPrice && material.product?.selling_price && (
                         <span className="text-green-700 font-bold">
-                          Total: {formatCurrency(material.product.cost_price * material.quantity)}
+                          Total: {formatCurrency(material.product.selling_price * material.quantity)}
                         </span>
                       )}
                       
@@ -381,6 +375,20 @@ export default function MaterialSelector({
                   </div>
                   
                   <div className="flex items-center space-x-1 ml-4">
+                    {/* NOUVEAU: Toggle prix par ligne */}
+                    <button
+                      type="button"
+                      onClick={() => toggleMaterialPrice(material.id)}
+                      className={`p-1 rounded ${
+                        material.showPrice 
+                          ? 'text-green-600 hover:text-green-800' 
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}
+                      title={material.showPrice ? "Cacher prix" : "Afficher prix"}
+                    >
+                      {material.showPrice ? <Eye size={14} /> : <EyeOff size={14} />}
+                    </button>
+
                     {/* Contrôles quantité */}
                     <button
                       type="button"
@@ -427,16 +435,18 @@ export default function MaterialSelector({
             </div>
           ))}
           
-          {/* NOUVEAU: Total général si prix affichés */}
-          {showPrices && materials && materials.length > 0 && (
+          {/* NOUVEAU: Total général si certaines lignes ont prix affichés */}
+          {materials && materials.some(m => m.showPrice && m.product?.selling_price) && (
             <div className="p-4 bg-green-50 border-t">
               <div className="flex justify-between items-center">
-                <span className="font-medium text-green-900">Total matériaux:</span>
+                <span className="font-medium text-green-900">Total matériaux (lignes avec prix):</span>
                 <span className="text-lg font-bold text-green-900">
                   {formatCurrency(
-                    materials.reduce((total, m) => 
-                      total + (m.product?.cost_price || 0) * (m.quantity || 0), 0
-                    )
+                    materials
+                      .filter(m => m.showPrice && m.product?.selling_price)
+                      .reduce((total, m) => 
+                        total + (m.product.selling_price || 0) * (m.quantity || 0), 0
+                      )
                   )}
                 </span>
               </div>
@@ -560,13 +570,7 @@ export default function MaterialSelector({
                           <div className="flex gap-4 text-xs text-gray-600">
                             {product.unit && <span>Unité: {product.unit}</span>}
                             <span>Stock: {product.stock_qty || 0}</span>
-                            
-                            {/* MODIFIÉ: Prix conditionnel dans recherche */}
-                            {showPrices && product.cost_price && (
-                              <span className="text-green-600 font-medium">
-                                Prix: {formatCurrency(product.cost_price)}
-                              </span>
-                            )}
+                            {/* SUPPRIMÉ: Plus de coûts affichés dans la recherche */}
                           </div>
                         </div>
                         
