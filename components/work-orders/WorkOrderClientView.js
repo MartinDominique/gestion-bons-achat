@@ -153,7 +153,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
   const calculateTotal = () => {
     return workOrder.materials?.reduce((total, material) => {
-      return total + (material.quantity * material.unit_price);
+      const price = material.product?.selling_price || material.unit_price || 0;
+      return total + (material.quantity * price);
     }, 0) || 0;
   };
 
@@ -196,6 +197,12 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 <p>Tél: (418) 225-3875</p>
                 <p>info.servicestmt@gmail.com</p>
               </div>
+            </div>700 space-y-0.5">
+                <p>123, Rue Exemple</p>
+                <p>Saint-Georges, QC G5Z 0V9</p>
+                <p>Tél: (418) 123-4567</p>
+                <p>info@votreentreprise.ca</p>
+              </div>
             </div>
 
             {/* Colonne 3: Information Document */}
@@ -203,7 +210,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
               <h2 className="text-xl font-bold text-gray-900 mb-2">BON DE TRAVAIL</h2>
               <div className="text-sm text-gray-700 space-y-1">
                 <p><strong>N°:</strong> {workOrder.bt_number || `BT-2025-${String(workOrder.id).padStart(3, '0')}`}</p>
-                <p><strong>Date:</strong> {new Date(workOrder.work_date).toLocaleDateString('fr-CA')}</p>
+                <p><strong>Date:</strong> {workOrder.work_date}</p>
                 <div className="flex items-center justify-end mt-2">
                   {isOnline ? (
                     <>
@@ -288,13 +295,13 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 <tbody>
                   {workOrder.materials.map((material, index) => (
                     <tr key={index} className="border-t">
-                      <td className="px-4 py-3 font-mono text-sm">
-                        {material.product?.code || material.code || 'N/A'}
+                      <td className="px-4 py-3 font-mono text-sm font-bold">
+                        {material.product?.product_id || material.product_id || 'N/A'}
                       </td>
                       <td className="px-4 py-3">
                         <div>
                           <p className="font-semibold">
-                            {material.product?.name || material.name || 'Matériau sans nom'}
+                            {material.product?.product_id || material.product_id || 'Matériau sans code'}
                           </p>
                           {(material.product?.description || material.description) && (
                             <p className="text-sm text-gray-600 mt-1">
@@ -310,10 +317,10 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                       {workOrder.show_prices && (
                         <>
                           <td className="px-4 py-3 text-right">
-                            {formatCurrency(material.unit_price)}
+                            {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
                           </td>
                           <td className="px-4 py-3 text-right font-semibold">
-                            {formatCurrency(material.quantity * material.unit_price)}
+                            {formatCurrency(material.quantity * (material.product?.selling_price || material.unit_price || 0))}
                           </td>
                         </>
                       )}
