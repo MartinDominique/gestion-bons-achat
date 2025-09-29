@@ -2183,10 +2183,10 @@ const cleanupFilesForSubmission = async (files) => {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => applyProfitMargin(25)}
+                                    onClick={() => applyProfitMargin(27)}
                                     className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
                                   >
-                                    +25%
+                                    +27%
                                   </button>
                                 </div>
                               </div>
