@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Check, Send, Wifi, WifiOff, X, FileText, User, Calendar, Clock } from 'lucide-react';
+import { onSignatureCompleted } from '../../lib/services/auto-send.js';
 
 export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   const [signature, setSignature] = useState('');
@@ -87,33 +88,45 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
       alert('Signature requise pour accepter les travaux');
       return;
     }
-
+  
     try {
-      const response = await fetch(`/api/work-orders/${workOrder.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'signed',
-          signature: signature,
-          signed_at: new Date().toISOString(),
-          client_name: workOrder.client?.name || 'Client'
-        })
-      });
-
-      if (response.ok) {
-        onStatusUpdate?.('signed');
+      // Utiliser le nouveau système d'envoi automatique
+      const result = await onSignatureCompleted(
+        workOrder.id, 
+        signature, 
+        workOrder.client?.name || 'Client'
+      );
+      
+      if (result.signatureSaved) {
         setIsSigning(false);
-        // Auto-envoi si en ligne, sinon marquer comme en attente
-        if (isOnline) {
-          handleSendWork();
-        } else {
+        
+        if (result.autoSendResult.success) {
+          // Envoi automatique réussi
+          onStatusUpdate?.('sent');
+          alert(`Travail signé et envoyé automatiquement à ${result.autoSendResult.sentTo}`);
+          
+          // Fermer la fenêtre après 2 secondes
+          setTimeout(() => {
+            window.close();
+          }, 2000);
+          
+        } else if (result.autoSendResult.needsManualSend) {
+          // Signature OK mais envoi automatique impossible
           onStatusUpdate?.('pending_send');
-          alert('Travail signé et mis en attente d\'envoi (mode hors ligne)');
+          alert(`Travail signé avec succès. ${result.autoSendResult.reason}`);
+          
+        } else {
+          // Erreur envoi automatique
+          onStatusUpdate?.('pending_send');
+          alert('Travail signé. Email sera envoyé manuellement depuis le bureau.');
         }
+      } else {
+        throw new Error(result.error || 'Erreur lors de la signature');
       }
+      
     } catch (error) {
       console.error('Erreur signature:', error);
-      alert('Erreur lors de la signature');
+      alert(`Erreur lors de la signature: ${error.message}`);
     }
   };
 
