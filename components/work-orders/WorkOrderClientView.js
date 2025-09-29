@@ -130,25 +130,6 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     }
   };
 
-  const handleSendWork = async () => {
-    try {
-      const response = await fetch(`/api/work-orders/${workOrder.id}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (response.ok) {
-        onStatusUpdate?.('sent');
-        alert('Bon de travail envoyé avec succès !');
-        window.close(); // Fermer la fenêtre tablette
-      }
-    } catch (error) {
-      console.error('Erreur envoi:', error);
-      alert('Erreur lors de l\'envoi - sauvegardé en local');
-      onStatusUpdate?.('pending_send');
-    }
-  };
-
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('fr-CA', {
       style: 'currency',
@@ -452,41 +433,32 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 <p className="text-green-700">
                   Signé le {new Date(workOrder.signed_at).toLocaleString('fr-CA')}
                 </p>
+                <p className="text-sm text-green-600 mt-1">
+                  Email envoyé automatiquement au client
+                </p>
               </div>
               <button
-                onClick={handleSendWork}
-                disabled={!isOnline}
-                className={`px-6 py-3 rounded-lg font-semibold flex items-center ${
-                  isOnline 
-                    ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                    : 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                }`}
+                onClick={() => window.close()}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
               >
-                <Send className="mr-2" size={16} />
-                {isOnline ? 'Envoyer Maintenant' : 'Attente Connexion'}
+                Fermer
               </button>
             </div>
           </div>
         )}
 
         {/* Statut d'attente envoi */}
-        {workOrder.status === 'pending_send' && (
+       {workOrder.status === 'pending_send' && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold text-orange-800 mb-2">
               ⏳ En Attente d'Envoi
             </h3>
             <p className="text-orange-700 mb-3">
-              Travaux signés - Sera envoyé automatiquement dès la reconnexion
+              Travaux signés - Envoi automatique en cours de traitement par le système
             </p>
-            {isOnline && (
-              <button
-                onClick={handleSendWork}
-                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700"
-              >
-                <Send className="inline mr-2" size={16} />
-                Envoyer Maintenant
-              </button>
-            )}
+            <p className="text-sm text-orange-600">
+              L'email sera envoyé automatiquement depuis le bureau
+            </p>
           </div>
         )}
 
