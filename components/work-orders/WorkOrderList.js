@@ -47,49 +47,6 @@ const WorkOrderList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrderWithClient | null>(null);
 
-  // Données de démo (remplacer par vraies données Supabase)
-  const mockWorkOrders: WorkOrderWithClient[] = [
-    {
-      id: '1',
-      bt_number: 'BT-2025-001',
-      client_id: 'c1',
-      client: { id: 'c1', name: 'Usine ABC Inc.', address: '123 Rue Industrielle' },
-      work_date: '2025-09-08',
-      start_time: '08:00',
-      end_time: '16:30',
-      total_hours: 7.5,
-      status: 'completed',
-      work_description: 'Installation panneau électrique 200A',
-      created_at: '2025-09-08T10:00:00Z'
-    },
-    {
-      id: '2',
-      bt_number: 'BT-2025-002',
-      client_id: 'c2',
-      client: { id: 'c2', name: 'Manufacture XYZ', address: '456 Avenue du Commerce' },
-      work_date: '2025-09-07',
-      start_time: '09:00',
-      end_time: '17:00',
-      total_hours: 7.0,
-      status: 'sent',
-      work_description: 'Maintenance préventive moteurs',
-      created_at: '2025-09-07T15:30:00Z'
-    },
-    {
-      id: '3',
-      bt_number: 'BT-2025-003',
-      client_id: 'c3',
-      client: { id: 'c3', name: 'Industries DEF', address: '789 Boulevard Technologique' },
-      work_date: '2025-09-06',
-      start_time: '07:30',
-      end_time: '15:30',
-      total_hours: 7.0,
-      status: 'draft',
-      work_description: 'Installation nouveaux circuits',
-      created_at: '2025-09-06T08:00:00Z'
-    }
-  ];
-
   useEffect(() => {
     // Simulation chargement données
     setTimeout(() => {
