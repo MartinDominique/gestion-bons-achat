@@ -1,6 +1,7 @@
 // ============================================
-// API ROUTE - ENVOI EMAIL BONS DE TRAVAIL
+// API ROUTE CORRIGÉE - ENVOI EMAIL BONS DE TRAVAIL
 // Fichier: app/api/work-orders/[id]/send-email/route.js
+// Structure: id=integer, client_id=integer, user_id=uuid
 // ============================================
 
 import { NextResponse } from 'next/server';
@@ -25,12 +26,14 @@ export async function POST(request, { params }) {
     console.log('🚀 Envoi email BT:', id);
 
     // Validation des données
-    if (!id) {
+    if (!id || isNaN(parseInt(id))) {
       return NextResponse.json(
-        { error: 'ID du bon de travail requis' },
+        { error: 'ID du bon de travail requis et doit être un nombre' },
         { status: 400 }
       );
     }
+
+    const workOrderId = parseInt(id);
 
     // Options d'envoi depuis le body
     const {
@@ -52,7 +55,7 @@ export async function POST(request, { params }) {
           product:products(*)
         )
       `)
-      .eq('id', id)
+      .eq('id', workOrderId)
       .single();
 
     if (fetchError) {
@@ -94,7 +97,7 @@ export async function POST(request, { params }) {
       await supabaseAdmin
         .from('work_orders')
         .update({ status: 'pending_send' })
-        .eq('id', id);
+        .eq('id', workOrderId);
     }
 
     // 4. Préparer les emails CC
@@ -128,9 +131,10 @@ export async function POST(request, { params }) {
         status: 'sent',
         email_sent_at: new Date().toISOString(),
         email_sent_to: emailToSend,
-        email_message_id: result.messageId
+        email_message_id: result.messageId,
+        auto_send_success: true
       })
-      .eq('id', id);
+      .eq('id', workOrderId);
 
     if (updateError) {
       console.error('⚠️ Erreur mise à jour statut:', updateError);
@@ -166,10 +170,19 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
 
+    if (!id || isNaN(parseInt(id))) {
+      return NextResponse.json(
+        { error: 'ID invalide' },
+        { status: 400 }
+      );
+    }
+
+    const workOrderId = parseInt(id);
+
     const { data: workOrder, error } = await supabaseAdmin
       .from('work_orders')
-      .select('id, bt_number, status, email_sent_at, email_sent_to, email_message_id')
-      .eq('id', id)
+      .select('id, bt_number, status, email_sent_at, email_sent_to, email_message_id, auto_send_success')
+      .eq('id', workOrderId)
       .single();
 
     if (error) {
@@ -186,7 +199,8 @@ export async function GET(request, { params }) {
       emailSent: workOrder.status === 'sent',
       emailSentAt: workOrder.email_sent_at,
       emailSentTo: workOrder.email_sent_to,
-      messageId: workOrder.email_message_id
+      messageId: workOrder.email_message_id,
+      autoSendSuccess: workOrder.auto_send_success
     });
 
   } catch (error) {
@@ -195,71 +209,5 @@ export async function GET(request, { params }) {
       { error: 'Erreur interne du serveur' },
       { status: 500 }
     );
-  }
-}
-
-// ============================================
-// FONCTION UTILITAIRE POUR ENVOI AUTOMATIQUE
-// Utilisez cette fonction si vous voulez l'envoi automatique
-// ============================================
-
-export async function autoSendOnSignature(workOrderId) {
-  try {
-    console.log('🔄 Envoi automatique pour BT:', workOrderId);
-
-    // Récupérer le BT
-    const { data: workOrder, error } = await supabaseAdmin
-      .from('work_orders')
-      .select(`
-        *,
-        client:clients(*)
-      `)
-      .eq('id', workOrderId)
-      .single();
-
-    if (error || !workOrder) {
-      console.error('BT introuvable pour envoi auto:', error);
-      return { success: false, error: 'BT introuvable' };
-    }
-
-    // Vérifier si le client a un email
-    if (!workOrder.client.email) {
-      console.log('Pas d\'email client, passage en pending_send');
-      await supabaseAdmin
-        .from('work_orders')
-        .update({ status: 'pending_send' })
-        .eq('id', workOrderId);
-      
-      return { success: false, error: 'Pas d\'email client' };
-    }
-
-    // Envoyer automatiquement
-    const emailService = new WorkOrderEmailService();
-    const result = await emailService.sendWorkOrderEmail(workOrder, {
-      sendToBureau: true
-    });
-
-    if (result.success) {
-      // Mettre à jour le statut
-      await supabaseAdmin
-        .from('work_orders')
-        .update({ 
-          status: 'sent',
-          email_sent_at: new Date().toISOString(),
-          email_sent_to: workOrder.client.email,
-          email_message_id: result.messageId
-        })
-        .eq('id', workOrderId);
-
-      console.log('✅ Envoi automatique réussi');
-      return { success: true, messageId: result.messageId };
-    } else {
-      console.error('❌ Échec envoi automatique:', result.error);
-      return { success: false, error: result.error };
-    }
-
-  } catch (error) {
-    console.error('💥 Erreur envoi automatique:', error);
-    return { success: false, error: error.message };
   }
 }
