@@ -1,15 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye } from 'lucide-react';
+import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye, Search } from 'lucide-react';
 
 export default function BonsTravailPage() {
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState('client'); // 'client', 'bt_number', 'date'
   const router = useRouter();
+
+  // Fonction pour tronquer le texte
+  const truncateText = (text, maxLength = 50) => {
+    if (!text) return '-';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
 
   const fetchWorkOrders = async () => {
     try {
@@ -17,7 +26,6 @@ export default function BonsTravailPage() {
       if (response.ok) {
         const data = await response.json();
         
-        // AJOUTER CETTE VÉRIFICATION :
         console.log('Données reçues:', data);
         console.log('Type:', typeof data);
         console.log('Est un Array:', Array.isArray(data));
@@ -39,14 +47,46 @@ export default function BonsTravailPage() {
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
-      setWorkOrders([]); // IMPORTANT: Toujours un array
+      setWorkOrders([]);
     } finally {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchWorkOrders();
   }, []);
+
+  // Filtrer les bons de travail selon la recherche
+  const filteredWorkOrders = useMemo(() => {
+    if (!searchTerm.trim()) return workOrders;
+
+    const searchLower = searchTerm.toLowerCase().trim();
+
+    return workOrders.filter(wo => {
+      switch (searchType) {
+        case 'client':
+          return wo.client?.name?.toLowerCase().includes(searchLower);
+        
+        case 'bt_number':
+          return wo.bt_number?.toLowerCase().includes(searchLower);
+        
+        case 'date':
+          // Recherche par date (format YYYY-MM-DD ou DD/MM/YYYY ou MM/DD/YYYY)
+          const workDate = wo.work_date ? new Date(wo.work_date).toLocaleDateString('fr-CA') : '';
+          const workDateFr = wo.work_date ? new Date(wo.work_date).toLocaleDateString('fr-FR') : '';
+          const workDateUs = wo.work_date ? new Date(wo.work_date).toLocaleDateString('en-US') : '';
+          
+          return workDate.includes(searchLower) || 
+                 workDateFr.includes(searchLower) || 
+                 workDateUs.includes(searchLower) ||
+                 wo.work_date?.includes(searchLower);
+        
+        default:
+          return true;
+      }
+    });
+  }, [workOrders, searchTerm, searchType]);
 
   // Supprimer un bon de travail
   const handleDelete = async (workOrder) => {
@@ -62,7 +102,6 @@ export default function BonsTravailPage() {
       });
 
       if (response.ok) {
-        // Retirer de la liste localement
         setWorkOrders(prev => prev.filter(wo => wo.id !== workOrder.id));
         alert(`Bon de travail ${workOrder.bt_number} supprimé avec succès.`);
       } else {
@@ -100,7 +139,6 @@ export default function BonsTravailPage() {
       });
 
       if (response.ok) {
-        // Mettre à jour localement
         setWorkOrders(prev => prev.map(wo => 
           wo.id === workOrder.id ? { ...wo, status: 'sent' } : wo
         ));
@@ -162,6 +200,19 @@ export default function BonsTravailPage() {
   const canSend = (status) => ['completed'].includes(status);
   const canDelete = (status) => ['draft'].includes(status);
 
+  const getSearchPlaceholder = () => {
+    switch (searchType) {
+      case 'client':
+        return 'Rechercher par nom de client...';
+      case 'bt_number':
+        return 'Rechercher par numéro de BT...';
+      case 'date':
+        return 'Rechercher par date (YYYY-MM-DD)...';
+      default:
+        return 'Rechercher...';
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -186,6 +237,65 @@ export default function BonsTravailPage() {
         </Link>
       </div>
 
+      {/* Barre de recherche */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Sélecteur de type de recherche */}
+          <div className="sm:w-48">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Rechercher par
+            </label>
+            <select
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="client">Client</option>
+              <option value="bt_number"># BT</option>
+              <option value="date">Date</option>
+            </select>
+          </div>
+
+          {/* Champ de recherche */}
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Terme de recherche
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={getSearchPlaceholder()}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Bouton pour effacer */}
+          {searchTerm && (
+            <div className="sm:w-auto flex items-end">
+              <button
+                onClick={() => setSearchTerm('')}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Effacer
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Indicateur de résultats */}
+        {searchTerm && (
+          <div className="mt-3 text-sm text-gray-600">
+            {filteredWorkOrders.length} résultat(s) trouvé(s) pour "{searchTerm}"
+          </div>
+        )}
+      </div>
+
       {/* Statistiques rapides */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
@@ -195,7 +305,7 @@ export default function BonsTravailPage() {
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{workOrders.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{filteredWorkOrders.length}</p>
             </div>
           </div>
         </div>
@@ -208,7 +318,7 @@ export default function BonsTravailPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Brouillons</p>
               <p className="text-2xl font-bold text-gray-900">
-                {workOrders.filter(wo => wo.status === 'draft').length}
+                {filteredWorkOrders.filter(wo => wo.status === 'draft').length}
               </p>
             </div>
           </div>
@@ -222,7 +332,7 @@ export default function BonsTravailPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Terminés</p>
               <p className="text-2xl font-bold text-gray-900">
-                {workOrders.filter(wo => wo.status === 'completed').length}
+                {filteredWorkOrders.filter(wo => wo.status === 'completed').length}
               </p>
             </div>
           </div>
@@ -236,7 +346,7 @@ export default function BonsTravailPage() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Envoyés</p>
               <p className="text-2xl font-bold text-gray-900">
-                {workOrders.filter(wo => wo.status === 'sent').length}
+                {filteredWorkOrders.filter(wo => wo.status === 'sent').length}
               </p>
             </div>
           </div>
@@ -244,16 +354,32 @@ export default function BonsTravailPage() {
       </div>
       
       <div className="bg-white rounded-lg shadow">
-        {workOrders.length === 0 ? (
+        {filteredWorkOrders.length === 0 ? (
           <div className="p-8 text-center">
             <FileText size={48} className="mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-600 mb-4">Aucun bon de travail pour le moment</p>
-            <Link 
-              href="/bons-travail/nouveau"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              Créer le premier BT
-            </Link>
+            {searchTerm ? (
+              <>
+                <p className="text-gray-600 mb-4">
+                  Aucun bon de travail trouvé pour "{searchTerm}"
+                </p>
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Effacer la recherche
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-600 mb-4">Aucun bon de travail pour le moment</p>
+                <Link 
+                  href="/bons-travail/nouveau"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  Créer le premier BT
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -270,7 +396,7 @@ export default function BonsTravailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {workOrders.map((wo) => (
+                {filteredWorkOrders.map((wo) => (
                   <tr key={wo.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">
                       {wo.bt_number}
@@ -301,8 +427,10 @@ export default function BonsTravailPage() {
                         {getStatusLabel(wo.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                      {wo.work_description}
+                    <td className="px-6 py-4 text-sm text-gray-600 w-48">
+                      <div title={wo.work_description || 'Aucune description'}>
+                        {truncateText(wo.work_description, 60)}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
