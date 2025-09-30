@@ -213,7 +213,7 @@ export async function GET() {
     const emailTo = process.env.WEEKLY_REPORT_EMAIL || 'servicestmt@gmail.com';
     
     const result = await resend.emails.send({
-      from: 'onboarding@resend.dev',
+      from: 'noreply@servicestmt.ca',
       to: emailTo,
       subject: `📊 Rapport Hebdomadaire Services TMT - ${poStats.total + submissionStats.total} documents (${(poStats.montantTotal + submissionStats.montantTotal).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })})`,
       html: htmlContent
