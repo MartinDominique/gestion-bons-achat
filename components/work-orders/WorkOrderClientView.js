@@ -272,7 +272,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                     <th className="px-4 py-3 text-left">Matériau / Description</th>
                     <th className="px-4 py-3 text-center">Quantité</th>
                     <th className="px-4 py-3 text-center">Unité</th>
-                    {workOrder.show_prices && (
+                    {(workOrder.show_prices || (workOrder.materials && workOrder.materials.some(m => m.showPrice === true))) && (
                       <>
                         <th className="px-4 py-3 text-right">Prix Unit.</th>
                         <th className="px-4 py-3 text-right">Total</th>
@@ -302,7 +302,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                       <td className="px-4 py-3 text-center">
                         {material.unit || material.product?.unit || 'UN'}
                       </td>
-                      {workOrder.show_prices && (
+                      {(workOrder.show_prices || (workOrder.materials && workOrder.materials.some(m => m.showPrice === true))) && (
                         <>
                           <td className="px-4 py-3 text-right">
                             {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
@@ -315,10 +315,10 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                     </tr>
                   ))}
                 </tbody>
-                {workOrder.show_prices && (
+                {(workOrder.show_prices || (workOrder.materials && workOrder.materials.some(m => m.showPrice === true))) && (
                   <tfoot className="bg-gray-50 border-t-2">
                     <tr>
-                      <td colSpan={workOrder.show_prices ? "5" : "4"} className="px-4 py-3 text-right font-bold">
+                      <td colSpan="4" className="px-4 py-3 text-right font-bold">
                         Total:
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-lg">
