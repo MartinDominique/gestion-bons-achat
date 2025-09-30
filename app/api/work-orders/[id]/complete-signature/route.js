@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { WorkOrderEmailService } from '../../../../../lib/services/email-service.js';
+import { WorkOrderEmailService, WorkOrderPDFService } from '../../../../../lib/services/email-service.js';
 
 // Client Supabase avec clés service
 const supabaseAdmin = createClient(
