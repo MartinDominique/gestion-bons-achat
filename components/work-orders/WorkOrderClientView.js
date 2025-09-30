@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Check, Send, Wifi, WifiOff, X, FileText, User, Calendar, Clock } from 'lucide-react';
-import { onSignatureCompleted } from '../../lib/services/auto-send.js';
+import { handleSignatureWithAutoSend } from '../../lib/services/client-signature.js';
 
 export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   const [signature, setSignature] = useState('');
@@ -83,52 +83,52 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     setSignature('');
   };
 
-  const handleAcceptWork = async () => {
-    if (!signature) {
-      alert('Signature requise pour accepter les travaux');
-      return;
-    }
-  
-    try {
-      // Utiliser le nouveau système d'envoi automatique
-      const result = await onSignatureCompleted(
-        workOrder.id, 
-        signature, 
-        workOrder.client?.name || 'Client'
-      );
+ const handleAcceptWork = async () => {
+  if (!signature) {
+    alert('Signature requise pour accepter les travaux');
+    return;
+  }
+
+  try {
+    // Utiliser le nouveau service client (sans Resend côté client)
+    const result = await handleSignatureWithAutoSend(
+      workOrder.id, 
+      signature, 
+      workOrder.client?.name || 'Client'
+    );
+    
+    if (result.success && result.signatureSaved) {
+      setIsSigning(false);
       
-      if (result.signatureSaved) {
-        setIsSigning(false);
+      if (result.autoSendResult.success) {
+        // Envoi automatique réussi
+        onStatusUpdate?.('sent');
+        alert(`Travail signé et envoyé automatiquement à ${result.autoSendResult.sentTo}`);
         
-        if (result.autoSendResult.success) {
-          // Envoi automatique réussi
-          onStatusUpdate?.('sent');
-          alert(`Travail signé et envoyé automatiquement à ${result.autoSendResult.sentTo}`);
-          
-          // Fermer la fenêtre après 2 secondes
-          setTimeout(() => {
-            window.close();
-          }, 2000);
-          
-        } else if (result.autoSendResult.needsManualSend) {
-          // Signature OK mais envoi automatique impossible
-          onStatusUpdate?.('pending_send');
-          alert(`Travail signé avec succès. ${result.autoSendResult.reason}`);
-          
-        } else {
-          // Erreur envoi automatique
-          onStatusUpdate?.('pending_send');
-          alert('Travail signé. Email sera envoyé manuellement depuis le bureau.');
-        }
+        // Fermer la fenêtre après 2 secondes
+        setTimeout(() => {
+          window.close();
+        }, 2000);
+        
+      } else if (result.autoSendResult.needsManualSend) {
+        // Signature OK mais envoi automatique impossible
+        onStatusUpdate?.(result.workOrderStatus || 'pending_send');
+        alert(`Travail signé avec succès. ${result.autoSendResult.reason}`);
+        
       } else {
-        throw new Error(result.error || 'Erreur lors de la signature');
+        // Erreur envoi automatique
+        onStatusUpdate?.(result.workOrderStatus || 'pending_send');
+        alert('Travail signé. Email sera envoyé manuellement depuis le bureau.');
       }
-      
-    } catch (error) {
-      console.error('Erreur signature:', error);
-      alert(`Erreur lors de la signature: ${error.message}`);
+    } else {
+      throw new Error(result.error || 'Erreur lors de la signature');
     }
-  };
+    
+  } catch (error) {
+    console.error('Erreur signature:', error);
+    alert(`Erreur lors de la signature: ${error.message}`);
+  }
+};
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('fr-CA', {
