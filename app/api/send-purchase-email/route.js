@@ -21,8 +21,8 @@ export async function POST(request) {
     const isApproved = body.purchase.status === 'ordered' || body.purchase.status === 'approved';
 
     const emailData = {
-      from: 'delivered@resend.dev',
-      to: ['servicestmt@gmail.com'],
+      from: 'noreply@servicestmt.ca',
+      to: ['info.servicestmt@gmail.com'],
       subject: `🛒 ${isApproved ? 'Achat Fournisseur Approuvé' : 'Nouvel Achat Fournisseur'} - #${body.purchase.purchase_number}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
