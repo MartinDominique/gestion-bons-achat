@@ -162,6 +162,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     showPrice: m.showPrice,
     unit_price: m.unit_price
   })));
+  console.log('Condition check:', workOrder.materials && workOrder.materials.some(m => m.product?.selling_price > 0));
   
   return (
     <div className="min-h-screen bg-white">
