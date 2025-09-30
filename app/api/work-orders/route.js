@@ -66,7 +66,8 @@ export async function POST(request) {
         product_id: material.product_id,
         quantity: parseFloat(material.quantity) || 1,
         unit: material.unit || 'pcs',
-        notes: material.notes || null
+        notes: material.notes || null,
+        show_price: material.showPrice || false
       }));
 
       const { data: materialsResult, error: materialsError } = await client
@@ -270,7 +271,8 @@ export async function PUT(request) {
         product_id: material.product_id,
         quantity: parseFloat(material.quantity) || 1,
         unit: material.unit || 'pcs',
-        notes: material.notes || null
+        notes: material.notes || null,
+        show_price: material.showPrice || false
       }));
 
       const { error: materialsError } = await client
