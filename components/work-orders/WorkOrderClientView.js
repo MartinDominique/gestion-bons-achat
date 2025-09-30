@@ -156,6 +156,13 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     return <div className="p-8 text-center">Chargement...</div>;
   }
 
+    console.log('Material prices debug:', workOrder.materials?.map(m => ({
+    code: m.product?.product_id,
+    selling_price: m.product?.selling_price,
+    showPrice: m.showPrice,
+    unit_price: m.unit_price
+  })));
+  
   return (
     <div className="min-h-screen bg-white">
       {/* Header professionnel style TMT */}
