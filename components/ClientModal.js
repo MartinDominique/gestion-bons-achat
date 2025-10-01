@@ -19,6 +19,10 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       contact_admin: ''
     }
   );
+  // 🔍 LIGNE DE DEBUG - Ajoute ça temporairement
+console.log('🔍 Form state:', form);
+console.log('🔍 Client prop:', client);
+  
   const [saving, setSaving] = useState(false);
 
   if (!open) return null;
