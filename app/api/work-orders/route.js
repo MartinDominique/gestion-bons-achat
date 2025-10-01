@@ -32,9 +32,9 @@ export async function POST(request) {
     // Gérer la création automatique de purchase_order si nécessaire
     let finalLinkedPoId = null;
     
-    if (linked_po_id && linked_po_id.trim()) {
+    if (linked_po_id && (typeof linked_po_id === 'string' ? linked_po_id.trim() : linked_po_id)) {
       // Vérifier si c'est un ID numérique existant ou un nouveau numéro
-      if (isNaN(linked_po_id)) {
+      if (typeof linked_po_id === 'string' && isNaN(linked_po_id)) {
         // C'est un nouveau numéro de BA/Job client - créer un purchase_order
         console.log('Création automatique purchase_order pour:', linked_po_id);
         
@@ -51,7 +51,7 @@ export async function POST(request) {
         const { data: newPO, error: poError } = await client
           .from('purchase_orders')
           .insert({
-            po_number: linked_po_id.trim(),
+            po_number: typeof linked_po_id === 'string' ? linked_po_id.trim() : linked_po_id,
             client_id: parseInt(client_id),
             status: 'active',
             date: work_date,
@@ -279,7 +279,7 @@ export async function PUT(request) {
     // Gérer la création automatique de purchase_order si nécessaire
     let finalLinkedPoId = linked_po_id;
     
-    if (linked_po_id && linked_po_id.trim() && isNaN(linked_po_id)) {
+    if (linked_po_id && (typeof linked_po_id === 'string' ? linked_po_id.trim() : linked_po_id) && typeof linked_po_id === 'string' && isNaN(linked_po_id)) {
       // C'est un nouveau numéro de BA/Job client - créer un purchase_order
       console.log('Création automatique purchase_order pour mise à jour:', linked_po_id);
       
@@ -296,7 +296,7 @@ export async function PUT(request) {
       const { data: newPO, error: poError } = await client
         .from('purchase_orders')
         .insert({
-          po_number: linked_po_id.trim(),
+          po_number: typeof linked_po_id === 'string' ? linked_po_id.trim() : linked_po_id,
           client_id: parseInt(client_id),
           status: 'active',
           date: work_date,
