@@ -38,18 +38,29 @@ export async function POST(request) {
         // C'est un nouveau numéro de BA/Job client - créer un purchase_order
         console.log('Création automatique purchase_order pour:', linked_po_id);
         
+        // 1️⃣ Récupérer le nom du client
+        const { data: clientData } = await client
+          .from('clients')
+          .select('name')
+          .eq('id', client_id)
+          .single()
+        
+        const clientName = clientData?.name || 'Client inconnu'
+        
+        // 2️⃣ Créer le purchase_order avec toutes les données
         const { data: newPO, error: poError } = await client
           .from('purchase_orders')
           .insert({
             po_number: linked_po_id.trim(),
             client_id: parseInt(client_id),
             status: 'active',
-            date: work_date,  // ✅ Changé de order_date à date
-            po_date: work_date,  // ✅ Ajout de po_date aussi
+            date: work_date,
+            po_date: work_date,
             description: 'Créé automatiquement depuis BT',
-            created_by: null,  // ✅ UUID null au lieu de string
-            client_name: '',  // ✅ Ajout pour éviter d'autres erreurs
-            amount: 0  // ✅ Valeur par défaut
+            created_by: null,
+            amount: 0,
+            client_name: clientName,
+            notes: `PO créé automatiquement lors de la création du BT ${btNumber}. Date: ${work_date}`
           })
           .select()
           .single()
@@ -272,18 +283,29 @@ export async function PUT(request) {
       // C'est un nouveau numéro de BA/Job client - créer un purchase_order
       console.log('Création automatique purchase_order pour mise à jour:', linked_po_id);
       
+      // 1️⃣ Récupérer le nom du client
+      const { data: clientData } = await client
+        .from('clients')
+        .select('name')
+        .eq('id', client_id)
+        .single()
+      
+      const clientName = clientData?.name || 'Client inconnu'
+      
+      // 2️⃣ Créer le purchase_order avec toutes les données
       const { data: newPO, error: poError } = await client
         .from('purchase_orders')
         .insert({
           po_number: linked_po_id.trim(),
           client_id: parseInt(client_id),
           status: 'active',
-          date: work_date,  // ✅ Changé de order_date à date
-          po_date: work_date,  // ✅ Ajout de po_date aussi
+          date: work_date,
+          po_date: work_date,
           description: 'Créé automatiquement depuis BT',
-          created_by: null,  // ✅ UUID null au lieu de string
-          client_name: '',  // ✅ Ajout pour éviter d'autres erreurs
-          amount: 0  // ✅ Valeur par défaut
+          created_by: null,
+          amount: 0,
+          client_name: clientName,
+          notes: `PO créé automatiquement lors de la création du BT ${btNumber}. Date: ${work_date}`
         })
         .select()
         .single()
