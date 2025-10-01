@@ -47,7 +47,7 @@ export async function POST(request) {
         
         const clientName = clientData?.name || 'Client inconnu'
         
-        // 2️⃣ Créer le purchase_order avec toutes les données
+        // 2️⃣ Créer le purchase_order
         const { data: newPO, error: poError } = await client
           .from('purchase_orders')
           .insert({
@@ -60,7 +60,7 @@ export async function POST(request) {
             created_by: null,
             amount: 0,
             client_name: clientName,
-            notes: `PO créé automatiquement lors de la création du BT ${btNumber}. Date: ${work_date}`
+            notes: `PO créé automatiquement lors de la création du BT ${workOrder.bt_number}. Date: ${work_date}`  // ✅ workOrder.bt_number
           })
           .select()
           .single()
@@ -292,7 +292,7 @@ export async function PUT(request) {
       
       const clientName = clientData?.name || 'Client inconnu'
       
-      // 2️⃣ Créer le purchase_order avec toutes les données
+      // 2️⃣ Créer le purchase_order
       const { data: newPO, error: poError } = await client
         .from('purchase_orders')
         .insert({
@@ -305,7 +305,7 @@ export async function PUT(request) {
           created_by: null,
           amount: 0,
           client_name: clientName,
-          notes: `PO créé automatiquement lors de la création du BT ${btNumber}. Date: ${work_date}`
+          notes: `PO créé automatiquement lors de la création du BT ${workOrder.bt_number}. Date: ${work_date}`  // ✅ workOrder.bt_number
         })
         .select()
         .single()
