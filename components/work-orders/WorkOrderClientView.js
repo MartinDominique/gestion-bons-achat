@@ -251,6 +251,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
               <p className="mb-2"><strong>Date:</strong> {workOrder.work_date || 'N/A'}</p>
               <p className="mb-2"><strong>Heures totales:</strong> {workOrder.total_hours || calculateTotalHours()} h</p>
               <p className="mb-2"><strong>Technicien:</strong> {workOrder.technician || 'N/A'}</p>
+              {workOrder.linked_po_id && (
+              <p className="mb-2"><strong>Bon d'achat client:</strong> {workOrder.linked_po_id}</p>
+              )}
             </div>
           </div>
         </div>
