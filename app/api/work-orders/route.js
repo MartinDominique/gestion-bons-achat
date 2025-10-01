@@ -32,9 +32,11 @@ export async function POST(request) {
     // Gérer la création automatique de purchase_order si nécessaire
     let finalLinkedPoId = null;
     
-    if (linked_po_id && (typeof linked_po_id === 'string' ? linked_po_id.trim() : linked_po_id)) {
+    if (linked_po_id) {
       // Vérifier si c'est un ID numérique existant ou un nouveau numéro
-      if (typeof linked_po_id === 'string' && isNaN(linked_po_id)) {
+      const isStringPO = typeof linked_po_id === 'string' && linked_po_id.trim() && isNaN(linked_po_id);
+      
+      if (isStringPO) {
         // C'est un nouveau numéro de BA/Job client - créer un purchase_order
         console.log('Création automatique purchase_order pour:', linked_po_id);
         
@@ -51,7 +53,7 @@ export async function POST(request) {
         const { data: newPO, error: poError } = await client
           .from('purchase_orders')
           .insert({
-            po_number: typeof linked_po_id === 'string' ? linked_po_id.trim() : linked_po_id,
+            po_number: linked_po_id.trim(),
             client_id: parseInt(client_id),
             status: 'active',
             date: work_date,
@@ -72,7 +74,44 @@ export async function POST(request) {
           finalLinkedPoId = newPO.id;
           console.log('Purchase order créé:', newPO.po_number, 'ID:', newPO.id);
         }
-      } else {
+        // C'est un nouveau numéro de BA/Job client - créer un purchase_order
+        console.log('Création automatique purchase_order pour:', linked_po_id);
+        
+        // 1️⃣ Récupérer le nom du client
+        const { data: clientData } = await client
+          .from('clients')
+          .select('name')
+          .eq('id', client_id)
+          .single()
+        
+        const clientName = clientData?.name || 'Client inconnu'
+        
+        // 2️⃣ Créer le purchase_order
+        const { data: newPO, error: poError } = await client
+          .from('purchase_orders')
+          .insert({
+            po_number: linked_po_id.trim(),
+            client_id: parseInt(client_id),
+            status: 'active',
+            date: work_date,
+            po_date: work_date,
+            description: 'Créé automatiquement depuis BT',
+            created_by: null,
+            amount: 0,
+            client_name: clientName,
+            notes: `PO créé automatiquement lors de la création d'un BT. Date: ${work_date}`  // ✅ CORRIGÉ
+          })
+          .select()
+          .single()
+
+        if (poError) {
+          console.error('Erreur création purchase_order:', poError);
+          // Continuer sans bloquer la création du work_order
+        } else {
+          finalLinkedPoId = newPO.id;
+          console.log('Purchase order créé:', newPO.po_number, 'ID:', newPO.id);
+        }
+      } else if (!isNaN(linked_po_id)) {
         // C'est un ID existant
         finalLinkedPoId = parseInt(linked_po_id);
       }
@@ -279,9 +318,13 @@ export async function PUT(request) {
     // Gérer la création automatique de purchase_order si nécessaire
     let finalLinkedPoId = linked_po_id;
     
-    if (linked_po_id && (typeof linked_po_id === 'string' ? linked_po_id.trim() : linked_po_id) && typeof linked_po_id === 'string' && isNaN(linked_po_id)) {
-      // C'est un nouveau numéro de BA/Job client - créer un purchase_order
-      console.log('Création automatique purchase_order pour mise à jour:', linked_po_id);
+    if (linked_po_id) {
+      // Vérifier si c'est un ID numérique existant ou un nouveau numéro
+      const isStringPO = typeof linked_po_id === 'string' && linked_po_id.trim() && isNaN(linked_po_id);
+      
+      if (isStringPO) {
+        // C'est un nouveau numéro de BA/Job client - créer un purchase_order
+        console.log('Création automatique purchase_order pour mise à jour:', linked_po_id);
       
       // 1️⃣ Récupérer le nom du client
       const { data: clientData } = await client
@@ -316,11 +359,10 @@ export async function PUT(request) {
         finalLinkedPoId = newPO.id;
         console.log('Purchase order créé lors mise à jour:', newPO.po_number, 'ID:', newPO.id);
       }
-    } else if (linked_po_id && !isNaN(linked_po_id)) {
-      finalLinkedPoId = parseInt(linked_po_id);
-    } else {
-      finalLinkedPoId = null;
-    }
+      } else if (!isNaN(linked_po_id)) {
+        // C'est un ID existant
+        finalLinkedPoId = parseInt(linked_po_id);
+      }
 
     // 1. Mettre à jour le work_order principal
     const workOrderData = {
