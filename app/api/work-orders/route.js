@@ -7,6 +7,7 @@ export async function POST(request) {
     const body = await request.json();
     const {
       client_id,
+      linked_po_id,
       work_date,
       start_time,
       end_time,
@@ -26,12 +27,47 @@ export async function POST(request) {
       );
     }
 
-    // Utiliser supabaseAdmin pour contourner RLS temporairement si nécessaire
     const client = supabaseAdmin || supabase;
+
+    // Gérer la création automatique de purchase_order si nécessaire
+    let finalLinkedPoId = null;
+    
+    if (linked_po_id && linked_po_id.trim()) {
+      // Vérifier si c'est un ID numérique existant ou un nouveau numéro
+      if (isNaN(linked_po_id)) {
+        // C'est un nouveau numéro de BA/Job client - créer un purchase_order
+        console.log('Création automatique purchase_order pour:', linked_po_id);
+        
+        const { data: newPO, error: poError } = await client
+          .from('purchase_orders')
+          .insert({
+            po_number: linked_po_id.trim(),
+            client_id: parseInt(client_id),
+            status: 'active',
+            order_date: work_date,
+            description: `Créé automatiquement depuis BT`,
+            created_by: 'work_order_auto'
+          })
+          .select()
+          .single();
+
+        if (poError) {
+          console.error('Erreur création purchase_order:', poError);
+          // Continuer sans bloquer la création du work_order
+        } else {
+          finalLinkedPoId = newPO.id;
+          console.log('Purchase order créé:', newPO.po_number, 'ID:', newPO.id);
+        }
+      } else {
+        // C'est un ID existant
+        finalLinkedPoId = parseInt(linked_po_id);
+      }
+    }
 
     // 1. Créer le work_order principal
     const workOrderData = {
       client_id: parseInt(client_id),
+      linked_po_id: finalLinkedPoId,
       work_date,
       start_time: start_time || null,
       end_time: end_time || null,
@@ -56,7 +92,7 @@ export async function POST(request) {
       );
     }
 
-    console.log('Work order créé:', workOrder);
+    console.log('Work order créé:', workOrder.bt_number);
 
     // 2. Ajouter les matériaux si présents
     let workOrderMaterials = [];
@@ -80,7 +116,6 @@ export async function POST(request) {
 
       if (materialsError) {
         console.error('Erreur ajout matériaux:', materialsError);
-        // Ne pas faire échouer toute la création pour les matériaux
         console.warn('Matériaux non ajoutés, mais work_order créé');
       } else {
         workOrderMaterials = materialsResult || [];
@@ -94,6 +129,7 @@ export async function POST(request) {
       .select(`
         *,
         client:clients(*),
+        linked_po:purchase_orders(*),
         materials:work_order_materials(
           *,
           product:products(*)
@@ -104,7 +140,6 @@ export async function POST(request) {
 
     if (fetchError) {
       console.error('Erreur récupération work_order complet:', fetchError);
-      // Retourner au moins le work_order de base
       return Response.json({
         success: true,
         data: { ...workOrder, materials: workOrderMaterials },
@@ -141,6 +176,7 @@ export async function GET(request) {
       .select(`
         *,
         client:clients(*),
+        linked_po:purchase_orders(*),
         materials:work_order_materials(
           *,
           product:products(*)
@@ -205,6 +241,7 @@ export async function PUT(request) {
     const {
       id,
       client_id,
+      linked_po_id,
       work_date,
       start_time,
       end_time,
@@ -225,9 +262,42 @@ export async function PUT(request) {
 
     const client = supabaseAdmin || supabase;
 
+    // Gérer la création automatique de purchase_order si nécessaire
+    let finalLinkedPoId = linked_po_id;
+    
+    if (linked_po_id && linked_po_id.trim() && isNaN(linked_po_id)) {
+      // C'est un nouveau numéro de BA/Job client - créer un purchase_order
+      console.log('Création automatique purchase_order pour mise à jour:', linked_po_id);
+      
+      const { data: newPO, error: poError } = await client
+        .from('purchase_orders')
+        .insert({
+          po_number: linked_po_id.trim(),
+          client_id: parseInt(client_id),
+          status: 'active',
+          order_date: work_date,
+          description: `Créé automatiquement depuis BT (mise à jour)`,
+          created_by: 'work_order_auto'
+        })
+        .select()
+        .single();
+
+      if (poError) {
+        console.error('Erreur création purchase_order:', poError);
+      } else {
+        finalLinkedPoId = newPO.id;
+        console.log('Purchase order créé lors mise à jour:', newPO.po_number, 'ID:', newPO.id);
+      }
+    } else if (linked_po_id && !isNaN(linked_po_id)) {
+      finalLinkedPoId = parseInt(linked_po_id);
+    } else {
+      finalLinkedPoId = null;
+    }
+
     // 1. Mettre à jour le work_order principal
     const workOrderData = {
       client_id: parseInt(client_id),
+      linked_po_id: finalLinkedPoId,
       work_date,
       start_time: start_time || null,
       end_time: end_time || null,
@@ -254,7 +324,6 @@ export async function PUT(request) {
     }
 
     // 2. Gérer les matériaux - Stratégie: supprimer tous et recréer
-    // D'abord supprimer les matériaux existants
     const { error: deleteError } = await client
       .from('work_order_materials')
       .delete()
@@ -290,6 +359,7 @@ export async function PUT(request) {
       .select(`
         *,
         client:clients(*),
+        linked_po:purchase_orders(*),
         materials:work_order_materials(
           *,
           product:products(*)
