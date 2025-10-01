@@ -5,9 +5,25 @@ import { X, User, Users, Building } from 'lucide-react';
 export default function ClientModal({ open, onClose, onSaved, client }) {
   /* ---------- états ---------- */
   const [form, setForm] = useState(
-    client ?? { 
+    client ? {
+      name: client.name || '',
+      company: client.company || '',
+      address: client.address || '',
+      contact_person: client.contact_person || '',
+      // Contact Principal
+      email: client.email || '',
+      phone: client.phone || '',
+      // Contact #2
+      email_2: client.email_2 || '',
+      contact_2: client.contact_2 || '',
+      // Contact Administration
+      email_admin: client.email_admin || '',
+      contact_admin: client.contact_admin || ''
+    } : { 
       name: '', 
       company: '', 
+      address: '',
+      contact_person: '',
       // Contact Principal
       email: '', 
       phone: '',
@@ -19,10 +35,6 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       contact_admin: ''
     }
   );
-  // 🔍 LIGNE DE DEBUG - Ajoute ça temporairement
-console.log('🔍 Form state:', form);
-console.log('🔍 Client prop:', client);
-  
   const [saving, setSaving] = useState(false);
 
   if (!open) return null;
@@ -160,6 +172,33 @@ console.log('🔍 Client prop:', client);
                       value={form.company}
                       onChange={onChange('company')}
                       placeholder="ex: Services TMT Inc."
+                    />
+                  </div>
+
+                  {/* Personne Contact */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">
+                      👨‍💼 Personne Contact
+                    </label>
+                    <input
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-base"
+                      value={form.contact_person}
+                      onChange={onChange('contact_person')}
+                      placeholder="ex: Dominique"
+                    />
+                  </div>
+
+                  {/* Adresse */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">
+                      📍 Adresse civique
+                    </label>
+                    <textarea
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-base resize-none"
+                      value={form.address}
+                      onChange={onChange('address')}
+                      placeholder="ex: 123 Rue Principale, Ville, QC"
+                      rows="2"
                     />
                   </div>
                 </div>
