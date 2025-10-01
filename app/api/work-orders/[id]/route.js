@@ -1,3 +1,5 @@
+// /app/api/work-orders/[id]/route.js//
+
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 
@@ -42,6 +44,7 @@ export async function GET(request, { params }) {
     console.log('Bon de travail trouvé:', data.bt_number);
     console.log('Client:', data.client?.name);
     console.log('Matériaux:', data.materials?.length || 0);
+    console.log('Linked PO:', data.linked_po?.po_number || 'Aucun');
     
     return NextResponse.json({
       success: true,
@@ -61,6 +64,7 @@ export async function PUT(request, { params }) {
     
     const body = await request.json();
     console.log('🔍 API REÇOIT - Body complet:', body);
+    console.log('🔍 API REÇOIT - linked_po_id:', body.linked_po_id);
     console.log('🔍 API REÇOIT - materials:', body.materials);
     console.log('🔍 API REÇOIT - materials.length:', body.materials?.length || 0);
     
@@ -71,12 +75,64 @@ export async function PUT(request, { params }) {
     
     console.log('🔍 API - materials extraits:', materials);
     console.log('🔍 API - materials.length extraits:', materials.length);
+    console.log('🔍 API - linked_po_id extrait:', updateData.linked_po_id);
+
+    // NOUVELLE LOGIQUE : Gérer la création automatique de purchase_order
+    let finalLinkedPoId = updateData.linked_po_id;
     
-    // 1. Mettre à jour le work_order principal
+    if (updateData.linked_po_id && updateData.linked_po_id.trim() && isNaN(updateData.linked_po_id)) {
+      console.log('🔍 API - Création automatique purchase_order pour:', updateData.linked_po_id);
+      
+      // Vérifier si ce PO n'existe pas déjà
+      const { data: existingPO } = await supabase
+        .from('purchase_orders')
+        .select('id')
+        .eq('po_number', updateData.linked_po_id.trim())
+        .single();
+
+      if (existingPO) {
+        console.log('🔍 API - Purchase order existe déjà, ID:', existingPO.id);
+        finalLinkedPoId = existingPO.id;
+      } else {
+        // Créer le nouveau purchase_order
+        const { data: newPO, error: poError } = await supabase
+          .from('purchase_orders')
+          .insert({
+            po_number: updateData.linked_po_id.trim(),
+            client_id: parseInt(updateData.client_id),
+            status: 'active',
+            order_date: updateData.work_date,
+            description: 'Créé automatiquement depuis BT',
+            created_by: 'work_order_auto'
+          })
+          .select()
+          .single();
+
+        if (poError) {
+          console.error('🔍 API - Erreur création purchase_order:', poError);
+          // Continuer sans bloquer
+          finalLinkedPoId = null;
+        } else {
+          finalLinkedPoId = newPO.id;
+          console.log('🔍 API - Purchase order créé avec succès:', newPO.po_number, 'ID:', newPO.id);
+        }
+      }
+    } else if (updateData.linked_po_id && !isNaN(updateData.linked_po_id)) {
+      // C'est un ID existant
+      finalLinkedPoId = parseInt(updateData.linked_po_id);
+      console.log('🔍 API - Utilisation ID purchase_order existant:', finalLinkedPoId);
+    } else {
+      // Pas de linked_po_id ou chaîne vide
+      finalLinkedPoId = null;
+      console.log('🔍 API - Aucun purchase_order à lier');
+    }
+    
+    // 1. Mettre à jour le work_order principal (AVEC linked_po_id maintenant)
     const { data: updatedWorkOrder, error: updateError } = await supabase
       .from('work_orders')
       .update({
         client_id: updateData.client_id ? parseInt(updateData.client_id) : null,
+        linked_po_id: finalLinkedPoId,  // AJOUT DE CETTE LIGNE
         work_date: updateData.work_date,
         start_time: updateData.start_time || null,
         end_time: updateData.end_time || null,
@@ -96,6 +152,7 @@ export async function PUT(request, { params }) {
     }
 
     console.log('🔍 API - Work order mis à jour avec succès:', updatedWorkOrder.bt_number);
+    console.log('🔍 API - linked_po_id sauvé:', updatedWorkOrder.linked_po_id);
 
     // 2. Supprimer les anciens matériaux
     console.log('🔍 API - Suppression anciens matériaux...');
@@ -111,7 +168,7 @@ export async function PUT(request, { params }) {
 
     console.log('🔍 API - Anciens matériaux supprimés');
 
-    // 3. Insérer les nouveaux matériaux
+    // 3. Insérer les nouveaux matériaux (AVEC show_price maintenant)
     if (materials && materials.length > 0) {
       console.log('🔍 API - Préparation insertion matériaux...');
       
@@ -120,7 +177,8 @@ export async function PUT(request, { params }) {
           product_id: material.product_id,
           quantity: material.quantity,
           unit: material.unit,
-          notes: material.notes
+          notes: material.notes,
+          showPrice: material.showPrice  // AJOUT DE CE LOG
         });
         
         return {
@@ -128,7 +186,8 @@ export async function PUT(request, { params }) {
           product_id: material.product_id,
           quantity: parseFloat(material.quantity) || 1,
           unit: material.unit || 'pcs',
-          notes: material.notes || null
+          notes: material.notes || null,
+          show_price: material.showPrice || false  // AJOUT DE CETTE LIGNE
         };
       });
 
@@ -152,13 +211,14 @@ export async function PUT(request, { params }) {
       console.log('🔍 API - Aucun matériau à insérer');
     }
 
-    // 4. Récupérer le work order complet
+    // 4. Récupérer le work order complet (AVEC linked_po maintenant)
     console.log('🔍 API - Récupération work order complet...');
     const { data: completeWorkOrder, error: fetchError } = await supabase
       .from('work_orders')
       .select(`
         *,
         client:clients(*),
+        linked_po:purchase_orders(*),
         materials:work_order_materials(*,product:products(*))
       `)
       .eq('id', workOrderId)
@@ -171,6 +231,7 @@ export async function PUT(request, { params }) {
 
     console.log('🔍 API - Work order complet récupéré:');
     console.log('🔍 API - Nombre de matériaux dans le retour:', completeWorkOrder.materials?.length || 0);
+    console.log('🔍 API - Purchase order lié:', completeWorkOrder.linked_po?.po_number || 'Aucun');
     
     return NextResponse.json({
       success: true,
