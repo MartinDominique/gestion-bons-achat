@@ -1,4 +1,4 @@
-// /app/api/work-orders/[id]/route.js//
+// /app/api/work-orders/[id]/route.js
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
@@ -80,49 +80,71 @@ export async function PUT(request, { params }) {
     // NOUVELLE LOGIQUE : Gérer la création automatique de purchase_order
     let finalLinkedPoId = updateData.linked_po_id;
     
-    if (updateData.linked_po_id && updateData.linked_po_id.trim() && isNaN(updateData.linked_po_id)) {
-      console.log('🔍 API - Création automatique purchase_order pour:', updateData.linked_po_id);
+    // ✅ CORRECTION - Vérifier le type avant d'appeler .trim()
+    if (updateData.linked_po_id) {
+      const isStringPO = typeof updateData.linked_po_id === 'string' && updateData.linked_po_id.trim() && isNaN(updateData.linked_po_id);
       
-      // Vérifier si ce PO n'existe pas déjà
-      const { data: existingPO } = await supabase
-        .from('purchase_orders')
-        .select('id')
-        .eq('po_number', updateData.linked_po_id.trim())
-        .single();
-
-      if (existingPO) {
-        console.log('🔍 API - Purchase order existe déjà, ID:', existingPO.id);
-        finalLinkedPoId = existingPO.id;
-      } else {
-        // Créer le nouveau purchase_order
-        const { data: newPO, error: poError } = await supabase
+      if (isStringPO) {
+        console.log('🔍 API - Création automatique purchase_order pour:', updateData.linked_po_id);
+        
+        // Vérifier si ce PO n'existe pas déjà 
+        const { data: existingPO } = await supabase
           .from('purchase_orders')
-          .insert({
-            po_number: updateData.linked_po_id.trim(),
-            client_id: parseInt(updateData.client_id),
-            status: 'active',
-            order_date: updateData.work_date,
-            description: 'Créé automatiquement depuis BT',
-            created_by: 'work_order_auto'
-          })
-          .select()
+          .select('id')
+          .eq('po_number', updateData.linked_po_id.trim())
           .single();
 
-        if (poError) {
-          console.error('🔍 API - Erreur création purchase_order:', poError);
-          // Continuer sans bloquer
-          finalLinkedPoId = null;
+        if (existingPO) {
+          console.log('🔍 API - Purchase order existe déjà, ID:', existingPO.id);
+          finalLinkedPoId = existingPO.id;
         } else {
-          finalLinkedPoId = newPO.id;
-          console.log('🔍 API - Purchase order créé avec succès:', newPO.po_number, 'ID:', newPO.id);
+          // Récupérer le nom du client
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('name')
+            .eq('id', updateData.client_id)
+            .single();
+          
+          const clientName = clientData?.name || 'Client inconnu';
+          
+          // Créer le nouveau purchase_order
+          const { data: newPO, error: poError } = await supabase
+            .from('purchase_orders')
+            .insert({
+              po_number: updateData.linked_po_id.trim(),
+              client_id: parseInt(updateData.client_id),
+              status: 'active',
+              date: updateData.work_date,
+              po_date: updateData.work_date,
+              description: 'Créé automatiquement depuis BT',
+              created_by: null,
+              amount: 0,
+              client_name: clientName,
+              notes: `PO créé automatiquement lors de la mise à jour d'un BT. Date: ${updateData.work_date}`
+            })
+            .select()
+            .single();
+
+          if (poError) {
+            console.error('🔍 API - Erreur création purchase_order:', poError);
+            // Continuer sans bloquer
+            finalLinkedPoId = null;
+          } else {
+            finalLinkedPoId = newPO.id;
+            console.log('🔍 API - Purchase order créé avec succès:', newPO.po_number, 'ID:', newPO.id);
+          }
         }
+      } else if (!isNaN(updateData.linked_po_id)) {
+        // C'est un ID existant
+        finalLinkedPoId = parseInt(updateData.linked_po_id);
+        console.log('🔍 API - Utilisation ID purchase_order existant:', finalLinkedPoId);
+      } else {
+        // Pas de linked_po_id valide
+        finalLinkedPoId = null;
+        console.log('🔍 API - Aucun purchase_order à lier');
       }
-    } else if (updateData.linked_po_id && !isNaN(updateData.linked_po_id)) {
-      // C'est un ID existant
-      finalLinkedPoId = parseInt(updateData.linked_po_id);
-      console.log('🔍 API - Utilisation ID purchase_order existant:', finalLinkedPoId);
     } else {
-      // Pas de linked_po_id ou chaîne vide
+      // Pas de linked_po_id
       finalLinkedPoId = null;
       console.log('🔍 API - Aucun purchase_order à lier');
     }
