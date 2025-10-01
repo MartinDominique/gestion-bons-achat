@@ -8,6 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 import InventoryManager from './InventoryManager.js';
+import ClientModal from './ClientModal';
 
 const pages = [
   { id: 'bons-achat', name: "Clients", icon: Package },
@@ -29,14 +30,6 @@ export default function Navigation() {
   
   // 📱 NOUVEAU: État pour menu mobile
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  const [clientForm, setClientForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    contact_person: ''
-  });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -118,37 +111,6 @@ export default function Navigation() {
       router.push('/login');
     } catch (error) {
       console.error('Erreur déconnexion:', error);
-    }
-  };
-
-  const handleClientSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editingClient) {
-        const { error } = await supabase
-          .from('clients')
-          .update(clientForm)
-          .eq('id', editingClient.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('clients')
-          .insert([clientForm]);
-        if (error) throw error;
-      }
-
-      await fetchClients();
-      setShowClientForm(false);
-      setEditingClient(null);
-      setClientForm({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        contact_person: ''
-      });
-    } catch (error) {
-      console.error('Erreur:', error);
     }
   };
 
@@ -376,7 +338,10 @@ export default function Navigation() {
               </h2>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
-                  onClick={() => setShowClientForm(true)}
+                  onClick={() => {
+                    setEditingClient(null);
+                    setShowClientForm(true);
+                  }}
                   className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
                 >
                   ➕ Nouveau Client
@@ -423,6 +388,42 @@ export default function Navigation() {
                                 </a>
                               </p>
                             )}
+                            {client.email_2 && (
+                              <p className="flex items-center">
+                                <span className="mr-2">📧</span>
+                                <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded mr-1">#2</span>
+                                <a href={`mailto:${client.email_2}`} className="text-blue-600 hover:underline">
+                                  {client.email_2}
+                                </a>
+                              </p>
+                            )}
+                            {client.contact_2 && (
+                              <p className="flex items-center">
+                                <span className="mr-2">📞</span>
+                                <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded mr-1">#2</span>
+                                <a href={`tel:${client.contact_2}`} className="text-blue-600 hover:underline">
+                                  {client.contact_2}
+                                </a>
+                              </p>
+                            )}
+                            {client.email_admin && (
+                              <p className="flex items-center">
+                                <span className="mr-2">📧</span>
+                                <span className="text-xs bg-purple-100 text-purple-800 px-1 rounded mr-1">Admin</span>
+                                <a href={`mailto:${client.email_admin}`} className="text-blue-600 hover:underline">
+                                  {client.email_admin}
+                                </a>
+                              </p>
+                            )}
+                            {client.contact_admin && (
+                              <p className="flex items-center">
+                                <span className="mr-2">📞</span>
+                                <span className="text-xs bg-purple-100 text-purple-800 px-1 rounded mr-1">Admin</span>
+                                <a href={`tel:${client.contact_admin}`} className="text-blue-600 hover:underline">
+                                  {client.contact_admin}
+                                </a>
+                              </p>
+                            )}
                             {client.address && (
                               <p className="flex items-start">
                                 <span className="mr-2 mt-0.5">📍</span>
@@ -443,7 +444,6 @@ export default function Navigation() {
                           <button
                             onClick={() => {
                               setEditingClient(client);
-                              setClientForm(client);
                               setShowClientForm(true);
                             }}
                             className="w-full sm:w-auto px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 text-sm font-medium"
@@ -467,111 +467,20 @@ export default function Navigation() {
         </div>
       )}
 
-      {/* 📱 Modal Formulaire Client - OPTIMISÉ MOBILE */}
-      {showClientForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-4 sm:p-6">
-              <h3 className="text-lg sm:text-xl font-bold text-green-600 mb-4">
-                {editingClient ? '✏️ Modifier Client' : '➕ Nouveau Client'}
-              </h3>
-              
-              <form onSubmit={handleClientSubmit} className="space-y-4">
-                {/* 📱 Formulaire empilé sur mobile */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nom *
-                    </label>
-                    <input
-                      type="text"
-                      value={clientForm.name}
-                      onChange={(e) => setClientForm({...clientForm, name: e.target.value})}
-                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={clientForm.email}
-                      onChange={(e) => setClientForm({...clientForm, email: e.target.value})}
-                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Téléphone
-                    </label>
-                    <input
-                      type="tel"
-                      value={clientForm.phone}
-                      onChange={(e) => setClientForm({...clientForm, phone: e.target.value})}
-                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Personne Contact
-                    </label>
-                    <input
-                      type="text"
-                      value={clientForm.contact_person}
-                      onChange={(e) => setClientForm({...clientForm, contact_person: e.target.value})}
-                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Adresse
-                    </label>
-                    <textarea
-                      value={clientForm.address}
-                      onChange={(e) => setClientForm({...clientForm, address: e.target.value})}
-                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 text-base"
-                      rows="3"
-                    />
-                  </div>
-                </div>
-                
-                {/* 📱 Boutons responsives */}
-                <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowClientForm(false);
-                      setEditingClient(null);
-                      setClientForm({
-                        name: '',
-                        email: '',
-                        phone: '',
-                        address: '',
-                        contact_person: ''
-                      });
-                    }}
-                    className="w-full sm:w-auto px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-full sm:w-auto px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
-                  >
-                    {editingClient ? 'Mettre à jour' : 'Créer'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 🎯 NOUVEAU MODAL avec 3 contacts */}
+      <ClientModal
+        open={showClientForm}
+        onClose={() => {
+          setShowClientForm(false);
+          setEditingClient(null);
+        }}
+        onSaved={() => {
+          fetchClients();
+          setShowClientForm(false);
+          setEditingClient(null);
+        }}
+        client={editingClient}
+      />
     </>
   );
 }
