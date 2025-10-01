@@ -60,7 +60,7 @@ export async function POST(request) {
             created_by: null,
             amount: 0,
             client_name: clientName,
-            notes: `PO créé automatiquement lors de la création du BT ${workOrder.bt_number}. Date: ${work_date}`  // ✅ workOrder.bt_number
+            notes: `PO créé automatiquement lors de la création d'un BT. Date: ${work_date}`  // ✅ CORRIGÉ
           })
           .select()
           .single()
@@ -305,7 +305,7 @@ export async function PUT(request) {
           created_by: null,
           amount: 0,
           client_name: clientName,
-          notes: `PO créé automatiquement lors de la création du BT ${workOrder.bt_number}. Date: ${work_date}`  // ✅ workOrder.bt_number
+          notes: `PO créé automatiquement lors de la création d'un BT. Date: ${work_date}`  // ✅ CORRIGÉ
         })
         .select()
         .single()
