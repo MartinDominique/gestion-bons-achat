@@ -44,12 +44,15 @@ export async function POST(request) {
             po_number: linked_po_id.trim(),
             client_id: parseInt(client_id),
             status: 'active',
-            order_date: work_date,
-            description: `Créé automatiquement depuis BT`,
-            created_by: 'work_order_auto'
+            date: work_date,  // ✅ Changé de order_date à date
+            po_date: work_date,  // ✅ Ajout de po_date aussi
+            description: 'Créé automatiquement depuis BT',
+            created_by: null,  // ✅ UUID null au lieu de string
+            client_name: '',  // ✅ Ajout pour éviter d'autres erreurs
+            amount: 0  // ✅ Valeur par défaut
           })
           .select()
-          .single();
+          .single()
 
         if (poError) {
           console.error('Erreur création purchase_order:', poError);
@@ -275,12 +278,15 @@ export async function PUT(request) {
           po_number: linked_po_id.trim(),
           client_id: parseInt(client_id),
           status: 'active',
-          order_date: work_date,
-          description: `Créé automatiquement depuis BT (mise à jour)`,
-          created_by: 'work_order_auto'
+          date: work_date,  // ✅ Changé de order_date à date
+          po_date: work_date,  // ✅ Ajout de po_date aussi
+          description: 'Créé automatiquement depuis BT',
+          created_by: null,  // ✅ UUID null au lieu de string
+          client_name: '',  // ✅ Ajout pour éviter d'autres erreurs
+          amount: 0  // ✅ Valeur par défaut
         })
         .select()
-        .single();
+        .single()
 
       if (poError) {
         console.error('Erreur création purchase_order:', poError);
