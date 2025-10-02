@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, User, Users, Building } from 'lucide-react';
 
 export default function ClientModal({ open, onClose, onSaved, client }) {
-   alert('🔥 NOUVEAU MODAL OUVERT - ID: ' + (client?.id || 'NOUVEAU'));
-  
+    
   /* ---------- états ---------- */
    
   const [form, setForm] = useState(
