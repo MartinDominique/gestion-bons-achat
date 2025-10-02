@@ -8,6 +8,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
     client ? {
       name: client.name || '',
       address: client.address || '',
+      travel_minutes: client.travel_minutes || 0,
       // Contact Principal (avec fallback vers anciennes colonnes)
       contact_name: client.contact_name || client.contact_person || '',
       email: client.email || '',
@@ -23,6 +24,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
     } : { 
       name: '', 
       address: '',
+      travel_minutes: 0,
       // Contact Principal
       contact_name: '',
       email: '', 
@@ -39,13 +41,13 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
   );
   const [saving, setSaving] = useState(false);
 
-      // ⭐ AJOUTE ÇA ICI - LE USEEFFECT MANQUANT ⭐
       useEffect(() => {
         if (client) {
           console.log('🔍 USEEFFECT - Chargement client:', client);
           setForm({
             name: client.name || '',
             address: client.address || '',
+            travel_minutes: client.travel_minutes || 0,
             contact_name: client.contact_name || client.contact_person || '',
             email: client.email || '',
             phone: client.phone || '',
@@ -83,6 +85,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
           id: client?.id,
           name: form.name.trim(),
           address: form.address?.trim() || '',
+          travel_minutes: parseInt(form.travel_minutes) || 0,
           // Contact Principal - sauvegarder dans anciennes ET nouvelles colonnes
           contact_person: form.contact_name?.trim() || '', // pour compatibilité 
           contact_name: form.contact_name?.trim() || '',
@@ -190,7 +193,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       autoFocus
                     />
                   </div>
-
+              
                   {/* Adresse - Sur toute la largeur */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
@@ -204,8 +207,28 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       rows="2"
                     />
                   </div>
-                </div>
-              </div>
+              
+                  {/* ⭐ NOUVEAU CHAMP - Temps de voyagement ⭐ */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">
+                      🚗 Temps de voyagement (minutes)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-base"
+                        value={form.travel_minutes}
+                        onChange={onChange('travel_minutes')}
+                        placeholder="ex: 30"
+                      />
+                      <span className="text-sm text-gray-500 whitespace-nowrap px-2">
+                        = {(form.travel_minutes / 60 * 10).toFixed(1)} /10h
+                      </span>
+                    </div>
+                  </div>
+                </div>   
+              </div>     
 
               {/* 📱 Grid des 3 contacts */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
