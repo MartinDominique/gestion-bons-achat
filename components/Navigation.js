@@ -8,7 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 import InventoryManager from './InventoryManager.js';
-import ClientModal from './ClientModal';
+import ClientManager from './ClientManager';
 
 const pages = [
   { id: 'bons-achat', name: "Clients", icon: Package },
@@ -24,9 +24,6 @@ export default function Navigation() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showClientManager, setShowClientManager] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [showClientForm, setShowClientForm] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
   
   // 📱 NOUVEAU: État pour menu mobile
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -88,78 +85,12 @@ export default function Navigation() {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  const fetchClients = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('Erreur chargement clients:', error);
-      } else {
-        setClients(data || []);
-      }
-    } catch (error) {
-      console.error('Erreur lors du chargement des clients:', error);
-    }
-  };
-
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
       router.push('/login');
     } catch (error) {
       console.error('Erreur déconnexion:', error);
-    }
-  };
-
-  const handleDeleteClient = async (id) => {
-    if (!confirm('🗑️ Êtes-vous sûr de vouloir supprimer ce client ?\n\n⚠️ ATTENTION: Cela supprimera aussi TOUTES ses soumissions et bons d\'achat !')) return;
-    
-    try {
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
-        .select('name')
-        .eq('id', id)
-        .single();
-
-      if (clientError) throw clientError;
-      
-      const clientName = clientData.name;
-      console.log('🗑️ Suppression en cascade pour:', clientName);
-
-      const { error: submissionsError } = await supabase
-        .from('submissions')
-        .delete()
-        .eq('client_name', clientName);
-
-      if (submissionsError) {
-        console.error('Erreur suppression soumissions:', submissionsError);
-      }
-
-      const { error: purchaseOrdersError } = await supabase
-        .from('purchase_orders')
-        .delete()
-        .or(`client_name.eq.${clientName},client.eq.${clientName}`);
-
-      if (purchaseOrdersError) {
-        console.error('Erreur suppression bons d\'achat:', purchaseOrdersError);
-      }
-
-      const { error: clientDeleteError } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id);
-
-      if (clientDeleteError) throw clientDeleteError;
-
-      await fetchClients();
-      
-      console.log('✅ Suppression en cascade réussie pour:', clientName);
-    } catch (error) {
-      console.error('Erreur suppression en cascade:', error);
-      alert('❌ Erreur lors de la suppression: ' + error.message);
     }
   };
 
@@ -220,10 +151,7 @@ export default function Navigation() {
               })}
               
               <button
-                onClick={() => {
-                  setShowClientManager(true);
-                  fetchClients();
-                }}
+                onClick={() => setShowClientManager(true)}
                 className="flex items-center px-4 py-2 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors"
               >
                 <Users className="w-5 h-5 mr-2" />
@@ -301,7 +229,6 @@ export default function Navigation() {
               <button
                 onClick={() => {
                   setShowClientManager(true);
-                  fetchClients();
                   setMobileMenuOpen(false);
                 }}
                 className="w-full flex items-center px-3 py-3 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors"
