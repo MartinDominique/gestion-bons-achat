@@ -7,30 +7,32 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
   const [form, setForm] = useState(
     client ? {
       name: client.name || '',
-      company: client.company || '',
       address: client.address || '',
-      contact_person: client.contact_person || '',
       // Contact Principal
+      contact_name: client.contact_name || '',
       email: client.email || '',
       phone: client.phone || '',
       // Contact #2
+      contact_name_2: client.contact_name_2 || '',
       email_2: client.email_2 || '',
       contact_2: client.contact_2 || '',
       // Contact Administration
+      contact_name_admin: client.contact_name_admin || '',
       email_admin: client.email_admin || '',
       contact_admin: client.contact_admin || ''
     } : { 
       name: '', 
-      company: '', 
       address: '',
-      contact_person: '',
       // Contact Principal
+      contact_name: '',
       email: '', 
       phone: '',
       // Contact #2
+      contact_name_2: '',
       email_2: '', 
       contact_2: '',
       // Contact Administration
+      contact_name_admin: '',
       email_admin: '', 
       contact_admin: ''
     }
@@ -60,14 +62,17 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
           ...form, 
           id: client?.id,
           name: form.name.trim(),
-          company: form.company?.trim() || '',
+          address: form.address?.trim() || '',
           // Contact Principal
+          contact_name: form.contact_name?.trim() || '',
           email: form.email?.trim() || '',
           phone: form.phone?.trim() || '',
           // Contact #2
+          contact_name_2: form.contact_name_2?.trim() || '',
           email_2: form.email_2?.trim() || '',
           contact_2: form.contact_2?.trim() || '',
           // Contact Administration
+          contact_name_admin: form.contact_name_admin?.trim() || '',
           email_admin: form.email_admin?.trim() || '',
           contact_admin: form.contact_admin?.trim() || ''
         })
@@ -85,11 +90,14 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       
       setForm({ 
         name: '', 
-        company: '', 
+        address: '',
+        contact_name: '',
         email: '', 
         phone: '', 
+        contact_name_2: '',
         email_2: '', 
         contact_2: '', 
+        contact_name_admin: '',
         email_admin: '', 
         contact_admin: '' 
       });
@@ -147,48 +155,22 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Nom */}
+                  {/* Client (nom de l'entreprise) */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      👤 Nom du client *
+                      🏢 Client *
                     </label>
                     <input
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-base"
                       value={form.name}
                       onChange={onChange('name')}
-                      placeholder="ex: Jean Dupont"
+                      placeholder="ex: Concrea, A Toulouse, Belvédère du Lac"
                       required
                       autoFocus
                     />
                   </div>
 
-                  {/* Entreprise */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      🏢 Entreprise
-                    </label>
-                    <input
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-base"
-                      value={form.company}
-                      onChange={onChange('company')}
-                      placeholder="ex: Services TMT Inc."
-                    />
-                  </div>
-
-                  {/* Personne Contact */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      👨‍💼 Personne Contact
-                    </label>
-                    <input
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-base"
-                      value={form.contact_person}
-                      onChange={onChange('contact_person')}
-                      placeholder="ex: Dominique"
-                    />
-                  </div>
-
-                  {/* Adresse */}
+                  {/* Adresse - Sur toute la largeur */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
                       📍 Adresse civique
@@ -197,7 +179,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-base resize-none"
                       value={form.address}
                       onChange={onChange('address')}
-                      placeholder="ex: 123 Rue Principale, Ville, QC"
+                      placeholder="ex: 3197, 42e Rue Nord, St-Georges, QC, G5Z 0V9"
                       rows="2"
                     />
                   </div>
@@ -215,6 +197,19 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                   </h3>
                   
                   <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-green-800 mb-1">
+                        👤 Nom du contact
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-200 text-sm"
+                        value={form.contact_name}
+                        onChange={onChange('contact_name')}
+                        placeholder="ex: Andre ST-Hilaire"
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-green-800 mb-1">
                         📧 Courriel
@@ -255,6 +250,19 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-blue-800 mb-1">
+                        👤 Nom du contact #2
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
+                        value={form.contact_name_2}
+                        onChange={onChange('contact_name_2')}
+                        placeholder="ex: Marie Tremblay"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-blue-800 mb-1">
                         📧 Courriel #2
                       </label>
                       <input
@@ -291,6 +299,19 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                   </h3>
                   
                   <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-purple-800 mb-1">
+                        👤 Nom du contact Admin
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 text-sm"
+                        value={form.contact_name_admin}
+                        onChange={onChange('contact_name_admin')}
+                        placeholder="ex: Julie Comptabilité"
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-purple-800 mb-1">
                         📧 Courriel Admin
