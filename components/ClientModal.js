@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import { X, User, Users, Building } from 'lucide-react';
 
 export default function ClientModal({ open, onClose, onSaved, client }) {
-   /* ---------- états ---------- */
-   
+  /* ---------- états ---------- */
   const [form, setForm] = useState(
     client ? {
       name: client.name || '',
@@ -39,39 +38,6 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
     }
   );
   const [saving, setSaving] = useState(false);
-
-   useEffect(() => {
-    if (client) {
-      console.log('🔍 USEEFFECT - Mise à jour du form avec client:', client);
-      setForm({
-        name: client.name || '',
-        address: client.address || '',
-        contact_name: client.contact_name || client.contact_person || '',
-        email: client.email || '',
-        phone: client.phone || '',
-        contact_name_2: client.contact_name_2 || '',
-        email_2: client.email_2 || '',
-        contact_2: client.contact_2 || '',
-        contact_name_admin: client.contact_name_admin || '',
-        email_admin: client.email_admin || '',
-        contact_admin: client.contact_admin || ''
-      });
-    } else {
-      setForm({
-        name: '', 
-        address: '',
-        contact_name: '',
-        email: '', 
-        phone: '',
-        contact_name_2: '',
-        email_2: '', 
-        contact_2: '',
-        contact_name_admin: '',
-        email_admin: '', 
-        contact_admin: ''
-      });
-    }
-  }, [client]);
 
   if (!open) return null;
 
