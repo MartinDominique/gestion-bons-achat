@@ -372,57 +372,89 @@ export default function Navigation() {
                         <div className="flex-1 mb-3 sm:mb-0">
                           <h3 className="font-semibold text-gray-900 text-lg">{client.name}</h3>
                           <div className="text-sm text-gray-600 mt-2 space-y-1">
-                            {client.email && (
-                              <p className="flex items-center">
-                                <span className="mr-2">📧</span>
-                                <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
-                                  {client.email}
-                                </a>
-                              </p>
+                            {(client.email || client.phone) && (
+                              <div className="bg-green-50 p-2 rounded mb-2">
+                                <div className="flex items-center mb-1">
+                                  <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded font-medium mr-2">Principal</span>
+                                  {(client.contact_name || client.contact_person) && (
+                                    <span className="text-sm font-medium text-green-800">
+                                      {client.contact_name || client.contact_person}
+                                    </span>
+                                  )}
+                                </div>
+                                {client.email && (
+                                  <p className="flex items-center text-sm">
+                                    <span className="mr-2">📧</span>
+                                    <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
+                                      {client.email}
+                                    </a>
+                                  </p>
+                                )}
+                                {client.phone && (
+                                  <p className="flex items-center text-sm">
+                                    <span className="mr-2">📞</span>
+                                    <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
+                                      {client.phone}
+                                    </a>
+                                  </p>
+                                )}
+                              </div>
                             )}
-                            {client.phone && (
-                              <p className="flex items-center">
-                                <span className="mr-2">📞</span>
-                                <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
-                                  {client.phone}
-                                </a>
-                              </p>
+                            {(client.email_2 || client.contact_2) && (
+                              <div className="bg-blue-50 p-2 rounded mb-2">
+                                <div className="flex items-center mb-1">
+                                  <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-medium mr-2">Contact #2</span>
+                                  {client.contact_name_2 && (
+                                    <span className="text-sm font-medium text-blue-800">
+                                      {client.contact_name_2}
+                                    </span>
+                                  )}
+                                </div>
+                                {client.email_2 && (
+                                  <p className="flex items-center text-sm">
+                                    <span className="mr-2">📧</span>
+                                    <a href={`mailto:${client.email_2}`} className="text-blue-600 hover:underline">
+                                      {client.email_2}
+                                    </a>
+                                  </p>
+                                )}
+                                {client.contact_2 && (
+                                  <p className="flex items-center text-sm">
+                                    <span className="mr-2">📞</span>
+                                    <a href={`tel:${client.contact_2}`} className="text-blue-600 hover:underline">
+                                      {client.contact_2}
+                                    </a>
+                                  </p>
+                                )}
+                              </div>
                             )}
-                            {client.email_2 && (
-                              <p className="flex items-center">
-                                <span className="mr-2">📧</span>
-                                <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded mr-1">#2</span>
-                                <a href={`mailto:${client.email_2}`} className="text-blue-600 hover:underline">
-                                  {client.email_2}
-                                </a>
-                              </p>
-                            )}
-                            {client.contact_2 && (
-                              <p className="flex items-center">
-                                <span className="mr-2">📞</span>
-                                <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded mr-1">#2</span>
-                                <a href={`tel:${client.contact_2}`} className="text-blue-600 hover:underline">
-                                  {client.contact_2}
-                                </a>
-                              </p>
-                            )}
-                            {client.email_admin && (
-                              <p className="flex items-center">
-                                <span className="mr-2">📧</span>
-                                <span className="text-xs bg-purple-100 text-purple-800 px-1 rounded mr-1">Admin</span>
-                                <a href={`mailto:${client.email_admin}`} className="text-blue-600 hover:underline">
-                                  {client.email_admin}
-                                </a>
-                              </p>
-                            )}
-                            {client.contact_admin && (
-                              <p className="flex items-center">
-                                <span className="mr-2">📞</span>
-                                <span className="text-xs bg-purple-100 text-purple-800 px-1 rounded mr-1">Admin</span>
-                                <a href={`tel:${client.contact_admin}`} className="text-blue-600 hover:underline">
-                                  {client.contact_admin}
-                                </a>
-                              </p>
+                            {(client.email_admin || client.contact_admin) && (
+                              <div className="bg-purple-50 p-2 rounded mb-2">
+                                <div className="flex items-center mb-1">
+                                  <span className="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded font-medium mr-2">Administration</span>
+                                  {client.contact_name_admin && (
+                                    <span className="text-sm font-medium text-purple-800">
+                                      {client.contact_name_admin}
+                                    </span>
+                                  )}
+                                </div>
+                                {client.email_admin && (
+                                  <p className="flex items-center text-sm">
+                                    <span className="mr-2">📧</span>
+                                    <a href={`mailto:${client.email_admin}`} className="text-blue-600 hover:underline">
+                                      {client.email_admin}
+                                    </a>
+                                  </p>
+                                )}
+                                {client.contact_admin && (
+                                  <p className="flex items-center text-sm">
+                                    <span className="mr-2">📞</span>
+                                    <a href={`tel:${client.contact_admin}`} className="text-blue-600 hover:underline">
+                                      {client.contact_admin}
+                                    </a>
+                                  </p>
+                                )}
+                              </div>
                             )}
                             {client.address && (
                               <p className="flex items-start">
@@ -443,9 +475,6 @@ export default function Navigation() {
                         <div className="flex flex-col sm:flex-row gap-2 sm:ml-4">
                           <button
                             onClick={() => {
-                              console.log('🔍 CLIENT AVANT EDIT:', client);
-                              console.log('🔍 CLIENT.contact_person:', client.contact_person);
-                              console.log('🔍 CLIENT.contact_name:', client.contact_name);
                               setEditingClient(client);
                               setShowClientForm(true);
                             }}
