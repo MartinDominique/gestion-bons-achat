@@ -95,10 +95,10 @@ export default function ClientManager({ onClose }) {
 
   return (
     <>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full max-h-[90vh]">
         
         {/* En-tête avec titre et bouton fermer */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 sm:p-6 border-b bg-green-50">
+        <div className="flex-shrink-0 flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 sm:p-6 border-b bg-green-50">
           <h2 className="text-xl sm:text-2xl font-bold text-green-600 mb-3 sm:mb-0">
             👥 Gestion des Clients
           </h2>
@@ -124,7 +124,7 @@ export default function ClientManager({ onClose }) {
         </div>
 
         {/* Barre de recherche */}
-        <div className="p-4 border-b bg-gray-50">
+        <div className="flex-shrink-0 p-4 border-b bg-gray-50">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -137,21 +137,22 @@ export default function ClientManager({ onClose }) {
           </div>
         </div>
 
-        {/* Liste des clients */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
-          {loading ? (
-            <div className="text-center py-8 text-gray-500">
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
-              Chargement...
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <p>{term ? 'Aucun client trouvé' : 'Aucun client enregistré'}</p>
-            </div>
-          ) : (
-            <div className="space-y-4 pb-4">
-              {filtered.map((client) => (
+        {/* Liste des clients - ZONE SCROLLABLE */}
+        <div className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+          <div className="p-4 sm:p-6">
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
+                Chargement...
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <p>{term ? 'Aucun client trouvé' : 'Aucun client enregistré'}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filtered.map((client) => (
                 <div key={client.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
                   
                   {/* Affichage mobile-first */}
