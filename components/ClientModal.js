@@ -39,7 +39,27 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
   );
   const [saving, setSaving] = useState(false);
 
-  if (!open) return null;
+      // ⭐ AJOUTE ÇA ICI - LE USEEFFECT MANQUANT ⭐
+      useEffect(() => {
+        if (client) {
+          console.log('🔍 USEEFFECT - Chargement client:', client);
+          setForm({
+            name: client.name || '',
+            address: client.address || '',
+            contact_name: client.contact_name || client.contact_person || '',
+            email: client.email || '',
+            phone: client.phone || '',
+            contact_name_2: client.contact_name_2 || '',
+            email_2: client.email_2 || '',
+            contact_2: client.contact_2 || '',
+            contact_name_admin: client.contact_name_admin || '',
+            email_admin: client.email_admin || '',
+            contact_admin: client.contact_admin || ''
+          });
+        }
+      }, [client]);
+      
+      if (!open) return null;
 
   /* ---------- helpers ---------- */
   const onChange = (k) => (e) =>
