@@ -8,8 +8,8 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
     client ? {
       name: client.name || '',
       address: client.address || '',
-      // Contact Principal
-      contact_name: client.contact_name || '',
+      // Contact Principal (avec fallback vers anciennes colonnes)
+      contact_name: client.contact_name || client.contact_person || '',
       email: client.email || '',
       phone: client.phone || '',
       // Contact #2
@@ -63,7 +63,8 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
           id: client?.id,
           name: form.name.trim(),
           address: form.address?.trim() || '',
-          // Contact Principal
+          // Contact Principal - sauvegarder dans anciennes ET nouvelles colonnes
+          contact_person: form.contact_name?.trim() || '', // pour compatibilité 
           contact_name: form.contact_name?.trim() || '',
           email: form.email?.trim() || '',
           phone: form.phone?.trim() || '',
