@@ -1,12 +1,9 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { X, User, Users, Building } from 'lucide-react';
 
 export default function ClientModal({ open, onClose, onSaved, client }) {
-    export default function ClientModal({ ... }) {
-    
-  /* ---------- états ---------- */
+   /* ---------- états ---------- */
    
   const [form, setForm] = useState(
     client ? {
