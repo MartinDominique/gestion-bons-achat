@@ -426,20 +426,6 @@ export default function Navigation() {
         </div>
       )}
 
-      {/* 🎯 NOUVEAU MODAL avec 3 contacts */}
-      <ClientModal
-        open={showClientForm}
-        onClose={() => {
-          setShowClientForm(false);
-          setEditingClient(null);
-        }}
-        onSaved={() => {
-          fetchClients();
-          setShowClientForm(false);
-          setEditingClient(null);
-        }}
-        client={editingClient}
-      />
     </>
   );
 }
