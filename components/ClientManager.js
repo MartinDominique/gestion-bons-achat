@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '../lib/supabase';
+import { createClient } from '../lib/supabase';  // ← BON IMPORT
 import { User, Users, Building, Search, Plus, X } from 'lucide-react';
-import ClientModal from './ClientModal'; 
+import ClientModal from './ClientModal';
 
 export default function ClientManager({ onClose }) {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [clients, setClients] = useState([]);
   const [term, setTerm] = useState('');
   const [loading, setLoading] = useState(true);
