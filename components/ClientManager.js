@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '../lib/supabase';
 import { User, Users, Building, Search, Plus, X } from 'lucide-react';
 import ClientModal from './ClientModal';
 
