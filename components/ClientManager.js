@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '../lib/supabase';
 import { User, Users, Building, Search, Plus, X } from 'lucide-react';
-// import ClientModal from './ClientModal';
+import ClientModal from './ClientModal'; 
 
 export default function ClientManager({ onClose }) {
   const supabase = createClientComponentClient();
