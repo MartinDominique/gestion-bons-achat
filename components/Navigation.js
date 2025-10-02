@@ -443,6 +443,9 @@ export default function Navigation() {
                         <div className="flex flex-col sm:flex-row gap-2 sm:ml-4">
                           <button
                             onClick={() => {
+                              console.log('🔍 CLIENT AVANT EDIT:', client);
+                              console.log('🔍 CLIENT.contact_person:', client.contact_person);
+                              console.log('🔍 CLIENT.contact_name:', client.contact_name);
                               setEditingClient(client);
                               setShowClientForm(true);
                             }}
