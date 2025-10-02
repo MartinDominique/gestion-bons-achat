@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '../lib/supabase';  // ← BON IMPORT
+import { createClient } from '../lib/supabase';
 import { User, Users, Building, Search, Plus, X } from 'lucide-react';
 import ClientModal from './ClientModal';
 
@@ -138,7 +138,7 @@ export default function ClientManager({ onClose }) {
         </div>
 
         {/* Liste des clients */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
           {loading ? (
             <div className="text-center py-8 text-gray-500">
               <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent mx-auto mb-2"></div>
@@ -150,7 +150,7 @@ export default function ClientManager({ onClose }) {
               <p>{term ? 'Aucun client trouvé' : 'Aucun client enregistré'}</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-4">
               {filtered.map((client) => (
                 <div key={client.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
                   
@@ -303,10 +303,3 @@ export default function ClientManager({ onClose }) {
     </>
   );
 }
-
-{/* 
-<ClientModal
-  open={showClientForm}
-  ...
-/>
-*/}
