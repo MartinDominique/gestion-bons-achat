@@ -14,7 +14,8 @@ const pages = [
   { id: 'soumissions', name: 'Soumissions', icon: FileText },
   { id: 'inventaire', name: 'Inventaire', icon: Warehouse },
   { id: 'achat-materiels', name: 'Achat', icon: ShoppingCart },
-];
+  { id: 'bons-travail', name: 'Bons de Travail', icon: FileText },
+  ];
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -37,7 +38,7 @@ export default function Navigation() {
           setUser(user);
         }
 
-        const protectedRoutes = ['/bons-', '/soumissions'];
+        const protectedRoutes = ['/bons-', '/soumissions', '/bons-travail'];
         const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
         
         if (isProtectedRoute && !user) {
