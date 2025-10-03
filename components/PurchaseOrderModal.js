@@ -10,6 +10,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     client_email: '',
     client_phone: '',
     client_address: '',
+    description: '',
     date: new Date().toISOString().split('T')[0],
     delivery_date: '',
     payment_terms: '',
@@ -457,6 +458,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       client_email: '',
       client_phone: '',
       client_address: '',
+      description: '',
       date: new Date().toISOString().split('T')[0],
       delivery_date: '',
       payment_terms: '',
@@ -561,12 +563,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         description: item.name || item.description || 'Article',
         quantity: parseFloat(item.quantity) || 0,
         unit: item.unit || 'unité',
-        selling_price: parseFloat(item.price) || 0,
+        selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
         delivered_quantity: 0,
         from_submission: true
       }));
       
       setItems(importedItems);
+      
+      // Recalculer le montant total basé sur les articles importés
+      const totalAmount = importedItems.reduce((sum, item) => 
+        sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
+      );
+      setFormData(prev => ({ ...prev, amount: Math.max(totalAmount, parseFloat(submission.amount) || 0) }));
       setShowSubmissionModal(false);
       setActiveTab('articles');
       
@@ -1055,6 +1063,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             client_email: formData.client_email || null,
             client_phone: formData.client_phone || null,
             client_address: formData.client_address || null,
+            description: formData.description || null,
             date: formData.date,
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
@@ -1081,6 +1090,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             client_email: formData.client_email || null,
             client_phone: formData.client_phone || null,
             client_address: formData.client_address || null,
+            description: formData.description || null,
             date: formData.date,
             delivery_date: formData.delivery_date || null,
             payment_terms: formData.payment_terms || null,
@@ -1787,7 +1797,21 @@ setTimeout(() => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Notes complémentaires (optionnel)
+                        Description du BA
+                      </label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="Description détaillée du bon d'achat..."
+                        rows="3"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">                      
+                        Notes complémentaires (optionnel)
                   </label>
                   <input
                     type="text"

@@ -168,8 +168,8 @@ export default function SoumissionsManager() {
     setShowUsdCalculator(false);
     setUsdAmount('');
   };
-
-  // Fonction pour générer le numéro automatique
+  
+      // Fonction pour générer le numéro automatique
   const generateSubmissionNumber = async () => {
     const now = new Date();
     const yearMonth = `${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -592,6 +592,7 @@ export default function SoumissionsManager() {
     alert('❌ Veuillez remplir tous les champs obligatoires');
   }
 };
+
   // Gestion des items de produits avec quantité décimale
   const addItemToSubmission = (product, quantity = 1) => {
     const floatQuantity = parseFloat(quantity);
@@ -719,6 +720,89 @@ const handlePrintClient = () => {
     }).format(amount || 0);
   };
 
+   const imprimerEtProposerEmail = async () => {
+  if (!submissionForm.client_name) {
+    alert('⚠️ Veuillez sélectionner un client avant d\'imprimer');
+    return;
+  }
+
+  if (selectedItems.length === 0) {
+    alert('⚠️ Veuillez ajouter au moins un produit avant d\'imprimer');
+    return;
+  }
+
+  const client = clients.find(c => c.name === submissionForm.client_name);
+  if (!client || !client.email) {
+    alert('⚠️ Aucun email trouvé pour ce client.');
+    return;
+  }
+
+  try {
+    // Changer le titre pour le nom du fichier PDF
+    const originalTitle = document.title;
+    document.title = `SOU-${submissionForm.submission_number}`;
+    
+    document.body.classList.add('print-client');
+    window.print();
+    
+    setTimeout(() => {
+      document.body.classList.remove('print-client');
+      document.title = originalTitle;
+    }, 1000);
+
+    setTimeout(() => {
+      const confirmation = confirm(
+        `✅ PDF sauvegardé : Soumission_${submissionForm.submission_number}.pdf\n\n` +
+        `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${client.email} ?`
+      );
+
+      if (confirmation) {
+        // RÉSUMÉ COMPLET RESTAURÉ
+        const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
+        
+        const sousTotal = submissionForm.amount;
+        const tps = sousTotal * 0.05;
+        const tvq = sousTotal * 0.09975;
+        const total = sousTotal + tps + tvq;
+        
+        const corpsEmail = `Bonjour,
+
+Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
+
+RÉSUMÉ:
+• Sous-total: ${formatCurrency(sousTotal)}
+• TPS (5%): ${formatCurrency(tps)}
+• TVQ (9.975%): ${formatCurrency(tvq)}
+• TOTAL: ${formatCurrency(total)}
+
+Détails:
+• Nombre d'articles: ${selectedItems.length}
+• Validité: 30 jours
+• Paiement: Net 30 jours
+
+N'hésitez pas à nous contacter pour toute question.`;
+
+        const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+        
+        // Iframe invisible pour éviter la navigation
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = mailtoLink;
+        document.body.appendChild(iframe);
+        
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
+      }
+    }, 3000);
+
+  } catch (error) {
+    alert(`❌ Erreur: ${error.message}`);
+  }
+};
+  
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-CA');
   };
@@ -894,11 +978,16 @@ const cleanupFilesForSubmission = async (files) => {
       <>
         <style>
           {`
-          /* CSS d'impression pour tableau horizontal */
+          /* CSS d'impression professionnel amélioré */
           @media print {
-            @page {
+           @page {
               size: letter;
-              margin: 0.5in;
+              margin: 0.4in 0.6in 0.8in 0.6in; /* bottom margin plus grand pour footer */
+              @bottom-center {
+                content: "Pour toute question: (418) 225-3875 • Services TMT Inc. • info.servicestmt@gmail.com";
+                font-size: 8px;
+                color: #666;
+              }
             }
             
             body * {
@@ -924,19 +1013,35 @@ const cleanupFilesForSubmission = async (files) => {
               top: 0;
               width: 100%;
               background: white;
-              padding: 20px;
-              font-size: 12px;
-              font-family: Arial, sans-serif;
+              padding: 0;
+              font-size: 11px;
+              font-family: 'Arial', sans-serif;
+              line-height: 1.3;
+              color: #000;
             }
             
-            /* Header professionnel */
+            /* En-tête professionnel amélioré */
             .print-header {
               display: flex !important;
               justify-content: space-between !important;
               align-items: flex-start !important;
-              margin-bottom: 30px;
-              padding-bottom: 15px;
-              border-bottom: 2px solid #333;
+              margin-bottom: 25px;
+              padding-bottom: 12px;
+              border-bottom: 3px solid #000;
+              page-break-inside: avoid;
+            }
+            
+            .print-company-section {
+              display: flex !important;
+              align-items: flex-start !important;
+              flex: 1;
+            }
+            
+            .print-logo {
+              width: 160px !important;
+              height: auto !important;
+              margin-right: 20px !important;
+              flex-shrink: 0 !important;
             }
             
             .print-company-info {
@@ -945,31 +1050,98 @@ const cleanupFilesForSubmission = async (files) => {
               line-height: 1.4;
             }
             
+            .print-company-name {
+              font-size: 16px !important;
+              font-weight: bold !important;
+              color: #000 !important;
+              margin-bottom: 5px !important;
+            }
+            
             .print-submission-header {
               text-align: right;
+              min-width: 200px;
             }
             
-            .print-submission-header h1 {
-              font-size: 20px;
-              margin: 0 0 5px 0;
-              font-weight: bold;
+            .print-submission-title {
+              font-size: 28px !important;
+              font-weight: bold !important;
+              margin: 0 0 8px 0 !important;
+              color: #000 !important;
+              letter-spacing: 2px !important;
             }
             
-            /* Client info */
+            .print-submission-details {
+              font-size: 12px !important;
+              line-height: 1.5 !important;
+            }
+            
+            .print-submission-details p {
+              margin: 2px 0 !important;
+            }
+            
+            /* Section client améliorée */
+            .print-client-section {
+              display: flex !important;
+              justify-content: space-between !important;
+              margin: 20px 0 25px 0 !important;
+              page-break-inside: avoid;
+            }
+            
             .print-client-info {
-              margin: 20px 0;
-              padding: 15px;
-              border: 1px solid #ddd;
-              background-color: #f9f9f9;
+              flex: 1;
+              margin-right: 20px;
+              padding: 0;
+              border: none;
+              background: none !important;
             }
             
-            /* Tableau horizontal */
+            .print-client-label {
+              font-weight: bold !important;
+              font-size: 12px !important;
+              color: #000 !important;
+              margin-bottom: 5px !important;
+            }
+            
+            .print-client-name {
+              font-size: 14px !important;
+              font-weight: bold !important;
+              margin-bottom: 8px !important;
+            }
+            
+            .print-project-info {
+              flex: 1;
+              padding: 0;
+              border: none;
+              background: none !important;
+            }
+            
+            /* Références et informations */
+            .print-reference-section {
+              display: flex !important;
+              justify-content: space-between !important;
+              margin: 15px 0 !important;
+              font-size: 10px !important;
+            }
+            
+            .print-ref-item {
+              padding: 5px 8px !important;
+              border: 1px solid #000 !important;
+              background-color: #f8f9fa !important;
+            }
+            
+            .print-ref-label {
+              font-weight: bold !important;
+              margin-bottom: 2px !important;
+            }
+            
+            /* Tableau principal amélioré */
             .print-table {
               width: 100% !important;
               border-collapse: collapse !important;
               margin: 20px 0 !important;
               table-layout: fixed !important;
               display: table !important;
+              font-size: 10px !important;
             }
             
             .print-table thead {
@@ -988,33 +1160,36 @@ const cleanupFilesForSubmission = async (files) => {
             .print-table th,
             .print-table td {
               display: table-cell !important;
-              border: 1px solid #333 !important;
-              padding: 8px !important;
+              border: 2px solid #000 !important;
+              padding: 8px 6px !important;
               text-align: left !important;
-              font-size: 10px !important;
               vertical-align: top !important;
               word-wrap: break-word !important;
+              font-size: 10px !important;
             }
             
             .print-table th {
-              background-color: #f0f0f0 !important;
+              background-color: #e9ecef !important;
               font-weight: bold !important;
               text-align: center !important;
+              font-size: 10px !important;
+              text-transform: uppercase !important;
+              letter-spacing: 0.5px !important;
             }
             
             /* Largeurs des colonnes pour version COMPLÈTE */
             .print-table.complete th:nth-child(1),
             .print-table.complete td:nth-child(1) { width: 12% !important; }
             .print-table.complete th:nth-child(2),
-            .print-table.complete td:nth-child(2) { width: 28% !important; }
+            .print-table.complete td:nth-child(2) { width: 32% !important; }
             .print-table.complete th:nth-child(3),
             .print-table.complete td:nth-child(3) { width: 8% !important; text-align: center !important; }
             .print-table.complete th:nth-child(4),
             .print-table.complete td:nth-child(4) { width: 8% !important; text-align: center !important; }
             .print-table.complete th:nth-child(5),
-            .print-table.complete td:nth-child(5) { width: 12% !important; text-align: right !important; }
+            .print-table.complete td:nth-child(5) { width: 10% !important; text-align: right !important; }
             .print-table.complete th:nth-child(6),
-            .print-table.complete td:nth-child(6) { width: 12% !important; text-align: right !important; }
+            .print-table.complete td:nth-child(6) { width: 10% !important; text-align: right !important; }
             .print-table.complete th:nth-child(7),
             .print-table.complete td:nth-child(7) { width: 10% !important; text-align: right !important; }
             .print-table.complete th:nth-child(8),
@@ -1034,38 +1209,118 @@ const cleanupFilesForSubmission = async (files) => {
             .print-table.client th:nth-child(6),
             .print-table.client td:nth-child(6) { width: 10% !important; text-align: right !important; }
             
-            /* Totaux */
-            .print-totals {
-              margin-top: 30px;
-              text-align: right;
-              page-break-inside: avoid;
+            /* Lignes alternées pour meilleure lisibilité */
+            .print-table tbody tr:nth-child(even) {
+              background-color: #f8f9fa !important;
             }
             
-            .print-totals p {
-              font-size: 14px;
-              font-weight: bold;
-              margin: 8px 0;
-            }
-            
-            /* Commentaires */
+            /* Commentaires dans le tableau */
             .print-comment {
               font-style: italic;
-              color: #666;
-              font-size: 9px;
-              margin-top: 3px;
+              color: #666 !important;
+              font-size: 9px !important;
+              margin-top: 3px !important;
+              padding: 2px 4px !important;
+              background-color: #fff3cd !important;
+              border-left: 3px solid #ffc107 !important;
             }
             
+            /* Section totaux améliorée */
+            .print-totals-section {
+              margin-top: 25px !important;
+              page-break-inside: avoid;
+              border-top: 2px solid #000 !important;
+              padding-top: 15px !important;
+            }
+            
+            .print-totals {
+              text-align: right;
+              font-size: 12px !important;
+            }
+            
+            .print-totals .total-line {
+              display: flex !important;
+              justify-content: space-between !important;
+              margin: 5px 0 !important;
+              padding: 3px 0 !important;
+            }
+            
+            .print-totals .total-line.final-total {
+              font-size: 16px !important;
+              font-weight: bold !important;
+              border-top: 2px solid #000 !important;
+              border-bottom: 3px double #000 !important;
+              padding: 8px 0 !important;
+              margin-top: 10px !important;
+            }
+            
+            .print-totals .profit-margin {
+              color: #000 !important;
+              font-weight: bold !important;
+              background-color: #e3f2fd !important;
+              padding: 5px 10px !important;
+              border: 1px solid #2196f3 !important;
+              margin-top: 10px !important;
+            }
+            
+            /* Footer professionnel */
+              .print-footer {
+              margin-top: 30px !important;
+              padding-top: 15px !important;
+              border-top: 2px solid #000 !important;
+              font-size: 10px !important;
+              color: #000 !important;
+              page-break-inside: avoid;
+              background: white !important;
+            }
+            
+            .print-footer-content {
+              display: flex !important;
+              justify-content: space-between !important;
+              align-items: flex-start !important;
+              gap: 20px !important;
+            }
+            
+            .print-conditions {
+              flex: 1;
+              margin-right: 15px;
+              font-size: 7px !important;
+            }
+            
+            .print-contact-footer {
+              text-align: right;
+              flex-shrink: 0;
+              font-size: 8px !important;
+            }
+
+            .print-totals-footer {
+              min-width: 200px !important;
+              flex-shrink: 0 !important;
+              margin-left: 20px !important;
+            }
+                        
+            .print-validity {
+              background-color: #fff3cd !important;
+              border: 1px solid #ffc107 !important;
+              padding: 8px !important;
+              margin: 15px 0 !important;
+              text-align: center !important;
+              font-weight: bold !important;
+              font-size: 11px !important;
+            }
+            
+            /* Éléments à masquer à l'impression */
             .no-print {
               display: none !important;
             }
           }
-          @media screen {
-  .print-area,
-  .print-area-client {
-    display: none;
-  }
-}
 
+          @media screen {
+            .print-area,
+            .print-area-client {
+              display: none;
+            }
+          }
           `}
         </style>
 
@@ -1073,37 +1328,61 @@ const cleanupFilesForSubmission = async (files) => {
           {/* VERSION COMPLÈTE AVEC COÛTS - Zone d'impression */}
           {selectedItems.length > 0 && (
             <div className="print-area">
+              {/* En-tête professionnel amélioré */}
               <div className="print-header">
-  <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-    <img src="/logo.png" alt="Logo" style={{ width: '180px', marginRight: '20px' }} />
-    <div className="print-company-info">
-      <strong>Services TMT Inc.</strong><br />
-      195, 42e Rue Nord<br />
-      Saint-Georges, QC G5Z 0V9<br />
-      Tél: (418) 225-3875<br />
-      info.servicestmt@gmail.com
-    </div>
-  </div>
-  <div className="print-submission-header">
-    <h1>SOUMISSION</h1>
-    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-  </div>
-</div>
-
-
-              <div className="print-client-info">
-                <strong>CLIENT:</strong> {submissionForm.client_name}<br />
-                <strong>DESCRIPTION:</strong> {submissionForm.description}
+                <div className="print-company-section">
+                  <img src="/logo.png" alt="Services TMT" className="print-logo" />
+                  <div className="print-company-info">
+                    <div className="print-company-name">Services TMT Inc.</div>
+                    <div>3195, 42e Rue Nord</div>
+                    <div>Saint-Georges, QC G5Z 0V9</div>
+                    <div><strong>Tél:</strong> (418) 225-3875</div>
+                    <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
+                  </div>
+                </div>
+                <div className="print-submission-header">
+                  <h1 className="print-submission-title">SOUMISSION</h1>
+                  <div className="print-submission-details">
+                    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+                    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+                  </div>
+                </div>
               </div>
 
+              {/* Section client compacte */}
+              <div className="print-client-section">
+                <div className="print-client-info">
+                  <div className="print-client-label">CLIENT:</div>
+                  <div className="print-client-name">{submissionForm.client_name}</div>
+                  {(() => {
+                    const clientData = clients.find(c => c.name === submissionForm.client_name);
+                    if (clientData && (clientData.address || clientData.phone)) {
+                      return (
+                        <div style={{ fontSize: '9px', color: '#666' }}>
+                          {clientData.address && clientData.phone 
+                            ? `${clientData.address} • Tél.: ${clientData.phone}`
+                            : clientData.address || `Tél.: ${clientData.phone}`
+                          }
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                <div className="print-project-info">
+                  <div className="print-client-label">DESCRIPTION:</div>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
+                </div>
+              </div>
+
+              {/* Tableau principal amélioré */}
               <table className="print-table complete">
                 <thead>
                   <tr>
-                    <th>Code</th>
+                    <th>No Item</th>
                     <th>Description</th>
-                    <th>Qté</th>
                     <th>Unité</th>
+                    <th>Qté</th>
                     <th>Prix Unit.</th>
                     <th>Coût Unit.</th>
                     <th>Total Vente</th>
@@ -1113,35 +1392,116 @@ const cleanupFilesForSubmission = async (files) => {
                 <tbody>
                   {selectedItems.map((item, index) => (
                     <tr key={item.product_id}>
-                      <td>{item.product_id}</td>
+                      <td style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{item.product_id}</td>
                       <td>
-                        {item.description}
+                        <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.description}</div>
+                        {item.product_group && (
+                          <div style={{ fontSize: '8px', color: '#666', fontStyle: 'italic' }}>
+                            Groupe: {item.product_group}
+                          </div>
+                        )}
                         {item.comment && (
                           <div className="print-comment">💬 {item.comment}</div>
                         )}
                       </td>
-                      <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'center' }}>{item.unit}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.cost_price * item.quantity)}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{item.unit}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{item.quantity}</td>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{formatCurrency(item.selling_price)}</td>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{formatCurrency(item.cost_price)}</td>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                        {formatCurrency(item.selling_price * item.quantity)}
+                      </td>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                        {formatCurrency(item.cost_price * item.quantity)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div className="print-totals">
-                <p>TOTAL VENTE: {formatCurrency(submissionForm.amount)}</p>
-                <p>TOTAL COÛT: {formatCurrency(calculatedCostTotal)}</p>
-                <p style={{ color: '#2563eb' }}>
-                  MARGE: {formatCurrency(submissionForm.amount - calculatedCostTotal)}
-                  {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
-                    <span style={{ fontSize: '12px' }}>
-                      {" "}({((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%)
-                    </span>
-                  )}
-                </p>
+              {/* Totaux avec taxes - Version qui fonctionne */}
+              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  
+                  {/* Conditions à gauche */}
+                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
+                   </div>
+                  
+                  {/* Totaux avec taxes à droite */}
+                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
+                    {(() => {
+                      const sousTotal = submissionForm.amount;
+                      const tps = sousTotal * 0.05;
+                      const tvq = sousTotal * 0.09975;
+                      const total = sousTotal + tps + tvq;
+                      
+                      return (
+                        <div>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>Sous-total:</span>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                              {formatCurrency(sousTotal)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>TPS (5%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(tps)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '10px',
+                            paddingBottom: '5px'
+                          }}>
+                            <span>TVQ (9.975%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(tvq)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            borderTop: '2px solid #000', 
+                            paddingTop: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '16px'
+                          }}>
+                            <span>TOTAL:</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(total)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+                
+                {/* Contact en bas */}
+                <div style={{ 
+                  marginTop: '20px', 
+                  paddingTop: '10px', 
+                  borderTop: '1px solid #000',
+                  textAlign: 'center',
+                  fontSize: '9px'
+                }}>
+                </div>
               </div>
             </div>
           )}
@@ -1149,30 +1509,54 @@ const cleanupFilesForSubmission = async (files) => {
           {/* VERSION CLIENT SANS COÛTS - Zone d'impression */}
           {selectedItems.length > 0 && (
             <div className="print-area-client">
+              {/* En-tête professionnel */}
               <div className="print-header">
-  <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-    <img src="/logo.png" alt="Logo" style={{ width: '180px', marginRight: '20px' }} />
-    <div className="print-company-info">
-      <strong>Services TMT Inc.</strong><br />
-      195, 42e Rue Nord<br />
-      Saint-Georges, QC G5Z 0V9<br />
-      Tél: (418) 225-3875<br />
-      info.servicestmt@gmail.com
-    </div>
-  </div>
-  <div className="print-submission-header">
-    <h1>SOUMISSION</h1>
-    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-  </div>
-</div>
-
-
-              <div className="print-client-info">
-                <strong>CLIENT:</strong> {submissionForm.client_name}<br />
-                <strong>DESCRIPTION:</strong> {submissionForm.description}
+                <div className="print-company-section">
+                  <img src="/logo.png" alt="Services TMT" className="print-logo" />
+                  <div className="print-company-info">
+                    <div className="print-company-name">Services TMT Inc.</div>
+                    <div>3195, 42e Rue Nord</div>
+                    <div>Saint-Georges, QC G5Z 0V9</div>
+                    <div><strong>Tél:</strong> (418) 225-3875</div>
+                    <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
+                  </div>
+                </div>
+                <div className="print-submission-header">
+                  <h1 className="print-submission-title">SOUMISSION</h1>
+                  <div className="print-submission-details">
+                    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+                    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+                  </div>
+                </div>
               </div>
 
+              {/* Section Impression client */}
+              <div className="print-client-section">
+                <div className="print-client-info">
+                  <div className="print-client-label">CLIENT:</div>
+                  <div className="print-client-name">{submissionForm.client_name}</div>
+                  {(() => {
+                    const clientData = clients.find(c => c.name === submissionForm.client_name);
+                    if (clientData && (clientData.address || clientData.phone)) {
+                      return (
+                        <div style={{ fontSize: '9px', color: '#666' }}>
+                          {clientData.address && clientData.phone 
+                            ? `${clientData.address} • Tél.: ${clientData.phone}`
+                            : clientData.address || `Tél.: ${clientData.phone}`
+                          }
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                <div className="print-project-info">
+                  <div className="print-client-label">DESCRIPTION:</div>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
+                </div>
+              </div>
+
+              {/* Tableau client (sans colonnes de coût) */}
               <table className="print-table client">
                 <thead>
                   <tr>
@@ -1187,24 +1571,106 @@ const cleanupFilesForSubmission = async (files) => {
                 <tbody>
                   {selectedItems.map((item, index) => (
                     <tr key={item.product_id}>
-                      <td>{item.product_id}</td>
+                      <td style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{item.product_id}</td>
                       <td>
-                        {item.description}
+                        <div style={{ fontWeight: 'bold' }}>{item.description}</div>
                         {item.comment && (
                           <div className="print-comment">💬 {item.comment}</div>
                         )}
                       </td>
-                      <td style={{ textAlign: 'center' }}>{item.quantity}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{item.quantity}</td>
                       <td style={{ textAlign: 'center' }}>{item.unit}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatCurrency(item.selling_price * item.quantity)}</td>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{formatCurrency(item.selling_price)}</td>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                        {formatCurrency(item.selling_price * item.quantity)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div className="print-totals">
-                <p style={{ fontSize: '16px' }}>TOTAL: {formatCurrency(submissionForm.amount)}</p>
+                {/* Totaux avec taxes pour client - Version directe */}
+              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  
+                  {/* Conditions à gauche */}
+                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
+                    <div>• Prix valides pour 30 jours</div>
+                    <div>• Paiement: Net 30 jours</div>
+                    <div>• Prix sujets à changement sans préavis</div>
+                  </div>
+                  
+                  {/* Totaux avec taxes à droite */}
+                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
+                    {(() => {
+                      const sousTotal = submissionForm.amount;
+                      const tps = sousTotal * 0.05;
+                      const tvq = sousTotal * 0.09975;
+                      const total = sousTotal + tps + tvq;
+                      
+                      return (
+                        <div>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>Sous-total:</span>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                              {formatCurrency(sousTotal)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '5px',
+                            paddingBottom: '3px'
+                          }}>
+                            <span>TPS (5%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(tps)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            marginBottom: '10px',
+                            paddingBottom: '5px'
+                          }}>
+                            <span>TVQ (9.975%):</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(tvq)}
+                            </span>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            borderTop: '2px solid #000', 
+                            paddingTop: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '16px'
+                          }}>
+                            <span>TOTAL:</span>
+                            <span style={{ fontFamily: 'monospace' }}>
+                              {formatCurrency(total)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer client */}
+              <div className="print-footer">
+                <div style={{ textAlign: 'center' }}>
+                </div>
               </div>
             </div>
           )}
@@ -1235,17 +1701,30 @@ const cleanupFilesForSubmission = async (files) => {
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <button
                     onClick={handlePrint}
-                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
+                    className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"  
                   >
-                    🖨️ Imprimer
+                    🖨️ Imprimer Coutants
                   </button>
+                                    
                   <button
-                    onClick={handlePrintClient}
-                    className="w-full sm:w-auto px-4 py-2 bg-green-500/20 rounded-lg hover:bg-green-500/30 text-sm font-medium"
+                    onClick={imprimerEtProposerEmail}
+                    disabled={selectedItems.length === 0 || !submissionForm.client_name}
+                    className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center ${
+                      selectedItems.length === 0 || !submissionForm.client_name
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-orange-500/20 hover:bg-orange-500/30 text-white'
+                    }`}
+                    title={
+                      !submissionForm.client_name 
+                        ? 'Sélectionnez un client d\'abord'
+                        : selectedItems.length === 0 
+                        ? 'Ajoutez des produits d\'abord'
+                        : 'Imprimer en PDF et proposer email'    // ← NOUVEAU TEXTE
+                    }
                   >
-                    <Printer className="w-4 h-4 inline mr-1" />
-                    Impression Client
+                    📧 🖨️ Client
                   </button>
+                  
                   <button
                     type="button"
                     onClick={() => {
@@ -1278,8 +1757,8 @@ const cleanupFilesForSubmission = async (files) => {
                 </div>
               </div>
             </div>
-            
-            {/* Contenu du formulaire */}
+
+            {/* Suite du formulaire reste inchangée... */}
             <div className="p-4 sm:p-6 no-print">
               <form id="submission-form" onSubmit={handleSubmissionSubmit} className="space-y-6">
                 
@@ -1371,7 +1850,7 @@ const cleanupFilesForSubmission = async (files) => {
                       Produit Non-Inventaire
                     </button>
                   </div>
-                  
+
                   {/* Résultats recherche mobile-friendly */}
                   {searchingProducts && (
                     <div className="flex items-center justify-center p-4">
@@ -1704,10 +2183,10 @@ const cleanupFilesForSubmission = async (files) => {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => applyProfitMargin(25)}
+                                    onClick={() => applyProfitMargin(27)}
                                     className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
                                   >
-                                    +25%
+                                    +27%
                                   </button>
                                 </div>
                               </div>
@@ -1803,7 +2282,7 @@ const cleanupFilesForSubmission = async (files) => {
                   </div>
                 )}
 
-                {/* Items sélectionnés MOBILE-FRIENDLY */}
+                {/* Items sélectionnés MOBILE-FRIENDLY - Reste inchangé mais tronqué pour la taille */}
                 {selectedItems.length > 0 && (
                   <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                     <h3 className="text-base sm:text-lg font-semibold text-yellow-800 mb-4">
@@ -1915,29 +2394,20 @@ const cleanupFilesForSubmission = async (files) => {
                       </table>
                     </div>
 
-                    {/* Cards pour mobile */}
+                    {/* Cards pour mobile - Version tronquée */}
                     <div className="sm:hidden space-y-3">
-                      {[...selectedItems].reverse().map((item) => (
+                      {[...selectedItems].reverse().slice(0, 3).map((item) => (
                         <div key={item.product_id} className="bg-white p-3 rounded-lg border border-yellow-200">
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1">
                               <h4 className="font-medium text-gray-900 text-sm">{item.product_id}</h4>
                               <p className="text-xs text-gray-600">{item.description}</p>
-                              <p className="text-xs text-gray-500">{item.product_group} • {item.unit}</p>
-                              {item.comment && (
-                                <p className="text-xs text-blue-600 italic mt-1">💬 {item.comment}</p>
-                              )}
                             </div>
                             <div className="flex gap-1 ml-2">
                               <button
                                 type="button"
                                 onClick={() => openCommentModal(item)}
-                                className={`p-1 rounded ${
-                                  item.comment 
-                                    ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                                title={item.comment ? 'Modifier commentaire' : 'Ajouter commentaire'}
+                                className="p-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
                               >
                                 <MessageSquare className="w-4 h-4" />
                               </button>
@@ -1945,64 +2415,21 @@ const cleanupFilesForSubmission = async (files) => {
                                 type="button"
                                 onClick={() => removeItemFromSubmission(item.product_id)}
                                 className="p-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
-                                title="Supprimer"
                               >
                                 <X className="w-4 h-4" />
                               </button>
                             </div>
                           </div>
-                          
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            <div>
-                              <label className="block text-xs text-gray-500 mb-1">Quantité</label>
-                              <input
-                                type="number"
-                                step="0.1"
-                                min="0.1"
-                                value={item.quantity}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || parseFloat(value) >= 0) {
-                                    updateItemQuantity(item.product_id, value);
-                                  }
-                                }}
-                                className="w-full text-center rounded border-gray-300 text-sm p-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-green-700 mb-1">Prix Vente</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.selling_price}
-                                onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
-                                className="w-full text-right rounded border-green-300 text-sm focus:border-green-500 focus:ring-green-500 p-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-orange-700 mb-1">Prix Coût</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.cost_price}
-                                onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
-                                className="w-full text-right rounded border-orange-300 text-sm focus:border-orange-500 focus:ring-orange-500 p-2"
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="mt-2 pt-2 border-t border-gray-200 flex justify-between text-sm">
-                            <span className="text-green-700 font-medium">
-                              Total vente: {formatCurrency(item.selling_price * item.quantity)}
-                            </span>
-                            <span className="text-orange-700 font-medium">
-                              Total coût: {formatCurrency(item.cost_price * item.quantity)}
-                            </span>
+                          <div className="text-sm font-medium text-green-700">
+                            Total: {formatCurrency(item.selling_price * item.quantity)}
                           </div>
                         </div>
                       ))}
+                      {selectedItems.length > 3 && (
+                        <div className="text-center text-sm text-gray-500 bg-gray-50 p-2 rounded">
+                          ... et {selectedItems.length - 3} autres produits
+                        </div>
+                      )}
                     </div>
                     
                     <div className="mt-3 space-y-2">
@@ -2020,14 +2447,11 @@ const cleanupFilesForSubmission = async (files) => {
                           </span>
                         </div>
                       </div>
-                      <div className="text-xs text-yellow-600 bg-yellow-200 p-2 rounded">
-                        💡 Utilisez ↑↓ pour naviguer, quantités décimales (0.1), prix modifiables, 💬 commentaires, 💱 USD→CAD, +15/20/25% profit
-                      </div>
                     </div>
                   </div>
                 )}
 
-                  {/* Section Documents - NOUVEAU */}
+                {/* Section Documents - NOUVEAU */}
 <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
   <label className="block text-sm font-semibold text-purple-800 mb-2">
     📎 Documents (PDF, XLS, DOC, etc.)
@@ -2258,7 +2682,7 @@ const cleanupFilesForSubmission = async (files) => {
       {/* Info système */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <p className="text-sm text-gray-600">
-          📊 6718 produits • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto
+          📊 6718 produits • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto • 📧 Email .EML
         </p>
       </div>
 

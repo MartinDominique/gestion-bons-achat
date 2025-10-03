@@ -372,8 +372,7 @@ export const useSupplierPurchase = () => {
     setPurchaseForm(prev => ({
       ...prev,
       linked_submission_id: selectedSubmissionForImport.id,
-      notes: prev.notes + 
-        `\nImporté depuis soumission ${selectedSubmissionForImport.submission_number} - ${selectedSubmissionForImport.client_name}`
+      
     }));
 
     setShowImportSubmissionModal(false);
@@ -551,7 +550,7 @@ export const useSupplierPurchase = () => {
           sendEmailToDominique(savedPurchase, pdfBlob)
             .then(() => {
               console.log('📧 EMAIL AUTOMATIQUE ENVOYÉ');
-              setEmailStatus('✅ Email envoyé automatiquement');
+              setEmailStatus('✅ Email envoyé automatiquement à Dominique');
             })
             .catch((emailError) => {
               console.error('📧 ERREUR EMAIL:', emailError);
