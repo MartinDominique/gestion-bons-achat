@@ -233,14 +233,21 @@ export default function WorkOrderForm({
         const submissionItem = selectedSubmissionForImport.items[itemIndex];
         return {
           id: 'sub-' + Date.now() + '-' + itemIndex,
-          product_id: submissionItem.product_id || submissionItem.code || 'ITEM-' + (itemIndex + 1),
-          description: submissionItem.name || submissionItem.description || 'Article',
+          // Structure attendue par MaterialSelector : product object imbriqué
+          product: {
+            id: 'prod-' + Date.now() + '-' + itemIndex,
+            product_id: submissionItem.product_id || submissionItem.code || 'ITEM-' + (itemIndex + 1),
+            description: submissionItem.name || submissionItem.description || 'Article',
+            selling_price: parseFloat(submissionItem.price || submissionItem.selling_price || submissionItem.unit_price || 0),
+            unit: submissionItem.unit || 'unité',
+            product_group: submissionItem.category || submissionItem.product_group || 'Soumission'
+          },
           quantity: parseFloat(submissionItem.quantity || 0),
           unit: submissionItem.unit || 'unité',
-          price: parseFloat(submissionItem.price || submissionItem.selling_price || submissionItem.unit_price || 0),
+          notes: `Importé de la soumission #${selectedSubmissionForImport.submission_number}`,
+          showPrice: false, // Prix caché par défaut, l'utilisateur peut l'activer avec l'icône œil
           from_submission: true,
-          submission_number: selectedSubmissionForImport.submission_number,
-          show_price: true
+          submission_number: selectedSubmissionForImport.submission_number
         };
       });
 
@@ -305,15 +312,22 @@ export default function WorkOrderForm({
         const supplierItem = selectedPurchaseForImport.items[itemIndex];
         return {
           id: 'supplier-' + Date.now() + '-' + itemIndex,
-          product_id: supplierItem.product_id || supplierItem.code || supplierItem.sku || 'ITEM-' + (itemIndex + 1),
-          description: supplierItem.description || supplierItem.name || supplierItem.product_name || 'Article importé',
+          // Structure attendue par MaterialSelector : product object imbriqué
+          product: {
+            id: 'prod-' + Date.now() + '-' + itemIndex,
+            product_id: supplierItem.product_id || supplierItem.code || supplierItem.sku || 'ITEM-' + (itemIndex + 1),
+            description: supplierItem.description || supplierItem.name || supplierItem.product_name || 'Article importé',
+            selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
+            unit: supplierItem.unit || supplierItem.unity || 'unité',
+            product_group: supplierItem.category || supplierItem.product_group || 'Importé'
+          },
           quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
           unit: supplierItem.unit || supplierItem.unity || 'unité',
-          price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
+          notes: `Importé de l'achat fournisseur #${selectedPurchaseForImport.purchase_number}`,
+          showPrice: false, // Prix caché par défaut, l'utilisateur peut l'activer avec l'icône œil
           from_supplier_purchase: true,
           supplier_purchase_id: selectedPurchaseForImport.id,
-          supplier_purchase_number: selectedPurchaseForImport.purchase_number,
-          show_price: true
+          supplier_purchase_number: selectedPurchaseForImport.purchase_number
         };
       });
 
