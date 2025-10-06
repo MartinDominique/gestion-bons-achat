@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
+import { supabase } from '../../lib/supabase'; // Ajustez le chemin selon votre structure
 
 export default function WorkOrderForm({ 
   workOrder = null, 
@@ -30,6 +31,20 @@ export default function WorkOrderForm({
   const [errors, setErrors] = useState({});
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
+
+  // NOUVEAUX ÉTATS POUR IMPORTS
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [showSupplierImportModal, setShowSupplierImportModal] = useState(false);
+  const [submissions, setSubmissions] = useState([]);
+  const [clientSupplierPurchases, setClientSupplierPurchases] = useState([]);
+  const [selectedPurchaseForImport, setSelectedPurchaseForImport] = useState(null);
+  const [selectedItemsForImport, setSelectedItemsForImport] = useState([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [isLoadingSupplierPurchases, setIsLoadingSupplierPurchases] = useState(false);
+  
+  // États pour la sélection de soumission
+  const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
+  const [selectedSubmissionItems, setSelectedSubmissionItems] = useState([]);
 
   // Initialisation pour mode édition
   useEffect(() => {
@@ -95,6 +110,227 @@ export default function WorkOrderForm({
     
     setFormData(prev => ({ ...prev, work_description: combinedDescription }));
   }, [descriptions]);
+
+  // NOUVELLE FONCTION : Charger les soumissions du client
+  const loadClientSubmissions = async () => {
+    if (!selectedClient) {
+      setErrors({ materials: 'Veuillez d\'abord sélectionner un client' });
+      return;
+    }
+
+    setIsLoadingSubmissions(true);
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('client_name', selectedClient.name)
+        .eq('status', 'accepted')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setSubmissions(data || []);
+      setShowSubmissionModal(true);
+    } catch (error) {
+      console.error('Erreur chargement soumissions:', error);
+      setErrors({ materials: 'Erreur lors du chargement des soumissions' });
+    } finally {
+      setIsLoadingSubmissions(false);
+    }
+  };
+
+  // NOUVELLE FONCTION : Charger les achats fournisseurs du client
+  const loadClientSupplierPurchases = async () => {
+    if (!selectedClient) {
+      setErrors({ materials: 'Veuillez d\'abord sélectionner un client' });
+      return;
+    }
+
+    setIsLoadingSupplierPurchases(true);
+    try {
+      // D'abord trouver tous les BAs du client
+      const { data: clientPOs, error: poError } = await supabase
+        .from('purchase_orders')
+        .select('id')
+        .eq('client_name', selectedClient.name);
+
+      if (poError) throw poError;
+
+      const poIds = clientPOs?.map(po => po.id) || [];
+
+      // Ensuite charger les achats fournisseurs liés
+      let query = supabase
+        .from('supplier_purchases')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Filtrer par les BAs du client ou par nom du fournisseur
+      if (poIds.length > 0) {
+        query = query.or(`linked_po_id.in.(${poIds.join(',')}),supplier_name.ilike.%${selectedClient.name}%`);
+      } else {
+        query = query.ilike('supplier_name', `%${selectedClient.name}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Filtrer pour garder seulement ceux avec des items
+      const purchasesWithItems = (data || []).filter(p => p.items && p.items.length > 0);
+      
+      setClientSupplierPurchases(purchasesWithItems);
+      setShowSupplierImportModal(true);
+    } catch (error) {
+      console.error('Erreur chargement achats fournisseurs:', error);
+      setErrors({ materials: 'Erreur lors du chargement des achats fournisseurs' });
+    } finally {
+      setIsLoadingSupplierPurchases(false);
+    }
+  };
+
+  // NOUVELLE FONCTION : Sélectionner une soumission pour import
+  const selectSubmissionForImport = (submission) => {
+    setSelectedSubmissionForImport(submission);
+    setSelectedSubmissionItems([]);
+  };
+
+  // NOUVELLE FONCTION : Gérer la sélection d'items de soumission
+  const toggleSubmissionItemSelection = (itemIndex) => {
+    setSelectedSubmissionItems(prev => {
+      const newSelection = [...prev];
+      const existingIndex = newSelection.indexOf(itemIndex);
+      
+      if (existingIndex > -1) {
+        newSelection.splice(existingIndex, 1);
+      } else {
+        newSelection.push(itemIndex);
+      }
+      
+      return newSelection;
+    });
+  };
+
+  // NOUVELLE FONCTION : Tout sélectionner/désélectionner pour soumission
+  const toggleAllSubmissionItemsSelection = () => {
+    if (!selectedSubmissionForImport?.items) return;
+    
+    if (selectedSubmissionItems.length === selectedSubmissionForImport.items.length) {
+      setSelectedSubmissionItems([]);
+    } else {
+      setSelectedSubmissionItems(selectedSubmissionForImport.items.map((_, index) => index));
+    }
+  };
+
+  // NOUVELLE FONCTION : Importer les articles sélectionnés de soumission
+  const importSelectedSubmissionItems = () => {
+    if (!selectedSubmissionForImport || selectedSubmissionItems.length === 0) {
+      setErrors({ materials: 'Veuillez sélectionner au moins un article' });
+      return;
+    }
+
+    try {
+      const itemsToImport = selectedSubmissionItems.map(itemIndex => {
+        const submissionItem = selectedSubmissionForImport.items[itemIndex];
+        return {
+          id: 'sub-' + Date.now() + '-' + itemIndex,
+          product_id: submissionItem.product_id || submissionItem.code || 'ITEM-' + (itemIndex + 1),
+          description: submissionItem.name || submissionItem.description || 'Article',
+          quantity: parseFloat(submissionItem.quantity || 0),
+          unit: submissionItem.unit || 'unité',
+          price: parseFloat(submissionItem.price || submissionItem.selling_price || submissionItem.unit_price || 0),
+          from_submission: true,
+          submission_number: selectedSubmissionForImport.submission_number,
+          show_price: true
+        };
+      });
+
+      // Ajouter aux matériaux existants
+      const updatedMaterials = [...materials, ...itemsToImport];
+      setMaterials(updatedMaterials);
+      
+      setShowSubmissionModal(false);
+      setSelectedSubmissionForImport(null);
+      setSelectedSubmissionItems([]);
+      
+      console.log(`${itemsToImport.length} matériaux importés de la soumission #${selectedSubmissionForImport.submission_number}`);
+      
+    } catch (error) {
+      console.error('Erreur import articles soumission:', error);
+      setErrors({ materials: 'Erreur lors de l\'import des articles' });
+    }
+  };
+
+  // NOUVELLE FONCTION : Sélectionner un achat fournisseur
+  const selectPurchaseForImport = (purchase) => {
+    setSelectedPurchaseForImport(purchase);
+    setSelectedItemsForImport([]);
+  };
+
+  // NOUVELLE FONCTION : Gérer la sélection d'items
+  const toggleItemSelection = (itemIndex) => {
+    setSelectedItemsForImport(prev => {
+      const newSelection = [...prev];
+      const existingIndex = newSelection.indexOf(itemIndex);
+      
+      if (existingIndex > -1) {
+        newSelection.splice(existingIndex, 1);
+      } else {
+        newSelection.push(itemIndex);
+      }
+      
+      return newSelection;
+    });
+  };
+
+  // NOUVELLE FONCTION : Tout sélectionner/désélectionner
+  const toggleAllItemsSelection = () => {
+    if (!selectedPurchaseForImport?.items) return;
+    
+    if (selectedItemsForImport.length === selectedPurchaseForImport.items.length) {
+      setSelectedItemsForImport([]);
+    } else {
+      setSelectedItemsForImport(selectedPurchaseForImport.items.map((_, index) => index));
+    }
+  };
+
+  // NOUVELLE FONCTION : Importer les articles sélectionnés
+  const importSelectedItems = () => {
+    if (!selectedPurchaseForImport || selectedItemsForImport.length === 0) {
+      setErrors({ materials: 'Veuillez sélectionner au moins un article' });
+      return;
+    }
+
+    try {
+      const itemsToImport = selectedItemsForImport.map(itemIndex => {
+        const supplierItem = selectedPurchaseForImport.items[itemIndex];
+        return {
+          id: 'supplier-' + Date.now() + '-' + itemIndex,
+          product_id: supplierItem.product_id || supplierItem.code || supplierItem.sku || 'ITEM-' + (itemIndex + 1),
+          description: supplierItem.description || supplierItem.name || supplierItem.product_name || 'Article importé',
+          quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
+          unit: supplierItem.unit || supplierItem.unity || 'unité',
+          price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
+          from_supplier_purchase: true,
+          supplier_purchase_id: selectedPurchaseForImport.id,
+          supplier_purchase_number: selectedPurchaseForImport.purchase_number,
+          show_price: true
+        };
+      });
+
+      const updatedMaterials = [...materials, ...itemsToImport];
+      setMaterials(updatedMaterials);
+      
+      setShowSupplierImportModal(false);
+      setSelectedPurchaseForImport(null);
+      setSelectedItemsForImport([]);
+
+      console.log(`${itemsToImport.length} matériaux importés de l'achat fournisseur #${selectedPurchaseForImport.purchase_number}`);
+      
+    } catch (error) {
+      console.error('Erreur import articles fournisseur:', error);
+      setErrors({ materials: 'Erreur lors de l\'import des articles' });
+    }
+  };
 
   // Gestion des descriptions multiligne
   const handleDescriptionChange = (index, value) => {
@@ -162,8 +398,8 @@ export default function WorkOrderForm({
 
   // Gestion des matériaux
   const handleMaterialsChange = (updatedMaterials) => {
-    console.log('🔄 MATERIALS CHANGED:', updatedMaterials);
-    console.log('🔄 MATERIALS COUNT:', updatedMaterials.length);
+    console.log('📄 MATERIALS CHANGED:', updatedMaterials);
+    console.log('📄 MATERIALS COUNT:', updatedMaterials.length);
     setMaterials(updatedMaterials);
     // Supprimer l'erreur des matériaux si elle existe
     if (errors.materials) {
@@ -379,7 +615,7 @@ export default function WorkOrderForm({
           />
         </div>
 
-        {/* Section Matériaux */}
+        {/* Section Matériaux MODIFIÉE */}
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-medium text-gray-900 flex items-center mb-3">
             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
@@ -387,6 +623,31 @@ export default function WorkOrderForm({
             </div>
             Matériaux et Produits
           </h3>
+          
+          {/* NOUVEAUX BOUTONS D'IMPORT */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              type="button"
+              onClick={loadClientSubmissions}
+              disabled={!selectedClient || isLoadingSubmissions}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+              title={!selectedClient ? "Sélectionnez d'abord un client" : "Importer depuis une soumission"}
+            >
+              <FileText size={16} />
+              {isLoadingSubmissions ? 'Chargement...' : 'Ajout de soumission'}
+            </button>
+            
+            <button
+              type="button"
+              onClick={loadClientSupplierPurchases}
+              disabled={!selectedClient || isLoadingSupplierPurchases}
+              className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+              title={!selectedClient ? "Sélectionnez d'abord un client" : "Importer depuis un achat fournisseur"}
+            >
+              <Package size={16} />
+              {isLoadingSupplierPurchases ? 'Chargement...' : 'Ajout de Fournisseur'}
+            </button>
+          </div>
           
           <MaterialSelector
             materials={materials}
@@ -445,6 +706,356 @@ export default function WorkOrderForm({
           </div>
         </div>
       </form>
+
+      {/* MODAL IMPORT SOUMISSIONS - VERSION AVEC SÉLECTION */}
+      {showSubmissionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-semibold">Import Soumissions - {selectedClient?.name}</h3>
+              <button
+                onClick={() => {
+                  setShowSubmissionModal(false);
+                  setSelectedSubmissionForImport(null);
+                  setSelectedSubmissionItems([]);
+                }}
+                className="text-white hover:bg-white/20 rounded-lg p-2"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex h-[calc(90vh-200px)]">
+              {/* Liste des soumissions */}
+              <div className="w-1/3 border-r bg-gray-50 p-4 overflow-y-auto">
+                <h4 className="font-semibold mb-4">Soumissions Disponibles</h4>
+                
+                {submissions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Aucune soumission disponible</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Aucune soumission acceptée pour {selectedClient?.name}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {submissions.map((submission) => (
+                      <div
+                        key={submission.id}
+                        onClick={() => selectSubmissionForImport(submission)}
+                        className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                          selectedSubmissionForImport?.id === submission.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-semibold text-sm">#{submission.submission_number || submission.id}</div>
+                        <div className="text-xs text-gray-600 truncate">{submission.description}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {submission.items?.length || 0} articles • ${parseFloat(submission.amount || 0).toFixed(2)}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {new Date(submission.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Détail des articles */}
+              <div className="flex-1 p-4 overflow-y-auto">
+                {!selectedSubmissionForImport ? (
+                  <div className="text-center py-16">
+                    <p className="text-gray-500">Sélectionnez une soumission pour voir les articles</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="font-semibold">
+                        Articles de #{selectedSubmissionForImport.submission_number}
+                      </h4>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={selectedSubmissionItems.length === (selectedSubmissionForImport.items?.length || 0)}
+                            onChange={toggleAllSubmissionItemsSelection}
+                            className="rounded"
+                          />
+                          Tout sélectionner
+                        </label>
+                        <span className="text-sm text-gray-500">
+                          {selectedSubmissionItems.length}/{selectedSubmissionForImport.items?.length || 0} sélectionnés
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left w-10">✔</th>
+                            <th className="px-3 py-2 text-left">Code</th>
+                            <th className="px-3 py-2 text-left">Description</th>
+                            <th className="px-3 py-2 text-center">Qté</th>
+                            <th className="px-3 py-2 text-center">Prix Unit.</th>
+                            <th className="px-3 py-2 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {(selectedSubmissionForImport.items || []).map((item, index) => {
+                            const quantity = parseFloat(item.quantity || 1);
+                            const unitPrice = parseFloat(item.price || item.selling_price || item.unit_price || 0);
+                            const lineTotal = quantity * unitPrice;
+                            
+                            return (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedSubmissionItems.includes(index)}
+                                    onChange={() => toggleSubmissionItemSelection(index)}
+                                    className="rounded"
+                                  />
+                                </td>
+                                <td className="px-3 py-2 font-medium">
+                                  {item.product_id || item.code || '-'}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {item.name || item.description || '-'}
+                                </td>
+                                <td className="px-3 py-2 text-center">{quantity}</td>
+                                <td className="px-3 py-2 text-center">${unitPrice.toFixed(2)}</td>
+                                <td className="px-3 py-2 text-right font-medium">${lineTotal.toFixed(2)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {selectedSubmissionItems.length > 0 && (
+                      <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-700">
+                          <strong>{selectedSubmissionItems.length} articles sélectionnés</strong> pour import
+                        </p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Total estimé: ${selectedSubmissionItems.reduce((sum, itemIndex) => {
+                            const item = selectedSubmissionForImport.items[itemIndex];
+                            const quantity = parseFloat(item.quantity || 1);
+                            const unitPrice = parseFloat(item.price || item.selling_price || item.unit_price || 0);
+                            return sum + (quantity * unitPrice);
+                          }, 0).toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer du modal */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
+              <div></div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowSubmissionModal(false);
+                    setSelectedSubmissionForImport(null);
+                    setSelectedSubmissionItems([]);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={importSelectedSubmissionItems}
+                  disabled={selectedSubmissionItems.length === 0}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
+                >
+                  Importer {selectedSubmissionItems.length} article(s)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL IMPORT ACHATS FOURNISSEURS */}
+      {showSupplierImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            <div className="bg-purple-600 text-white px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-semibold">Import Achats Fournisseurs - {selectedClient?.name}</h3>
+              <button
+                onClick={() => {
+                  setShowSupplierImportModal(false);
+                  setSelectedPurchaseForImport(null);
+                  setSelectedItemsForImport([]);
+                }}
+                className="text-white hover:bg-white/20 rounded-lg p-2"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex h-[calc(90vh-200px)]">
+              {/* Liste des achats fournisseurs */}
+              <div className="w-1/3 border-r bg-gray-50 p-4 overflow-y-auto">
+                <h4 className="font-semibold mb-4">Achats Fournisseurs Disponibles</h4>
+                
+                {clientSupplierPurchases.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Aucun achat fournisseur trouvé</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Aucun achat avec articles pour {selectedClient?.name}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {clientSupplierPurchases.map((purchase) => (
+                      <div
+                        key={purchase.id}
+                        onClick={() => selectPurchaseForImport(purchase)}
+                        className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                          selectedPurchaseForImport?.id === purchase.id
+                            ? 'border-purple-500 bg-purple-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-semibold text-sm">#{purchase.purchase_number}</div>
+                        <div className="text-xs text-gray-600">{purchase.supplier_name}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {purchase.items?.length || 0} articles • ${parseFloat(purchase.total_amount || 0).toFixed(2)}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {new Date(purchase.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Détail des articles */}
+              <div className="flex-1 p-4 overflow-y-auto">
+                {!selectedPurchaseForImport ? (
+                  <div className="text-center py-16">
+                    <p className="text-gray-500">Sélectionnez un achat fournisseur pour voir les articles</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="font-semibold">
+                        Articles de #{selectedPurchaseForImport.purchase_number}
+                      </h4>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={selectedItemsForImport.length === selectedPurchaseForImport.items.length}
+                            onChange={toggleAllItemsSelection}
+                            className="rounded"
+                          />
+                          Tout sélectionner
+                        </label>
+                        <span className="text-sm text-gray-500">
+                          {selectedItemsForImport.length}/{selectedPurchaseForImport.items?.length || 0} sélectionnés
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left w-10">✔</th>
+                            <th className="px-3 py-2 text-left">Code</th>
+                            <th className="px-3 py-2 text-left">Description</th>
+                            <th className="px-3 py-2 text-center">Qté</th>
+                            <th className="px-3 py-2 text-center">Prix Unit.</th>
+                            <th className="px-3 py-2 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {(selectedPurchaseForImport.items || []).map((item, index) => {
+                            const quantity = parseFloat(item.quantity || item.qty || 1);
+                            const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
+                            const lineTotal = quantity * unitPrice;
+                            
+                            return (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedItemsForImport.includes(index)}
+                                    onChange={() => toggleItemSelection(index)}
+                                    className="rounded"
+                                  />
+                                </td>
+                                <td className="px-3 py-2 font-medium">
+                                  {item.product_id || item.code || item.sku || '-'}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {item.description || item.name || item.product_name || '-'}
+                                </td>
+                                <td className="px-3 py-2 text-center">{quantity}</td>
+                                <td className="px-3 py-2 text-center">${unitPrice.toFixed(2)}</td>
+                                <td className="px-3 py-2 text-right font-medium">${lineTotal.toFixed(2)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {selectedItemsForImport.length > 0 && (
+                      <div className="mt-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <p className="text-sm text-purple-700">
+                          <strong>{selectedItemsForImport.length} articles sélectionnés</strong> pour import
+                        </p>
+                        <p className="text-xs text-purple-600 mt-1">
+                          Total estimé: ${selectedItemsForImport.reduce((sum, itemIndex) => {
+                            const item = selectedPurchaseForImport.items[itemIndex];
+                            const quantity = parseFloat(item.quantity || item.qty || 1);
+                            const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
+                            return sum + (quantity * unitPrice);
+                          }, 0).toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer du modal */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
+              <div></div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowSupplierImportModal(false);
+                    setSelectedPurchaseForImport(null);
+                    setSelectedItemsForImport([]);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={importSelectedItems}
+                  disabled={selectedItemsForImport.length === 0}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
+                >
+                  Importer {selectedItemsForImport.length} article(s)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
