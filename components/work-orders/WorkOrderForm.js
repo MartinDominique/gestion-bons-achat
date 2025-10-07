@@ -1,11 +1,4 @@
-// Synchroniser descriptions avec work_description
-  useEffect(() => {
-    const combinedDescription = descriptions
-      .filter(desc => desc.trim())
-      .join('\n\n');
-    
-    setFormData(prev => ({ ...prev, work_description: combinedDescription }));
-  }, [descriptions]);'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package } from 'lucide-react';
@@ -93,6 +86,40 @@ export default function WorkOrderForm({
     loadProductsCache();
   }, []);
 
+  // Charger les clients
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const response = await fetch('/api/clients');
+        if (response.ok) {
+          const data = await response.json();
+          setClients(data);
+          
+          // Si mode édition, sélectionner le client actuel
+          if (workOrder && mode === 'edit') {
+            const client = data.find(c => c.id === workOrder.client_id);
+            if (client) {
+              setSelectedClient(client);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Erreur chargement clients:', error);
+      }
+    };
+    
+    loadClients();
+  }, [workOrder, mode]);
+
+  // Synchroniser descriptions avec work_description
+  useEffect(() => {
+    const combinedDescription = descriptions
+      .filter(desc => desc.trim())
+      .join('\n\n');
+    
+    setFormData(prev => ({ ...prev, work_description: combinedDescription }));
+  }, [descriptions]);
+
   // NOUVELLE FONCTION : Charger le cache des produits
   const loadProductsCache = async () => {
     try {
@@ -122,7 +149,7 @@ export default function WorkOrderForm({
 
   // NOUVELLE FONCTION : Vérifier si un produit existe
   const findExistingProduct = (productCode) => {
-    if (!productCode) return null;
+    if (!productCode) return { found: false };
 
     // Chercher dans les produits d'inventaire
     const inventoryProduct = cachedProducts.find(p => 
@@ -158,31 +185,6 @@ export default function WorkOrderForm({
 
     return { found: false };
   };
-
-  // Charger les clients
-  useEffect(() => {
-    const loadClients = async () => {
-      try {
-        const response = await fetch('/api/clients');
-        if (response.ok) {
-          const data = await response.json();
-          setClients(data);
-          
-          // Si mode édition, sélectionner le client actuel
-          if (workOrder && mode === 'edit') {
-            const client = data.find(c => c.id === workOrder.client_id);
-            if (client) {
-              setSelectedClient(client);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Erreur chargement clients:', error);
-      }
-    };
-    
-    loadClients();
-  }, [workOrder, mode]);
 
   // NOUVELLE FONCTION : Charger les soumissions du client
   const loadClientSubmissions = async () => {
