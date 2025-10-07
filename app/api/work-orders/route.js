@@ -1,4 +1,4 @@
-// /api/work-orders/route.js
+// /app/api/work-orders/route.js
 import { supabase } from '../../../lib/supabase';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
@@ -110,25 +110,35 @@ export async function POST(request) {
 
     console.log('Work order créé:', workOrder.bt_number);
 
-    // 2. Ajouter les matériaux si présents
+    // 2. Ajouter les matériaux si présents (SANS contrainte FK)
     let workOrderMaterials = [];
     if (materials && materials.length > 0) {
-      const materialsData = materials.map(material => ({
-        work_order_id: workOrder.id,
-        product_id: material.product_id,
-        quantity: parseFloat(material.quantity) || 1,
-        unit: material.unit || 'pcs',
-        notes: material.notes || null,
-        show_price: material.showPrice || false
-      }));
+      const materialsData = materials.map(material => {
+        // Valider product_id pour éviter les erreurs FK
+        let validProductId = null;
+        if (material.product_id && 
+            !material.product_id.startsWith('temp-') && 
+            !material.product_id.startsWith('IMP-')) {
+          validProductId = material.product_id;
+        }
+        
+        return {
+          work_order_id: workOrder.id,
+          product_id: validProductId, // NULL si invalide
+          product_code: material.code || material.product?.product_id || null,
+          description: material.description || material.product?.description || null,
+          quantity: parseFloat(material.quantity) || 1,
+          unit: material.unit || 'UN',
+          unit_price: parseFloat(material.unit_price || material.product?.selling_price || 0),
+          notes: material.notes || null,
+          show_price: material.showPrice || false
+        };
+      });
 
       const { data: materialsResult, error: materialsError } = await client
         .from('work_order_materials')
         .insert(materialsData)
-        .select(`
-          *,
-          product:products(*)
-        `);
+        .select(); // PAS de jointure avec products
 
       if (materialsError) {
         console.error('Erreur ajout matériaux:', materialsError);
@@ -139,17 +149,14 @@ export async function POST(request) {
       }
     }
 
-    // 3. Récupérer le work_order complet avec relations
+    // 3. Récupérer le work_order complet SANS jointure problématique
     const { data: completeWorkOrder, error: fetchError } = await client
       .from('work_orders')
       .select(`
         *,
         client:clients(*),
         linked_po:purchase_orders(*),
-        materials:work_order_materials(
-          *,
-          product:products(*)
-        )
+        materials:work_order_materials(*)
       `)
       .eq('id', workOrder.id)
       .single();
@@ -193,11 +200,8 @@ export async function GET(request) {
         *,
         client:clients(*),
         linked_po:purchase_orders(*),
-        materials:work_order_materials(
-          *,
-          product:products(*)
-        )
-      `)
+        materials:work_order_materials(*)
+      `, { count: 'exact' }) // Retirer la jointure avec products
       .order('created_at', { ascending: false });
 
     // Appliquer les filtres
@@ -226,9 +230,53 @@ export async function GET(request) {
     if (error) {
       console.error('Erreur récupération work_orders:', error);
       return Response.json(
-        { error: 'Erreur récupération bons de travail' },
+        { error: 'Erreur récupération bons de travail', details: error.message },
         { status: 500 }
       );
+    }
+
+    // Enrichir les matériaux avec les infos produit si disponibles
+    if (data && data.length > 0) {
+      for (let workOrder of data) {
+        if (workOrder.materials && workOrder.materials.length > 0) {
+          for (let material of workOrder.materials) {
+            // Si product_id existe et n'est pas null
+            if (material.product_id) {
+              // Essayer de récupérer le produit
+              const { data: product } = await supabase
+                .from('products')
+                .select('*')
+                .eq('product_id', material.product_id)
+                .single();
+              
+              if (product) {
+                material.product = product;
+              } else {
+                // Si pas dans products, essayer non_inventory_items
+                const { data: nonInvProduct } = await supabase
+                  .from('non_inventory_items')
+                  .select('*')
+                  .eq('product_id', material.product_id)
+                  .single();
+                
+                if (nonInvProduct) {
+                  material.product = nonInvProduct;
+                }
+              }
+            }
+            
+            // Si toujours pas de product, créer un objet virtuel avec les infos stockées
+            if (!material.product && (material.product_code || material.description)) {
+              material.product = {
+                product_id: material.product_code || material.product_id,
+                description: material.description,
+                unit: material.unit,
+                selling_price: material.unit_price
+              };
+            }
+          }
+        }
+      }
     }
 
     return Response.json({
@@ -245,7 +293,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Erreur API work-orders GET:', error);
     return Response.json(
-      { error: 'Erreur serveur' },
+      { error: 'Erreur serveur', details: error.message },
       { status: 500 }
     );
   }
@@ -367,16 +415,29 @@ export async function PUT(request) {
       console.error('Erreur suppression matériaux existants:', deleteError);
     }
 
-    // Puis ajouter les nouveaux matériaux
+    // Puis ajouter les nouveaux matériaux (SANS contrainte FK)
     if (materials && materials.length > 0) {
-      const materialsData = materials.map(material => ({
-        work_order_id: id,
-        product_id: material.product_id,
-        quantity: parseFloat(material.quantity) || 1,
-        unit: material.unit || 'pcs',
-        notes: material.notes || null,
-        show_price: material.showPrice || false
-      }));
+      const materialsData = materials.map(material => {
+        // Valider product_id pour éviter les erreurs FK
+        let validProductId = null;
+        if (material.product_id && 
+            !material.product_id.startsWith('temp-') && 
+            !material.product_id.startsWith('IMP-')) {
+          validProductId = material.product_id;
+        }
+        
+        return {
+          work_order_id: id,
+          product_id: validProductId, // NULL si invalide
+          product_code: material.code || material.product?.product_id || null,
+          description: material.description || material.product?.description || null,
+          quantity: parseFloat(material.quantity) || 1,
+          unit: material.unit || 'UN',
+          unit_price: parseFloat(material.unit_price || material.product?.selling_price || 0),
+          notes: material.notes || null,
+          show_price: material.showPrice || false
+        };
+      });
 
       const { error: materialsError } = await client
         .from('work_order_materials')
@@ -387,17 +448,14 @@ export async function PUT(request) {
       }
     }
 
-    // 3. Récupérer le work_order complet mis à jour
+    // 3. Récupérer le work_order complet mis à jour SANS jointure problématique
     const { data: completeWorkOrder, error: fetchError } = await client
       .from('work_orders')
       .select(`
         *,
         client:clients(*),
         linked_po:purchase_orders(*),
-        materials:work_order_materials(
-          *,
-          product:products(*)
-        )
+        materials:work_order_materials(*)
       `)
       .eq('id', id)
       .single();
