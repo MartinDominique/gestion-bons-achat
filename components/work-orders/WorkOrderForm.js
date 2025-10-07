@@ -229,23 +229,44 @@ export default function WorkOrderForm({
     }
 
     try {
-      const itemsToImport = selectedSubmissionItems.map(itemIndex => {
+      const itemsToImport = selectedSubmissionItems.map((itemIndex, arrayIndex) => {
         const submissionItem = selectedSubmissionForImport.items[itemIndex];
+        
+        // Pour l'affichage, on peut créer un code temporaire
+        const displayCode = submissionItem.product_id || 
+                          submissionItem.code || 
+                          `SOUM-${itemIndex + 1}`;
+        
+        // S'assurer d'avoir une description valide avec code si disponible
+        const baseDescription = submissionItem.name || 
+                              submissionItem.description || 
+                              `Article importé depuis soumission`;
+        
+        // Si on a un code produit dans la source, l'inclure dans la description
+        const sourceCode = submissionItem.product_id || submissionItem.code;
+        const itemDescription = sourceCode 
+          ? `[${sourceCode}] ${baseDescription}`
+          : baseDescription;
+        
         return {
-          id: 'sub-' + Date.now() + '-' + itemIndex,
-          // Structure attendue par MaterialSelector : product object imbriqué
+          id: 'sub-' + Date.now() + '-' + arrayIndex,
+          // product_id à null si l'article n'existe pas dans la base
+          product_id: null, // Évite l'erreur de clé étrangère
+          description: itemDescription,
+          display_code: displayCode, // Code pour l'affichage seulement
+          // Structure pour MaterialSelector
           product: {
-            id: 'prod-' + Date.now() + '-' + itemIndex,
-            product_id: submissionItem.product_id || submissionItem.code || 'ITEM-' + (itemIndex + 1),
-            description: submissionItem.name || submissionItem.description || 'Article',
+            id: 'temp-prod-' + Date.now() + '-' + arrayIndex,
+            product_id: displayCode, // Pour l'affichage dans MaterialSelector
+            description: itemDescription,
             selling_price: parseFloat(submissionItem.price || submissionItem.selling_price || submissionItem.unit_price || 0),
             unit: submissionItem.unit || 'unité',
-            product_group: submissionItem.category || submissionItem.product_group || 'Soumission'
+            product_group: 'Import Soumission'
           },
           quantity: parseFloat(submissionItem.quantity || 0),
           unit: submissionItem.unit || 'unité',
-          notes: `Importé de la soumission #${selectedSubmissionForImport.submission_number}`,
-          showPrice: false, // Prix caché par défaut, l'utilisateur peut l'activer avec l'icône œil
+          notes: `Importé de soumission #${selectedSubmissionForImport.submission_number}`,
+          showPrice: false,
           from_submission: true,
           submission_number: selectedSubmissionForImport.submission_number
         };
@@ -311,34 +332,42 @@ export default function WorkOrderForm({
       const itemsToImport = selectedItemsForImport.map((itemIndex, arrayIndex) => {
         const supplierItem = selectedPurchaseForImport.items[itemIndex];
         
-        // Générer un code produit valide si absent
-        const productCode = supplierItem.product_id || 
+        // Pour l'affichage, on peut créer un code temporaire
+        const displayCode = supplierItem.product_id || 
                           supplierItem.code || 
                           supplierItem.sku || 
-                          `IMP-${selectedPurchaseForImport.purchase_number}-${itemIndex + 1}`;
+                          `IMP-${itemIndex + 1}`;
         
-        // S'assurer d'avoir une description valide
-        const itemDescription = supplierItem.description || 
+        // S'assurer d'avoir une description valide avec code si disponible
+        const baseDescription = supplierItem.description || 
                               supplierItem.name || 
                               supplierItem.product_name || 
-                              `Article importé #${itemIndex + 1}`;
+                              `Article importé depuis achat fournisseur`;
+        
+        // Si on a un code produit dans la source, l'inclure dans la description
+        const sourceCode = supplierItem.product_id || supplierItem.code || supplierItem.sku;
+        const itemDescription = sourceCode 
+          ? `[${sourceCode}] ${baseDescription}`
+          : baseDescription;
         
         return {
           id: 'supplier-' + Date.now() + '-' + arrayIndex,
-          product_id: productCode, // Pour la sauvegarde directe
-          description: itemDescription, // Pour la sauvegarde directe
+          // product_id à null si l'article n'existe pas dans la base
+          product_id: null, // Évite l'erreur de clé étrangère
+          description: itemDescription,
+          display_code: displayCode, // Code pour l'affichage seulement
           // Structure pour MaterialSelector
           product: {
-            id: 'prod-' + Date.now() + '-' + arrayIndex,
-            product_id: productCode,
+            id: 'temp-prod-' + Date.now() + '-' + arrayIndex,
+            product_id: displayCode, // Pour l'affichage dans MaterialSelector
             description: itemDescription,
             selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
             unit: supplierItem.unit || supplierItem.unity || 'unité',
-            product_group: supplierItem.category || supplierItem.product_group || 'Importé'
+            product_group: 'Import Fournisseur'
           },
           quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
           unit: supplierItem.unit || supplierItem.unity || 'unité',
-          notes: `Importé de l'achat fournisseur #${selectedPurchaseForImport.purchase_number}`,
+          notes: `Importé de #${selectedPurchaseForImport.purchase_number}`,
           showPrice: false,
           from_supplier_purchase: true,
           supplier_purchase_id: selectedPurchaseForImport.id,
@@ -452,15 +481,16 @@ export default function WorkOrderForm({
 
     // Normaliser les matériaux pour la sauvegarde
     const normalizedMaterials = materials.map(material => {
-      // Si le matériau a une structure product imbriquée (import), extraire les données
+      // Si le matériau a une structure product imbriquée (import)
       if (material.product) {
         return {
           ...material,
-          product_id: material.product.product_id || material.product_id,
+          product_id: material.product_id || null, // NULL si pas de produit existant
           description: material.product.description || material.description,
           name: material.product.description || material.name,
           selling_price: material.product.selling_price || material.price || material.selling_price,
           unit: material.product.unit || material.unit || 'unité',
+          display_code: material.display_code || material.product.product_id, // Code pour affichage
           // Garder l'objet product pour MaterialSelector
           product: material.product
         };
