@@ -1,4 +1,11 @@
-'use client';
+// Synchroniser descriptions avec work_description
+  useEffect(() => {
+    const combinedDescription = descriptions
+      .filter(desc => desc.trim())
+      .join('\n\n');
+    
+    setFormData(prev => ({ ...prev, work_description: combinedDescription }));
+  }, [descriptions]);'use client';
 
 import { useState, useEffect } from 'react';
 import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package } from 'lucide-react';
@@ -31,6 +38,10 @@ export default function WorkOrderForm({
   const [errors, setErrors] = useState({});
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
+  
+  // Cache des produits pour vérification
+  const [cachedProducts, setCachedProducts] = useState([]);
+  const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState([]);
 
   // NOUVEAUX ÉTATS POUR IMPORTS
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
@@ -77,7 +88,78 @@ export default function WorkOrderForm({
     }
   }, [workOrder, mode]);
 
-  // Charger les clients au démarrage
+  // Charger les produits et non-inventory items au démarrage
+  useEffect(() => {
+    loadProductsCache();
+  }, []);
+
+  // NOUVELLE FONCTION : Charger le cache des produits
+  const loadProductsCache = async () => {
+    try {
+      // Charger les produits d'inventaire
+      const productsResponse = await fetch('/api/products?limit=5000');
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        const products = Array.isArray(productsData) ? productsData : productsData.data || [];
+        setCachedProducts(products);
+        console.log(`${products.length} produits d'inventaire chargés en cache`);
+      }
+
+      // Charger les non-inventory items depuis Supabase
+      const { data: nonInventoryData, error } = await supabase
+        .from('non_inventory_items')
+        .select('*')
+        .limit(5000);
+
+      if (!error && nonInventoryData) {
+        setCachedNonInventoryItems(nonInventoryData);
+        console.log(`${nonInventoryData.length} produits non-inventaire chargés en cache`);
+      }
+    } catch (error) {
+      console.error('Erreur chargement cache produits:', error);
+    }
+  };
+
+  // NOUVELLE FONCTION : Vérifier si un produit existe
+  const findExistingProduct = (productCode) => {
+    if (!productCode) return null;
+
+    // Chercher dans les produits d'inventaire
+    const inventoryProduct = cachedProducts.find(p => 
+      p.product_id === productCode || 
+      p.id === productCode
+    );
+    
+    if (inventoryProduct) {
+      return {
+        found: true,
+        id: inventoryProduct.id,
+        product_id: inventoryProduct.product_id,
+        description: inventoryProduct.description,
+        type: 'inventory'
+      };
+    }
+
+    // Chercher dans les non-inventory items
+    const nonInventoryProduct = cachedNonInventoryItems.find(p => 
+      p.product_id === productCode ||
+      p.id === productCode
+    );
+
+    if (nonInventoryProduct) {
+      return {
+        found: true,
+        id: nonInventoryProduct.id,
+        product_id: nonInventoryProduct.product_id,
+        description: nonInventoryProduct.description,
+        type: 'non-inventory'
+      };
+    }
+
+    return { found: false };
+  };
+
+  // Charger les clients
   useEffect(() => {
     const loadClients = async () => {
       try {
@@ -101,15 +183,6 @@ export default function WorkOrderForm({
     
     loadClients();
   }, [workOrder, mode]);
-
-  // Synchroniser descriptions avec work_description
-  useEffect(() => {
-    const combinedDescription = descriptions
-      .filter(desc => desc.trim()) // Enlever les paragraphes vides
-      .join('\n\n'); // Joindre avec double saut de ligne
-    
-    setFormData(prev => ({ ...prev, work_description: combinedDescription }));
-  }, [descriptions]);
 
   // NOUVELLE FONCTION : Charger les soumissions du client
   const loadClientSubmissions = async () => {
@@ -232,40 +305,43 @@ export default function WorkOrderForm({
       const itemsToImport = selectedSubmissionItems.map((itemIndex, arrayIndex) => {
         const submissionItem = selectedSubmissionForImport.items[itemIndex];
         
-        // Pour l'affichage, on peut créer un code temporaire
-        const displayCode = submissionItem.product_id || 
-                          submissionItem.code || 
-                          `SOUM-${itemIndex + 1}`;
+        // Chercher si le produit existe dans l'inventaire ou non-inventory
+        const sourceCode = submissionItem.product_id || submissionItem.code;
+        const existingProduct = findExistingProduct(sourceCode);
+        
+        // Pour l'affichage, utiliser le code source ou un code généré
+        const displayCode = sourceCode || `SOUM-${itemIndex + 1}`;
         
         // S'assurer d'avoir une description valide avec code si disponible
         const baseDescription = submissionItem.name || 
                               submissionItem.description || 
                               `Article importé depuis soumission`;
         
-        // Si on a un code produit dans la source, l'inclure dans la description
-        const sourceCode = submissionItem.product_id || submissionItem.code;
-        const itemDescription = sourceCode 
-          ? `[${sourceCode}] ${baseDescription}`
-          : baseDescription;
+        // Si le produit n'existe pas, inclure le code dans la description
+        const itemDescription = existingProduct.found 
+          ? existingProduct.description || baseDescription
+          : (sourceCode ? `[${sourceCode}] ${baseDescription}` : baseDescription);
         
         return {
           id: 'sub-' + Date.now() + '-' + arrayIndex,
-          // product_id à null si l'article n'existe pas dans la base
-          product_id: null, // Évite l'erreur de clé étrangère
+          // Si le produit existe, utiliser son ID, sinon null
+          product_id: existingProduct.found ? existingProduct.id : null,
           description: itemDescription,
-          display_code: displayCode, // Code pour l'affichage seulement
+          display_code: displayCode,
           // Structure pour MaterialSelector
           product: {
-            id: 'temp-prod-' + Date.now() + '-' + arrayIndex,
-            product_id: displayCode, // Pour l'affichage dans MaterialSelector
+            id: existingProduct.found ? existingProduct.id : 'temp-prod-' + Date.now() + '-' + arrayIndex,
+            product_id: existingProduct.found ? existingProduct.product_id : displayCode,
             description: itemDescription,
             selling_price: parseFloat(submissionItem.price || submissionItem.selling_price || submissionItem.unit_price || 0),
             unit: submissionItem.unit || 'unité',
-            product_group: 'Import Soumission'
+            product_group: existingProduct.found 
+              ? (existingProduct.type === 'inventory' ? 'Inventaire' : 'Non-Inventaire')
+              : 'Import Soumission'
           },
           quantity: parseFloat(submissionItem.quantity || 0),
           unit: submissionItem.unit || 'unité',
-          notes: `Importé de soumission #${selectedSubmissionForImport.submission_number}`,
+          notes: `Importé de soumission #${selectedSubmissionForImport.submission_number}${existingProduct.found ? ' (Produit existant)' : ''}`,
           showPrice: false,
           from_submission: true,
           submission_number: selectedSubmissionForImport.submission_number
@@ -332,11 +408,12 @@ export default function WorkOrderForm({
       const itemsToImport = selectedItemsForImport.map((itemIndex, arrayIndex) => {
         const supplierItem = selectedPurchaseForImport.items[itemIndex];
         
-        // Pour l'affichage, on peut créer un code temporaire
-        const displayCode = supplierItem.product_id || 
-                          supplierItem.code || 
-                          supplierItem.sku || 
-                          `IMP-${itemIndex + 1}`;
+        // Chercher si le produit existe dans l'inventaire ou non-inventory
+        const sourceCode = supplierItem.product_id || supplierItem.code || supplierItem.sku;
+        const existingProduct = findExistingProduct(sourceCode);
+        
+        // Pour l'affichage, utiliser le code source ou un code généré
+        const displayCode = sourceCode || `IMP-${itemIndex + 1}`;
         
         // S'assurer d'avoir une description valide avec code si disponible
         const baseDescription = supplierItem.description || 
@@ -344,30 +421,31 @@ export default function WorkOrderForm({
                               supplierItem.product_name || 
                               `Article importé depuis achat fournisseur`;
         
-        // Si on a un code produit dans la source, l'inclure dans la description
-        const sourceCode = supplierItem.product_id || supplierItem.code || supplierItem.sku;
-        const itemDescription = sourceCode 
-          ? `[${sourceCode}] ${baseDescription}`
-          : baseDescription;
+        // Si le produit n'existe pas, inclure le code dans la description
+        const itemDescription = existingProduct.found 
+          ? existingProduct.description || baseDescription
+          : (sourceCode ? `[${sourceCode}] ${baseDescription}` : baseDescription);
         
         return {
           id: 'supplier-' + Date.now() + '-' + arrayIndex,
-          // product_id à null si l'article n'existe pas dans la base
-          product_id: null, // Évite l'erreur de clé étrangère
+          // Si le produit existe, utiliser son ID, sinon null
+          product_id: existingProduct.found ? existingProduct.id : null,
           description: itemDescription,
-          display_code: displayCode, // Code pour l'affichage seulement
+          display_code: displayCode,
           // Structure pour MaterialSelector
           product: {
-            id: 'temp-prod-' + Date.now() + '-' + arrayIndex,
-            product_id: displayCode, // Pour l'affichage dans MaterialSelector
+            id: existingProduct.found ? existingProduct.id : 'temp-prod-' + Date.now() + '-' + arrayIndex,
+            product_id: existingProduct.found ? existingProduct.product_id : displayCode,
             description: itemDescription,
             selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
             unit: supplierItem.unit || supplierItem.unity || 'unité',
-            product_group: 'Import Fournisseur'
+            product_group: existingProduct.found 
+              ? (existingProduct.type === 'inventory' ? 'Inventaire' : 'Non-Inventaire')
+              : 'Import Fournisseur'
           },
           quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
           unit: supplierItem.unit || supplierItem.unity || 'unité',
-          notes: `Importé de #${selectedPurchaseForImport.purchase_number}`,
+          notes: `Importé de #${selectedPurchaseForImport.purchase_number}${existingProduct.found ? ' (Produit existant)' : ''}`,
           showPrice: false,
           from_supplier_purchase: true,
           supplier_purchase_id: selectedPurchaseForImport.id,
