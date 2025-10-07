@@ -435,11 +435,30 @@ export default function WorkOrderForm({
     console.log('- materials:', materials);
     console.log('- materials.length:', materials.length);
 
+    // Normaliser les matériaux pour la sauvegarde
+    const normalizedMaterials = materials.map(material => {
+      // Si le matériau a une structure product imbriquée (import), extraire les données
+      if (material.product) {
+        return {
+          ...material,
+          product_id: material.product.product_id || material.product_id,
+          description: material.product.description || material.description,
+          name: material.product.description || material.name,
+          selling_price: material.product.selling_price || material.price || material.selling_price,
+          unit: material.product.unit || material.unit || 'unité',
+          // Garder l'objet product pour MaterialSelector
+          product: material.product
+        };
+      }
+      // Sinon, garder tel quel
+      return material;
+    });
+
     const dataToSave = {
       ...formData,
       client_id: parseInt(formData.client_id),
       status,
-      materials
+      materials: normalizedMaterials
     };
     
     console.log('📝 DATASAVE.MATERIALS:', dataToSave.materials);
