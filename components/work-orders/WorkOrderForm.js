@@ -409,98 +409,146 @@ export default function WorkOrderForm({
 
   // NOUVELLE FONCTION : Importer les articles sélectionnés
   const importSelectedItems = () => {
-    if (!selectedPurchaseForImport || selectedItemsForImport.length === 0) {
-      setErrors({ materials: 'Veuillez sélectionner au moins un article' });
-      return;
-    }
+  if (!selectedPurchaseForImport || selectedItemsForImport.length === 0) {
+    setErrors({ materials: 'Veuillez sélectionner au moins un article' });
+    return;
+  }
 
-    console.log('🚀 DÉBUT IMPORT DEPUIS ACHAT FOURNISSEUR');
-    console.log('📦 Achat fournisseur:', selectedPurchaseForImport);
-    console.log('📋 Items sélectionnés:', selectedItemsForImport);
+  console.log('🚀 DÉBUT IMPORT DEPUIS ACHAT FOURNISSEUR');
+  console.log('📦 Achat fournisseur:', selectedPurchaseForImport);
+  console.log('📋 Items sélectionnés:', selectedItemsForImport);
 
-    try {
-      const itemsToImport = selectedItemsForImport.map((itemIndex, arrayIndex) => {
-        const supplierItem = selectedPurchaseForImport.items[itemIndex];
-        console.log(`\n📌 Import item ${itemIndex}:`, supplierItem);
-        
-        // Chercher si le produit existe dans l'inventaire ou non-inventory
-        const sourceCode = supplierItem.product_id || supplierItem.code || supplierItem.sku;
-        console.log('🔎 Code source:', sourceCode);
-        
-        const existingProduct = findExistingProduct(sourceCode);
-        console.log('🔍 Résultat recherche:', existingProduct);
-        
-        // Pour l'affichage, utiliser le code source ou un code généré
-        const displayCode = sourceCode || `IMP-${itemIndex + 1}`;
-        
-        // S'assurer d'avoir une description valide avec code si disponible
-        const baseDescription = supplierItem.description || 
+  try {
+    const itemsToImport = selectedItemsForImport.map((itemIndex, arrayIndex) => {
+      const supplierItem = selectedPurchaseForImport.items[itemIndex];
+      console.log(`\n📌 Import item ${itemIndex}:`, supplierItem);
+      
+      // IMPORTANT: Récupérer TOUTES les données possibles de l'article
+      // Chercher dans tous les champs possibles pour le code produit
+      const sourceCode = supplierItem.product_id || 
+                        supplierItem.code || 
+                        supplierItem.product_code ||
+                        supplierItem.sku ||
+                        supplierItem.item_code ||
+                        '';
+      
+      console.log('🔎 Code source trouvé:', sourceCode);
+      
+      // Chercher dans tous les champs possibles pour la description
+      const sourceDescription = supplierItem.description || 
                               supplierItem.name || 
-                              supplierItem.product_name || 
-                              `Article importé depuis achat fournisseur`;
-        
-        // Si le produit n'existe pas, inclure le code dans la description
-        const itemDescription = existingProduct.found 
-          ? existingProduct.description || baseDescription
-          : (sourceCode ? `[${sourceCode}] ${baseDescription}` : baseDescription);
-        
-        // IMPORTANT: Définir product_id correctement
-        let finalProductId = null;
-        if (existingProduct.found && existingProduct.id) {
-          finalProductId = existingProduct.id;
-          console.log('✅ Product ID final (existant):', finalProductId);
-        } else {
-          finalProductId = null;
-          console.log('⚠️ Product ID final (NULL car non trouvé)');
-        }
-        
-        const materialToImport = {
-          id: 'supplier-' + Date.now() + '-' + arrayIndex,
-          // CRITICAL: S'assurer que product_id est NULL ou un ID valide
-          product_id: finalProductId,
-          description: itemDescription,
-          display_code: displayCode,
-          // Structure pour MaterialSelector
-          product: {
-            id: existingProduct.found ? existingProduct.id : 'temp-prod-' + Date.now() + '-' + arrayIndex,
-            product_id: existingProduct.found ? existingProduct.product_id : displayCode,
-            description: itemDescription,
-            selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
-            unit: supplierItem.unit || supplierItem.unity || 'unité',
-            product_group: existingProduct.found 
-              ? (existingProduct.type === 'inventory' ? 'Inventaire' : 'Non-Inventaire')
-              : 'Import Fournisseur'
-          },
-          quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
-          unit: supplierItem.unit || supplierItem.unity || 'unité',
-          notes: `Importé de #${selectedPurchaseForImport.purchase_number}${existingProduct.found ? ' (Produit existant)' : ''}`,
-          showPrice: false,
-          from_supplier_purchase: true,
-          supplier_purchase_id: selectedPurchaseForImport.id,
-          supplier_purchase_number: selectedPurchaseForImport.purchase_number
-        };
-        
-        console.log('📦 Matériau créé:', materialToImport);
-        console.log('🔑 product_id type:', typeof materialToImport.product_id);
-        console.log('🔑 product_id value:', materialToImport.product_id);
-        
-        return materialToImport;
-      });
-
-      const updatedMaterials = [...materials, ...itemsToImport];
-      setMaterials(updatedMaterials);
+                              supplierItem.product_name ||
+                              supplierItem.product_description ||
+                              supplierItem.item_description ||
+                              '';
       
-      setShowSupplierImportModal(false);
-      setSelectedPurchaseForImport(null);
-      setSelectedItemsForImport([]);
-
-      console.log(`${itemsToImport.length} matériaux importés de l'achat fournisseur #${selectedPurchaseForImport.purchase_number}`);
+      console.log('📝 Description source trouvée:', sourceDescription);
       
-    } catch (error) {
-      console.error('Erreur import articles fournisseur:', error);
-      setErrors({ materials: 'Erreur lors de l\'import des articles' });
-    }
-  };
+      // Vérifier si le produit existe dans le cache
+      const existingProduct = findExistingProduct(sourceCode);
+      console.log('🔍 Résultat recherche dans cache:', existingProduct);
+      
+      // Déterminer le product_id final pour la base de données
+      let finalProductId = null;
+      if (existingProduct.found && existingProduct.id) {
+        finalProductId = existingProduct.id;
+        console.log('✅ Produit trouvé dans la base, ID:', finalProductId);
+      } else {
+        console.log('⚠️ Produit non trouvé dans la base, product_id sera NULL');
+      }
+      
+      // TOUJOURS créer un objet product complet pour l'affichage
+      const productObject = {
+        id: existingProduct.found ? existingProduct.id : `temp-prod-${Date.now()}-${arrayIndex}`,
+        product_id: sourceCode || `IMP-${selectedPurchaseForImport.purchase_number}-${itemIndex + 1}`,
+        description: sourceDescription || `Article importé #${itemIndex + 1}`,
+        selling_price: parseFloat(
+          supplierItem.cost_price || 
+          supplierItem.price || 
+          supplierItem.unit_price || 
+          supplierItem.selling_price ||
+          0
+        ),
+        unit: supplierItem.unit || 
+              supplierItem.unity || 
+              supplierItem.unit_measure ||
+              supplierItem.uom ||
+              'UN',
+        product_group: existingProduct.found 
+          ? (existingProduct.type === 'inventory' ? 'Inventaire' : 'Non-Inventaire')
+          : 'Import Fournisseur'
+      };
+      
+      console.log('📦 Objet product créé:', productObject);
+      
+      // Créer le matériau avec toutes les informations
+      const materialToImport = {
+        id: `supplier-${Date.now()}-${arrayIndex}`,
+        // product_id est NULL si non trouvé pour éviter l'erreur FK
+        product_id: finalProductId,
+        // Les données pour l'affichage et la sauvegarde
+        description: sourceDescription || productObject.description,
+        code: sourceCode || productObject.product_id, // IMPORTANT: Ajouter le champ 'code'
+        display_code: sourceCode || productObject.product_id,
+        // TOUJOURS inclure l'objet product pour MaterialSelector
+        product: productObject,
+        // Quantité et unité
+        quantity: parseFloat(
+          supplierItem.quantity || 
+          supplierItem.qty || 
+          supplierItem.qte ||
+          1
+        ),
+        unit: supplierItem.unit || 
+              supplierItem.unity || 
+              supplierItem.unit_measure ||
+              supplierItem.uom ||
+              'UN',
+        // Prix unitaire
+        unit_price: parseFloat(
+          supplierItem.cost_price || 
+          supplierItem.price || 
+          supplierItem.unit_price || 
+          supplierItem.selling_price ||
+          0
+        ),
+        // Métadonnées
+        notes: `Importé de #${selectedPurchaseForImport.purchase_number}${
+          existingProduct.found ? ' (Produit existant)' : ' (Nouveau produit)'
+        }`,
+        showPrice: false,
+        from_supplier_purchase: true,
+        supplier_purchase_id: selectedPurchaseForImport.id,
+        supplier_purchase_number: selectedPurchaseForImport.purchase_number
+      };
+      
+      console.log('✅ Matériau final créé:', materialToImport);
+      console.log('  - product_id:', materialToImport.product_id);
+      console.log('  - code:', materialToImport.code);
+      console.log('  - description:', materialToImport.description);
+      console.log('  - product:', materialToImport.product);
+      
+      return materialToImport;
+    });
+
+    // Ajouter les matériaux importés
+    const updatedMaterials = [...materials, ...itemsToImport];
+    setMaterials(updatedMaterials);
+    
+    console.log(`\n✅ IMPORT TERMINÉ: ${itemsToImport.length} matériaux ajoutés`);
+    console.log('📊 État final des matériaux:', updatedMaterials);
+    
+    // Fermer le modal et réinitialiser
+    setShowSupplierImportModal(false);
+    setSelectedPurchaseForImport(null);
+    setSelectedItemsForImport([]);
+    
+  } catch (error) {
+    console.error('❌ Erreur import articles fournisseur:', error);
+    console.error('Stack trace:', error.stack);
+    setErrors({ materials: 'Erreur lors de l\'import des articles' });
+  }
+};
 
   // Gestion des descriptions multiligne
   const handleDescriptionChange = (index, value) => {
