@@ -447,8 +447,6 @@ export default function WorkOrderForm({
         // IMPORTANT: Définir product_id correctement
         let finalProductId = null;
         if (existingProduct.found && existingProduct.id) {
-          // Ne PAS utiliser existingProduct.id directement si c'est un UUID string
-          // Vérifier si c'est un UUID valide
           finalProductId = existingProduct.id;
           console.log('✅ Product ID final (existant):', finalProductId);
         } else {
@@ -601,10 +599,12 @@ export default function WorkOrderForm({
       if (material.product) {
         const normalized = {
           ...material,
-          // CRITICAL: S'assurer que product_id est soit NULL soit un UUID valide
-          product_id: material.product_id || null,
-          description: material.product.description || material.description,
+          // GARDER product_id tel quel s'il existe déjà
+          product_id: material.product_id !== undefined ? material.product_id : null,
+          description: material.product.description || material.description || 'Article sans description',
           name: material.product.description || material.name,
+          // IMPORTANT: Ajouter 'code' pour WorkOrderClientView
+          code: material.product.product_id || material.display_code || material.code,
           selling_price: material.product.selling_price || material.price || material.selling_price,
           unit: material.product.unit || material.unit || 'unité',
           display_code: material.display_code || material.product.product_id,
@@ -614,27 +614,57 @@ export default function WorkOrderForm({
         
         console.log(`✅ Matériau ${index} normalisé:`, normalized);
         console.log(`🔑 product_id final: ${normalized.product_id} (type: ${typeof normalized.product_id})`);
+        console.log(`📋 code pour affichage: ${normalized.code}`);
         
-        // VALIDATION CRITIQUE
-        if (normalized.product_id !== null && typeof normalized.product_id !== 'string') {
-          console.error(`❌ ERREUR: product_id invalide pour matériau ${index}:`, normalized.product_id);
-          normalized.product_id = null;
-          console.log(`🔧 Correction: product_id mis à NULL`);
+        // NE PAS rejeter les IDs numériques ! Ils sont valides pour non_inventory_items
+        // Seuls les strings qui ne sont pas des UUID doivent être vérifiés
+        if (normalized.product_id !== null && typeof normalized.product_id === 'string') {
+          // Vérifier si c'est un UUID valide
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(normalized.product_id)) {
+            console.log(`⚠️ product_id "${normalized.product_id}" n'est pas un UUID, recherche dans la base...`);
+            
+            // C'est probablement un code produit, pas un ID
+            const existingProduct = findExistingProduct(normalized.product_id);
+            if (existingProduct.found) {
+              normalized.product_id = existingProduct.id;
+              console.log(`✅ ID trouvé: ${normalized.product_id}`);
+            } else {
+              normalized.product_id = null;
+              console.log(`❌ Produit non trouvé, mis à NULL`);
+            }
+          }
         }
+        // Les nombres sont VALIDES (IDs de non_inventory_items)
         
         return normalized;
       }
       
-      // Sinon, garder tel quel mais vérifier product_id
+      // Matériau sans product imbriqué
       console.log(`📋 Matériau ${index} sans product imbriqué, product_id:`, material.product_id);
       
-      // Vérifier que product_id est valide
+      // S'assurer que le matériau a un code pour l'affichage
+      if (!material.code && material.product_id) {
+        material.code = material.product_id;
+      }
+      
+      // Vérifier que product_id est valide pour les matériaux normaux aussi
       if (material.product_id !== null && material.product_id !== undefined) {
-        if (typeof material.product_id !== 'string' && typeof material.product_id !== 'number') {
-          console.error(`❌ ERREUR: product_id invalide:`, material.product_id);
-          material.product_id = null;
-          console.log(`🔧 Correction: product_id mis à NULL`);
+        if (typeof material.product_id === 'string') {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(material.product_id)) {
+            // C'est un code produit, chercher l'ID réel
+            const existingProduct = findExistingProduct(material.product_id);
+            if (existingProduct.found) {
+              material.product_id = existingProduct.id;
+              console.log(`✅ Code converti en ID: ${material.product_id}`);
+            } else {
+              console.log(`❌ Code produit "${material.product_id}" non trouvé, mis à NULL`);
+              material.product_id = null;
+            }
+          }
         }
+        // Les nombres sont VALIDES - ne pas les toucher
       }
       
       return material;
@@ -643,7 +673,7 @@ export default function WorkOrderForm({
     console.log('\n📦 MATÉRIAUX NORMALISÉS FINAUX:', normalizedMaterials);
     console.log('🔍 Vérification des product_id:');
     normalizedMaterials.forEach((m, i) => {
-      console.log(`  - Matériau ${i}: product_id = ${m.product_id} (type: ${typeof m.product_id})`);
+      console.log(`  - Matériau ${i}: product_id = ${m.product_id} (type: ${typeof m.product_id}), code = "${m.code}", description = "${m.description}"`);
     });
 
     const dataToSave = {
