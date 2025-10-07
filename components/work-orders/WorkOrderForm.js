@@ -149,7 +149,12 @@ export default function WorkOrderForm({
 
   // NOUVELLE FONCTION : Vérifier si un produit existe
   const findExistingProduct = (productCode) => {
-    if (!productCode) return { found: false };
+    console.log('🔍 Recherche produit avec code:', productCode);
+    
+    if (!productCode) {
+      console.log('❌ Pas de code produit fourni');
+      return { found: false };
+    }
 
     // Chercher dans les produits d'inventaire
     const inventoryProduct = cachedProducts.find(p => 
@@ -158,6 +163,7 @@ export default function WorkOrderForm({
     );
     
     if (inventoryProduct) {
+      console.log('✅ Trouvé dans inventaire:', inventoryProduct);
       return {
         found: true,
         id: inventoryProduct.id,
@@ -174,6 +180,7 @@ export default function WorkOrderForm({
     );
 
     if (nonInventoryProduct) {
+      console.log('✅ Trouvé dans non-inventory:', nonInventoryProduct);
       return {
         found: true,
         id: nonInventoryProduct.id,
@@ -183,6 +190,7 @@ export default function WorkOrderForm({
       };
     }
 
+    console.log('❌ Produit non trouvé dans les caches');
     return { found: false };
   };
 
@@ -406,13 +414,21 @@ export default function WorkOrderForm({
       return;
     }
 
+    console.log('🚀 DÉBUT IMPORT DEPUIS ACHAT FOURNISSEUR');
+    console.log('📦 Achat fournisseur:', selectedPurchaseForImport);
+    console.log('📋 Items sélectionnés:', selectedItemsForImport);
+
     try {
       const itemsToImport = selectedItemsForImport.map((itemIndex, arrayIndex) => {
         const supplierItem = selectedPurchaseForImport.items[itemIndex];
+        console.log(`\n📌 Import item ${itemIndex}:`, supplierItem);
         
         // Chercher si le produit existe dans l'inventaire ou non-inventory
         const sourceCode = supplierItem.product_id || supplierItem.code || supplierItem.sku;
+        console.log('🔎 Code source:', sourceCode);
+        
         const existingProduct = findExistingProduct(sourceCode);
+        console.log('🔍 Résultat recherche:', existingProduct);
         
         // Pour l'affichage, utiliser le code source ou un code généré
         const displayCode = sourceCode || `IMP-${itemIndex + 1}`;
@@ -428,10 +444,22 @@ export default function WorkOrderForm({
           ? existingProduct.description || baseDescription
           : (sourceCode ? `[${sourceCode}] ${baseDescription}` : baseDescription);
         
-        return {
+        // IMPORTANT: Définir product_id correctement
+        let finalProductId = null;
+        if (existingProduct.found && existingProduct.id) {
+          // Ne PAS utiliser existingProduct.id directement si c'est un UUID string
+          // Vérifier si c'est un UUID valide
+          finalProductId = existingProduct.id;
+          console.log('✅ Product ID final (existant):', finalProductId);
+        } else {
+          finalProductId = null;
+          console.log('⚠️ Product ID final (NULL car non trouvé)');
+        }
+        
+        const materialToImport = {
           id: 'supplier-' + Date.now() + '-' + arrayIndex,
-          // Si le produit existe, utiliser son ID, sinon null
-          product_id: existingProduct.found ? existingProduct.id : null,
+          // CRITICAL: S'assurer que product_id est NULL ou un ID valide
+          product_id: finalProductId,
           description: itemDescription,
           display_code: displayCode,
           // Structure pour MaterialSelector
@@ -453,6 +481,12 @@ export default function WorkOrderForm({
           supplier_purchase_id: selectedPurchaseForImport.id,
           supplier_purchase_number: selectedPurchaseForImport.purchase_number
         };
+        
+        console.log('📦 Matériau créé:', materialToImport);
+        console.log('🔑 product_id type:', typeof materialToImport.product_id);
+        console.log('🔑 product_id value:', materialToImport.product_id);
+        
+        return materialToImport;
       });
 
       const updatedMaterials = [...materials, ...itemsToImport];
@@ -556,27 +590,60 @@ export default function WorkOrderForm({
     console.log('📝 ÉTAT ACTUEL:');
     console.log('- descriptions:', descriptions);
     console.log('- formData.work_description:', formData.work_description);
-    console.log('- materials:', materials);
+    console.log('- materials AVANT normalisation:', materials);
     console.log('- materials.length:', materials.length);
 
     // Normaliser les matériaux pour la sauvegarde
-    const normalizedMaterials = materials.map(material => {
+    const normalizedMaterials = materials.map((material, index) => {
+      console.log(`\n🔄 Normalisation matériau ${index}:`, material);
+      
       // Si le matériau a une structure product imbriquée (import)
       if (material.product) {
-        return {
+        const normalized = {
           ...material,
-          product_id: material.product_id || null, // NULL si pas de produit existant
+          // CRITICAL: S'assurer que product_id est soit NULL soit un UUID valide
+          product_id: material.product_id || null,
           description: material.product.description || material.description,
           name: material.product.description || material.name,
           selling_price: material.product.selling_price || material.price || material.selling_price,
           unit: material.product.unit || material.unit || 'unité',
-          display_code: material.display_code || material.product.product_id, // Code pour affichage
+          display_code: material.display_code || material.product.product_id,
           // Garder l'objet product pour MaterialSelector
           product: material.product
         };
+        
+        console.log(`✅ Matériau ${index} normalisé:`, normalized);
+        console.log(`🔑 product_id final: ${normalized.product_id} (type: ${typeof normalized.product_id})`);
+        
+        // VALIDATION CRITIQUE
+        if (normalized.product_id !== null && typeof normalized.product_id !== 'string') {
+          console.error(`❌ ERREUR: product_id invalide pour matériau ${index}:`, normalized.product_id);
+          normalized.product_id = null;
+          console.log(`🔧 Correction: product_id mis à NULL`);
+        }
+        
+        return normalized;
       }
-      // Sinon, garder tel quel
+      
+      // Sinon, garder tel quel mais vérifier product_id
+      console.log(`📋 Matériau ${index} sans product imbriqué, product_id:`, material.product_id);
+      
+      // Vérifier que product_id est valide
+      if (material.product_id !== null && material.product_id !== undefined) {
+        if (typeof material.product_id !== 'string' && typeof material.product_id !== 'number') {
+          console.error(`❌ ERREUR: product_id invalide:`, material.product_id);
+          material.product_id = null;
+          console.log(`🔧 Correction: product_id mis à NULL`);
+        }
+      }
+      
       return material;
+    });
+
+    console.log('\n📦 MATÉRIAUX NORMALISÉS FINAUX:', normalizedMaterials);
+    console.log('🔍 Vérification des product_id:');
+    normalizedMaterials.forEach((m, i) => {
+      console.log(`  - Matériau ${i}: product_id = ${m.product_id} (type: ${typeof m.product_id})`);
     });
 
     const dataToSave = {
@@ -586,6 +653,7 @@ export default function WorkOrderForm({
       materials: normalizedMaterials
     };
     
+    console.log('📤 DATA TO SAVE:', dataToSave);
     console.log('📝 DATASAVE.MATERIALS:', dataToSave.materials);
     console.log('📝 DATASAVE.WORK_DESCRIPTION:', dataToSave.work_description);
 
@@ -606,7 +674,8 @@ export default function WorkOrderForm({
         }
       }
     } catch (error) {
-      console.error('Erreur sauvegarde:', error);
+      console.error('❌ Erreur sauvegarde:', error);
+      console.error('❌ Stack trace:', error.stack);
       // Gérer l'erreur selon votre pattern habituel
     }
   };
