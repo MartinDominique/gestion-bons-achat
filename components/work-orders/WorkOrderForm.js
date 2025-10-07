@@ -308,15 +308,30 @@ export default function WorkOrderForm({
     }
 
     try {
-      const itemsToImport = selectedItemsForImport.map(itemIndex => {
+      const itemsToImport = selectedItemsForImport.map((itemIndex, arrayIndex) => {
         const supplierItem = selectedPurchaseForImport.items[itemIndex];
+        
+        // Générer un code produit valide si absent
+        const productCode = supplierItem.product_id || 
+                          supplierItem.code || 
+                          supplierItem.sku || 
+                          `IMP-${selectedPurchaseForImport.purchase_number}-${itemIndex + 1}`;
+        
+        // S'assurer d'avoir une description valide
+        const itemDescription = supplierItem.description || 
+                              supplierItem.name || 
+                              supplierItem.product_name || 
+                              `Article importé #${itemIndex + 1}`;
+        
         return {
-          id: 'supplier-' + Date.now() + '-' + itemIndex,
-          // Structure attendue par MaterialSelector : product object imbriqué
+          id: 'supplier-' + Date.now() + '-' + arrayIndex,
+          product_id: productCode, // Pour la sauvegarde directe
+          description: itemDescription, // Pour la sauvegarde directe
+          // Structure pour MaterialSelector
           product: {
-            id: 'prod-' + Date.now() + '-' + itemIndex,
-            product_id: supplierItem.product_id || supplierItem.code || supplierItem.sku || 'ITEM-' + (itemIndex + 1),
-            description: supplierItem.description || supplierItem.name || supplierItem.product_name || 'Article importé',
+            id: 'prod-' + Date.now() + '-' + arrayIndex,
+            product_id: productCode,
+            description: itemDescription,
             selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
             unit: supplierItem.unit || supplierItem.unity || 'unité',
             product_group: supplierItem.category || supplierItem.product_group || 'Importé'
@@ -324,7 +339,7 @@ export default function WorkOrderForm({
           quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
           unit: supplierItem.unit || supplierItem.unity || 'unité',
           notes: `Importé de l'achat fournisseur #${selectedPurchaseForImport.purchase_number}`,
-          showPrice: false, // Prix caché par défaut, l'utilisateur peut l'activer avec l'icône œil
+          showPrice: false,
           from_supplier_purchase: true,
           supplier_purchase_id: selectedPurchaseForImport.id,
           supplier_purchase_number: selectedPurchaseForImport.purchase_number
