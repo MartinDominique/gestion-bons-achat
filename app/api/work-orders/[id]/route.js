@@ -190,48 +190,85 @@ export async function PUT(request, { params }) {
 
     console.log('🔍 API - Anciens matériaux supprimés');
 
-    // 3. Insérer les nouveaux matériaux (AVEC show_price maintenant)
-    if (materials && materials.length > 0) {
-      console.log('🔍 API - Préparation insertion matériaux...');
+    // 3. Insérer les nouveaux matériaux (AVEC validation product_id)
+if (materials && materials.length > 0) {
+  console.log('📋 API - Préparation insertion matériaux...');
+  
+  const materialsData = materials.map((material, index) => {
+    console.log(`📦 API - Matériau ${index + 1} AVANT validation:`, {
+      product_id: material.product_id,
+      type: typeof material.product_id,
+      code: material.code,
+      description: material.description
+    });
+    
+    // VALIDATION DU PRODUCT_ID
+    let validProductId = null;
+    
+    if (material.product_id !== undefined && material.product_id !== null && material.product_id !== '') {
+      const id = material.product_id;
       
-      const materialsData = materials.map((material, index) => {
-        console.log(`🔍 API - Matériau ${index + 1}:`, {
-          product_id: material.product_id,
-          quantity: material.quantity,
-          unit: material.unit,
-          notes: material.notes,
-          showPrice: material.showPrice  // AJOUT DE CE LOG
-        });
-        
-        return {
-          work_order_id: workOrderId,
-          product_id: material.product_id,
-          quantity: parseFloat(material.quantity) || 1,
-          unit: material.unit || 'pcs',
-          notes: material.notes || null,
-          show_price: material.showPrice || false  // AJOUT DE CETTE LIGNE
-        };
-      });
-
-      console.log('🔍 API - Données matériaux à insérer:', materialsData);
-
-      const { data: insertedMaterials, error: insertError } = await supabase
-        .from('work_order_materials')
-        .insert(materialsData)
-        .select();
-
-      if (insertError) {
-        console.error('🔍 API - ERREUR INSERTION MATÉRIAUX:', insertError);
-        return NextResponse.json({ 
-          error: 'Erreur insertion matériaux: ' + insertError.message,
-          details: insertError
-        }, { status: 500 });
+      // Vérifier si c'est un UUID valide (string)
+      const isValidUUID = typeof id === 'string' && 
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      
+      // Vérifier si c'est un nombre (ID de non_inventory_items)
+      const isNumber = typeof id === 'number' || (typeof id === 'string' && !isNaN(parseInt(id)));
+      
+      if (isValidUUID) {
+        validProductId = id;
+        console.log(`✅ UUID valide: ${validProductId}`);
+      } else if (isNumber) {
+        validProductId = parseInt(id);
+        console.log(`✅ ID numérique valide: ${validProductId}`);
+      } else {
+        // C'est probablement un code produit (comme "TED136030"), pas un ID
+        console.log(`⚠️ "${id}" n'est pas un ID valide, mis à NULL`);
+        validProductId = null;
       }
-
-      console.log('🔍 API - Matériaux insérés avec succès:', insertedMaterials?.length || 0);
-    } else {
-      console.log('🔍 API - Aucun matériau à insérer');
     }
+    
+    console.log(`📦 API - Matériau ${index + 1} APRÈS validation:`, {
+      product_id: validProductId,
+      type: typeof validProductId
+    });
+    
+    return {
+      work_order_id: workOrderId,
+      product_id: validProductId, // NULL ou ID valide uniquement
+      // Ajouter les champs supplémentaires pour garder l'info du produit
+      product_code: material.code || material.display_code || null,
+      description: material.description || null,
+      quantity: parseFloat(material.quantity) || 1,
+      unit: material.unit || 'UN',
+      unit_price: parseFloat(material.unit_price) || 0,
+      notes: material.notes || null,
+      show_price: material.showPrice || false
+    };
+  });
+
+  console.log('📋 API - Données matériaux à insérer (après validation):', materialsData);
+
+  const { data: insertedMaterials, error: insertError } = await supabase
+    .from('work_order_materials')
+    .insert(materialsData)
+    .select();
+
+  if (insertError) {
+    console.error('❌ API - ERREUR INSERTION MATÉRIAUX:', insertError);
+    console.error('❌ API - Détails erreur:', insertError.details);
+    console.error('❌ API - Données tentées:', materialsData);
+    return NextResponse.json({ 
+      error: 'Erreur insertion matériaux: ' + insertError.message,
+      details: insertError,
+      attempted_data: materialsData
+    }, { status: 500 });
+  }
+
+  console.log('✅ API - Matériaux insérés avec succès:', insertedMaterials?.length || 0);
+} else {
+  console.log('📋 API - Aucun matériau à insérer');
+}
 
     // 4. Récupérer le work order complet (AVEC linked_po maintenant)
     console.log('🔍 API - Récupération work order complet...');
