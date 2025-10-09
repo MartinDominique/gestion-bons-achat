@@ -167,10 +167,10 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   return (
     <div className="min-h-screen bg-white">
       {/* Header professionnel style TMT */}
-      <div className="bg-white p-6 print:bg-white">
+      <div className="bg-white p-3 sm:p-6 print:bg-white">
         <div className="max-w-6xl mx-auto">
-          {/* Layout 3 colonnes : Logo - Infos Entreprise - Document */}
-          <div className="grid grid-cols-3 items-start gap-6 pb-4">
+          {/* Layout responsive : 2 colonnes mobile, 3 desktop */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 items-start gap-3 sm:gap-6 pb-3 sm:pb-4">
             
             {/* Colonne 1: Logo */}
             <div className="flex items-center">
@@ -190,8 +190,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
               </div>
             </div>
 
-            {/* Colonne 2: Informations Entreprise */}
-            <div className="flex flex-col items-start">
+            {/* Colonne 2: Informations Entreprise - Masqué sur mobile */}
+            <div className="hidden sm:flex flex-col items-start">
               <h1 className="text-xl font-bold text-gray-900 mb-2">Services TMT Inc.</h1>
               <div className="text-sm text-gray-700 space-y-0.5">
                 <p>3195, 42e Rue Nord</p>
@@ -203,8 +203,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
          
             {/* Colonne 3: Information Document */}
             <div className="text-right">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">BON DE TRAVAIL</h2>
-              <div className="text-sm text-gray-700 space-y-1">
+              <h2 className="text-base sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">BON DE TRAVAIL</h2>
+              <div className="text-xs sm:text-sm text-gray-700 space-y-0.5 sm:space-y-1">
                 <p><strong>N°:</strong> {workOrder.bt_number || `BT-2025-${String(workOrder.id).padStart(3, '0')}`}</p>
                 <p><strong>Date:</strong> {workOrder.work_date}</p>
                 <div className="flex items-center justify-end mt-2">
@@ -230,29 +230,25 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
       </div>
 
       <div className="max-w-4xl mx-auto p-6">
-        {/* Informations client */}
-        <div className="bg-gray-50 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
-            <User className="mr-2" size={24} />
+        {/* Informations client - Compact sur mobile */}
+        <div className="bg-gray-50 rounded-lg p-3 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 flex items-center">
+            <User className="mr-2" size={20} />
             Informations Client
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <p className="mb-2"><strong>Nom:</strong> {workOrder.client?.name || 'N/A'}</p>
-              <p className="mb-2"><strong>Contact:</strong> {workOrder.client?.contact_person || 'N/A'}</p>
-              <p className="mb-2"><strong>Téléphone:</strong> {workOrder.client?.phone || 'N/A'}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 text-sm">
+            <div className="space-y-1">
+              <p><strong>Nom:</strong> {workOrder.client?.name || 'N/A'}</p>
+              <p><strong>Contact:</strong> {workOrder.client?.contact_person || 'N/A'}</p>
             </div>
-            <div>
-              <p className="mb-2"><strong>Email:</strong> {workOrder.client?.email || 'N/A'}</p>
-              <p className="mb-2"><strong>Adresse:</strong> {workOrder.client?.address || 'N/A'}</p>
-              <p className="mb-2"><strong>Ville:</strong> {workOrder.client?.city || 'N/A'}</p>
+            <div className="space-y-1">
+              <p><strong>Date:</strong> {workOrder.work_date || 'N/A'}</p>
+              <p><strong>Heures:</strong> {workOrder.total_hours || calculateTotalHours()} h</p>
             </div>
-            <div>
-              <p className="mb-2"><strong>Date:</strong> {workOrder.work_date || 'N/A'}</p>
-              <p className="mb-2"><strong>Heures totales:</strong> {workOrder.total_hours || calculateTotalHours()} h</p>
-              <p className="mb-2"><strong>Technicien:</strong> {workOrder.technician || 'N/A'}</p>
+            <div className="col-span-2 lg:col-span-1 space-y-1">
+              <p><strong>Tél:</strong> {workOrder.client?.phone || 'N/A'}</p>
               {workOrder.linked_po_id && (
-              <p className="mb-2"><strong>Bon d'achat client:</strong> {workOrder.linked_po_id}</p>
+                <p><strong>BA client:</strong> {workOrder.linked_po_id}</p>
               )}
             </div>
           </div>
@@ -271,11 +267,66 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
           </div>
         </div>
 
-        {/* Matériaux utilisés */}
+        {/* Matériaux utilisés - Format carte sur mobile */}
         {workOrder.materials && workOrder.materials.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">Matériaux Utilisés</h2>
-            <div className="bg-white border rounded-lg overflow-hidden">
+          <div className="mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4">Matériaux Utilisés</h2>
+            
+            {/* Version MOBILE - Cartes compactes */}
+            <div className="md:hidden bg-white border rounded-lg divide-y">
+              {workOrder.materials.map((material, index) => (
+                <div key={index} className="p-3">
+                  {/* Ligne 1: Code + Quantité */}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                      {material.product?.product_id || material.product_id || 'N/A'}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
+                      Qté: {material.quantity} {material.unit || material.product?.unit || 'UN'}
+                    </span>
+                  </div>
+                  
+                  {/* Ligne 2: Description */}
+                  <p className="text-sm text-gray-700 mb-1">
+                    {material.product?.description || material.description || 'Sans description'}
+                  </p>
+                  
+                  {/* Notes si présentes */}
+                  {material.notes && (
+                    <p className="text-xs text-gray-900 mt-1">
+                      {material.notes}
+                    </p>
+                  )}
+                  
+                  {/* Prix si affichés */}
+                  {material.show_price && (material.product?.selling_price || material.unit_price) && (
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t text-xs">
+                      <span className="text-gray-600">
+                        Prix unit.: {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
+                      </span>
+                      <span className="font-bold text-green-700">
+                        Total: {formatCurrency(material.quantity * (material.product?.selling_price || material.unit_price || 0))}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Total si prix affichés */}
+              {workOrder.materials.some(m => m.show_price === true) && (
+                <div className="p-3 bg-green-50 border-t-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-green-900">Total matériaux:</span>
+                    <span className="text-lg font-bold text-green-900">
+                      {formatCurrency(calculateTotal())}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Version DESKTOP - Tableau */}
+            <div className="hidden md:block bg-white border rounded-lg overflow-hidden">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -292,8 +343,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...workOrder.materials].reverse().map((material, index) => (
-                      <tr key={index} className="border-t">
+                  {workOrder.materials.map((material, index) => (
+                    <tr key={index} className="border-t">
                       <td className="px-4 py-3 font-mono text-sm font-bold">
                         {material.product?.product_id || material.product_id || 'N/A'}
                       </td>
