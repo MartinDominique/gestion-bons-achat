@@ -21,12 +21,14 @@ export default function MaterialSelector({
   const [lastFetchTime, setLastFetchTime] = useState(null);
   const [filteredCache, setFilteredCache] = useState({});
   
-  // Edition inline
+  // Modal d'édition complet
   const [editingMaterial, setEditingMaterial] = useState(null);
   const [editForm, setEditForm] = useState({
     quantity: '',
-    notes: ''
+    notes: '',
+    showPrice: false
   });
+  const editQuantityInputRef = useRef(null);
   
   const searchRef = useRef(null);
   // Modal de quantité avant ajout
@@ -209,55 +211,62 @@ export default function MaterialSelector({
     }
   };
 
-  const updateMaterialQuantity = (materialId, change) => {
-    const safeMaterials = materials || [];
-    onMaterialsChange(safeMaterials.map(m => 
-      m.id === materialId 
-        ? { ...m, quantity: Math.max(0, (m.quantity || 0) + change) }
-        : m
-    ));
-  };
-
-  // NOUVEAU: Toggle prix de vente par ligne
-  const toggleMaterialPrice = (materialId) => {
-    const safeMaterials = materials || [];
-    onMaterialsChange(safeMaterials.map(m => 
-      m.id === materialId 
-        ? { ...m, showPrice: !m.showPrice }
-        : m
-    ));
-  };
-
   const startEditMaterial = (material) => {
-    setEditingMaterial(material.id);
-    setEditForm({
-      quantity: material.quantity?.toString() || '1',
-      notes: material.notes || ''
-    });
-  };
+  setEditingMaterial(material.id);
+  setEditForm({
+    quantity: material.quantity?.toString() || '1',
+    notes: material.notes || '',
+    showPrice: material.showPrice || false
+  });
+  
+  // Focus sur input après ouverture
+  setTimeout(() => {
+    if (editQuantityInputRef.current) {
+      editQuantityInputRef.current.select();
+    }
+  }, 100);
+};
 
-  const saveEditMaterial = () => {
-    if (!editingMaterial) return;
-    
+const saveEditMaterial = () => {
+  if (!editingMaterial) return;
+  
+  const quantity = parseFloat(editForm.quantity);
+  if (isNaN(quantity) || quantity <= 0) {
+    alert('Veuillez entrer une quantité valide');
+    return;
+  }
+  
+  const safeMaterials = materials || [];
+  onMaterialsChange(safeMaterials.map(m => 
+    m.id === editingMaterial
+      ? { 
+          ...m, 
+          quantity: quantity,
+          notes: editForm.notes,
+          showPrice: editForm.showPrice
+        }
+      : m
+  ));
+  
+  setEditingMaterial(null);
+  setEditForm({ quantity: '', notes: '', showPrice: false });
+};
+
+const cancelEditMaterial = () => {
+  setEditingMaterial(null);
+  setEditForm({ quantity: '', notes: '', showPrice: false });
+};
+
+const deleteMaterialFromModal = () => {
+  if (!editingMaterial) return;
+  
+  if (confirm('Retirer ce matériau de la liste ?')) {
     const safeMaterials = materials || [];
-    onMaterialsChange(safeMaterials.map(m => 
-      m.id === editingMaterial
-        ? { 
-            ...m, 
-            quantity: parseFloat(editForm.quantity) || 1,
-            notes: editForm.notes
-          }
-        : m
-    ));
-    
+    onMaterialsChange(safeMaterials.filter(m => m.id !== editingMaterial));
     setEditingMaterial(null);
-    setEditForm({ quantity: '', notes: '' });
-  };
-
-  const cancelEditMaterial = () => {
-    setEditingMaterial(null);
-    setEditForm({ quantity: '', notes: '' });
-  };
+    setEditForm({ quantity: '', notes: '', showPrice: false });
+  }
+};
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
@@ -291,7 +300,7 @@ export default function MaterialSelector({
         </button>
       </div>
 
-      {/* Liste des matériaux ajoutés */}
+      {/* Liste des matériaux ajoutés - VERSION COMPACTE */}
       {(!materials || materials.length === 0) ? (
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
           <Package className="mx-auto mb-2 text-gray-300" size={32} />
@@ -303,178 +312,59 @@ export default function MaterialSelector({
       ) : (
         <div className="bg-white border rounded-lg divide-y">
           {(materials || []).map((material) => (
-            <div key={material.id} className="p-4">
-              {editingMaterial === material.id ? (
-                // Mode édition
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
-                      {material.product?.product_id}
-                    </span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {material.product?.description}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Quantité
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={editForm.quantity}
-                        onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Notes
-                      </label>
-                      <input
-                        type="text"
-                        value={editForm.notes}
-                        onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
-                        placeholder="Notes optionnelles..."
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={saveEditMaterial}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 flex items-center"
-                    >
-                      <Save className="mr-1" size={12} />
-                      Sauvegarder
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelEditMaterial}
-                      className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-xs hover:bg-gray-200"
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // Mode affichage - MODIFIÉ: Prix par ligne individuel
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
-                        {material.product?.product_id}
+            <div 
+              key={material.id} 
+              onClick={() => startEditMaterial(material)}
+              className="p-3 hover:bg-blue-50 cursor-pointer active:bg-blue-100 transition-colors"
+            >
+              {/* Vue compacte - 2 lignes max */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  {/* Ligne 1: Code + Quantité */}
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-mono font-semibold">
+                        {material.product?.product_id || 'N/A'}
                       </span>
-                      {material.product?.product_group && (
-                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
-                          {material.product.product_group}
+                      {material.showPrice && (
+                        <span className="text-green-600 text-xs font-semibold">
+                          {formatCurrency(material.product?.selling_price || 0)}
                         </span>
                       )}
                     </div>
-                    
-                    <h4 className="text-sm font-medium text-gray-900 mb-1">
-                      {material.product?.description}
-                    </h4>
-                    
-                    <div className="flex items-center gap-4 text-xs text-gray-600">
-                      <span className="font-medium">
-                        Qté: {material.quantity} {material.unit}
-                      </span>
-                      
-                      {/* NOUVEAU: Prix de vente conditionnel par ligne */}
-                      {material.showPrice && material.product?.selling_price && (
-                        <span className="text-green-600 font-medium">
-                          Prix unitaire: {formatCurrency(material.product.selling_price)}
-                        </span>
-                      )}
-                      
-                      {/* NOUVEAU: Total si prix affiché */}
-                      {material.showPrice && material.product?.selling_price && (
-                        <span className="text-green-700 font-bold">
-                          Total: {formatCurrency(material.product.selling_price * material.quantity)}
-                        </span>
-                      )}
-                      
-                      {material.notes && (
-                        <span className="text-blue-600">
-                          Note: {material.notes}
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-sm font-bold text-gray-900">
+                      Qté: {material.quantity}
+                    </span>
                   </div>
                   
-                  <div className="flex items-center space-x-1 ml-4">
-                    {/* NOUVEAU: Toggle prix par ligne */}
-                    <button
-                      type="button"
-                      onClick={() => toggleMaterialPrice(material.id)}
-                      className={`p-1 rounded ${
-                        material.showPrice 
-                          ? 'text-green-600 hover:text-green-800' 
-                          : 'text-gray-400 hover:text-gray-600'
-                      }`}
-                      title={material.showPrice ? "Cacher prix" : "Afficher prix"}
-                    >
-                      {material.showPrice ? <Eye size={14} /> : <EyeOff size={14} />}
-                    </button>
-
-                    {/* Contrôles quantité */}
-                    <button
-                      type="button"
-                      onClick={() => updateMaterialQuantity(material.id, -1)}
-                      className="p-1 text-gray-400 hover:text-gray-600 rounded border border-gray-300"
-                      disabled={material.quantity <= 1}
-                    >
-                      <Minus size={12} />
-                    </button>
-                    
-                    <span className="px-2 py-1 bg-gray-50 rounded text-sm min-w-[3rem] text-center">
-                      {material.quantity}
-                    </span>
-                    
-                    <button
-                      type="button"
-                      onClick={() => updateMaterialQuantity(material.id, 1)}
-                      className="p-1 text-gray-400 hover:text-gray-600 rounded border border-gray-300"
-                    >
-                      <Plus size={12} />
-                    </button>
-                    
-                    {/* Actions */}
-                    <button
-                      type="button"
-                      onClick={() => startEditMaterial(material)}
-                      className="ml-2 p-1 text-blue-600 hover:text-blue-800"
-                      title="Modifier"
-                    >
-                      <Edit size={14} />
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => removeMaterial(material.id)}
-                      className="p-1 text-red-600 hover:text-red-800"
-                      title="Retirer"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
+                  {/* Ligne 2: Description (tronquée) */}
+                  <p className="text-sm text-gray-700 truncate">
+                    {material.product?.description || 'Sans description'}
+                  </p>
+                  
+                  {/* Notes si présentes */}
+                  {material.notes && (
+                    <p className="text-xs text-blue-600 mt-1 truncate">
+                      📝 {material.notes}
+                    </p>
+                  )}
                 </div>
-              )}
+                
+                {/* Icône de menu */}
+                <div className="text-gray-400 mt-1">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
             </div>
           ))}
           
-          {/* NOUVEAU: Total général si certaines lignes ont prix affichés */}
+          {/* Total si prix affichés */}
           {materials && materials.some(m => m.showPrice && m.product?.selling_price) && (
-            <div className="p-4 bg-green-50 border-t">
+            <div className="p-3 bg-green-50 border-t-2">
               <div className="flex justify-between items-center">
-                <span className="font-medium text-green-900">Total matériaux (lignes avec prix):</span>
+                <span className="text-sm font-medium text-green-900">Total matériaux:</span>
                 <span className="text-lg font-bold text-green-900">
                   {formatCurrency(
                     materials
@@ -620,6 +510,152 @@ export default function MaterialSelector({
           </div>
         </div>
       )}
+
+        {/* Modal d'édition matériau - Mobile Friendly */}
+      {editingMaterial && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-blue-600 text-white p-4 rounded-t-lg sticky top-0">
+              <h3 className="text-lg font-semibold">Modifier matériau</h3>
+            </div>
+            
+            {/* Produit info */}
+            {(() => {
+              const material = materials.find(m => m.id === editingMaterial);
+              if (!material) return null;
+              
+              return (
+                <>
+                  <div className="p-4 bg-gray-50 border-b">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
+                        {material.product?.product_id}
+                      </span>
+                      {material.product?.product_group && (
+                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                          {material.product.product_group}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {material.product?.description}
+                    </p>
+                    {material.product?.selling_price && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Prix: {formatCurrency(material.product.selling_price)} / {material.product?.unit || 'UN'}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Formulaire d'édition */}
+                  <div className="p-6 space-y-6">
+                    {/* Quantité */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quantité
+                      </label>
+                      <input
+                        ref={editQuantityInputRef}
+                        type="number"
+                        step="0.5"
+                        min="0.1"
+                        value={editForm.quantity}
+                        onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            saveEditMaterial();
+                          }
+                        }}
+                        className="w-full text-center text-4xl font-bold border-2 border-blue-500 rounded-lg py-4 px-4 focus:ring-4 focus:ring-blue-300"
+                        inputMode="decimal"
+                      />
+                      <p className="text-center text-xs text-gray-500 mt-2">
+                        Unité: {material.product?.unit || 'UN'}
+                      </p>
+                    </div>
+                    
+                    {/* Notes */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Notes (optionnel)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editForm.notes}
+                        onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                        placeholder="Ex: Installé dans le corridor, remplacer en mars..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                    
+                    {/* Toggle prix */}
+                    {material.product?.selling_price && (
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Afficher le prix au client</p>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            {editForm.showPrice 
+                              ? `Visible: ${formatCurrency(material.product.selling_price * parseFloat(editForm.quantity || 0))}`
+                              : 'Prix masqué'
+                            }
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditForm({...editForm, showPrice: !editForm.showPrice})}
+                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                            editForm.showPrice ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              editForm.showPrice ? 'translate-x-7' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+            
+            {/* Actions */}
+            <div className="p-4 bg-gray-50 border-t space-y-2 sticky bottom-0">
+              {/* Bouton Supprimer */}
+              <button
+                type="button"
+                onClick={deleteMaterialFromModal}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg text-lg flex items-center justify-center gap-2"
+              >
+                <X size={20} />
+                Supprimer ce matériau
+              </button>
+              
+              {/* Boutons Annuler / Sauvegarder */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={cancelEditMaterial}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-4 rounded-lg text-lg"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={saveEditMaterial}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg text-lg flex items-center justify-center gap-2"
+                >
+                  <Save size={20} />
+                  Sauvegarder
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
         {/* Modal de quantité - Clavier numérique */}
       {pendingProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
