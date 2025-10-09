@@ -402,7 +402,6 @@ export default function BonsTravailPage() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
             ) : (
             <>
               {/* Version MOBILE - Cartes compactes */}
@@ -453,119 +452,119 @@ export default function BonsTravailPage() {
 
               {/* Version DESKTOP - Tableau */}
               <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">BT #</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Client</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Date</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Heures</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Statut</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Description</th>
-                    <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredWorkOrders.map((wo, index) => (
-                    <tr key={wo.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${index % 2 === 0 ? 'bg-white/50' : 'bg-gray-50/50'}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-mono text-sm bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent font-bold">
-                          {wo.bt_number}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-2 rounded-full mr-3">
-                            <User className="w-4 h-4 text-white" />
+                <table className="w-full">
+                  <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">BT #</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Client</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Date</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Heures</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Statut</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Description</th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredWorkOrders.map((wo, index) => (
+                      <tr key={wo.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${index % 2 === 0 ? 'bg-white/50' : 'bg-gray-50/50'}`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="font-mono text-sm bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent font-bold">
+                            {wo.bt_number}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-2 rounded-full mr-3">
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+                            <span className="text-gray-900 font-medium">{wo.client?.name || 'Client inconnu'}</span>
                           </div>
-                          <span className="text-gray-900 font-medium">{wo.client?.name || 'Client inconnu'}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm">
-                          <Calendar className="mr-2 text-teal-500" size={14} />
-                          <span className="font-medium">{formatDate(wo.work_date)}</span>
-                        </div>
-                        {(wo.start_time || wo.end_time) && (
-                          <div className="flex items-center text-sm text-gray-500 mt-1">
-                            <Clock className="mr-2 text-blue-400" size={14} />
-                            {formatTime(wo.start_time)} - {formatTime(wo.end_time)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-sm">
+                            <Calendar className="mr-2 text-teal-500" size={14} />
+                            <span className="font-medium">{formatDate(wo.work_date)}</span>
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className="bg-gradient-to-r from-green-400 to-teal-500 bg-clip-text text-transparent font-bold">
-                          {wo.total_hours ? `${wo.total_hours}h` : '-'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(wo.status)}`}>
-                          {getStatusLabel(wo.status)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 w-48">
-                        <div title={wo.work_description || 'Aucune description'} className="cursor-help">
-                          {truncateText(wo.work_description, 60)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          {/* Bouton Voir */}
-                          <button
-                            onClick={() => handleEdit(wo)}
-                            className="bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-700 p-2 rounded-lg transition-all duration-200"
-                            title="Voir détails"
-                          >
-                            <Eye size={16} />
-                          </button>
-
-                          {/* Bouton Modifier */}
-                          {canEdit(wo.status) && (
+                          {(wo.start_time || wo.end_time) && (
+                            <div className="flex items-center text-sm text-gray-500 mt-1">
+                              <Clock className="mr-2 text-blue-400" size={14} />
+                              {formatTime(wo.start_time)} - {formatTime(wo.end_time)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className="bg-gradient-to-r from-green-400 to-teal-500 bg-clip-text text-transparent font-bold">
+                            {wo.total_hours ? `${wo.total_hours}h` : '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(wo.status)}`}>
+                            {getStatusLabel(wo.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 w-48">
+                          <div title={wo.work_description || 'Aucune description'} className="cursor-help">
+                            {truncateText(wo.work_description, 60)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-2">
+                            {/* Bouton Voir */}
                             <button
                               onClick={() => handleEdit(wo)}
-                              className="bg-green-100 text-green-600 hover:bg-green-200 hover:text-green-700 p-2 rounded-lg transition-all duration-200"
-                              title="Modifier"
-                              disabled={actionLoading[wo.id]}
+                              className="bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-700 p-2 rounded-lg transition-all duration-200"
+                              title="Voir détails"
                             >
-                              <Edit size={16} />
+                              <Eye size={16} />
                             </button>
-                          )}
 
-                          {/* Bouton Envoyer */}
-                          {canSend(wo.status) && (
-                            <button
-                              onClick={() => handleSend(wo)}
-                              className="bg-purple-100 text-purple-600 hover:bg-purple-200 hover:text-purple-700 p-2 rounded-lg transition-all duration-200"
-                              title="Envoyer au client"
-                              disabled={actionLoading[wo.id]}
-                            >
-                              {actionLoading[wo.id] === 'sending' ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                              ) : (
-                                <Send size={16} />
-                              )}
-                            </button>
-                          )}
+                            {/* Bouton Modifier */}
+                            {canEdit(wo.status) && (
+                              <button
+                                onClick={() => handleEdit(wo)}
+                                className="bg-green-100 text-green-600 hover:bg-green-200 hover:text-green-700 p-2 rounded-lg transition-all duration-200"
+                                title="Modifier"
+                                disabled={actionLoading[wo.id]}
+                              >
+                                <Edit size={16} />
+                              </button>
+                            )}
 
-                          {/* Bouton Supprimer */}
-                          {canDelete(wo.status) && (
-                            <button
-                              onClick={() => handleDelete(wo)}
-                              className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 p-2 rounded-lg transition-all duration-200"
-                              title="Supprimer"
-                              disabled={actionLoading[wo.id]}
-                            >
-                              {actionLoading[wo.id] === 'deleting' ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-                              ) : (
-                                <Trash2 size={16} />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {/* Bouton Envoyer */}
+                            {canSend(wo.status) && (
+                              <button
+                                onClick={() => handleSend(wo)}
+                                className="bg-purple-100 text-purple-600 hover:bg-purple-200 hover:text-purple-700 p-2 rounded-lg transition-all duration-200"
+                                title="Envoyer au client"
+                                disabled={actionLoading[wo.id]}
+                              >
+                                {actionLoading[wo.id] === 'sending' ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                                ) : (
+                                  <Send size={16} />
+                                )}
+                              </button>
+                            )}
+
+                            {/* Bouton Supprimer */}
+                            {canDelete(wo.status) && (
+                              <button
+                                onClick={() => handleDelete(wo)}
+                                className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 p-2 rounded-lg transition-all duration-200"
+                                title="Supprimer"
+                                disabled={actionLoading[wo.id]}
+                              >
+                                {actionLoading[wo.id] === 'deleting' ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                ) : (
+                                  <Trash2 size={16} />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
