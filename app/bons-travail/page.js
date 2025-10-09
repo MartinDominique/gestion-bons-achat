@@ -233,28 +233,28 @@ export default function BonsTravailPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header avec dégradé coloré */}
         <div className="bg-gradient-to-r from-teal-500 via-blue-500 to-indigo-600 rounded-2xl shadow-xl p-8 mb-8">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Gestion des Bons de Travail</h1>
-              <p className="text-blue-100 text-lg">Gérez vos bons de travail et suivez vos projets</p>
+              <h1 className="text-2xl sm:text-4xl font-bold text-white mb-1 sm:mb-2">Gestion des Bons de Travail</h1>
+              <p className="text-blue-100 text-sm sm:text-lg">Gérez vos bons de travail</p>
             </div>
-            <div className="flex gap-3">
-              <button className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-200 flex items-center border border-white/30">
+            <div className="flex gap-2 sm:gap-3">
+              <button className="hidden sm:flex bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-200 items-center border border-white/30">
                 <FileText className="mr-2" size={20} />
                 Rapport
               </button>
               <Link 
                 href="/bons-travail/nouveau"
-                className="bg-white text-teal-600 px-6 py-3 rounded-lg hover:bg-blue-50 transition-all duration-200 flex items-center font-semibold shadow-lg"
+                className="bg-white text-teal-600 px-4 py-2 sm:px-6 sm:py-3 rounded-lg hover:bg-blue-50 transition-all duration-200 flex items-center font-semibold shadow-lg text-sm sm:text-base whitespace-nowrap"
               >
-                <Plus className="mr-2" size={20} />
+                <Plus className="mr-1 sm:mr-2" size={18} />
                 Nouveau BT
               </Link>
             </div>
           </div>
 
-          {/* Statistiques dans le header */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+          {/* Statistiques dans le header - Masquées sur mobile */}
+          <div className="hidden sm:grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
               <div className="flex items-center">
                 <div className="bg-white/30 p-3 rounded-full">
@@ -403,6 +403,56 @@ export default function BonsTravailPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
+            ) : (
+            <>
+              {/* Version MOBILE - Cartes compactes */}
+              <div className="md:hidden">
+                {filteredWorkOrders.map((wo) => (
+                  <div 
+                    key={wo.id}
+                    onClick={() => handleEdit(wo)}
+                    className="p-3 border-b last:border-b-0 hover:bg-blue-50 active:bg-blue-100 cursor-pointer"
+                  >
+                    {/* Ligne 1: BT# + Statut */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-sm font-bold bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent">
+                        {wo.bt_number}
+                      </span>
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(wo.status)}`}>
+                        {getStatusLabel(wo.status)}
+                      </span>
+                    </div>
+                    
+                    {/* Ligne 2: Client */}
+                    <div className="flex items-center text-sm text-gray-700 mb-1">
+                      <User className="mr-1 flex-shrink-0" size={14} />
+                      <span className="truncate font-medium">{wo.client?.name || 'Client inconnu'}</span>
+                    </div>
+                    
+                    {/* Ligne 3: Date + Heures */}
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center">
+                        <Calendar className="mr-1" size={12} />
+                        {formatDate(wo.work_date)}
+                      </div>
+                      <div className="flex items-center">
+                        <Clock className="mr-1" size={12} />
+                        {wo.total_hours ? `${wo.total_hours}h` : '-'}
+                      </div>
+                    </div>
+                    
+                    {/* Description */}
+                    {wo.work_description && (
+                      <p className="mt-1 text-xs text-gray-600 truncate">
+                        {truncateText(wo.work_description, 50)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Version DESKTOP - Tableau */}
+              <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
                   <tr>
@@ -516,9 +566,10 @@ export default function BonsTravailPage() {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
+            </>>
           )}
         </div>
       </div>
