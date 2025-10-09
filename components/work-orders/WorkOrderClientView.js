@@ -292,8 +292,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {workOrder.materials.map((material, index) => (
-                    <tr key={index} className="border-t">
+                  {[...workOrder.materials].reverse().map((material, index) => (
+                      <tr key={index} className="border-t">
                       <td className="px-4 py-3 font-mono text-sm font-bold">
                         {material.product?.product_id || material.product_id || 'N/A'}
                       </td>
