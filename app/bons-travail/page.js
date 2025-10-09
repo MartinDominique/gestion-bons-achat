@@ -402,7 +402,6 @@ export default function BonsTravailPage() {
               )}
             </div>
           ) : (
-            ) : (
             <>
               {/* Version MOBILE - Cartes compactes */}
               <div className="md:hidden">
