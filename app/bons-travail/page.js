@@ -569,7 +569,7 @@ export default function BonsTravailPage() {
                   </tbody>
                 </table>
               </div>
-            </>>
+            </>
           )}
         </div>
       </div>
