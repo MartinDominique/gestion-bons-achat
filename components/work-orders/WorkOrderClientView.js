@@ -307,6 +307,11 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                               {material.product?.description || material.description}
                             </p>
                           )}
+                          {material.notes && (
+                            <p className="text-sm text-gray-900 mt-1">
+                              {material.notes}
+                            </p>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center font-semibold">{material.quantity}</td>
