@@ -128,61 +128,60 @@ const WorkOrderList: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Bons de Travail</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Bons de Travail</h1>
         <button
           onClick={handleCreateNew}
-          className="mt-4 sm:mt-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+          className="bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-blue-700 flex items-center whitespace-nowrap text-sm sm:text-base"
         >
-          <Plus className="mr-2" size={20} />
-          Nouveau BT
+          <Plus className="mr-1 sm:mr-2" size={18} />
+          <span className="hidden sm:inline">Nouveau BT</span>
+          <span className="sm:hidden">Nouveau</span>
         </button>
       </div>
 
       {/* Filtres */}
-      <div className="bg-white p-4 rounded-lg shadow space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Recherche */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Rechercher par BT#, client, description..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          
-          {/* Filtre statut */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <select
-              className="pl-10 pr-8 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="draft">Brouillons</option>
-              <option value="in_progress">En cours</option>
-              <option value="completed">Terminés</option>
-              <option value="sent">Envoyés</option>
-              <option value="archived">Archivés</option>
-            </select>
-          </div>
+      <div className="bg-white p-3 sm:p-4 rounded-lg shadow space-y-3">
+        {/* Recherche */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Rechercher BT#, client..."
+            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        
+        {/* Filtre statut */}
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <select
+            className="w-full pl-9 pr-8 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="draft">Brouillons</option>
+            <option value="in_progress">En cours</option>
+            <option value="completed">Terminés</option>
+            <option value="sent">Envoyés</option>
+            <option value="archived">Archivés</option>
+          </select>
         </div>
       </div>
 
-      {/* Statistiques rapides */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* Statistiques rapides - Masqué sur mobile */}
+      <div className="hidden sm:grid grid-cols-2 md:grid-cols-5 gap-3">
         {Object.entries(statusLabels).map(([status, label]) => {
           const count = workOrders.filter(wo => wo.status === status).length;
           return (
-            <div key={status} className="bg-white p-4 rounded-lg shadow text-center">
-              <div className={`inline-block px-2 py-1 rounded text-sm font-medium ${statusColors[status as keyof typeof statusColors]}`}>
+            <div key={status} className="bg-white p-3 rounded-lg shadow text-center">
+              <div className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusColors[status as keyof typeof statusColors]}`}>
                 {label}
               </div>
-              <div className="text-2xl font-bold mt-2">{count}</div>
+              <div className="text-xl font-bold mt-1">{count}</div>
             </div>
           );
         })}
@@ -297,48 +296,45 @@ const WorkOrderList: React.FC = () => {
             {/* Version mobile */}
             <div className="md:hidden">
               {filteredWorkOrders.map((workOrder) => (
-                <div key={workOrder.id} className="p-4 border-b last:border-b-0">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          {workOrder.bt_number}
-                        </span>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[workOrder.status]}`}>
-                          {statusLabels[workOrder.status]}
-                        </span>
-                      </div>
-                      
-                      <div className="mt-1 flex items-center text-sm text-gray-600">
-                        <User className="mr-1" size={14} />
-                        {workOrder.client.name}
-                      </div>
-                      
-                      <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
-                        <div className="flex items-center">
-                          <Calendar className="mr-1" size={14} />
-                          {formatDate(workOrder.work_date)}
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="mr-1" size={14} />
-                          {workOrder.total_hours || 0}h
-                        </div>
-                      </div>
-                      
-                      {workOrder.work_description && (
-                        <p className="mt-2 text-sm text-gray-600 truncate">
-                          {workOrder.work_description}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={() => handleView(workOrder)}
-                      className="ml-4 text-gray-400 hover:text-gray-600"
-                    >
-                      <ChevronRight size={20} />
-                    </button>
+                <div 
+                  key={workOrder.id} 
+                  onClick={() => handleView(workOrder)}
+                  className="p-3 border-b last:border-b-0 active:bg-blue-50 cursor-pointer"
+                >
+                  {/* Ligne 1: BT# + Statut */}
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-gray-900">
+                      {workOrder.bt_number}
+                    </span>
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${statusColors[workOrder.status]}`}>
+                      {statusLabels[workOrder.status]}
+                    </span>
                   </div>
+                  
+                  {/* Ligne 2: Client */}
+                  <div className="flex items-center text-sm text-gray-700 mb-1">
+                    <User className="mr-1 flex-shrink-0" size={14} />
+                    <span className="truncate">{workOrder.client.name}</span>
+                  </div>
+                  
+                  {/* Ligne 3: Date + Heures */}
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center">
+                      <Calendar className="mr-1" size={12} />
+                      {formatDate(workOrder.work_date)}
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="mr-1" size={12} />
+                      {workOrder.total_hours || 0}h
+                    </div>
+                  </div>
+                  
+                  {/* Description (optionnel, tronqué) */}
+                  {workOrder.work_description && (
+                    <p className="mt-1 text-xs text-gray-600 truncate">
+                      {workOrder.work_description}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -349,7 +345,7 @@ const WorkOrderList: React.FC = () => {
       {/* Modal détail (simple) */}
       {selectedWorkOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold">Détail BT {selectedWorkOrder.bt_number}</h3>
