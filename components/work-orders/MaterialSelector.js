@@ -29,6 +29,10 @@ export default function MaterialSelector({
   });
   
   const searchRef = useRef(null);
+  // Modal de quantité avant ajout
+  const [pendingProduct, setPendingProduct] = useState(null);
+  const [pendingQuantity, setPendingQuantity] = useState('1');
+  const quantityInputRef = useRef(null);
 
   // Chargement initial des produits avec cache
   useEffect(() => {
@@ -152,22 +156,53 @@ export default function MaterialSelector({
       return;
     }
     
+    // Ouvrir modal de quantité
+    setPendingProduct(product);
+    setPendingQuantity('1');
+    
+    // Focus sur input après ouverture du modal
+    setTimeout(() => {
+      if (quantityInputRef.current) {
+        quantityInputRef.current.select();
+      }
+    }, 100);
+  };
+  
+  const confirmAddMaterial = () => {
+    if (!pendingProduct) return;
+    
+    const quantity = parseFloat(pendingQuantity);
+    if (isNaN(quantity) || quantity <= 0) {
+      alert('Veuillez entrer une quantité valide');
+      return;
+    }
+    
+    const safeMaterials = materials || [];
     const newMaterial = {
-      id: Date.now().toString(), // Temp ID
-      product_id: product.id,
-      product: product,
-      quantity: 1,
-      unit: product.unit || 'pcs',
+      id: Date.now().toString(),
+      product_id: pendingProduct.id,
+      product: pendingProduct,
+      quantity: quantity,
+      unit: pendingProduct.unit || 'pcs',
       notes: '',
-      showPrice: false // NOUVEAU: Prix caché par défaut par ligne
+      showPrice: false
     };
     
     onMaterialsChange([newMaterial, ...safeMaterials]);
+    
+    // Fermer tout
+    setPendingProduct(null);
+    setPendingQuantity('1');
     setShowProductSearch(false);
     setSearchTerm('');
   };
-
-  const removeMaterial = (materialId) => {
+  
+  const cancelAddMaterial = () => {
+    setPendingProduct(null);
+    setPendingQuantity('1');
+  };
+  
+   const removeMaterial = (materialId) => {
     const safeMaterials = materials || [];
     if (confirm('Retirer ce matériau de la liste ?')) {
       onMaterialsChange(safeMaterials.filter(m => m.id !== materialId));
@@ -581,6 +616,84 @@ export default function MaterialSelector({
               {searchTerm && (
                 <span>{(filteredProducts || []).length} produit(s) trouvé(s) pour "{searchTerm}"</span>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+        {/* Modal de quantité - Clavier numérique */}
+      {pendingProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            {/* Header */}
+            <div className="bg-blue-600 text-white p-4 rounded-t-lg">
+              <h3 className="text-lg font-semibold">Quantité</h3>
+            </div>
+            
+            {/* Produit info */}
+            <div className="p-4 bg-gray-50 border-b">
+              <div className="flex items-center space-x-2 mb-2">
+                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
+                  {pendingProduct.product_id}
+                </span>
+                {pendingProduct.product_group && (
+                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                    {pendingProduct.product_group}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-medium text-gray-900">
+                {pendingProduct.description}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                Unité: {pendingProduct.unit || 'pcs'}
+              </p>
+            </div>
+            
+            {/* Input quantité - GROS et clavier numérique */}
+            <div className="p-8">
+              <label className="block text-center text-sm font-medium text-gray-700 mb-4">
+                Entrez la quantité puis appuyez sur Enter
+              </label>
+              
+              <input
+                ref={quantityInputRef}
+                type="number"
+                step="0.5"
+                min="0.1"
+                value={pendingQuantity}
+                onChange={(e) => setPendingQuantity(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    confirmAddMaterial();
+                  }
+                }}
+                className="w-full text-center text-5xl font-bold border-4 border-blue-500 rounded-lg py-6 px-4 focus:ring-4 focus:ring-blue-300 focus:border-blue-600"
+                inputMode="decimal"
+                autoFocus
+                placeholder="0"
+              />
+              
+              <p className="text-center text-sm text-gray-500 mt-3">
+                Ex: 10.5 ou 12 puis Enter ⏎
+              </p>
+            </div>
+            
+            {/* Actions */}
+            <div className="p-4 bg-gray-50 flex gap-3 rounded-b-lg">
+              <button
+                type="button"
+                onClick={cancelAddMaterial}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-4 px-4 rounded-lg text-lg"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmAddMaterial}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-4 rounded-lg text-lg"
+              >
+                ✓ Ajouter
+              </button>
             </div>
           </div>
         </div>
