@@ -162,7 +162,7 @@ export default function MaterialSelector({
       showPrice: false // NOUVEAU: Prix caché par défaut par ligne
     };
     
-    onMaterialsChange([...safeMaterials, newMaterial]);
+    onMaterialsChange([newMaterial, ...safeMaterials]);
     setShowProductSearch(false);
     setSearchTerm('');
   };
