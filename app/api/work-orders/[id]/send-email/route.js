@@ -43,20 +43,56 @@ export async function POST(request, { params }) {
       sendToBureau = true
     } = body;
 
-    // 1. Récupérer le bon de travail complet
+     // 1. Récupérer le bon de travail complet AVEC enrichissement manuel
     const { data: workOrder, error: fetchError } = await supabaseAdmin
       .from('work_orders')
       .select(`
         *,
         client:clients(*),
         linked_po:purchase_orders(*),
-        materials:work_order_materials(
-          *,
-          product:products(*)
-        )
+        materials:work_order_materials(*)
       `)
       .eq('id', workOrderId)
       .single();
+
+    // Enrichir manuellement les matériaux
+    if (!fetchError && workOrder && workOrder.materials) {
+      for (let material of workOrder.materials) {
+        if (material.product_id) {
+          // Essayer products
+          const { data: product } = await supabaseAdmin
+            .from('products')
+            .select('*')
+            .eq('product_id', material.product_id)
+            .single();
+          
+          if (product) {
+            material.product = product;
+          } else {
+            // Essayer non_inventory_items
+            const { data: nonInvProduct } = await supabaseAdmin
+              .from('non_inventory_items')
+              .select('*')
+              .eq('product_id', material.product_id)
+              .single();
+            
+            if (nonInvProduct) {
+              material.product = nonInvProduct;
+            }
+          }
+        }
+        
+        // Créer un objet virtuel si pas de product trouvé
+        if (!material.product && (material.product_code || material.description)) {
+          material.product = {
+            product_id: material.product_code || material.product_id,
+            description: material.description,
+            unit: material.unit,
+            selling_price: material.unit_price
+          };
+        }
+      }
+    }
 
     if (fetchError) {
       console.error('❌ Erreur récupération BT:', fetchError);
