@@ -15,7 +15,7 @@ const pages = [
   { id: 'inventaire', name: 'Inventaire', icon: Warehouse },
   { id: 'achat-materiels', name: 'Achat', icon: ShoppingCart },
   { id: 'bons-travail', name: 'Bons de Travail', icon: FileText },
-  ];
+];
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -25,6 +25,18 @@ export default function Navigation() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showClientManager, setShowClientManager] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // ✨ NOUVEAU : Sauvegarder la dernière page visitée
+  useEffect(() => {
+    // Vérifier si le pathname correspond à une des pages principales
+    const currentPage = pages.find(page => pathname.startsWith('/' + page.id));
+    
+    if (currentPage) {
+      // Sauvegarder dans localStorage
+      localStorage.setItem('lastVisitedPage', currentPage.id);
+      console.log('Page sauvegardée:', currentPage.id);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -38,12 +50,24 @@ export default function Navigation() {
           setUser(user);
         }
 
-        const protectedRoutes = ['/bons-', '/soumissions', '/bons-travail'];
+        const protectedRoutes = ['/bons-', '/soumissions', '/bons-travail', '/inventaire', '/achat-materiels'];
         const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
         
         if (isProtectedRoute && !user) {
           console.log('Accès non autorisé à:', pathname);
           router.push('/login');
+        }
+        
+        // ✨ NOUVEAU : Rediriger vers la dernière page visitée si on est sur la racine
+        if (user && pathname === '/') {
+          const lastPage = localStorage.getItem('lastVisitedPage');
+          if (lastPage) {
+            console.log('Redirection vers la dernière page visitée:', lastPage);
+            router.push('/' + lastPage);
+          } else {
+            // Page par défaut si aucune page n'a été visitée
+            router.push('/bons-achat');
+          }
         }
         
       } catch (error) {
@@ -85,6 +109,8 @@ export default function Navigation() {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
+      // ✨ NOUVEAU : Optionnel - Effacer la dernière page lors de la déconnexion
+      // localStorage.removeItem('lastVisitedPage');
       router.push('/login');
     } catch (error) {
       console.error('Erreur déconnexion:', error);
