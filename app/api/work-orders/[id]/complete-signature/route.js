@@ -155,41 +155,73 @@ export async function POST(request, { params }) {
       });
     }
 
-    // 4. Tenter l'envoi automatique
-    console.log('🚀 Envoi automatique en cours...');
+    // 4. ✅ NOUVEAU : Récupérer les emails sélectionnés
+    let recipientEmails = [];
+    
+    if (workOrder.recipient_emails && Array.isArray(workOrder.recipient_emails) && workOrder.recipient_emails.length > 0) {
+      // Utiliser les emails sélectionnés dans le formulaire
+      recipientEmails = workOrder.recipient_emails;
+      console.log('📧 Emails sélectionnés trouvés:', recipientEmails);
+    } else if (workOrder.client?.email) {
+      // Fallback sur email principal
+      recipientEmails = [workOrder.client.email];
+      console.log('📧 Utilisation email principal:', recipientEmails);
+    } else {
+      console.error('❌ Aucun email disponible');
+      await supabaseAdmin
+        .from('work_orders')
+        .update({ 
+          status: 'pending_send',
+          auto_send_failed_reason: 'Aucun email disponible'
+        })
+        .eq('id', workOrderId);
+      
+      return NextResponse.json({
+        signatureSaved: true,
+        autoSendResult: { 
+          success: false, 
+          needsManualSend: true, 
+          reason: 'Aucun email disponible' 
+        },
+        status: 'pending_send'
+      });
+    }
+
+    // 5. Tenter l'envoi automatique avec les emails sélectionnés
+    console.log('🚀 Envoi automatique en cours vers:', recipientEmails.join(', '));
     
     const emailService = new WorkOrderEmailService();
     const result = await emailService.sendWorkOrderEmail(workOrder, {
       sendToBureau: true,
-      clientEmail: workOrder.client.email
+      clientEmail: recipientEmails // ✅ Passer tous les emails sélectionnés
     });
 
     if (result.success) {
-      // 5. Mettre à jour le statut vers "sent"
+      // 6. Mettre à jour le statut vers "sent"
       await supabaseAdmin
         .from('work_orders')
         .update({ 
           status: 'sent',
           email_sent_at: new Date().toISOString(),
-          email_sent_to: workOrder.client.email,
+          email_sent_to: recipientEmails.join(', '), // ✅ Sauvegarder tous les emails
           email_message_id: result.messageId,
           auto_send_success: true
         })
         .eq('id', workOrderId);
 
-      console.log('✅ Envoi automatique réussi!');
+      console.log('✅ Envoi automatique réussi vers:', recipientEmails.join(', '));
       
       return NextResponse.json({
         signatureSaved: true,
         autoSendResult: { 
           success: true, 
           messageId: result.messageId,
-          sentTo: workOrder.client.email
+          sentTo: recipientEmails.join(', ') // ✅ Retourner tous les emails
         },
         status: 'sent'
       });
     } else {
-      // 6. Échec envoi → Mettre en attente manuel
+      // 7. Échec envoi → Mettre en attente manuel
       console.error('❌ Échec envoi automatique:', result.error);
       
       await supabaseAdmin
@@ -243,20 +275,26 @@ export async function POST(request, { params }) {
 // ============================================
 
 function checkCanAutoSend(workOrder) {
-  // 1. Vérifier email client
-  if (!workOrder.client || !workOrder.client.email) {
+  // 1. ✅ MODIFIÉ : Vérifier emails (sélectionnés ou principal)
+  const hasEmails = (workOrder.recipient_emails && workOrder.recipient_emails.length > 0) ||
+                    (workOrder.client && workOrder.client.email);
+  
+  if (!hasEmails) {
     return { 
       canSend: false, 
       reason: 'Aucune adresse email pour le client' 
     };
   }
 
-  // 2. Vérifier format email
+  // 2. Vérifier format email (au moins un email valide)
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(workOrder.client.email)) {
+  const emails = workOrder.recipient_emails || [workOrder.client?.email];
+  const hasValidEmail = emails.some(email => email && emailRegex.test(email));
+  
+  if (!hasValidEmail) {
     return { 
       canSend: false, 
-      reason: 'Format email client invalide' 
+      reason: 'Aucun email valide trouvé' 
     };
   }
 
