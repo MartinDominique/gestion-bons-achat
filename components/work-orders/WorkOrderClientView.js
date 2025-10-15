@@ -100,15 +100,14 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     if (result.success && result.signatureSaved) {
       setIsSigning(false);
       
-      if (result.autoSendResult.success) {
-        // Envoi automatique réussi
+       if (result.autoSendResult.success) {
+        // ✅ Envoi automatique réussi - PAS d'alert, juste fermer
         onStatusUpdate?.('sent');
-        alert(`Travail signé et envoyé automatiquement à ${result.autoSendResult.sentTo}`);
         
-        // Fermer la fenêtre après 2 secondes
+        // Fermer la fenêtre après 1 seconde
         setTimeout(() => {
           window.close();
-        }, 2000);
+        }, 1000);
         
       } else if (result.autoSendResult.needsManualSend) {
         // Signature OK mais envoi automatique impossible
