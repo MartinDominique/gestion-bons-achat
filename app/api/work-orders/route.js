@@ -148,7 +148,7 @@ if (linked_po_id) {
           unit: material.unit || 'UN',
           unit_price: parseFloat(material.unit_price || material.product?.selling_price || 0),
           notes: material.notes || null,
-          show_price: material.showPrice || false
+          show_price: material.showPrice || material.show_price || false // 
         };
       });
 
