@@ -152,6 +152,13 @@ if (linked_po_id) {
         };
       });
 
+        // ✅ AJOUTEZ LE CONSOLE.LOG ICI
+          console.log('📦 MATÉRIAUX AVEC PRIX:', materialsData.map(m => ({
+            code: m.product_code,
+            show_price: m.show_price,
+            unit_price: m.unit_price
+          })));
+
       const { data: materialsResult, error: materialsError } = await client
         .from('work_order_materials')
         .insert(materialsData)
