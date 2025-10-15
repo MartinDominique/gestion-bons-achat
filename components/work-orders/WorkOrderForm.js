@@ -1001,33 +1001,47 @@ export default function WorkOrderForm({
 
         {/* Boutons workflow terrain */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-          <button
-            type="button"
-            onClick={() => handleSubmit('draft')}
-            disabled={saving}
-            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium"
-          >
-            <Save className="mr-2" size={16} />
-            {saving ? 'Sauvegarde...' : 'Sauvegarder pour plus tard'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSubmit('ready_for_signature')}
-            disabled={saving}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium"
-          >
-            <FileText className="mr-2" size={16} />
-            {saving ? 'Préparation...' : 'Présenter au client'}
-          </button>
-
-          <button
-            type="button"
-            onClick={onCancel}
-            className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-medium"
-          >
-            Annuler
-          </button>
+          {/* Afficher bouton Fermer si BT déjà signé/envoyé */}
+          {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center font-medium"
+            >
+              <Check className="mr-2" size={16} />
+              Terminer - Retour à la liste
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleSubmit('draft')}
+                disabled={saving}
+                className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium"
+              >
+                <Save className="mr-2" size={16} />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder pour plus tard'}
+              </button>
+        
+              <button
+                type="button"
+                onClick={() => handleSubmit('ready_for_signature')}
+                disabled={saving}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium"
+              >
+                <FileText className="mr-2" size={16} />
+                {saving ? 'Préparation...' : 'Présenter au client'}
+              </button>
+        
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Annuler
+              </button>
+            </>
+          )}
         </div>
 
         {/* Aide contextuelle workflow */}
