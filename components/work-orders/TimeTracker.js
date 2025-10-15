@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Square, Clock, Edit, Save, X } from 'lucide-react';
+import { Play, Square, Clock, Edit, Save } from 'lucide-react';
 
 export default function TimeTracker({ 
   onTimeChange, 
@@ -7,13 +7,10 @@ export default function TimeTracker({
   initialEndTime = null,
   workDate = null 
 }) {
-  // États principaux
   const [isWorking, setIsWorking] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [pauseStart, setPauseStart] = useState(null); // AJOUTÉ
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
-  const [pausedTime, setPausedTime] = useState(0); // Temps pause en ms
+  const [pauseMinutes, setPauseMinutes] = useState(0); // Minutes de pause
   const [currentTime, setCurrentTime] = useState(new Date());
   
   // États d'édition manuelle
@@ -52,17 +49,21 @@ export default function TimeTracker({
       onTimeChange({
         start_time: startTimeStr,
         end_time: endTimeStr,
-        total_hours: totalHours
+        total_hours: totalHours,
+        pause_minutes: pauseMinutes
       });
     }
-  }, [startTime, endTime, pausedTime]);
+  }, [startTime, endTime, pauseMinutes]);
 
   const calculateTotalHours = () => {
     if (!startTime) return 0;
     
     const end = endTime || currentTime;
-    const workingTimeMs = end.getTime() - startTime.getTime() - pausedTime;
-    return Math.max(0, workingTimeMs / (1000 * 60 * 60));
+    const workingTimeMs = end.getTime() - startTime.getTime();
+    const workingHours = workingTimeMs / (1000 * 60 * 60);
+    const pauseHours = pauseMinutes / 60;
+    
+    return Math.max(0, workingHours - pauseHours);
   };
 
   const formatTime = (date) => {
@@ -82,8 +83,7 @@ export default function TimeTracker({
     setStartTime(now);
     setEndTime(null);
     setIsWorking(true);
-    setIsPaused(false);
-    setPausedTime(0);
+    setPauseMinutes(0);
   };
 
   // Terminer le travail
@@ -91,23 +91,6 @@ export default function TimeTracker({
     const now = new Date();
     setEndTime(now);
     setIsWorking(false);
-    setIsPaused(false);
-  };
-
-  // Pause/Reprendre
-  const handlePause = () => {
-    if (isPaused) {
-      // Reprendre: calculer le temps de pause
-      const pauseEnd = new Date();
-      const pauseDuration = pauseEnd.getTime() - pauseStart.getTime();
-      setPausedTime(prev => prev + pauseDuration);
-      setIsPaused(false);
-      setPauseStart(null);
-    } else {
-      // Mettre en pause
-      setPauseStart(new Date());
-      setIsPaused(true);
-    }
   };
 
   // Reset
@@ -115,8 +98,7 @@ export default function TimeTracker({
     setStartTime(null);
     setEndTime(null);
     setIsWorking(false);
-    setPaused(false);
-    setPausedTime(0);
+    setPauseMinutes(0);
   };
 
   // Édition manuelle
@@ -139,7 +121,6 @@ export default function TimeTracker({
       }
       
       setShowManualEdit(false);
-      setPausedTime(0); // Reset pause temps si édition manuelle
     } catch (error) {
       alert('Format d\'heure invalide');
     }
@@ -150,8 +131,6 @@ export default function TimeTracker({
     setManualStart('');
     setManualEnd('');
   };
-
-
 
   return (
     <div className="bg-gray-50 p-4 rounded-lg space-y-4">
@@ -171,7 +150,7 @@ export default function TimeTracker({
       </div>
 
       {/* Interface principale */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Début */}
         <div className="text-center">
           <div className="text-sm text-gray-600 mb-1">Début</div>
@@ -188,27 +167,55 @@ export default function TimeTracker({
           </div>
         </div>
 
+        {/* Pause */}
+        <div className="text-center">
+          <div className="text-sm text-gray-600 mb-1">Pause (min)</div>
+          <input
+            type="number"
+            min="0"
+            max="120"
+            value={pauseMinutes}
+            onChange={(e) => setPauseMinutes(Math.min(120, Math.max(0, parseInt(e.target.value) || 0)))}
+            className="w-full text-center text-xl font-mono font-bold text-orange-700 border-2 border-orange-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            placeholder="0"
+            disabled={!startTime}
+          />
+          <div className="text-xs text-gray-500 mt-1">0-120 min</div>
+        </div>
+
         {/* Total */}
         <div className="text-center">
-          <div className="text-sm text-gray-600 mb-1">Total</div>
+          <div className="text-sm text-gray-600 mb-1">Total travaillé</div>
           <div className="text-xl font-mono font-bold text-blue-700">
             {formatDuration(calculateTotalHours())}
           </div>
         </div>
       </div>
 
+      {/* Affichage du calcul */}
+      {startTime && endTime && pauseMinutes > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+          <div className="flex justify-between items-center">
+            <span>Temps brut:</span>
+            <span className="font-mono">{formatDuration((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60))}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span>Pause dîner:</span>
+            <span className="font-mono text-orange-700">- {pauseMinutes} min</span>
+          </div>
+          <div className="flex justify-between items-center font-bold border-t border-blue-300 mt-2 pt-2">
+            <span>Temps travaillé:</span>
+            <span className="font-mono text-lg">{formatDuration(calculateTotalHours())}</span>
+          </div>
+        </div>
+      )}
+
       {/* Statut actuel */}
       <div className="text-center">
         {isWorking && !endTime && (
-          <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-            isPaused 
-              ? 'bg-yellow-100 text-yellow-800' 
-              : 'bg-green-100 text-green-800'
-          }`}>
-            <div className={`w-2 h-2 rounded-full mr-2 ${
-              isPaused ? 'bg-yellow-500' : 'bg-green-500 animate-pulse'
-            }`}></div>
-            {isPaused ? 'En pause' : 'En cours - ' + formatDuration(calculateTotalHours())}
+          <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            <div className="w-2 h-2 rounded-full mr-2 bg-green-500 animate-pulse"></div>
+            En cours - {formatDuration(calculateTotalHours())}
           </div>
         )}
         
@@ -240,29 +247,14 @@ export default function TimeTracker({
         )}
 
         {isWorking && !endTime && (
-          <>
-            <button
-              type="button"
-              onClick={handlePause}
-              className={`px-4 py-2 rounded-lg flex items-center ${
-                isPaused
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-yellow-600 text-white hover:bg-yellow-700'
-              }`}
-            >
-              {isPaused ? <Play size={16} className="mr-1" /> : <Pause size={16} className="mr-1" />}
-              {isPaused ? 'Reprendre' : 'Pause'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handlePunchOut}
-              className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 flex items-center font-medium"
-            >
-              <Square className="mr-2" size={18} />
-              Terminer travail
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={handlePunchOut}
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 flex items-center font-medium"
+          >
+            <Square className="mr-2" size={18} />
+            Terminer travail
+          </button>
         )}
 
         {(startTime || endTime) && (
