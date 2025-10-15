@@ -81,11 +81,11 @@ export default function Navigation() {
 
     checkAuth();
 
-    const handleBeforeUnload = () => {
-      supabase.auth.signOut();
-    };
+    //const handleBeforeUnload = () => {
+     // supabase.auth.signOut();
+    //};
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    //window.addEventListener('beforeunload', handleBeforeUnload);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth event:', event);
@@ -98,7 +98,7 @@ export default function Navigation() {
 
     return () => {
       subscription.unsubscribe();
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+     // window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [supabase.auth, pathname, router]);
 
