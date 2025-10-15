@@ -16,7 +16,7 @@ export async function POST(request) {
       work_description,
       additional_notes,
       status,
-      materials = []
+      materials = [],
       recipient_emails = []
     } = body;
 
