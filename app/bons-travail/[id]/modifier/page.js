@@ -99,9 +99,10 @@ export default function ModifierBonTravailPage({ params }) {
           sent: 'Bon de travail envoyé au client'
         };
 
-        const finalStatus = status || workOrderData.status || 'draft';
-        alert(messages[finalStatus] || 'Bon de travail mis à jour avec succès');
-        router.push('/bons-travail');
+       const finalStatus = status || workOrderData.status || 'draft';
+        setTimeout(() => {
+          router.push('/bons-travail');
+        }, 2000);
       }
       
       // IMPORTANT: Retourner le work order sauvegardé pour WorkOrderForm
