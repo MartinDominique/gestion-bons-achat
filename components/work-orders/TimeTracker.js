@@ -56,15 +56,48 @@ export default function TimeTracker({
   }, [startTime, endTime, pauseMinutes]);
 
   const calculateTotalHours = () => {
-    if (!startTime) return 0;
+  if (!startTime) return 0;
+  
+  const end = endTime || currentTime;
+  const workingTimeMs = end.getTime() - startTime.getTime();
+  const workingHours = workingTimeMs / (1000 * 60 * 60);
+  const pauseHours = pauseMinutes / 60;
+  
+  const netHours = Math.max(0, workingHours - pauseHours);
+  
+  // Arrondir au quart d'heure supérieur (0.25h = 15 min)
+  return roundToQuarterHour(netHours);
+    };
     
-    const end = endTime || currentTime;
-    const workingTimeMs = end.getTime() - startTime.getTime();
-    const workingHours = workingTimeMs / (1000 * 60 * 60);
-    const pauseHours = pauseMinutes / 60;
-    
-    return Math.max(0, workingHours - pauseHours);
-  };
+    // Nouvelle fonction à ajouter après calculateTotalHours
+    const roundToQuarterHour = (hours) => {
+      // Séparer heures entières et décimales
+      const fullHours = Math.floor(hours);
+      const decimalPart = hours - fullHours;
+      
+      // Convertir la partie décimale en minutes
+      const minutes = decimalPart * 60;
+      
+      // Arrondir au quart d'heure supérieur
+      let roundedMinutes;
+      if (minutes <= 15) {
+        roundedMinutes = 15;
+      } else if (minutes <= 30) {
+        roundedMinutes = 30;
+      } else if (minutes <= 45) {
+        roundedMinutes = 45;
+      } else {
+        roundedMinutes = 60;
+      }
+      
+      // Si 60 minutes, ajouter 1 heure
+      if (roundedMinutes === 60) {
+        return fullHours + 1;
+      }
+      
+      // Reconvertir en heures décimales
+      return fullHours + (roundedMinutes / 60);
+    };
 
   const formatTime = (date) => {
     if (!date) return '--:--';
