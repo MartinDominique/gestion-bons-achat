@@ -55,7 +55,7 @@ export default function WorkOrderForm({
     if (workOrder && mode === 'edit') {
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
-        linked_po_id: workOrder.linked_po_id || '',
+        linked_po_id: workOrder.linked_po?.po_number || workOrder.linked_po_id || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
         start_time: workOrder.start_time || '',
         end_time: workOrder.end_time || '',
