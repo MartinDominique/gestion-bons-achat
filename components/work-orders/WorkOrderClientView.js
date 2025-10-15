@@ -247,8 +247,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             </div>
             <div className="col-span-2 lg:col-span-1 space-y-1">
               <p><strong>Tél:</strong> {workOrder.client?.phone || 'N/A'}</p>
-              {workOrder.linked_po_id && (
-                <p><strong>BA client:</strong> {workOrder.linked_po_id}</p>
+              {(workOrder.linked_po?.po_number || workOrder.linked_po_id) && (
+                <p><strong>BA client:</strong> {workOrder.linked_po?.po_number || workOrder.linked_po_id}</p>
               )}
             </div>
           </div>
