@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Check, Send, Wifi, WifiOff, X, FileText, User, Calendar, Clock } from 'lucide-react';
+import { Check, Send, Wifi, WifiOff, X, FileText, User, Calendar, Clock, Mail } from 'lucide-react';
 import { handleSignatureWithAutoSend } from '../../lib/services/client-signature.js';
 
 export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
@@ -252,6 +252,26 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             </div>
           </div>
         </div>
+         {/* Emails destinataires - NOUVEAU */}
+          {workOrder.recipient_emails && workOrder.recipient_emails.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+              <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center">
+                <Mail className="mr-2" size={16} />
+                Email(s) destinataire(s) du bon de travail
+              </h3>
+              <div className="space-y-1">
+                {workOrder.recipient_emails.map((email, index) => (
+                  <div key={index} className="text-sm text-blue-800 flex items-center">
+                    <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
+                    {email}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-blue-600 mt-2">
+                {workOrder.recipient_emails.length} email(s) recevront ce bon de travail une fois signé
+              </p>
+            </div>
+          )}      
 
         {/* Description des travaux */}
         <div className="mb-6">
