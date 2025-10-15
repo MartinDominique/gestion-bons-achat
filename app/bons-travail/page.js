@@ -472,12 +472,7 @@ export default function BonsTravailPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-2 rounded-full mr-3">
-                              <User className="w-4 h-4 text-white" />
-                            </div>
-                            <span className="text-gray-900 font-medium">{wo.client?.name || 'Client inconnu'}</span>
-                          </div>
+                          <span className="text-gray-900 font-medium">{wo.client?.name || 'Client inconnu'}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center text-sm">
