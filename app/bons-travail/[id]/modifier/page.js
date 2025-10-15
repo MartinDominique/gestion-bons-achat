@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -93,7 +94,7 @@ export default function ModifierBonTravailPage({ params }) {
       // Messages selon statut (MODIFIÉ: seulement si pas "présenter client")
       if (status !== 'ready_for_signature') {
         const messages = {
-          draft: 'Bon de travail sauvegardé en brouillon',
+          draft: 'Bon de travail sauvegardé en brouillon et en Caca',
           completed: 'Bon de travail finalisé avec succès',
           sent: 'Bon de travail envoyé au client'
         };
