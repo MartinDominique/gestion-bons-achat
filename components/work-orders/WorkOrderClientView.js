@@ -155,6 +155,16 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     return <div className="p-8 text-center">Chargement...</div>;
   }
 
+  // ✅ AJOUTEZ CE DEBUG
+console.log('🔍 DEBUG PRIX CLIENT:');
+console.log('  - workOrder.materials:', workOrder.materials);
+console.log('  - show_price values:', workOrder.materials?.map(m => ({
+    code: m.product_code,
+    show_price: m.show_price,
+    type: typeof m.show_price
+  })));
+console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.show_price === true));
+
     console.log('Material prices debug:', workOrder.materials?.map(m => ({
     code: m.product?.product_id,
     selling_price: m.product?.selling_price,
