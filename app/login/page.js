@@ -24,7 +24,8 @@ export default function LoginPage() {
     if (error) {
       setError(error.message);
     } else {
-      router.push('/bons-achat');
+      const lastPage = localStorage.getItem('lastVisitedPage') || 'bons-achat';
+      router.push('/' + lastPage);
       router.refresh();
     }
   }
