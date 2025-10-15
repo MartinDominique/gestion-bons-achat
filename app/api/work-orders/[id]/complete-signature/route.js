@@ -74,6 +74,7 @@ export async function POST(request, { params }) {
       .select(`
         *,
         client:clients(*),
+        linked_po:purchase_orders(*),
         materials:work_order_materials(*)
       `)
       .eq('id', workOrderId)
