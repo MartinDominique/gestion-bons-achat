@@ -232,7 +232,7 @@ export default function BonsTravailPage() {
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header avec dégradé coloré - OPTIMISÉ 50% plus compact */}
-        <div className="bg-gradient-to-r from-teal-500 via-blue-500 to-indigo-600 rounded-2xl shadow-xl p-4 sm:p-6 mb-6">
+        <div className="bg-gradient-to-r from-orange-500 via-orange-400 to-gray-500 rounded-2xl shadow-xl p-4 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Gestion des Bons de Travail</h1>
