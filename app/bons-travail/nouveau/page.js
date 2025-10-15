@@ -49,7 +49,7 @@ export default function NouveauBonTravailPage() {
         // Messages selon statut (MODIFIÉ: seulement si pas "présenter client")
         if (status !== 'ready_for_signature') {
           const messages = {
-            draft: 'Bon de travail sauvegardé en brouillon en caca',
+            draft: 'Bon de travail sauvegardé en brouillon',
             completed: 'Bon de travail créé et finalisé avec succès',
             sent: 'Bon de travail créé et envoyé au client'
           };
