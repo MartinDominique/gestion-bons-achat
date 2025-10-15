@@ -675,7 +675,8 @@ export default function WorkOrderForm({
         description: material.description || material.product?.description || 'Article sans description',
         code: material.code || material.product?.product_id || material.display_code || '',
         unit: material.unit || material.product?.unit || 'UN',
-        unit_price: material.unit_price || material.product?.selling_price || 0
+        unit_price: material.unit_price || material.product?.selling_price || 0,
+        show_price: material.showPrice || material.show_price || false
       };
       
       if (normalizedProductId === null) {
