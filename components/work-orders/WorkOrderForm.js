@@ -897,17 +897,18 @@ export default function WorkOrderForm({
             </button>
           </div>
           
-          {descriptions.map((description, index) => (
+           {descriptions.map((description, index) => (
             <div key={index} className="mb-3 flex gap-2">
               <div className="flex-1">
                 <textarea
                   rows={2}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 uppercase ${
                     errors.work_description && index === 0 ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder={index === 0 ? "Description principale des travaux effectués..." : "Description additionnelle..."}
+                  placeholder={index === 0 ? "DESCRIPTION PRINCIPALE DES TRAVAUX EFFECTUÉS..." : "DESCRIPTION ADDITIONNELLE..."}
                   value={description}
-                  onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                  onChange={(e) => handleDescriptionChange(index, e.target.value.toUpperCase())}
+                  style={{ textTransform: 'uppercase' }}
                 />
               </div>
               {descriptions.length > 1 && (
@@ -945,10 +946,11 @@ export default function WorkOrderForm({
           </label>
           <textarea
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            placeholder="Observations, recommandations, prochaines étapes..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 uppercase"
+            placeholder="OBSERVATIONS, RECOMMANDATIONS, PROCHAINES ÉTAPES..."
             value={formData.additional_notes}
-            onChange={(e) => handleChange('additional_notes', e.target.value)}
+            onChange={(e) => handleChange('additional_notes', e.target.value.toUpperCase())}
+            style={{ textTransform: 'uppercase' }}
           />
         </div>
 
