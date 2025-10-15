@@ -100,8 +100,53 @@ export default function ModifierBonTravailPage({ params }) {
         };
 
        const finalStatus = status || workOrderData.status || 'draft';
+        const message = messages[finalStatus] || 'Bon de travail mis à jour avec succès';
+        
+        // Créer le toast
+        const toast = document.createElement('div');
+        toast.textContent = message;
+        toast.style.cssText = `
+          position: fixed;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: linear-gradient(to right, #10b981, #059669);
+          color: white;
+          padding: 16px 32px;
+          border-radius: 12px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+          z-index: 9999;
+          font-weight: 600;
+          font-size: 16px;
+          animation: slideDown 0.3s ease-out;
+        `;
+        
+        // Ajouter l'animation CSS
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes slideDown {
+            from {
+              opacity: 0;
+              transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(-50%) translateY(0);
+            }
+          }
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(toast);
+        
+        // Rediriger après 2 secondes
         setTimeout(() => {
-          router.push('/bons-travail');
+          toast.style.opacity = '0';
+          toast.style.transition = 'opacity 0.3s ease-out';
+          setTimeout(() => {
+            document.body.removeChild(toast);
+            document.head.removeChild(style);
+            router.push('/bons-travail');
+          }, 300);
         }, 2000);
       }
       
