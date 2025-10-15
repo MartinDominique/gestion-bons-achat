@@ -107,7 +107,8 @@ if (linked_po_id) {
       total_hours: parseFloat(total_hours) || 0,
       work_description,
       additional_notes: additional_notes || null,
-      status: status || 'draft'
+      status: status || 'draft',
+      recipient_emails: recipient_emails || []
     };
 
     const { data: workOrder, error: workOrderError } = await client
