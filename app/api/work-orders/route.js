@@ -17,6 +17,7 @@ export async function POST(request) {
       additional_notes,
       status,
       materials = []
+      recipient_emails = []
     } = body;
 
     // Validation de base
