@@ -199,7 +199,8 @@ export async function PUT(request, { params }) {
         total_hours: updateData.total_hours ? parseFloat(updateData.total_hours) : null,
         work_description: updateData.work_description || null,
         additional_notes: updateData.additional_notes || null,
-        status: updateData.status || 'draft'
+        status: updateData.status || 'draft',
+        recipient_emails: updateData.recipient_emails || []
       })
       .eq('id', workOrderId)
       .select()
