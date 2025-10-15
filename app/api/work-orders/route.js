@@ -29,7 +29,9 @@ export async function POST(request) {
 
     const client = supabaseAdmin || supabase;
 
-    // Gérer la création automatique de purchase_order si nécessaire
+    // Remplacez la section "Gérer la création automatique de purchase_order" dans POST par ceci :
+
+// Gérer la création automatique de purchase_order si nécessaire
     let finalLinkedPoId = null;
     
     if (linked_po_id) {
@@ -37,46 +39,60 @@ export async function POST(request) {
       const isStringPO = typeof linked_po_id === 'string' && linked_po_id.trim() && isNaN(linked_po_id);
       
       if (isStringPO) {
-        // C'est un nouveau numéro de BA/Job client - créer un purchase_order
-        console.log('Création automatique purchase_order pour:', linked_po_id);
+        // C'est un nouveau numéro de BA/Job client
+        console.log('🔍 Création automatique purchase_order pour:', linked_po_id);
         
-        // 1️⃣ Récupérer le nom du client
-        const { data: clientData } = await client
-          .from('clients')
-          .select('name')
-          .eq('id', client_id)
-          .single();
-        
-        const clientName = clientData?.name || 'Client inconnu';
-        
-        // 2️⃣ Créer le purchase_order
-        const { data: newPO, error: poError } = await client
+        // ✅ VÉRIFIER SI CE PO N'EXISTE PAS DÉJÀ
+        const { data: existingPO } = await client
           .from('purchase_orders')
-          .insert({
-            po_number: linked_po_id.trim(),
-            client_id: parseInt(client_id),
-            status: 'active',
-            date: work_date,
-            po_date: work_date,
-            description: 'Créé automatiquement depuis BT',
-            created_by: null,
-            amount: 0,
-            client_name: clientName,
-            notes: `PO créé automatiquement lors de la création d'un BT. Date: ${work_date}`
-          })
-          .select()
+          .select('id')
+          .eq('po_number', linked_po_id.trim())
           .single();
-
-        if (poError) {
-          console.error('Erreur création purchase_order:', poError);
-          // Continuer sans bloquer la création du work_order
+    
+        if (existingPO) {
+          console.log('✅ Purchase order existe déjà, ID:', existingPO.id);
+          finalLinkedPoId = existingPO.id;
         } else {
-          finalLinkedPoId = newPO.id;
-          console.log('Purchase order créé:', newPO.po_number, 'ID:', newPO.id);
+          // 1️⃣ Récupérer le nom du client
+          const { data: clientData } = await client
+            .from('clients')
+            .select('name')
+            .eq('id', client_id)
+            .single();
+          
+          const clientName = clientData?.name || 'Client inconnu';
+          
+          // 2️⃣ Créer le purchase_order
+          const { data: newPO, error: poError } = await client
+            .from('purchase_orders')
+            .insert({
+              po_number: linked_po_id.trim(),
+              client_id: parseInt(client_id),
+              status: 'active',
+              date: work_date,
+              po_date: work_date,
+              description: 'Créé automatiquement depuis BT',
+              created_by: null,
+              amount: 0,
+              client_name: clientName,
+              notes: `PO créé automatiquement lors de la création d'un BT. Date: ${work_date}`
+            })
+            .select()
+            .single();
+    
+          if (poError) {
+            console.error('❌ Erreur création purchase_order:', poError);
+            // ⚠️ IMPORTANT : Ne pas continuer avec un linked_po_id invalide
+            finalLinkedPoId = null;
+          } else {
+            finalLinkedPoId = newPO.id;
+            console.log('✅ Purchase order créé:', newPO.po_number, 'ID:', newPO.id);
+          }
         }
       } else if (!isNaN(linked_po_id)) {
         // C'est un ID existant
         finalLinkedPoId = parseInt(linked_po_id);
+        console.log('✅ Utilisation ID purchase_order existant:', finalLinkedPoId);
       }
     }
 
