@@ -168,7 +168,7 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
     console.log('Material prices debug:', workOrder.materials?.map(m => ({
     code: m.product?.product_id,
     selling_price: m.product?.selling_price,
-    showPrice: m.showPrice,
+    show_price: m.show_price,
     unit_price: m.unit_price
   })));
   console.log('Condition check:', workOrder.materials && workOrder.materials.some(m => m.product?.selling_price > 0));
