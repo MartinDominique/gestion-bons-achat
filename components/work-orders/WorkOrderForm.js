@@ -709,6 +709,7 @@ export default function WorkOrderForm({
 
     try {
       const savedWorkOrder = await onSave(dataToSave, status);
+      console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
       
       if (status === 'ready_for_signature' && savedWorkOrder) {
         const workOrderId = savedWorkOrder.id || workOrder?.id;
