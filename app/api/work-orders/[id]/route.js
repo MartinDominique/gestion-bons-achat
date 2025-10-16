@@ -4,6 +4,20 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 
+// Arrondi au quart d'heure supérieur (HH:MM -> heures décimales)
+function toQuarterHourUp(startHHMM, endHHMM, pauseMinutes = 0) {
+  const parseHHMM = (t) => {
+    const [h, m] = String(t || '').split(':').map((n) => parseInt(n, 10) || 0);
+    return h * 60 + m;
+  };
+  const s = parseHHMM(startHHMM);
+  const e = parseHHMM(endHHMM);
+  let net = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
+  const rounded = Math.ceil(net / 15) * 15;     // ↑ au 15 min
+  return Math.round((rounded / 60) * 100) / 100; // heures décimales (2 déc.)
+}
+
+
 // GET - Récupérer un bon de travail spécifique avec toutes ses relations
 export async function GET(request, { params }) {
   try {
@@ -118,6 +132,33 @@ export async function PUT(request, { params }) {
     console.log('📋 API - materials extraits:', materials);
     console.log('📋 API - materials.length extraits:', materials.length);
 
+    // Unifier/normaliser la pause
+      const pause_minutes = updateData.pause_minutes != null
+        ? parseInt(updateData.pause_minutes, 10) || 0
+        : 0;
+      
+      // Calcul serveur infaillible du total (quart d’heure ↑ si start/end fournis)
+      let computedTotalHours = null;
+      if (updateData.start_time && updateData.end_time) {
+        computedTotalHours = toQuarterHourUp(
+          updateData.start_time,
+          updateData.end_time,
+          pause_minutes
+        );
+      } else if (updateData.total_hours != null) {
+        // fallback si on ne reçoit pas les heures brutes
+        computedTotalHours = Math.round(parseFloat(updateData.total_hours) * 100) / 100;
+      }
+      
+      // (Optionnel) debug
+      console.log('🧮 PUT total_hours (srv):', {
+        start: updateData.start_time,
+        end: updateData.end_time,
+        pause_minutes,
+        computedTotalHours
+      });
+
+
     // NOUVELLE LOGIQUE : Gérer la création automatique de purchase_order
     let finalLinkedPoId = updateData.linked_po_id;
     
@@ -195,8 +236,8 @@ export async function PUT(request, { params }) {
       work_date: updateData.work_date,
       start_time: updateData.start_time || null,
       end_time: updateData.end_time || null,
-      pause_minutes: updateData.pause_minutes ? parseInt(updateData.pause_minutes) : 0,  // ✅ CHANGÉ
-      total_hours: updateData.total_hours ? Math.round(parseFloat(updateData.total_hours) * 100) / 100 : null,
+      pause_minutes,
+      total_hours: computedTotalHours,
       work_description: updateData.work_description || null,
       additional_notes: updateData.additional_notes || null,
       status: updateData.status || 'draft',
