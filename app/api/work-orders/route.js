@@ -2,6 +2,20 @@
 import { supabase } from '../../../lib/supabase';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 
+// === Arrondi au quart d'heure supérieur (HH:MM -> heures décimales) ===
+function toQuarterHourUp(startHHMM, endHHMM, pauseMinutes = 0) {
+  const parseHHMM = (t) => {
+    const [h, m] = String(t || '').split(':').map((n) => parseInt(n, 10) || 0);
+    return h * 60 + m;
+  };
+  const s = parseHHMM(startHHMM);
+  const e = parseHHMM(endHHMM);
+  let net = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
+  const rounded = Math.ceil(net / 15) * 15;                 // ↑ au 15 min
+  return Math.round((rounded / 60) * 100) / 100;            // heures décimales
+}
+
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -19,6 +33,17 @@ export async function POST(request) {
       materials = [],
       recipient_emails = []
     } = body;
+
+    const pause_minutes = body.pause_minutes != null
+      ? parseInt(body.pause_minutes, 10) || 0
+      : (parseInt(break_time, 10) || 0);  // compat ancien front
+    
+    let computedTotalHours = null;
+    if (start_time && end_time) {
+      computedTotalHours = toQuarterHourUp(start_time, end_time, pause_minutes);
+    } else if (total_hours != null) {
+      computedTotalHours = Math.round(parseFloat(total_hours) * 100) / 100;
+    }
 
     // Validation de base
     if (!client_id || !work_date || !work_description) {
@@ -104,8 +129,8 @@ if (linked_po_id) {
       work_date,
       start_time: start_time || null,
       end_time: end_time || null,
-      break_time: parseFloat(break_time) || 0,
-      total_hours: total_hours ? Math.round(parseFloat(total_hours) * 100) / 100 : null,
+      pause_minutes,    
+      total_hours: computedTotalHours,
       work_description,
       additional_notes: additional_notes || null,
       status: status || 'draft',
@@ -408,8 +433,8 @@ export async function PUT(request) {
       work_date,
       start_time: start_time || null,
       end_time: end_time || null,
-      break_time: parseFloat(break_time) || 0,
-      total_hours: total_hours ? Math.round(parseFloat(total_hours) * 100) / 100 : null,
+      pause_minutes,    
+      total_hours: computedTotalHours,
       work_description,
       additional_notes: additional_notes || null,
       status: status || 'draft'
