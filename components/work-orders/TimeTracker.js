@@ -14,6 +14,7 @@ export default function TimeTracker({
 
   const [isInitialized, setIsInitialized] = useState(false);
   const lastNotifiedData = useRef(null);
+  const processedEntriesRef = useRef(null);
   
   // États d'édition manuelle
   const [showManualEdit, setShowManualEdit] = useState(false);
@@ -77,7 +78,13 @@ const getAllSessions = () => {
 // NOTIFIER PARENT DES CHANGEMENTS
 // ========================================
 useEffect(() => {
-  if (!onTimeChange || !isInitialized) return;
+  if (!onTimeChange) return;
+  
+  // ⭐ Attendre que l'initialisation soit au moins tentée
+  if (!isInitialized && initialTimeEntries && initialTimeEntries.length > 0) {
+    console.log('⏸️ Attente initialisation avant notification');
+    return;
+  }
   
   const allSessions = getAllSessions();
   const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
@@ -90,7 +97,7 @@ useEffect(() => {
   // Comparer avec dernière notification pour éviter boucles
   const dataString = JSON.stringify(dataToSend);
   if (dataString !== lastNotifiedData.current) {
-    console.log('📤 Notification parent - Sessions:', allSessions.length);
+    console.log('📤 Notification parent - Sessions:', allSessions.length, allSessions);
     lastNotifiedData.current = dataString;
     onTimeChange(dataToSend);
   }
@@ -110,9 +117,25 @@ useEffect(() => {
 // ========================================
 // INITIALISATION AVEC VALEURS EXISTANTES
 // ========================================
+
+// Utiliser useRef pour tracker si on a déjà traité ces données spécifiques
+const processedEntriesRef = useRef(null);
+
 useEffect(() => {
-  // ⭐ CRITIQUE : Ne s'exécute qu'UNE SEULE FOIS
-  if (isInitialized) return;
+  // Créer une signature unique des données reçues
+  const entriesSignature = JSON.stringify(initialTimeEntries);
+  
+  console.log('🚀 TimeTracker useEffect DÉCLENCHÉ', {
+    hasEntries: initialTimeEntries?.length > 0,
+    entriesCount: initialTimeEntries?.length,
+    processedBefore: processedEntriesRef.current === entriesSignature
+  });
+  
+  // ⭐ CRITIQUE : Ne traiter que si les données ont VRAIMENT changé
+  if (processedEntriesRef.current === entriesSignature) {
+    console.log('⏭️ Mêmes données déjà traitées, skip');
+    return;
+  }
   
   if (initialTimeEntries && initialTimeEntries.length > 0) {
     console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries);
@@ -140,18 +163,23 @@ useEffect(() => {
       });
       setIsWorking(true);
       
-      console.log('✅ Session en cours restaurée');
+      console.log('✅ Session en cours restaurée:', sessionInProgress);
     } else {
       // Toutes les sessions sont complétées
       console.log('📋 Toutes les sessions sont complétées');
       setTimeEntries(initialTimeEntries);
     }
     
+    // ⭐ Marquer ces données comme traitées
+    processedEntriesRef.current = entriesSignature;
     setIsInitialized(true);
-  } else if (!initialTimeEntries || initialTimeEntries.length === 0) {
+  } else if (initialTimeEntries && initialTimeEntries.length === 0) {
+    // Tableau vide explicite
+    console.log('📭 Aucune session à charger');
+    processedEntriesRef.current = entriesSignature;
     setIsInitialized(true);
   }
-}, [initialTimeEntries, isInitialized]);
+}, [initialTimeEntries]); // ⭐ Écoute SEULEMENT initialTimeEntries
 
 // ========================================
 // FONCTIONS DE CALCUL
