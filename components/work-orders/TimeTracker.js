@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-react';
 
 export default function TimeTracker({ 
@@ -39,6 +39,9 @@ export default function TimeTracker({
 // NOTIFIER PARENT DES CHANGEMENTS
 // ========================================
 
+// ⭐ Utiliser useRef pour éviter boucles infinies
+const lastNotifiedData = useRef(null);
+
 // Fonction pour combiner sessions complétées + session en cours
 const getAllSessions = () => {
   if (!currentSession) {
@@ -58,37 +61,67 @@ const getAllSessions = () => {
   const sessionInProgress = {
     ...currentSession,
     total_hours: currentTotal,
-    in_progress: true // ⭐ Flag pour identifier session en cours
+    in_progress: true
   };
   
   return [...timeEntries, sessionInProgress];
 };
 
-// Notifier parent à chaque changement (sessions OU session en cours)
+// Notifier parent SEULEMENT si les données ont changé
 useEffect(() => {
-  if (onTimeChange) {
-    const allSessions = getAllSessions();
-    const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-    
-    onTimeChange({
-      time_entries: allSessions,
-      total_hours: grandTotal
-    });
+  if (!onTimeChange || !isInitialized) return; // ⭐ Attendre initialisation
+  
+  const allSessions = getAllSessions();
+  const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
+  
+  const dataToSend = {
+    time_entries: allSessions,
+    total_hours: grandTotal
+  };
+  
+  // ⭐ Comparer avec dernière notification pour éviter boucles
+  const dataString = JSON.stringify(dataToSend);
+  if (dataString !== lastNotifiedData.current) {
+    console.log('📤 Notification parent - Sessions:', allSessions.length);
+    lastNotifiedData.current = dataString;
+    onTimeChange(dataToSend);
   }
-}, [timeEntries, currentSession, currentTime]); // ⭐ Écoute aussi currentSession et currentTime
+}, [timeEntries, currentSession, isInitialized]); // ⭐ Retirer currentTime pour éviter updates constantes
 
-// ========================================
+// Mettre à jour le temps toutes les 30 secondes (pas chaque seconde)
+useEffect(() => {
+  if (!isWorking || !currentSession) return;
+  
+  const interval = setInterval(() => {
+    // Force un re-render pour mettre à jour l'affichage
+    setCurrentTime(new Date());
+  }, 30000); // 30 secondes au lieu de 1 seconde
+  
+  return () => clearInterval(interval);
+}, [isWorking, currentSession]);
+
+  // ========================================
 // INITIALISATION AVEC VALEURS EXISTANTES
 // ========================================
 
+// Flag pour initialiser une seule fois
+const [isInitialized, setIsInitialized] = useState(false);
+
 useEffect(() => {
+  // ⭐ CRITIQUE : Ne s'exécute qu'UNE SEULE FOIS
+  if (isInitialized) return;
+  
   if (initialTimeEntries && initialTimeEntries.length > 0) {
+    console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries);
+    
     // Chercher une session en cours (sans end_time ou avec flag in_progress)
     const sessionInProgress = initialTimeEntries.find(
       entry => !entry.end_time || entry.in_progress
     );
     
     if (sessionInProgress) {
+      console.log('⏰ Session en cours détectée:', sessionInProgress);
+      
       // Retirer la session en cours de la liste
       const completedSessions = initialTimeEntries.filter(
         entry => entry !== sessionInProgress
@@ -104,13 +137,19 @@ useEffect(() => {
       });
       setIsWorking(true);
       
-      console.log('⏰ Session en cours restaurée:', sessionInProgress);
+      console.log('✅ Session en cours restaurée');
     } else {
       // Toutes les sessions sont complétées
+      console.log('📋 Toutes les sessions sont complétées');
       setTimeEntries(initialTimeEntries);
     }
+    
+    setIsInitialized(true); // ⭐ Marquer comme initialisé
+  } else if (!initialTimeEntries || initialTimeEntries.length === 0) {
+    // Pas de sessions initiales
+    setIsInitialized(true);
   }
-}, [initialTimeEntries]);
+}, [initialTimeEntries, isInitialized]); // ⭐ Dépend aussi du flag
 
   // ========================================
   // FONCTIONS DE CALCUL
