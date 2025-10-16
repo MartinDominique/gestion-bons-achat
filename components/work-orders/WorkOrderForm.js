@@ -19,6 +19,7 @@ export default function WorkOrderForm({
     work_date: new Date().toISOString().split('T')[0],
     start_time: '',
     end_time: '',
+    pause_minutes: 0, 
     work_description: '',
     additional_notes: '',
     status: 'draft'
