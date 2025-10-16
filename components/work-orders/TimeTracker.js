@@ -86,18 +86,15 @@ export default function TimeTracker({
   return result;
 };
     
-    // Nouvelle fonction à ajouter après calculateTotalHours
-    const roundToQuarterHour = (hours) => {
-      // Séparer heures entières et décimales
-      const fullHours = Math.floor(hours);
-      const decimalPart = hours - fullHours;
+    // Fonction d'arrondi au quart d'heure - PREND DES MINUTES
+    const roundToQuarterHour = (totalMinutes) => {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
       
-      // Convertir la partie décimale en minutes
-      const minutes = decimalPart * 60;
-      
-      // Arrondir au quart d'heure supérieur
       let roundedMinutes;
-      if (minutes <= 15) {
+      if (minutes === 0) {
+        roundedMinutes = 0;
+      } else if (minutes <= 15) {
         roundedMinutes = 15;
       } else if (minutes <= 30) {
         roundedMinutes = 30;
@@ -107,13 +104,11 @@ export default function TimeTracker({
         roundedMinutes = 60;
       }
       
-      // Si 60 minutes, ajouter 1 heure
       if (roundedMinutes === 60) {
-        return fullHours + 1;
+        return hours + 1;
       }
       
-      // Reconvertir en heures décimales
-      return fullHours + (roundedMinutes / 60);
+      return hours + (roundedMinutes / 60);
     };
 
   const formatTime = (date) => {
