@@ -118,8 +118,6 @@ useEffect(() => {
 // INITIALISATION AVEC VALEURS EXISTANTES
 // ========================================
 
-// Utiliser useRef pour tracker si on a déjà traité ces données spécifiques
-const processedEntriesRef = useRef(null);
 
 useEffect(() => {
   // Créer une signature unique des données reçues
