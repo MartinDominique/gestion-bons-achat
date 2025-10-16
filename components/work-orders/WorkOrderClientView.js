@@ -136,32 +136,6 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     }).format(amount || 0);
   };
 
-  
-      const calculateTotalHours = () => {
-        if (!workOrder?.start_time || !workOrder?.end_time) return 0;
-      
-        // Parse "HH:MM" -> minutes, sans objet Date (aucun décalage TZ/secondes)
-        const parseHHMM = (t) => {
-          const [h, m] = String(t).split(':').map((n) => parseInt(n, 10) || 0);
-          return h * 60 + m;
-        };
-      
-        const startMin = parseHHMM(workOrder.start_time);
-        const endMin   = parseHHMM(workOrder.end_time);
-      
-        // Durée nette en minutes
-        const pause = parseInt(workOrder.pause_minutes, 10) || 0;
-        let netMin = Math.max(0, endMin - startMin - pause);
-      
-        // Arrondi au quart d'heure supérieur (ceil)
-        const roundedMin = Math.ceil(netMin / 15) * 15;
-      
-        // Retour en heures décimales (arrondi 2 décimales pour stockage/affichage)
-        return Math.round((roundedMin / 60) * 100) / 100;
-      };
-
-    
-    
         const calculateTotalHours = () => {
           if (!workOrder?.start_time || !workOrder?.end_time) return 0;
         
