@@ -755,8 +755,7 @@ const handleTimeChange = (timeData) => {
     <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
      
     {console.log('🟢 WORKORDERFORM RENDU - time_entries:', formData.time_entries)}
-    
-     <Toaster position="top-right" />
+   
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900">
