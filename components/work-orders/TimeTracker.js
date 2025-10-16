@@ -5,12 +5,13 @@ export default function TimeTracker({
   onTimeChange, 
   initialStartTime = null, 
   initialEndTime = null,
+  initialPauseMinutes = 0,
   workDate = null 
 }) {
   const [isWorking, setIsWorking] = useState(false);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
-  const [pauseMinutes, setPauseMinutes] = useState(0); // Minutes de pause
+  const [pauseMinutes, setPauseMinutes] = useState(initialPauseMinutes);
   const [currentTime, setCurrentTime] = useState(new Date());
   
   // États d'édition manuelle
