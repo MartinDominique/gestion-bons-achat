@@ -105,7 +105,7 @@ if (linked_po_id) {
       start_time: start_time || null,
       end_time: end_time || null,
       break_time: parseFloat(break_time) || 0,
-      total_hours: data.total_hours ? Math.round(parseFloat(data.total_hours) * 100) / 100 : null,
+      total_hours: total_hours ? Math.round(parseFloat(total_hours) * 100) / 100 : null,
       work_description,
       additional_notes: additional_notes || null,
       status: status || 'draft',
@@ -409,7 +409,7 @@ export async function PUT(request) {
       start_time: start_time || null,
       end_time: end_time || null,
       break_time: parseFloat(break_time) || 0,
-      total_hours: data.total_hours ? Math.round(parseFloat(data.total_hours) * 100) / 100 : null,
+      total_hours: total_hours ? Math.round(parseFloat(total_hours) * 100) / 100 : null,
       work_description,
       additional_notes: additional_notes || null,
       status: status || 'draft'
