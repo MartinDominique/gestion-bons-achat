@@ -151,6 +151,7 @@ export default function WorkOrderForm({
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
         start_time: workOrder.start_time || '',
         end_time: workOrder.end_time || '',
+        pause_minutes: workOrder.pause_minutes || 0,
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft'
