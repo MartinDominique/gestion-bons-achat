@@ -196,7 +196,7 @@ export async function PUT(request, { params }) {
       start_time: updateData.start_time || null,
       end_time: updateData.end_time || null,
       pause_minutes: updateData.pause_minutes ? parseInt(updateData.pause_minutes) : 0,  // ✅ CHANGÉ
-      total_hours: updateData.total_hours ? parseFloat(updateData.total_hours) : null,
+      total_hours: updateData.total_hours ? Math.round(parseFloat(updateData.total_hours) * 100) / 100 : null,
       work_description: updateData.work_description || null,
       additional_notes: updateData.additional_notes || null,
       status: updateData.status || 'draft',
