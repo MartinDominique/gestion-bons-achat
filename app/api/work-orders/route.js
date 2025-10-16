@@ -34,16 +34,16 @@ export async function POST(request) {
       recipient_emails = []
     } = body;
 
-    const pause_minutes = body.pause_minutes != null
-      ? parseInt(body.pause_minutes, 10) || 0
-      : (parseInt(break_time, 10) || 0);  // compat ancien front
+    //const pause_minutes = body.pause_minutes != null
+    //  ? parseInt(body.pause_minutes, 10) || 0
+     // : (parseInt(break_time, 10) || 0);  // compat ancien front
     
-    let computedTotalHours = null;
-    if (start_time && end_time) {
-      computedTotalHours = toQuarterHourUp(start_time, end_time, pause_minutes);
-    } else if (total_hours != null) {
-      computedTotalHours = Math.round(parseFloat(total_hours) * 100) / 100;
-    }
+   // let computedTotalHours = null;
+  //  if (start_time && end_time) {
+   //   computedTotalHours = toQuarterHourUp(start_time, end_time, pause_minutes);
+   // } else if (total_hours != null) {
+  //    computedTotalHours = Math.round(parseFloat(total_hours) * 100) / 100;
+  //  }
 
     // Validation de base
     if (!client_id || !work_date || !work_description) {
