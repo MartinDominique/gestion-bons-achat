@@ -266,30 +266,38 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
               <p><strong>Nom:</strong> {workOrder.client?.name || 'N/A'}</p>
               <p><strong>Contact:</strong> {workOrder.client?.contact_person || 'N/A'}</p>
             </div>
-            <p><strong>Heures:</strong> {(() => {
-
-              // 1) Si on a start/end → recalcul robuste (arrondi au 15 min supérieur)
-              if (workOrder.start_time && workOrder.end_time) {
-                // ⚠️ Assure-toi que ta fonction calculateTotalHours ne dépend PAS de Date()
-                // et utilise la version minutes → quart d'heure ↑ que tu as déjà mise.
-                const hours = calculateTotalHours();
-                const h = Math.floor(hours);
-                const m = Math.round((hours - h) * 60);
-                return m > 0 ? `${h}h ${m}min` : `${h}h`;
-              }
-            
-              // 2) Sinon, “réparer” une valeur décimale type 1.8 → 1.75 avant formatage
-              const coerceToQuarterHourUp = (dec) => {
-                if (dec == null) return 0;
-                const minutes = Math.ceil((Number(dec) || 0) * 60 / 15) * 15; // ↑ au 15 min
-                return Math.round((minutes / 60) * 100) / 100;                // heures décimales
-              };
-            
-              const hours = coerceToQuarterHourUp(workOrder.total_hours || 0);
-              const h = Math.floor(hours);
-              const m = Math.round((hours - h) * 60);
-              return m > 0 ? `${h}h ${m}min` : `${h}h`;
-            })()}</p>
+          
+            {/* Affichage multi-sessions */}
+            {workOrder.time_entries && workOrder.time_entries.length > 0 ? (
+              <div className="col-span-2 lg:col-span-3">
+                <strong>Sessions de travail:</strong>
+                <div className="mt-2 space-y-1">
+                  {workOrder.time_entries.map((entry, index) => (
+                    <div key={index} className="text-sm bg-white p-2 rounded border">
+                      <span className="font-semibold">{entry.date}</span>: {entry.start_time} → {entry.end_time || 'En cours'}
+                      {entry.pause_minutes > 0 && <span className="text-orange-600 ml-2">(Pause: {entry.pause_minutes}min)</span>}
+                      <span className="font-bold text-blue-700 ml-2">
+                        {(() => {
+                          const h = Math.floor(entry.total_hours || 0);
+                          const m = Math.round(((entry.total_hours || 0) - h) * 60);
+                          return m > 0 ? `${h}h ${m}min` : `${h}h`;
+                        })()}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="text-sm font-bold text-blue-900 pt-2 border-t">
+                    TOTAL: {(() => {
+                      const total = workOrder.time_entries.reduce((sum, e) => sum + (e.total_hours || 0), 0);
+                      const h = Math.floor(total);
+                      const m = Math.round((total - h) * 60);
+                      return m > 0 ? `${h}h ${m}min` : `${h}h`;
+                    })()}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p><strong>Heures:</strong> Non enregistré</p>
+            )}
 
             <div className="col-span-2 lg:col-span-1 space-y-1">
               <p><strong>Tél:</strong> {workOrder.client?.phone || 'N/A'}</p>
