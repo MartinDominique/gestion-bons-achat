@@ -4,7 +4,8 @@ import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-
 export default function TimeTracker({ 
   onTimeChange, 
   initialTimeEntries = [],
-  workDate = null 
+  workDate = null,
+  status = 'draft'
 }) {
   // État pour gérer PLUSIEURS sessions
   const [timeEntries, setTimeEntries] = useState(initialTimeEntries || []);
@@ -211,6 +212,10 @@ const formatDuration = (hours) => {
 
   // Commencer une nouvelle session
   const handlePunchIn = () => {
+     if (status === 'sent' || status === 'signed') {
+    alert('❌ Impossible d\'ajouter une session.\nCe bon de travail a déjà été envoyé au client.');
+    return;
+  }
     const now = new Date();
     const newSession = {
       date: workDate || now.toISOString().split('T')[0],
@@ -226,6 +231,10 @@ const formatDuration = (hours) => {
   // Terminer la session courante
     const handlePunchOut = () => {
       if (!currentSession) return;
+      if (status === 'sent' || status === 'signed') {
+    alert('❌ Impossible de terminer cette session.\nCe bon de travail a déjà été envoyé au client.');
+    return;
+  }
       
       const now = new Date();
       const endTime = now.toTimeString().substring(0, 5);
@@ -272,6 +281,10 @@ const formatDuration = (hours) => {
 
   // Ajouter session manuelle
   const handleAddManualSession = () => {
+    if (status === 'sent' || status === 'signed') {
+    alert('❌ Impossible d\'ajouter une session.\nCe bon de travail a déjà été envoyé au client.');
+    return;
+  }
     setEditingIndex(null);
     setManualDate(workDate || new Date().toISOString().split('T')[0]);
     setManualStart('');
@@ -331,7 +344,12 @@ const formatDuration = (hours) => {
         <button
           type="button"
           onClick={handleAddManualSession}
-          className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 flex items-center"
+          disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
+          className={`text-sm px-3 py-1 rounded flex items-center ${
+            status === 'sent' || status === 'signed'
+              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
         >
           <Plus size={14} className="mr-1" />
           Ajouter session
@@ -376,7 +394,12 @@ const formatDuration = (hours) => {
                   ...currentSession,
                   pause_minutes: Math.min(120, Math.max(0, parseInt(e.target.value) || 0))
                 })}
-                className="w-full text-center font-mono font-bold text-orange-700 border-2 border-orange-300 rounded px-2 py-1"
+                disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
+                className={`w-full text-center font-mono font-bold text-orange-700 border-2 rounded px-2 py-1 ${
+                  status === 'sent' || status === 'signed' 
+                    ? 'border-gray-300 bg-gray-100 cursor-not-allowed' 
+                    : 'border-orange-300'
+                }`}
               />
             </div>
           </div>
@@ -488,18 +511,35 @@ const formatDuration = (hours) => {
       )}
 
       {/* Bouton Punch-in si aucune session active */}
-      {!isWorking && (
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={handlePunchIn}
-            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center mx-auto font-medium"
-          >
-            <Play className="mr-2" size={18} />
-            Commencer nouvelle session
-          </button>
-        </div>
-      )}
+        {!isWorking && (
+          <div className="text-center">
+            {/* ⭐ NOUVEAU - Message si verrouillé */}
+            {(status === 'sent' || status === 'signed') && (
+              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-4">
+                <p className="text-sm text-yellow-800">
+                  🔒 <strong>Bon de travail verrouillé</strong>
+                </p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Ce BT a été envoyé au client. Vous ne pouvez plus ajouter de sessions.
+                </p>
+              </div>
+            )}
+            
+            <button
+              type="button"
+              onClick={handlePunchIn}
+              disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
+              className={`px-6 py-3 rounded-lg flex items-center mx-auto font-medium ${
+                status === 'sent' || status === 'signed'
+                  ? 'bg-gray-400 cursor-not-allowed text-gray-700'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+            >
+              <Play className="mr-2" size={18} />
+              Commencer nouvelle session
+            </button>
+          </div>
+        )}
 
       {/* Modal édition manuelle */}
       {showManualEdit && (
