@@ -255,56 +255,83 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
       </div>
 
       <div className="max-w-4xl mx-auto p-6">
-        {/* Informations client - Compact sur mobile */}
+        {/* Informations client - Ultra-compact */}
         <div className="bg-gray-50 rounded-lg p-3 sm:p-6 mb-4 sm:mb-6">
           <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 flex items-center">
             <User className="mr-2" size={20} />
             Informations Client
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 text-sm">
-            <div className="space-y-1">
-              <p><strong>Nom:</strong> {workOrder.client?.name || 'N/A'}</p>
-              <p><strong>Contact:</strong> {workOrder.client?.contact_person || 'N/A'}</p>
-            </div>
           
-            {/* Affichage multi-sessions */}
-            {workOrder.time_entries && workOrder.time_entries.length > 0 ? (
-              <div className="col-span-2 lg:col-span-3">
-                <strong>Sessions de travail:</strong>
-                <div className="mt-2 space-y-1">
-                  {workOrder.time_entries.map((entry, index) => (
-                    <div key={index} className="text-sm bg-white p-2 rounded border">
-                      <span className="font-semibold">{entry.date}</span>: {entry.start_time} → {entry.end_time || 'En cours'}
-                      {entry.pause_minutes > 0 && <span className="text-orange-600 ml-2">(Pause: {entry.pause_minutes}min)</span>}
-                      <span className="font-bold text-blue-700 ml-2">
-                        {(() => {
-                          const h = Math.floor(entry.total_hours || 0);
-                          const m = Math.round(((entry.total_hours || 0) - h) * 60);
-                          return m > 0 ? `${h}h ${m}min` : `${h}h`;
-                        })()}
-                      </span>
-                    </div>
-                  ))}
-                  <div className="text-sm font-bold text-blue-900 pt-2 border-t">
-                    TOTAL: {(() => {
-                      const total = workOrder.time_entries.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-                      const h = Math.floor(total);
-                      const m = Math.round((total - h) * 60);
-                      return m > 0 ? `${h}h ${m}min` : `${h}h`;
-                    })()}
+          {/* ⭐ NOUVEAU - Infos client ultra-compactes sur 1 ligne */}
+          <div className="bg-white rounded-lg p-3 mb-4 border border-gray-300">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              {/* Nom en gras */}
+              <div className="font-bold text-gray-900">
+                {workOrder.client?.name || 'Client inconnu'}
+              </div>
+              
+              {/* Séparateur vertical */}
+              <div className="hidden sm:block text-gray-300">|</div>
+              
+              {/* Adresse complète */}
+              {workOrder.client?.address && (
+                <>
+                  <div className="text-gray-700">
+                    {workOrder.client.address}
                   </div>
+                  <div className="hidden sm:block text-gray-300">|</div>
+                </>
+              )}
+              
+              {/* Téléphone sans label */}
+              {workOrder.client?.phone && (
+                <>
+                  <div className="text-gray-700 font-medium">
+                    {workOrder.client.phone}
+                  </div>
+                  <div className="hidden sm:block text-gray-300">|</div>
+                </>
+              )}
+              
+              {/* BA client si présent */}
+              {(workOrder.linked_po?.po_number || workOrder.linked_po_id) && (
+                <div className="text-blue-700 font-medium">
+                  BA: {workOrder.linked_po?.po_number || workOrder.linked_po_id}
+                </div>
+              )}
+            </div>
+          </div>
+        
+          {/* ⭐ Sessions de travail - Séparées et bien visibles */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Sessions de travail:</h3>
+            {workOrder.time_entries && workOrder.time_entries.length > 0 ? (
+              <div className="space-y-1">
+                {workOrder.time_entries.map((entry, index) => (
+                  <div key={index} className="text-sm bg-white p-2 rounded border">
+                    <span className="font-semibold">{entry.date}</span>: {entry.start_time} → {entry.end_time || 'En cours'}
+                    {entry.pause_minutes > 0 && <span className="text-orange-600 ml-2">(Pause: {entry.pause_minutes}min)</span>}
+                    <span className="font-bold text-blue-700 ml-2">
+                      {(() => {
+                        const h = Math.floor(entry.total_hours || 0);
+                        const m = Math.round(((entry.total_hours || 0) - h) * 60);
+                        return m > 0 ? `${h}h ${m}min` : `${h}h`;
+                      })()}
+                    </span>
+                  </div>
+                ))}
+                <div className="text-sm font-bold text-blue-900 pt-2 border-t mt-2">
+                  TOTAL: {(() => {
+                    const total = workOrder.time_entries.reduce((sum, e) => sum + (e.total_hours || 0), 0);
+                    const h = Math.floor(total);
+                    const m = Math.round((total - h) * 60);
+                    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+                  })()}
                 </div>
               </div>
             ) : (
-              <p><strong>Heures:</strong> Non enregistré</p>
+              <p className="text-sm text-gray-500">Aucune session enregistrée</p>
             )}
-
-            <div className="col-span-2 lg:col-span-1 space-y-1">
-              <p><strong>Tél:</strong> {workOrder.client?.phone || 'N/A'}</p>
-              {(workOrder.linked_po?.po_number || workOrder.linked_po_id) && (
-                <p><strong>BA client:</strong> {workOrder.linked_po?.po_number || workOrder.linked_po_id}</p>
-              )}
-            </div>
           </div>
         </div>
          {/* Emails destinataires - NOUVEAU */}
