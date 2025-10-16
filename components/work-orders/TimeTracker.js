@@ -12,6 +12,12 @@ export default function TimeTracker({
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [pauseMinutes, setPauseMinutes] = useState(initialPauseMinutes);
+  useEffect(() => {
+  if (initialPauseMinutes !== undefined && initialPauseMinutes !== null) {
+    setPauseMinutes(initialPauseMinutes);
+  }
+}, [initialPauseMinutes]);
+  
   const [currentTime, setCurrentTime] = useState(new Date());
   
   // États d'édition manuelle
