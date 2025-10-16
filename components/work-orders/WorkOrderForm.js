@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
@@ -32,6 +33,7 @@ export default function WorkOrderForm({
   mode = 'create',
   saving = false 
 }) {
+  const router = useRouter(); 
  
   const [formData, setFormData] = useState({
     client_id: '',
@@ -233,6 +235,23 @@ export default function WorkOrderForm({
     
     setFormData(prev => ({ ...prev, work_description: combinedDescription }));
   }, [descriptions]);
+
+  // ========================================
+  // FERMETURE AUTO APRÈS SIGNATURE/ENVOI
+  // ========================================
+  useEffect(() => {
+    // Si le BT passe en mode "sent" ou "signed", retourner à la liste
+    if (mode === 'edit' && (formData.status === 'sent' || formData.status === 'signed')) {
+      console.log('📧 BT envoyé/signé détecté, redirection...');
+      
+      // Petit délai pour laisser le temps de voir le message de succès
+      const timer = setTimeout(() => {
+        router.push('/bons-travail');
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formData.status, mode]);
 
   // ========================================
   // FONCTIONS CACHE PRODUITS
