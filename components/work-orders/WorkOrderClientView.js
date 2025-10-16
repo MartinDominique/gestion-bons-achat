@@ -289,7 +289,7 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
             </div>
             <div className="space-y-1">
               <p><strong>Date:</strong> {workOrder.work_date || 'N/A'}</p>
-              <p><strong>Heures:</strong> {workOrder.total_hours || calculateTotalHours()} h</p>
+              <p><strong>Heures:</strong> {(workOrder.total_hours || calculateTotalHours()).toFixed(2)} h</p>
             </div>
             <div className="col-span-2 lg:col-span-1 space-y-1">
               <p><strong>Tél:</strong> {workOrder.client?.phone || 'N/A'}</p>
