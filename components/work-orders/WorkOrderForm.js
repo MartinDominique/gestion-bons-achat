@@ -32,13 +32,12 @@ export default function WorkOrderForm({
   mode = 'create',
   saving = false 
 }) {
+ 
   const [formData, setFormData] = useState({
     client_id: '',
     linked_po_id: '',
     work_date: new Date().toISOString().split('T')[0],
-    start_time: '',
-    end_time: '',
-    pause_minutes: 0, 
+    time_entries: [], // NOUVEAU: Array de sessions
     work_description: '',
     additional_notes: '',
     status: 'draft'
@@ -166,12 +165,9 @@ export default function WorkOrderForm({
     if (workOrder && mode === 'edit') {
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
-        // ✅ FIX : Afficher le po_number au lieu de l'ID
         linked_po_id: workOrder.linked_po?.po_number || workOrder.linked_po_id || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
-        start_time: workOrder.start_time || '',
-        end_time: workOrder.end_time || '',
-        pause_minutes: workOrder.pause_minutes || 0,
+        time_entries: workOrder.time_entries || [], // NOUVEAU
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft'
@@ -597,19 +593,12 @@ export default function WorkOrderForm({
     }
   };
 
- const handleTimeChange = (timeData) => {
-  const totalRounded = toQuarterHourUp(
-    timeData.start_time,
-    timeData.end_time,
-    timeData.pause_minutes
-  );
-
+ 
+const handleTimeChange = (timeData) => {
   setFormData(prev => ({
     ...prev,
-    start_time: timeData.start_time,
-    end_time: timeData.end_time,
-    total_hours: totalRounded,
-    pause_minutes: timeData.pause_minutes
+    time_entries: timeData.time_entries || [],
+    total_hours: timeData.total_hours || 0
   }));
 };
 
@@ -911,11 +900,10 @@ export default function WorkOrderForm({
         </div>
 
         {/* Système Punch-in/Punch-out */}
+        
         <TimeTracker
           onTimeChange={handleTimeChange}
-          initialStartTime={formData.start_time}
-          initialEndTime={formData.end_time}
-          initialPauseMinutes={formData.pause_minutes || 0}
+          initialTimeEntries={formData.time_entries || []}
           workDate={formData.work_date}
         />
 
