@@ -754,7 +754,7 @@ const handleTimeChange = (timeData) => {
   return (
     <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
      
-    {console.log('🟢 WORKORDERFORM RENDU - time_entries:', formData.time_entries)}
+   // {console.log('🟢 WORKORDERFORM RENDU - time_entries:', formData.time_entries)}
    
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
