@@ -11,6 +11,9 @@ export default function TimeTracker({
   const [currentSession, setCurrentSession] = useState(null); // Session en cours
   const [isWorking, setIsWorking] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  const [isInitialized, setIsInitialized] = useState(false);
+  const lastNotifiedData = useRef(null);
   
   // États d'édition manuelle
   const [showManualEdit, setShowManualEdit] = useState(false);
@@ -20,35 +23,38 @@ export default function TimeTracker({
   const [manualEnd, setManualEnd] = useState('');
   const [manualPause, setManualPause] = useState(0);
 
-  // Mise à jour temps courant chaque seconde
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Initialisation avec valeurs existantes
-  useEffect(() => {
-    if (initialTimeEntries && initialTimeEntries.length > 0) {
-      setTimeEntries(initialTimeEntries);
-    }
-  }, [initialTimeEntries]);
-
   // ========================================
-// NOTIFIER PARENT DES CHANGEMENTS
+// MISE À JOUR TEMPS COURANT
+// ========================================
+useEffect(() => {
+  const interval = setInterval(() => {
+    setCurrentTime(new Date());
+  }, 1000);
+  return () => clearInterval(interval);
+}, []);
+
+// ========================================
+// FONCTIONS HELPER
 // ========================================
 
-// ⭐ Utiliser useRef pour éviter boucles infinies
-const lastNotifiedData = useRef(null);
+const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
+  const parseHHMM = (t) => {
+    const [h, m] = String(t || '').split(':').map((n) => parseInt(n, 10) || 0);
+    return h * 60 + m;
+  };
+  const s = parseHHMM(startHHMM);
+  const e = parseHHMM(endHHMM);
+  let net = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
+  const rounded = Math.ceil(net / 15) * 15;
+  return Math.round((rounded / 60) * 100) / 100;
+};
 
-// Fonction pour combiner sessions complétées + session en cours
 const getAllSessions = () => {
   if (!currentSession) {
     return timeEntries;
   }
   
-  // Calculer le total de la session en cours (même sans end_time)
+  // Calculer le total de la session en cours
   const now = new Date();
   const currentEndTime = currentSession.end_time || now.toTimeString().substring(0, 5);
   const currentTotal = toQuarterHourUp(
@@ -67,9 +73,11 @@ const getAllSessions = () => {
   return [...timeEntries, sessionInProgress];
 };
 
-// Notifier parent SEULEMENT si les données ont changé
+// ========================================
+// NOTIFIER PARENT DES CHANGEMENTS
+// ========================================
 useEffect(() => {
-  if (!onTimeChange || !isInitialized) return; // ⭐ Attendre initialisation
+  if (!onTimeChange || !isInitialized) return;
   
   const allSessions = getAllSessions();
   const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
@@ -79,34 +87,29 @@ useEffect(() => {
     total_hours: grandTotal
   };
   
-  // ⭐ Comparer avec dernière notification pour éviter boucles
+  // Comparer avec dernière notification pour éviter boucles
   const dataString = JSON.stringify(dataToSend);
   if (dataString !== lastNotifiedData.current) {
     console.log('📤 Notification parent - Sessions:', allSessions.length);
     lastNotifiedData.current = dataString;
     onTimeChange(dataToSend);
   }
-}, [timeEntries, currentSession, isInitialized]); // ⭐ Retirer currentTime pour éviter updates constantes
+}, [timeEntries, currentSession, isInitialized]);
 
-// Mettre à jour le temps toutes les 30 secondes (pas chaque seconde)
+// Mettre à jour affichage toutes les 30 secondes (pas chaque seconde)
 useEffect(() => {
   if (!isWorking || !currentSession) return;
   
   const interval = setInterval(() => {
-    // Force un re-render pour mettre à jour l'affichage
     setCurrentTime(new Date());
-  }, 30000); // 30 secondes au lieu de 1 seconde
+  }, 30000); // 30 secondes
   
   return () => clearInterval(interval);
 }, [isWorking, currentSession]);
 
-  // ========================================
+// ========================================
 // INITIALISATION AVEC VALEURS EXISTANTES
 // ========================================
-
-// Flag pour initialiser une seule fois
-const [isInitialized, setIsInitialized] = useState(false);
-
 useEffect(() => {
   // ⭐ CRITIQUE : Ne s'exécute qu'UNE SEULE FOIS
   if (isInitialized) return;
@@ -114,7 +117,7 @@ useEffect(() => {
   if (initialTimeEntries && initialTimeEntries.length > 0) {
     console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries);
     
-    // Chercher une session en cours (sans end_time ou avec flag in_progress)
+    // Chercher une session en cours
     const sessionInProgress = initialTimeEntries.find(
       entry => !entry.end_time || entry.in_progress
     );
@@ -144,50 +147,37 @@ useEffect(() => {
       setTimeEntries(initialTimeEntries);
     }
     
-    setIsInitialized(true); // ⭐ Marquer comme initialisé
+    setIsInitialized(true);
   } else if (!initialTimeEntries || initialTimeEntries.length === 0) {
-    // Pas de sessions initiales
     setIsInitialized(true);
   }
-}, [initialTimeEntries, isInitialized]); // ⭐ Dépend aussi du flag
+}, [initialTimeEntries, isInitialized]);
 
-  // ========================================
-  // FONCTIONS DE CALCUL
-  // ========================================
+// ========================================
+// FONCTIONS DE CALCUL
+// ========================================
 
-  const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
-    const parseHHMM = (t) => {
-      const [h, m] = String(t || '').split(':').map((n) => parseInt(n, 10) || 0);
-      return h * 60 + m;
-    };
-    const s = parseHHMM(startHHMM);
-    const e = parseHHMM(endHHMM);
-    let net = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
-    const rounded = Math.ceil(net / 15) * 15;
-    return Math.round((rounded / 60) * 100) / 100;
-  };
+const calculateSessionHours = (session) => {
+  if (!session.start_time || !session.end_time) return 0;
+  return toQuarterHourUp(session.start_time, session.end_time, session.pause_minutes || 0);
+};
 
-  const calculateSessionHours = (session) => {
-    if (!session.start_time || !session.end_time) return 0;
-    return toQuarterHourUp(session.start_time, session.end_time, session.pause_minutes || 0);
-  };
+const calculateGrandTotal = () => {
+  return timeEntries.reduce((total, entry) => {
+    return total + (entry.total_hours || 0);
+  }, 0);
+};
 
-  const calculateGrandTotal = () => {
-    return timeEntries.reduce((total, entry) => {
-      return total + (entry.total_hours || 0);
-    }, 0);
-  };
+const formatTime = (timeStr) => {
+  if (!timeStr) return '--:--';
+  return timeStr.substring(0, 5);
+};
 
-  const formatTime = (timeStr) => {
-    if (!timeStr) return '--:--';
-    return timeStr.substring(0, 5);
-  };
-
-  const formatDuration = (hours) => {
-    const h = Math.floor(hours);
-    const m = Math.floor((hours - h) * 60);
-    return `${h}h ${m.toString().padStart(2, '0')}m`;
-  };
+const formatDuration = (hours) => {
+  const h = Math.floor(hours);
+  const m = Math.floor((hours - h) * 60);
+  return `${h}h ${m.toString().padStart(2, '0')}m`;
+};
 
   // ========================================
   // GESTION DES SESSIONS
