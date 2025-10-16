@@ -67,14 +67,24 @@ export default function TimeTracker({
   
   const end = endTime || currentTime;
   const workingTimeMs = end.getTime() - startTime.getTime();
-  const workingHours = workingTimeMs / (1000 * 60 * 60);
-  const pauseHours = pauseMinutes / 60;
+  const workingMinutes = Math.floor(workingTimeMs / (1000 * 60));
   
-  const netHours = Math.max(0, workingHours - pauseHours);
+  const netMinutes = Math.max(0, workingMinutes - pauseMinutes);
   
-  // Arrondir au quart d'heure supérieur (0.25h = 15 min)
-  return roundToQuarterHour(netHours);
-    };
+  // 🔍 DEBUG
+  console.log('⏰ CALCUL TEMPS:', {
+    workingMinutes,
+    pauseMinutes,
+    netMinutes,
+    hours: Math.floor(netMinutes / 60),
+    minutes: netMinutes % 60
+  });
+  
+  const result = roundToQuarterHour(netMinutes);
+  console.log('⏰ RÉSULTAT ARRONDI:', result);
+  
+  return result;
+};
     
     // Nouvelle fonction à ajouter après calculateTotalHours
     const roundToQuarterHour = (hours) => {
