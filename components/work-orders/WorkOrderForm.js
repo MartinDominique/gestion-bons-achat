@@ -6,6 +6,25 @@ import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
 import { supabase } from '../../lib/supabase';
 
+// Arrondir au quart d'heure supérieur à partir de "HH:MM"
+const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
+  const parseHHMM = (t) => {
+    const [h, m] = String(t || '').split(':').map((n) => parseInt(n, 10) || 0);
+    return h * 60 + m;
+  };
+
+  const s = parseHHMM(startHHMM);
+  const e = parseHHMM(endHHMM);
+  let net = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
+
+  // Arrondi au 15 min SUPÉRIEUR
+  const rounded = Math.ceil(net / 15) * 15;
+
+  // Retour en heures décimales (2 décimales)
+  return Math.round((rounded / 60) * 100) / 100;
+};
+
+
 export default function WorkOrderForm({ 
   workOrder = null, 
   onSave, 
@@ -578,15 +597,22 @@ export default function WorkOrderForm({
     }
   };
 
-   const handleTimeChange = (timeData) => {
-      setFormData(prev => ({
-        ...prev,
-        start_time: timeData.start_time,
-        end_time: timeData.end_time,
-        total_hours: timeData.total_hours,
-        pause_minutes: timeData.pause_minutes
-      }));
-    };
+ const handleTimeChange = (timeData) => {
+  const totalRounded = toQuarterHourUp(
+    timeData.start_time,
+    timeData.end_time,
+    timeData.pause_minutes
+  );
+
+  setFormData(prev => ({
+    ...prev,
+    start_time: timeData.start_time,
+    end_time: timeData.end_time,
+    total_hours: totalRounded,
+    pause_minutes: timeData.pause_minutes
+  }));
+};
+
 
   const validateForm = () => {
     const newErrors = {};
@@ -638,94 +664,103 @@ export default function WorkOrderForm({
   // ========================================
 
   const handleSubmit = async (status = 'draft') => {
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    console.log('📋 Matériaux AVANT normalisation:', materials);
+  // Sécurité: si des heures sont présentes, on recalcule selon la même règle
+  let payload = { ...formData };
+  if (payload.start_time && payload.end_time) {
+    payload.total_hours = toQuarterHourUp(
+      payload.start_time,
+      payload.end_time,
+      payload.pause_minutes
+    );
+  }
 
-    // Normaliser les matériaux avec validation stricte
-    const normalizedMaterials = materials.map((material, index) => {
-      console.log(`\n🔄 Normalisation matériau ${index}:`, material);
-      
-      let normalizedProductId = null;
-      
-      if (material.product_id !== undefined && material.product_id !== null) {
-        const id = material.product_id;
-        
-        const isValidUUID = typeof id === 'string' && 
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-        const isNumber = typeof id === 'number';
-        
-        if (isValidUUID || isNumber) {
-          normalizedProductId = id;
-          console.log(`✅ product_id valide: ${normalizedProductId}`);
+  console.log('📋 Matériaux AVANT normalisation:', materials);
+
+  // Normaliser les matériaux avec validation stricte
+  const normalizedMaterials = materials.map((material, index) => {
+    console.log(`\n🔄 Normalisation matériau ${index}:`, material);
+
+    let normalizedProductId = null;
+
+    if (material.product_id !== undefined && material.product_id !== null) {
+      const id = material.product_id;
+
+      const isValidUUID = typeof id === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const isNumber = typeof id === 'number';
+
+      if (isValidUUID || isNumber) {
+        normalizedProductId = id;
+        console.log(`✅ product_id valide: ${normalizedProductId}`);
+      } else {
+        console.log(`⚠️ product_id "${id}" n'est pas valide, recherche...`);
+        const existingProduct = findExistingProduct(id);
+        if (existingProduct.found) {
+          normalizedProductId = existingProduct.id;
+          console.log(`✅ ID trouvé: ${normalizedProductId}`);
         } else {
-          console.log(`⚠️ product_id "${id}" n'est pas valide, recherche...`);
-          
-          const existingProduct = findExistingProduct(id);
-          if (existingProduct.found) {
-            normalizedProductId = existingProduct.id;
-            console.log(`✅ ID trouvé: ${normalizedProductId}`);
-          } else {
-            normalizedProductId = null;
-            console.log(`❌ Produit non trouvé, mis à NULL`);
-          }
+          normalizedProductId = null;
+          console.log(`❌ Produit non trouvé, mis à NULL`);
         }
       }
-      
-      const normalized = {
-        ...material,
-        product_id: normalizedProductId,
-        description: material.description || material.product?.description || 'Article sans description',
-        code: material.code || material.product?.product_id || material.display_code || '',
-        unit: material.unit || material.product?.unit || 'UN',
-        unit_price: material.unit_price || material.product?.selling_price || 0,
-        show_price: material.showPrice || material.show_price || false
-      };
-      
-      if (normalizedProductId === null) {
-        delete normalized.product;
-      }
-      
-      console.log(`📦 Matériau ${index} normalisé - product_id: ${normalized.product_id}`);
-      return normalized;
-    });
+    }
 
-    console.log('\n✅ MATÉRIAUX NORMALISÉS:', normalizedMaterials);
-    console.log('🔍 Vérification finale des product_id:');
-    normalizedMaterials.forEach((m, i) => {
-      console.log(`  ${i}: product_id=${m.product_id} (type: ${typeof m.product_id}), code="${m.code}"`);
-    });
-
-    const dataToSave = {
-      ...formData,
-      client_id: parseInt(formData.client_id),
-      status,
-      materials: normalizedMaterials,
-      // ✅ Ajouter les emails sélectionnés
-      selected_client_emails: selectedEmails,
-      // ✅ Ajouter les adresses email pour l'envoi
-      recipient_emails: getSelectedEmailAddresses()
+    const normalized = {
+      ...material,
+      product_id: normalizedProductId,
+      description: material.description || material.product?.description || 'Article sans description',
+      code: material.code || material.product?.product_id || material.display_code || '',
+      unit: material.unit || material.product?.unit || 'UN',
+      unit_price: material.unit_price || material.product?.selling_price || 0,
+      show_price: material.showPrice || material.show_price || false
     };
 
-    if (mode === 'edit' && workOrder) {
-      dataToSave.id = workOrder.id;
+    if (normalizedProductId === null) {
+      delete normalized.product;
     }
 
-    try {
-      const savedWorkOrder = await onSave(dataToSave, status);
-      console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
-      
-      if (status === 'ready_for_signature' && savedWorkOrder) {
-        const workOrderId = savedWorkOrder.id || workOrder?.id;
-        if (workOrderId) {
-          window.open(`/bons-travail/${workOrderId}/client`, '_blank');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde:', error);
-      setErrors({ general: 'Erreur lors de la sauvegarde' });
-    }
+    console.log(`📦 Matériau ${index} normalisé - product_id: ${normalized.product_id}`);
+    return normalized;
+  });
+
+  console.log('\n✅ MATÉRIAUX NORMALISÉS:', normalizedMaterials);
+  console.log('🔍 Vérification finale des product_id:');
+  normalizedMaterials.forEach((m, i) => {
+    console.log(`  ${i}: product_id=${m.product_id} (type: ${typeof m.product_id}), code="${m.code}"`);
+  });
+
+  // 🔴 ICI: utiliser payload (pas formData)
+  const dataToSave = {
+    ...payload,
+    client_id: parseInt(payload.client_id),
+    status,
+    materials: normalizedMaterials,
+    selected_client_emails: selectedEmails,
+    recipient_emails: getSelectedEmailAddresses()
   };
+
+  if (mode === 'edit' && workOrder) {
+    dataToSave.id = workOrder.id;
+  }
+
+  try {
+    const savedWorkOrder = await onSave(dataToSave, status);
+    console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
+
+    if (status === 'ready_for_signature' && savedWorkOrder) {
+      const workOrderId = savedWorkOrder.id || workOrder?.id;
+      if (workOrderId) {
+        window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erreur sauvegarde:', error);
+    setErrors({ general: 'Erreur lors de la sauvegarde' });
+  }
+};
+
 
   return (
     <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
