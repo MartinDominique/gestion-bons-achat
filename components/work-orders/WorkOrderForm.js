@@ -877,6 +877,7 @@ export default function WorkOrderForm({
           onTimeChange={handleTimeChange}
           initialStartTime={formData.start_time}
           initialEndTime={formData.end_time}
+          initialPauseMinutes={formData.pause_minutes || 0}
           workDate={formData.work_date}
         />
 
