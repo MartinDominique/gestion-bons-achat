@@ -266,15 +266,31 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
               <p><strong>Nom:</strong> {workOrder.client?.name || 'N/A'}</p>
               <p><strong>Contact:</strong> {workOrder.client?.contact_person || 'N/A'}</p>
             </div>
-            <div className="space-y-1">
-              <p><strong>Date:</strong> {workOrder.work_date || 'N/A'}</p>
-              <p><strong>Heures:</strong> {(() => {
-                const hours = workOrder.total_hours || calculateTotalHours();
+            <p><strong>Heures:</strong> {(() => {
+
+              // 1) Si on a start/end → recalcul robuste (arrondi au 15 min supérieur)
+              if (workOrder.start_time && workOrder.end_time) {
+                // ⚠️ Assure-toi que ta fonction calculateTotalHours ne dépend PAS de Date()
+                // et utilise la version minutes → quart d'heure ↑ que tu as déjà mise.
+                const hours = calculateTotalHours();
                 const h = Math.floor(hours);
                 const m = Math.round((hours - h) * 60);
                 return m > 0 ? `${h}h ${m}min` : `${h}h`;
-              })()}</p>
-            </div>
+              }
+            
+              // 2) Sinon, “réparer” une valeur décimale type 1.8 → 1.75 avant formatage
+              const coerceToQuarterHourUp = (dec) => {
+                if (dec == null) return 0;
+                const minutes = Math.ceil((Number(dec) || 0) * 60 / 15) * 15; // ↑ au 15 min
+                return Math.round((minutes / 60) * 100) / 100;                // heures décimales
+              };
+            
+              const hours = coerceToQuarterHourUp(workOrder.total_hours || 0);
+              const h = Math.floor(hours);
+              const m = Math.round((hours - h) * 60);
+              return m > 0 ? `${h}h ${m}min` : `${h}h`;
+            })()}</p>
+
             <div className="col-span-2 lg:col-span-1 space-y-1">
               <p><strong>Tél:</strong> {workOrder.client?.phone || 'N/A'}</p>
               {(workOrder.linked_po?.po_number || workOrder.linked_po_id) && (
