@@ -188,23 +188,23 @@ export async function PUT(request, { params }) {
     
     // 1. Mettre à jour le work_order principal
     const { data: updatedWorkOrder, error: updateError } = await supabase
-      .from('work_orders')
-      .update({
-        client_id: updateData.client_id ? parseInt(updateData.client_id) : null,
-        linked_po_id: finalLinkedPoId,
-        work_date: updateData.work_date,
-        start_time: updateData.start_time || null,
-        end_time: updateData.end_time || null,
-        break_time: updateData.break_time ? parseFloat(updateData.break_time) : 0,
-        total_hours: updateData.total_hours ? parseFloat(updateData.total_hours) : null,
-        work_description: updateData.work_description || null,
-        additional_notes: updateData.additional_notes || null,
-        status: updateData.status || 'draft',
-        recipient_emails: updateData.recipient_emails || []
-      })
-      .eq('id', workOrderId)
-      .select()
-      .single();
+    .from('work_orders')
+    .update({
+      client_id: updateData.client_id ? parseInt(updateData.client_id) : null,
+      linked_po_id: finalLinkedPoId,
+      work_date: updateData.work_date,
+      start_time: updateData.start_time || null,
+      end_time: updateData.end_time || null,
+      pause_minutes: updateData.pause_minutes ? parseInt(updateData.pause_minutes) : 0,  // ✅ CHANGÉ
+      total_hours: updateData.total_hours ? parseFloat(updateData.total_hours) : null,
+      work_description: updateData.work_description || null,
+      additional_notes: updateData.additional_notes || null,
+      status: updateData.status || 'draft',
+      recipient_emails: updateData.recipient_emails || []
+    })
+    .eq('id', workOrderId)
+    .select()
+    .single();
 
     if (updateError) {
       console.error('📋 API - Erreur mise à jour work_order:', updateError);
