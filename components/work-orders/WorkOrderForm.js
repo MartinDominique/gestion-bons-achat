@@ -908,6 +908,7 @@ const handleTimeChange = (timeData) => {
           onTimeChange={handleTimeChange}
           initialTimeEntries={formData.time_entries || []}
           workDate={formData.work_date}
+          status={formData.status}
         />
 
         {/* Descriptions multiligne avec ajout de lignes */}
