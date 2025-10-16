@@ -127,10 +127,8 @@ if (linked_po_id) {
       client_id: parseInt(client_id),
       linked_po_id: finalLinkedPoId,
       work_date,
-      start_time: start_time || null,
-      end_time: end_time || null,
-      pause_minutes,    
-      total_hours: computedTotalHours,
+      time_entries: body.time_entries || [],    
+      total_hours: body.total_hours || 0, 
       work_description,
       additional_notes: additional_notes || null,
       status: status || 'draft',
@@ -431,13 +429,12 @@ export async function PUT(request) {
       client_id: parseInt(client_id),
       linked_po_id: finalLinkedPoId,
       work_date,
-      start_time: start_time || null,
-      end_time: end_time || null,
-      pause_minutes,    
-      total_hours: computedTotalHours,
+      time_entries: body.time_entries || [],    
+      total_hours: body.total_hours || 0, 
       work_description,
       additional_notes: additional_notes || null,
-      status: status || 'draft'
+      status: status || 'draft',
+      recipient_emails: recipient_emails || []
     };
 
     const { data: workOrder, error: workOrderError } = await client
