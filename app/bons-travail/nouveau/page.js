@@ -1,11 +1,9 @@
-////////////////////////////////////
-//app/bons-travail/nouveau/page.js
-////////////////////////////////////
 
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast, { Toaster } from 'react-hot-toast'; // ⭐ NOUVEAU
 import WorkOrderForm from '../../../components/work-orders/WorkOrderForm';
 
 export default function NouveauBonTravailPage() {
@@ -15,12 +13,11 @@ export default function NouveauBonTravailPage() {
   const handleSave = async (workOrderData, status) => {
     setSaving(true);
 
-    // DEBUG CRITIQUE - AJOUTER CES LIGNES
-    console.log('🔍 CRÉATION - PARENT REÇOIT - workOrderData complet:', workOrderData);
-    console.log('🔍 CRÉATION - PARENT REÇOIT - materials:', workOrderData.materials);
-    console.log('🔍 CRÉATION - PARENT REÇOIT - materials.length:', workOrderData.materials?.length || 0);
-    console.log('🔍 CRÉATION - PARENT REÇOIT - work_description:', workOrderData.work_description);
-    console.log('🔍 CRÉATION - status reçu:', status);
+    console.log('📋 CRÉATION - PARENT REÇOIT - workOrderData complet:', workOrderData);
+    console.log('📋 CRÉATION - PARENT REÇOIT - materials:', workOrderData.materials);
+    console.log('📋 CRÉATION - PARENT REÇOIT - materials.length:', workOrderData.materials?.length || 0);
+    console.log('📋 CRÉATION - PARENT REÇOIT - work_description:', workOrderData.work_description);
+    console.log('📋 CRÉATION - status reçu:', status);
 
     try {
       const payload = {
@@ -28,11 +25,11 @@ export default function NouveauBonTravailPage() {
         status: status || workOrderData.status || 'draft'
       };
 
-      console.log('🔍 CRÉATION - PAYLOAD ENVOYÉ À L\'API:', payload);
-      console.log('🔍 CRÉATION - PAYLOAD.materials:', payload.materials);
-      console.log('🔍 CRÉATION - PAYLOAD.materials.length:', payload.materials?.length || 0);
-      console.log('🔍 CRÉATION - PAYLOAD.work_description:', payload.work_description);
-      console.log('🔍 CRÉATION - PAYLOAD.status:', payload.status);
+      console.log('📋 CRÉATION - PAYLOAD ENVOYÉ À L\'API:', payload);
+      console.log('📋 CRÉATION - PAYLOAD.materials:', payload.materials);
+      console.log('📋 CRÉATION - PAYLOAD.materials.length:', payload.materials?.length || 0);
+      console.log('📋 CRÉATION - PAYLOAD.work_description:', payload.work_description);
+      console.log('📋 CRÉATION - PAYLOAD.status:', payload.status);
 
       const response = await fetch('/api/work-orders', {
         method: 'POST',
@@ -42,40 +39,66 @@ export default function NouveauBonTravailPage() {
 
       if (response.ok) {
         const responseData = await response.json();
-        console.log('🔍 CRÉATION - RETOUR API COMPLET:', responseData);
-        console.log('🔍 CRÉATION - RETOUR API - data.materials:', responseData.data?.materials);
-        console.log('🔍 CRÉATION - RETOUR API - data.work_description:', responseData.data?.work_description);
+        console.log('📋 CRÉATION - RETOUR API COMPLET:', responseData);
+        console.log('📋 CRÉATION - RETOUR API - data.materials:', responseData.data?.materials);
+        console.log('📋 CRÉATION - RETOUR API - data.work_description:', responseData.data?.work_description);
         
-        // MODIFICATION: Extraire le work order selon le format de l'API
         const savedWorkOrder = responseData.success ? responseData.data : responseData;
-        console.log('🔍 CRÉATION - savedWorkOrder extrait:', savedWorkOrder);
+        console.log('📋 CRÉATION - savedWorkOrder extrait:', savedWorkOrder);
         
-        // Messages selon statut (MODIFIÉ: seulement si pas "présenter client")
+        // ⭐ NOUVEAU : Toast au lieu de alert
         if (status !== 'ready_for_signature') {
           const messages = {
-            draft: 'Bon de travail sauvegardé en brouillon',
-            completed: 'Bon de travail créé et finalisé avec succès',
-            sent: 'Bon de travail créé et envoyé au client'
+            draft: { text: '💾 Bon de travail sauvegardé en brouillon', duration: 3000 },
+            completed: { text: '✅ Bon de travail créé et finalisé', duration: 3000 },
+            sent: { text: '📧 Bon de travail créé et envoyé au client', duration: 4000 }
           };
 
           const finalStatus = status || workOrderData.status || 'draft';
-          alert(messages[finalStatus] || 'Bon de travail créé avec succès');
-          router.push('/bons-travail');
+          const message = messages[finalStatus] || { text: '✅ Bon de travail créé avec succès', duration: 3000 };
+          
+          toast.success(message.text, {
+            duration: message.duration,
+            style: {
+              background: '#10b981',
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: '500',
+            },
+          });
+          
+          // Rediriger après un petit délai pour voir la notification
+          setTimeout(() => {
+            router.push('/bons-travail');
+          }, 500);
         }
         
-        // IMPORTANT: Retourner le work order sauvegardé pour WorkOrderForm
         return savedWorkOrder;
         
       } else {
         const errorData = await response.json();
-        console.error('🔍 CRÉATION - ERREUR API:', errorData);
-        alert('Erreur lors de la création: ' + (errorData.error || 'Erreur inconnue'));
+        console.error('📋 CRÉATION - ERREUR API:', errorData);
+        
+        // ⭐ NOUVEAU : Toast d'erreur
+        toast.error('Erreur lors de la création: ' + (errorData.error || 'Erreur inconnue'), {
+          duration: 5000,
+          style: {
+            background: '#ef4444',
+            color: '#fff',
+          },
+        });
+        
         throw new Error(errorData.error || 'Erreur API');
       }
     } catch (error) {
-      console.error('🔍 CRÉATION - ERREUR CATCH:', error);
-      alert('Erreur: ' + error.message);
-      throw error; // Re-throw pour que WorkOrderForm puisse gérer
+      console.error('📋 CRÉATION - ERREUR CATCH:', error);
+      
+      // ⭐ NOUVEAU : Toast d'erreur
+      toast.error('Erreur: ' + error.message, {
+        duration: 5000,
+      });
+      
+      throw error;
     } finally {
       setSaving(false);
     }
@@ -89,6 +112,25 @@ export default function NouveauBonTravailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* ⭐ NOUVEAU : Toaster component */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+      
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
