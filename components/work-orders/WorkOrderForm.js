@@ -576,14 +576,15 @@ export default function WorkOrderForm({
     }
   };
 
-  const handleTimeChange = (timeData) => {
-    setFormData(prev => ({
-      ...prev,
-      start_time: timeData.start_time,
-      end_time: timeData.end_time,
-      total_hours: timeData.total_hours
-    }));
-  };
+   const handleTimeChange = (timeData) => {
+      setFormData(prev => ({
+        ...prev,
+        start_time: timeData.start_time,
+        end_time: timeData.end_time,
+        total_hours: timeData.total_hours,
+        pause_minutes: timeData.pause_minutes
+      }));
+    };
 
   const validateForm = () => {
     const newErrors = {};
