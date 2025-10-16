@@ -35,15 +35,82 @@ export default function TimeTracker({
     }
   }, [initialTimeEntries]);
 
-  // Notifier parent des changements
-  useEffect(() => {
-    if (onTimeChange) {
-      onTimeChange({
-        time_entries: timeEntries,
-        total_hours: calculateGrandTotal()
+  // ========================================
+// NOTIFIER PARENT DES CHANGEMENTS
+// ========================================
+
+// Fonction pour combiner sessions complétées + session en cours
+const getAllSessions = () => {
+  if (!currentSession) {
+    return timeEntries;
+  }
+  
+  // Calculer le total de la session en cours (même sans end_time)
+  const now = new Date();
+  const currentEndTime = currentSession.end_time || now.toTimeString().substring(0, 5);
+  const currentTotal = toQuarterHourUp(
+    currentSession.start_time,
+    currentEndTime,
+    currentSession.pause_minutes || 0
+  );
+  
+  // Session en cours avec total provisoire
+  const sessionInProgress = {
+    ...currentSession,
+    total_hours: currentTotal,
+    in_progress: true // ⭐ Flag pour identifier session en cours
+  };
+  
+  return [...timeEntries, sessionInProgress];
+};
+
+// Notifier parent à chaque changement (sessions OU session en cours)
+useEffect(() => {
+  if (onTimeChange) {
+    const allSessions = getAllSessions();
+    const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
+    
+    onTimeChange({
+      time_entries: allSessions,
+      total_hours: grandTotal
+    });
+  }
+}, [timeEntries, currentSession, currentTime]); // ⭐ Écoute aussi currentSession et currentTime
+
+// ========================================
+// INITIALISATION AVEC VALEURS EXISTANTES
+// ========================================
+
+useEffect(() => {
+  if (initialTimeEntries && initialTimeEntries.length > 0) {
+    // Chercher une session en cours (sans end_time ou avec flag in_progress)
+    const sessionInProgress = initialTimeEntries.find(
+      entry => !entry.end_time || entry.in_progress
+    );
+    
+    if (sessionInProgress) {
+      // Retirer la session en cours de la liste
+      const completedSessions = initialTimeEntries.filter(
+        entry => entry !== sessionInProgress
+      );
+      
+      setTimeEntries(completedSessions);
+      setCurrentSession({
+        date: sessionInProgress.date,
+        start_time: sessionInProgress.start_time,
+        end_time: null,
+        pause_minutes: sessionInProgress.pause_minutes || 0,
+        total_hours: 0
       });
+      setIsWorking(true);
+      
+      console.log('⏰ Session en cours restaurée:', sessionInProgress);
+    } else {
+      // Toutes les sessions sont complétées
+      setTimeEntries(initialTimeEntries);
     }
-  }, [timeEntries]);
+  }
+}, [initialTimeEntries]);
 
   // ========================================
   // FONCTIONS DE CALCUL
@@ -102,27 +169,32 @@ export default function TimeTracker({
   };
 
   // Terminer la session courante
-  const handlePunchOut = () => {
-    if (!currentSession) return;
-    
-    const now = new Date();
-    const endTime = now.toTimeString().substring(0, 5);
-    const totalHours = toQuarterHourUp(
-      currentSession.start_time, 
-      endTime, 
-      currentSession.pause_minutes
-    );
-    
-    const completedSession = {
-      ...currentSession,
-      end_time: endTime,
-      total_hours: totalHours
+    const handlePunchOut = () => {
+      if (!currentSession) return;
+      
+      const now = new Date();
+      const endTime = now.toTimeString().substring(0, 5);
+      const totalHours = toQuarterHourUp(
+        currentSession.start_time, 
+        endTime, 
+        currentSession.pause_minutes
+      );
+      
+      const completedSession = {
+        date: currentSession.date,
+        start_time: currentSession.start_time,
+        end_time: endTime,
+        pause_minutes: currentSession.pause_minutes,
+        total_hours: totalHours,
+        in_progress: false // ⭐ Marquer comme complétée
+      };
+      
+      setTimeEntries([...timeEntries, completedSession]);
+      setCurrentSession(null);
+      setIsWorking(false);
+      
+      console.log('✅ Session terminée:', completedSession);
     };
-    
-    setTimeEntries([...timeEntries, completedSession]);
-    setCurrentSession(null);
-    setIsWorking(false);
-  };
 
   // Supprimer une session
   const handleDeleteSession = (index) => {
@@ -271,13 +343,25 @@ export default function TimeTracker({
         <div className="space-y-2">
           <h4 className="font-medium text-gray-700">Sessions enregistrées:</h4>
           {timeEntries.map((entry, index) => (
-            <div key={index} className="bg-white border rounded-lg p-3 flex items-center justify-between">
+            <div 
+              key={index} 
+              className={`border rounded-lg p-3 flex items-center justify-between ${
+                entry.in_progress 
+                  ? 'bg-green-50 border-green-500 border-2' 
+                  : 'bg-white border-gray-300'
+              }`}
+            >
               <div className="flex-1 grid grid-cols-5 gap-2 text-sm">
                 <div>
                   <div className="text-xs text-gray-500">Date</div>
                   <div className="font-semibold flex items-center">
                     <Calendar size={12} className="mr-1 text-blue-600" />
                     {entry.date}
+                    {entry.in_progress && (
+                      <span className="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
+                        EN COURS
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -286,7 +370,9 @@ export default function TimeTracker({
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Fin</div>
-                  <div className="font-mono font-bold text-red-700">{entry.end_time || '--:--'}</div>
+                  <div className="font-mono font-bold text-red-700">
+                    {entry.end_time || (entry.in_progress ? '⏱️ En cours' : '--:--')}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Pause</div>
@@ -294,23 +380,36 @@ export default function TimeTracker({
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Total</div>
-                  <div className="font-bold text-blue-700">{formatDuration(entry.total_hours || 0)}</div>
+                  <div className={`font-bold ${entry.in_progress ? 'text-green-700' : 'text-blue-700'}`}>
+                    {formatDuration(entry.total_hours || 0)}
+                    {entry.in_progress && ' ⏱️'}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2 ml-3">
                 <button
                   type="button"
                   onClick={() => handleEditSession(index)}
-                  className="text-blue-600 hover:text-blue-800 p-1"
-                  title="Modifier"
+                  disabled={entry.in_progress}
+                  className={`p-1 ${
+                    entry.in_progress 
+                      ? 'text-gray-400 cursor-not-allowed opacity-50' 
+                      : 'text-blue-600 hover:text-blue-800'
+                  }`}
+                  title={entry.in_progress ? 'Session en cours - terminez d\'abord' : 'Modifier'}
                 >
                   <Edit size={16} />
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteSession(index)}
-                  className="text-red-600 hover:text-red-800 p-1"
-                  title="Supprimer"
+                  disabled={entry.in_progress}
+                  className={`p-1 ${
+                    entry.in_progress 
+                      ? 'text-gray-400 cursor-not-allowed opacity-50' 
+                      : 'text-red-600 hover:text-red-800'
+                  }`}
+                  title={entry.in_progress ? 'Session en cours - terminez d\'abord' : 'Supprimer'}
                 >
                   <Trash2 size={16} />
                 </button>
