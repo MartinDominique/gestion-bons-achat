@@ -199,17 +199,23 @@ export async function POST(request, { params }) {
 
     if (result.success) {
       // 6. Mettre à jour le statut vers "sent"
-      await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from('work_orders')
         .update({ 
           status: 'sent',
           email_sent_at: new Date().toISOString(),
-          email_sent_to: recipientEmails.join(', '), // ✅ Sauvegarder tous les emails
+          email_sent_to: recipientEmails.join(', '),
           email_message_id: result.messageId,
           auto_send_success: true
         })
         .eq('id', workOrderId);
-
+    
+      if (updateError) {
+        console.error('❌ ERREUR mise à jour statut "sent":', updateError);
+      } else {
+        console.log('✅ Statut mis à jour vers "sent" avec succès');
+      }
+    
       console.log('✅ Envoi automatique réussi vers:', recipientEmails.join(', '));
       
       return NextResponse.json({
