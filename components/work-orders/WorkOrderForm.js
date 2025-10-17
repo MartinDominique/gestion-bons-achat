@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
-import ClientModal from './ClientModal';
+import ClientModal from '../ClientModal';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
