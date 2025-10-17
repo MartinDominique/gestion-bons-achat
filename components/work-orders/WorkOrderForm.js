@@ -58,6 +58,7 @@ export default function WorkOrderForm({
 
   const [materials, setMaterials] = useState([]);
   const [errors, setErrors] = useState({});
+  const [currentWorkOrderId, setCurrentWorkOrderId] = useState(workOrder?.id || null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   
@@ -292,12 +293,12 @@ useEffect(() => {
 // RECHARGER LES DONNÉES AU RETOUR SUR LA PAGE
 // ========================================
 useEffect(() => {
-  if (workOrder?.id) {
+  const workOrderId = currentWorkOrderId || workOrder?.id;
+  
+  if (workOrderId) {
     const handleFocus = async () => {
-      console.log('👁️ Fenêtre revenue au focus, rechargement...');
-      
       try {
-        const response = await fetch(`/api/work-orders/${workOrder.id}`);
+        const response = await fetch(`/api/work-orders/${workOrderId}`);
         if (response.ok) {
           const data = await response.json();
           const updatedWorkOrder = data.data;
@@ -335,7 +336,7 @@ useEffect(() => {
       window.removeEventListener('focus', handleFocus);
     };
   }
-}, [mode, workOrder?.id, formData.status, router]);
+}, [currentWorkOrderId, workOrder?.id, formData.status, router]);
 
   // ========================================
   // FONCTIONS CACHE PRODUITS
@@ -839,6 +840,12 @@ const handleTimeChange = (timeData) => {
 
   try {
     const savedWorkOrder = await onSave(dataToSave, status);
+    // ✅ NOUVEAU : Sauvegarder l'ID pour le polling
+    if (savedWorkOrder?.id) {
+      setCurrentWorkOrderId(savedWorkOrder.id);
+    }
+    
+    console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
     console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
 
     if (status === 'ready_for_signature' && savedWorkOrder) {
