@@ -15,6 +15,19 @@ export default function BonsTravailPage() {
   const [searchType, setSearchType] = useState('client'); // 'client', 'bt_number', 'date'
   const router = useRouter();
 
+  // Fonction pour formater les heures en h:min
+    const formatHoursToHM = (decimalHours) => {
+      if (!decimalHours) return '-';
+      
+      const hours = Math.floor(decimalHours);
+      const minutes = Math.round((decimalHours - hours) * 60);
+      
+      if (minutes === 0) {
+        return `${hours}h`;
+      }
+      return `${hours}h ${minutes}min`;
+    };
+
   // Fonction pour tronquer le texte
   const truncateText = (text, maxLength = 50) => {
     if (!text) return '-';
@@ -434,9 +447,9 @@ export default function BonsTravailPage() {
                         {formatDate(wo.work_date)}
                       </div>
                       <div className="flex items-center">
-                        <Clock className="mr-1" size={12} />
-                        {wo.total_hours ? `${wo.total_hours}h` : '-'}
-                      </div>
+                      <Clock className="mr-1" size={12} />
+                      {formatHoursToHM(wo.total_hours)}
+                    </div>
                     </div>
                     
                     {/* Description */}
@@ -488,7 +501,7 @@ export default function BonsTravailPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <span className="bg-gradient-to-r from-green-400 to-teal-500 bg-clip-text text-transparent font-bold">
-                            {wo.total_hours ? `${wo.total_hours}h` : '-'}
+                            {formatHoursToHM(wo.total_hours)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
