@@ -292,7 +292,7 @@ useEffect(() => {
 // RECHARGER LES DONNÉES AU RETOUR SUR LA PAGE
 // ========================================
 useEffect(() => {
-  if (mode === 'edit' && workOrder?.id) {
+  if (workOrder?.id) {
     const handleFocus = async () => {
       console.log('👁️ Fenêtre revenue au focus, rechargement...');
       
