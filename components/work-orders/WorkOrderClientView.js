@@ -7,6 +7,7 @@ import { handleSignatureWithAutoSend } from '../../lib/services/client-signature
 export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   const [signature, setSignature] = useState('');
   const [isSigning, setIsSigning] = useState(false);
+  const [signerName, setSignerName] = useState('');
   const [showSummary, setShowSummary] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const canvasRef = useRef(null);
@@ -88,13 +89,18 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     alert('Signature requise pour accepter les travaux');
     return;
   }
+  
+  if (!signerName || signerName.trim().length < 2) {
+    alert('Veuillez entrer votre nom complet (minimum 2 caractères)');
+    return;
+  }
 
   try {
     // Utiliser le nouveau service client (sans Resend côté client)
     const result = await handleSignatureWithAutoSend(
       workOrder.id, 
       signature, 
-      workOrder.client?.name || 'Client'
+      signerName.trim()
     );
     
     if (result.success && result.signatureSaved) {
@@ -543,6 +549,21 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
               </div>
             ) : (
               <div>
+                {/* Champ nom du signataire */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nom complet du signataire *
+                  </label>
+                  <input
+                    type="text"
+                    value={signerName}
+                    onChange={(e) => setSignerName(e.target.value)}
+                    placeholder="Ex: Jean Tremblay"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-base"
+                    maxLength={50}
+                  />
+                </div>
+                
                 <p className="text-sm text-gray-600 mb-2">
                   Veuillez signer dans l'espace ci-dessous avec votre doigt ou stylet:
                 </p>
