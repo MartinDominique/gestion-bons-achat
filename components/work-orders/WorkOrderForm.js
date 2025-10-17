@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
+import ClientModal from './ClientModal';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -61,6 +62,7 @@ export default function WorkOrderForm({
   const [currentWorkOrderId, setCurrentWorkOrderId] = useState(workOrder?.id || null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [showClientModal, setShowClientModal] = useState(false);
   
   // Cache des produits pour vérification
   const [cachedProducts, setCachedProducts] = useState([]);
@@ -204,30 +206,42 @@ export default function WorkOrderForm({
     loadProductsCache();
   }, []);
 
-  // Charger les clients
-  useEffect(() => {
-    const loadClients = async () => {
-      try {
-        const response = await fetch('/api/clients');
-        if (response.ok) {
-          const data = await response.json();
-          setClients(data);
-          
-          // Si mode édition, sélectionner le client actuel
-          if (workOrder && mode === 'edit') {
-            const client = data.find(c => c.id === workOrder.client_id);
-            if (client) {
-              setSelectedClient(client);
+  // Charger les clients avec auto-rechargement
+    useEffect(() => {
+      const loadClients = async () => {
+        try {
+          const response = await fetch('/api/clients');
+          if (response.ok) {
+            const data = await response.json();
+            setClients(data);
+            
+            // Si mode édition, sélectionner le client actuel
+            if (workOrder && mode === 'edit') {
+              const client = data.find(c => c.id === workOrder.client_id);
+              if (client) {
+                setSelectedClient(client);
+              }
             }
           }
+        } catch (error) {
+          console.error('Erreur chargement clients:', error);
         }
-      } catch (error) {
-        console.error('Erreur chargement clients:', error);
-      }
-    };
-    
-    loadClients();
-  }, [workOrder, mode]);
+      };
+      
+      loadClients(); // Chargement initial
+      
+      // ✅ SOLUTION 1 : Recharger automatiquement au retour sur la page
+      const handleFocus = () => {
+        console.log('🔄 Rechargement clients (retour focus)');
+        loadClients();
+      };
+      
+      window.addEventListener('focus', handleFocus);
+      
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+      };
+    }, [workOrder, mode]);
 
   // Synchroniser descriptions avec work_description
   useEffect(() => {
@@ -752,6 +766,28 @@ const handleTimeChange = (timeData) => {
     }
   };
 
+  // Gestion création nouveau client depuis le formulaire
+  const handleClientSaved = async (newClient) => {
+    try {
+      // Recharger la liste complète
+      const response = await fetch('/api/clients');
+      if (response.ok) {
+        const data = await response.json();
+        setClients(data);
+        
+        // Sélectionner automatiquement le nouveau client
+        if (newClient) {
+          setSelectedClient(newClient);
+          handleChange('client_id', newClient.id);
+          toast.success('✅ Client créé et sélectionné !');
+        }
+      }
+    } catch (error) {
+      console.error('Erreur rechargement clients:', error);
+      toast.error('❌ Erreur actualisation clients');
+    }
+  };
+
   // ========================================
   // SOUMISSION
   // ========================================
@@ -884,20 +920,36 @@ const handleTimeChange = (timeData) => {
               <User className="inline mr-2" size={16} />
               Client *
             </label>
-            <select
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                errors.client_id ? 'border-red-500' : 'border-gray-300'
-              }`}
-              value={formData.client_id}
-              onChange={(e) => handleClientSelect(e.target.value)}
-            >
-              <option value="">Sélectionner un client</option>
-              {clients.map(client => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
+            
+            {/* Select + Bouton sur la même ligne */}
+            <div className="flex gap-2">
+              <select
+                className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                  errors.client_id ? 'border-red-500' : 'border-gray-300'
+                }`}
+                value={formData.client_id}
+                onChange={(e) => handleClientSelect(e.target.value)}
+              >
+                <option value="">Sélectionner un client</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+              
+              {/* Bouton Nouveau Client à droite */}
+              <button
+                type="button"
+                onClick={() => setShowClientModal(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center whitespace-nowrap font-medium"
+                title="Créer un nouveau client"
+              >
+                <Plus className="mr-1" size={16} />
+                Nouveau
+              </button>
+            </div>
+            
             {errors.client_id && (
               <p className="text-red-500 text-sm mt-1">{errors.client_id}</p>
             )}
@@ -1198,8 +1250,13 @@ const handleTimeChange = (timeData) => {
         </div>
       </form>
 
-      {/* MODALS IMPORT - Code trop long, gardé tel quel... */}
-      {/* Vous pouvez garder vos modals existants sans changement */}
+      {/* ✅ Modal Création Client */}
+      <ClientModal
+        open={showClientModal}
+        onClose={() => setShowClientModal(false)}
+        onSaved={handleClientSaved}
+        client={null}
+      />
     </div>
   );
 }
