@@ -289,6 +289,55 @@ useEffect(() => {
 }, [mode, formData.status, workOrder?.id, router]);
 
   // ========================================
+// RECHARGER LES DONNÉES AU RETOUR SUR LA PAGE
+// ========================================
+useEffect(() => {
+  if (mode === 'edit' && workOrder?.id) {
+    const handleFocus = async () => {
+      console.log('👁️ Fenêtre revenue au focus, rechargement...');
+      
+      try {
+        const response = await fetch(`/api/work-orders/${workOrder.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          const updatedWorkOrder = data.data;
+          
+          if (updatedWorkOrder?.status !== formData.status) {
+            console.log(`🔄 Status changé: ${formData.status} → ${updatedWorkOrder.status}`);
+            
+            // Mettre à jour le status dans le formulaire
+            setFormData(prev => ({
+              ...prev,
+              status: updatedWorkOrder.status
+            }));
+            
+            // Si le BT est maintenant signé/envoyé, rediriger
+            if (['signed', 'sent', 'pending_send'].includes(updatedWorkOrder.status)) {
+              toast.success('✅ Le bon de travail a été traité avec succès !', {
+                duration: 2000,
+              });
+              
+              setTimeout(() => {
+                router.push('/bons-travail');
+              }, 2000);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erreur rechargement status:', error);
+      }
+    };
+    
+    // Écouter quand la fenêtre redevient active
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }
+}, [mode, workOrder?.id, formData.status, router]);
+
+  // ========================================
   // FONCTIONS CACHE PRODUITS
   // ========================================
 
