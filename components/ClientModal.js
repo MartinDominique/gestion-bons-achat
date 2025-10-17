@@ -109,7 +109,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       }
 
       console.log('Client sauvegardé avec succès');
-      onSaved();
+      onSaved(json.client); // ✅ Passe le client créé
       onClose();
       
       setForm({ 
