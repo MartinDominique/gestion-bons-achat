@@ -6,6 +6,7 @@ import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, 
 import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
 import { supabase } from '../../lib/supabase';
+import toast from 'react-hot-toast';
 
 // Arrondir au quart d'heure supérieur à partir de "HH:MM"
 const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
@@ -237,21 +238,55 @@ export default function WorkOrderForm({
   }, [descriptions]);
 
   // ========================================
-  // FERMETURE AUTO APRÈS SIGNATURE/ENVOI
-  // ========================================
-  useEffect(() => {
-    // Si le BT passe en mode "sent" ou "signed", retourner à la liste
-    if (mode === 'edit' && (formData.status === 'sent' || formData.status === 'signed')) {
-      console.log('📧 BT envoyé/signé détecté, redirection...');
-      
-      // Petit délai pour laisser le temps de voir le message de succès
-      const timer = setTimeout(() => {
-        router.push('/bons-travail');
-      }, 1500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [formData.status, mode]);
+// VÉRIFIER STATUS PÉRIODIQUEMENT SI EN ATTENTE DE SIGNATURE
+// ========================================
+useEffect(() => {
+  if (mode === 'edit' && formData.status === 'ready_for_signature' && workOrder?.id) {
+    console.log('👀 Mode surveillance activé');
+    
+    let intervalId = null;
+    
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/work-orders/${workOrder.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          const currentStatus = data.data?.status;
+          
+          console.log('📊 Status vérifié:', currentStatus);
+          
+          if (currentStatus === 'sent' || currentStatus === 'signed' || currentStatus === 'pending_send') {
+            console.log('✅ Signature détectée !');
+            
+            // Arrêter le polling
+            if (intervalId) clearInterval(intervalId);
+            
+            toast.success('✅ Le client a signé le bon de travail !', {
+              duration: 2000,
+            });
+            
+            setTimeout(() => {
+              router.push('/bons-travail');
+            }, 2000);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur vérification status:', error);
+      }
+    };
+    
+    // Première vérification immédiate
+    checkStatus();
+    
+    // Puis toutes les 3 secondes
+    intervalId = setInterval(checkStatus, 3000);
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      console.log('🛑 Surveillance arrêtée');
+    };
+  }
+}, [mode, formData.status, workOrder?.id, router]);
 
   // ========================================
   // FONCTIONS CACHE PRODUITS
