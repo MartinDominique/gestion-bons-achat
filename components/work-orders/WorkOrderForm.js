@@ -769,6 +769,8 @@ const handleTimeChange = (timeData) => {
 
   // Gestion création nouveau client depuis le formulaire
     const handleClientSaved = async (newClient) => {
+       console.log('🚨 HANDLECLIENTSAVED APPELÉ !'); // ← AJOUTEZ CETTE LIGNE
+        console.log('📦 newClient reçu:', newClient);
   try {
     if (newClient) {
       // ✅ SOLUTION 1 : Ajouter immédiatement le nouveau client à la liste
