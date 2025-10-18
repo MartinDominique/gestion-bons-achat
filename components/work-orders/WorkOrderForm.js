@@ -768,45 +768,50 @@ const handleTimeChange = (timeData) => {
   };
 
   // Gestion création nouveau client depuis le formulaire
-    const handleClientSaved = async (newClient) => {
-       console.log('🚨 HANDLECLIENTSAVED APPELÉ !'); // ← AJOUTEZ CETTE LIGNE
-        console.log('📦 newClient reçu:', newClient);
-  try {
-    if (newClient) {
-      // ✅ SOLUTION 1 : Ajouter immédiatement le nouveau client à la liste
-      setClients(prev => {
-        // Vérifier s'il existe déjà
-        const exists = prev.find(c => c.id === newClient.id);
-        if (exists) {
-          // Mettre à jour l'existant
-          return prev.map(c => c.id === newClient.id ? newClient : c);
-        }
-        // Ajouter le nouveau et trier par nom
-        return [...prev, newClient].sort((a, b) => 
-          a.name.localeCompare(b.name)
-        );
-      });
-      
-      // Sélectionner automatiquement
-      setSelectedClient(newClient);
-      handleChange('client_id', newClient.id);
-      toast.success('✅ Client créé et sélectionné !');
-      
-      // ✅ SOLUTION 2 : Recharger en arrière-plan avec délai
-      setTimeout(async () => {
-        const response = await fetch('/api/clients');
-        if (response.ok) {
-          const data = await response.json();
-          setClients(data);
-          console.log('🔄 Liste clients rafraîchie en arrière-plan');
-        }
-      }, 500); // Attendre 500ms
+   const handleClientSaved = async (newClient) => {
+    try {
+      if (newClient) {
+        // Ajouter immédiatement le nouveau client à la liste
+        setClients(prev => {
+          const exists = prev.find(c => c.id === newClient.id);
+          if (exists) {
+            return prev.map(c => c.id === newClient.id ? newClient : c);
+          }
+          return [...prev, newClient].sort((a, b) => 
+            a.name.localeCompare(b.name)
+          );
+        });
+        
+        // Sélectionner automatiquement
+        setSelectedClient(newClient);
+        handleChange('client_id', newClient.id);
+        toast.success('✅ Client créé et sélectionné !');
+        
+        // ✅ Recharger après 2 secondes (au lieu de 500ms)
+        setTimeout(async () => {
+          const response = await fetch('/api/clients');
+          if (response.ok) {
+            const data = await response.json();
+            
+            // ✅ Vérifier que le nouveau client est bien dans la liste
+            const clientExists = data.find(c => c.id === newClient.id);
+            
+            if (clientExists) {
+              console.log('✅ Client confirmé dans Supabase, mise à jour complète');
+              setClients(data);
+            } else {
+              console.log('⚠️ Client pas encore propagé, on garde la liste actuelle');
+              // Ne rien faire, garder le client ajouté manuellement
+            }
+          }
+        }, 2000); // ✅ 2 secondes au lieu de 500ms
+        
+      }
+    } catch (error) {
+      console.error('Erreur rechargement clients:', error);
+      toast.error('❌ Erreur actualisation clients');
     }
-  } catch (error) {
-    console.error('Erreur rechargement clients:', error);
-    toast.error('❌ Erreur actualisation clients');
-  }
-};
+  };
 
   // ========================================
   // SOUMISSION
