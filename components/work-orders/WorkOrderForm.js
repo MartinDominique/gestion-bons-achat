@@ -787,25 +787,17 @@ const handleTimeChange = (timeData) => {
         handleChange('client_id', newClient.id);
         toast.success('✅ Client créé et sélectionné !');
         
-        // ✅ Recharger après 2 secondes (au lieu de 500ms)
+        // Recharger après 2 secondes
         setTimeout(async () => {
           const response = await fetch('/api/clients');
           if (response.ok) {
             const data = await response.json();
-            
-            // ✅ Vérifier que le nouveau client est bien dans la liste
             const clientExists = data.find(c => c.id === newClient.id);
-            
             if (clientExists) {
-              console.log('✅ Client confirmé dans Supabase, mise à jour complète');
               setClients(data);
-            } else {
-              console.log('⚠️ Client pas encore propagé, on garde la liste actuelle');
-              // Ne rien faire, garder le client ajouté manuellement
             }
           }
-        }, 2000); // ✅ 2 secondes au lieu de 500ms
-        
+        }, 2000);
       }
     } catch (error) {
       console.error('Erreur rechargement clients:', error);
