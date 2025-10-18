@@ -111,6 +111,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       
       console.log('✅ Client sauvegardé, data reçue:', json);
       console.log('📦 Client à envoyer:', json.client);
+      console.log('🎯 Appel de onSaved avec:', json.client);
       onSaved(json.client);
       onClose();
       
