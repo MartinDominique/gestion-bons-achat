@@ -103,15 +103,10 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       });
       
       const json = await res.json();
-      console.log('📤 Réponse API save-client:', json);
-      
       if (!res.ok) {
         throw new Error(json.error || 'Erreur lors de la sauvegarde');
       }
-      
-      console.log('✅ Client sauvegardé, data reçue:', json);
-      console.log('📦 Client à envoyer:', json.client);
-      console.log('🎯 Appel de onSaved avec:', json.client);
+     
       onSaved(json.client);
       onClose();
       
