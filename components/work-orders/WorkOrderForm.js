@@ -18,6 +18,7 @@ const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
 
   const s = parseHHMM(startHHMM);
   const e = parseHHMM(endHHMM);
+
   let net = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
 
   // Arrondi au 15 min SUPÉRIEUR
@@ -41,7 +42,7 @@ export default function WorkOrderForm({
     client_id: '',
     linked_po_id: '',
     work_date: new Date().toISOString().split('T')[0],
-    time_entries: [], // NOUVEAU: Array de sessions
+    time_entries: [], 
     work_description: '',
     additional_notes: '',
     status: 'draft'
@@ -49,7 +50,7 @@ export default function WorkOrderForm({
 
   // État pour sélection des emails
   const [selectedEmails, setSelectedEmails] = useState({
-    email: true,      // Principal sélectionné par défaut
+    email: true,      
     email_2: false,
     email_admin: false
   });
@@ -173,7 +174,7 @@ export default function WorkOrderForm({
         client_id: workOrder.client_id?.toString() || '',
         linked_po_id: workOrder.linked_po?.po_number || workOrder.linked_po_id || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
-        time_entries: workOrder.time_entries || [], // NOUVEAU
+        time_entries: workOrder.time_entries || [],
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft'
@@ -899,9 +900,7 @@ const handleTimeChange = (timeData) => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
-     
-   // {console.log('🟢 WORKORDERFORM RENDU - time_entries:', formData.time_entries)}
-   
+    
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900">
