@@ -769,25 +769,36 @@ const handleTimeChange = (timeData) => {
 
   // Gestion création nouveau client depuis le formulaire
   const handleClientSaved = async (newClient) => {
-    try {
-      // Recharger la liste complète
-      const response = await fetch('/api/clients');
-      if (response.ok) {
-        const data = await response.json();
-        setClients(data);
-        
-        // Sélectionner automatiquement le nouveau client
-        if (newClient) {
-          setSelectedClient(newClient);
-          handleChange('client_id', newClient.id);
-          toast.success('✅ Client créé et sélectionné !');
-        }
+  console.log('📝 handleClientSaved appelé avec:', newClient);
+  
+  try {
+    // Recharger la liste complète
+    const response = await fetch('/api/clients');
+    console.log('📥 Réponse API clients:', response.ok);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('📊 Nombre de clients reçus:', data.length);
+      console.log('📋 Liste clients:', data);
+      
+      setClients(data);
+      
+      // Sélectionner automatiquement le nouveau client
+      if (newClient) {
+        console.log('✅ Sélection automatique du client:', newClient);
+        setSelectedClient(newClient);
+        handleChange('client_id', newClient.id);
+        toast.success('✅ Client créé et sélectionné !');
+      } else {
+        console.log('⚠️ Pas de newClient reçu, juste rechargement');
+        toast.success('✅ Client créé !');
       }
-    } catch (error) {
-      console.error('Erreur rechargement clients:', error);
-      toast.error('❌ Erreur actualisation clients');
     }
-  };
+  } catch (error) {
+    console.error('❌ Erreur rechargement clients:', error);
+    toast.error('❌ Erreur actualisation clients');
+  }
+};
 
   // ========================================
   // SOUMISSION
