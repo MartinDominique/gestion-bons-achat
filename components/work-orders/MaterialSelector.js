@@ -3,6 +3,7 @@ import {
   Search, Package, Plus, Minus, X, Edit, Save, 
   AlertCircle, CheckCircle, RotateCcw, Hash, Eye, EyeOff
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase'; 
 
 // NOUVEAU: Plus de paramètre showPrices global - géré par ligne
 export default function MaterialSelector({ 
@@ -35,6 +36,13 @@ export default function MaterialSelector({
   const [pendingProduct, setPendingProduct] = useState(null);
   const [pendingQuantity, setPendingQuantity] = useState('1');
   const quantityInputRef = useRef(null);
+
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [quickAddForm, setQuickAddForm] = useState({
+    product_id: '',
+    description: '',
+    unit: 'UN'
+  });
 
   // Chargement initial des produits avec cache
   useEffect(() => {
@@ -275,14 +283,125 @@ const deleteMaterialFromModal = () => {
     }).format(amount || 0);
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Header avec bouton d'ajout */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900">
-          Matériaux utilisés ({(materials || []).length})
-        </h3>
+  // 🆕 NOUVELLE FONCTION - AJOUT RAPIDE PRODUIT NON-INVENTAIRE
+      const saveQuickAddProduct = async () => {
+        // Validation
+        if (!quickAddForm.product_id || !quickAddForm.description) {
+          alert('⚠️ Code produit et description sont requis');
+          return;
+        }
+      
+        try {
+          const nonInventoryData = {
+            product_id: quickAddForm.product_id.trim().toUpperCase(),
+            description: quickAddForm.description.trim(),
+            unit: quickAddForm.unit || 'UN',
+            product_group: 'Non-Inventaire',
+            selling_price: 0,
+            cost_price: 0,
+            stock_qty: 0
+          };
+      
+          console.log('💾 Sauvegarde produit non-inventaire:', nonInventoryData);
+      
+          // Vérifier si existe déjà
+          const { data: existingItem, error: checkError } = await supabase
+            .from('non_inventory_items')
+            .select('*')
+            .eq('product_id', nonInventoryData.product_id)
+            .single();
+      
+          if (checkError && checkError.code !== 'PGRST116') {
+            throw checkError;
+          }
+      
+          let savedProduct;
+          if (existingItem) {
+            // Mise à jour
+            const { data, error } = await supabase
+              .from('non_inventory_items')
+              .update(nonInventoryData)
+              .eq('product_id', nonInventoryData.product_id)
+              .select()
+              .single();
+            
+            if (error) throw error;
+            savedProduct = data;
+            console.log('✅ Produit mis à jour:', savedProduct);
+          } else {
+            // Création
+            const { data, error } = await supabase
+              .from('non_inventory_items')
+              .insert([nonInventoryData])
+              .select()
+              .single();
+            
+            if (error) throw error;
+            savedProduct = data;
+            console.log('✅ Nouveau produit créé:', savedProduct);
+          }
+      
+          // Ajouter directement au bon de travail
+          if (savedProduct) {
+            const newMaterial = {
+              id: Date.now().toString(),
+              product_id: savedProduct.product_id,
+              product: {
+                id: savedProduct.product_id,
+                product_id: savedProduct.product_id,
+                description: savedProduct.description,
+                unit: savedProduct.unit,
+                product_group: 'Non-Inventaire',
+                selling_price: 0
+              },
+              quantity: 1,
+              unit: savedProduct.unit,
+              notes: '',
+              showPrice: false
+            };
+      
+            const safeMaterials = materials || [];
+            onMaterialsChange([newMaterial, ...safeMaterials]);
+          }
+      
+          // Réinitialiser et fermer
+          setShowQuickAddModal(false);
+          setQuickAddForm({
+            product_id: '',
+            description: '',
+            unit: 'UN'
+          });
+      
+          // Recharger les produits
+          await loadProducts(true);
+      
+        } catch (error) {
+          console.error('❌ Erreur sauvegarde:', error);
+          alert(`❌ Erreur: ${error.message}`);
+        }
+      };
+
+ return (
+  <div className="space-y-4">
+    {/* Header avec boutons d'ajout */}
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-medium text-gray-900">
+        Matériaux utilisés ({(materials || []).length})
+      </h3>
+      
+      {/* 🆕 DEUX BOUTONS AU LIEU D'UN */}
+      <div className="flex gap-2">
+        {/* Nouveau bouton pour ajout rapide */}
+        <button
+          type="button"
+          onClick={() => setShowQuickAddModal(true)}
+          className="bg-orange-600 text-white px-3 py-2 rounded-lg hover:bg-orange-700 flex items-center text-sm"
+        >
+          <Plus className="mr-1" size={16} />
+          Produit Non-Inventaire
+        </button>
         
+        {/* Bouton existant */}
         <button
           type="button"
           onClick={() => {
@@ -299,6 +418,7 @@ const deleteMaterialFromModal = () => {
           Ajouter matériau
         </button>
       </div>
+    </div>
 
       {/* Liste des matériaux ajoutés - VERSION COMPACTE */}
       {(!materials || materials.length === 0) ? (
@@ -734,6 +854,134 @@ const deleteMaterialFromModal = () => {
           </div>
         </div>
       )}
+
+    )}
+      </div>
+
+      {/* 🆕 NOUVEAU MODAL - AJOUT RAPIDE PRODUIT NON-INVENTAIRE */}
+      {showQuickAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70]">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            {/* Header */}
+            <div className="bg-orange-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+              <h3 className="text-lg font-semibold">➕ Nouveau Produit Non-Inventaire</h3>
+              <button
+                onClick={() => {
+                  setShowQuickAddModal(false);
+                  setQuickAddForm({ product_id: '', description: '', unit: 'UN' });
+                }}
+                className="text-white hover:text-gray-200"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Formulaire */}
+            <div className="p-6 space-y-4">
+              {/* Code Produit */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Code Produit / # Pièce *
+                </label>
+                <input
+                  type="text"
+                  value={quickAddForm.product_id}
+                  onChange={(e) => setQuickAddForm({
+                    ...quickAddForm, 
+                    product_id: e.target.value.toUpperCase()
+                  })}
+                  placeholder="Ex: TEMP-001, SERVICE-XYZ"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 uppercase"
+                  maxLength={50}
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Identifiant unique pour ce produit/service
+                </p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  rows={3}
+                  value={quickAddForm.description}
+                  onChange={(e) => setQuickAddForm({
+                    ...quickAddForm, 
+                    description: e.target.value
+                  })}
+                  placeholder="Description détaillée du produit ou service..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  maxLength={200}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {quickAddForm.description.length}/200 caractères
+                </p>
+              </div>
+
+              {/* Unité */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Unité
+                </label>
+                <select
+                  value={quickAddForm.unit}
+                  onChange={(e) => setQuickAddForm({
+                    ...quickAddForm, 
+                    unit: e.target.value
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="UN">UN - Unité</option>
+                  <option value="M">M - Mètre</option>
+                  <option value="PI">PI - Pied</option>
+                  <option value="L">L - Litre</option>
+                  <option value="H">H - Heure</option>
+                  <option value="KG">KG - Kilogramme</option>
+                  <option value="M2">M² - Mètre carré</option>
+                  <option value="PI2">PI² - Pied carré</option>
+                </select>
+              </div>
+
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  💡 Ce produit sera sauvegardé dans votre base de données et 
+                  pourra être réutilisé pour d'autres bons de travail
+                </p>
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="p-4 bg-gray-50 border-t flex gap-3 rounded-b-lg">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickAddModal(false);
+                  setQuickAddForm({ product_id: '', description: '', unit: 'UN' });
+                }}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-4 rounded-lg"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={saveQuickAddProduct}
+                disabled={!quickAddForm.product_id || !quickAddForm.description}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                ✅ Sauvegarder et Ajouter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+        
     </div>
   );
 }
