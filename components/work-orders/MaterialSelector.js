@@ -979,7 +979,4 @@ const deleteMaterialFromModal = () => {
     </div>
   );
 }
-        
-    </div>
-  );
-}
+      
