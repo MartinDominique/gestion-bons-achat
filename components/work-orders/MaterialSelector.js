@@ -855,8 +855,6 @@ const deleteMaterialFromModal = () => {
         </div>
       )}
 
-    )}
-      </div>
 
       {/* 🆕 NOUVEAU MODAL - AJOUT RAPIDE PRODUIT NON-INVENTAIRE */}
       {showQuickAddModal && (
