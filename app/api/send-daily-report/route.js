@@ -63,6 +63,8 @@ function translateStatus(status) {
 
 export async function POST(request) {
   try {
+    console.log('🚀 Début envoi rapport quotidien des achats fournisseurs');
+    
     // Récupérer les achats en cours (draft et ordered) triés par date de création
     const { data: purchases, error } = await supabase
       .from('supplier_purchases')
@@ -81,9 +83,11 @@ export async function POST(request) {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Erreur Supabase:', error);
-      return NextResponse.json({ error: 'Erreur lors de la récupération des données' }, { status: 500 });
+      console.error('❌ Erreur Supabase:', error);
+      return NextResponse.json({ error: 'Erreur Supabase', details: error }, { status: 500 });
     }
+
+    console.log(`📊 ${purchases?.length || 0} achat(s) en cours trouvés`);
 
     // Si aucun achat, on envoie quand même un email pour confirmer
     const purchaseRows = purchases && purchases.length > 0 
@@ -188,11 +192,11 @@ export async function POST(request) {
         <h3 style="margin: 0 0 10px 0; font-size: 16px;">Légende des alertes :</h3>
         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="width: 20px; height: 20px; background-color: #fed7aa; border: 1px solid #fdba74; border-radius: 3px;"></div>
+            <div style="width: 20px; height: 20px; background-color: #ff8c00; border: 1px solid #ff8c00; border-radius: 3px;"></div>
             <span style="font-size: 14px;">Orange vif : Livraison demain</span>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="width: 20px; height: 20px; background-color: #fca5a5; border: 1px solid #f87171; border-radius: 3px;"></div>
+            <div style="width: 20px; height: 20px; background-color: #ff4444; border: 1px solid #ff4444; border-radius: 3px;"></div>
             <span style="font-size: 14px;">Rouge vif : Livraison aujourd'hui/retard</span>
           </div>
         </div>
@@ -281,7 +285,7 @@ export async function POST(request) {
       <div style="margin-top: 30px; padding: 20px; background-color: #f9fafb; border-radius: 6px;">
         <h3 style="margin: 0 0 10px 0; color: #374151;">Résumé :</h3>
         <p style="margin: 5px 0; color: #6b7280;">
-          📦 <strong>${purchases ? purchases.length : 0}</strong> achat(s) en cours
+          📦 <strong>${purchases?.length || 0}</strong> achat(s) en cours
         </p>
         <p style="margin: 5px 0; color: #6b7280;">
           🔄 Statuts inclus : En commande, Commandé
@@ -290,8 +294,8 @@ export async function POST(request) {
 
       <!-- Pied de page -->
       <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-        <p style="margin: 0;">Ce rapport est généré automatiquement tous les jours à 8h00.</p>
-        <p style="margin: 5px 0 0 0;">Système de gestion des achats fournisseurs - Services TMT</p>
+        <p style="margin: 0;">Ce rapport est généré automatiquement tous les jours à 8h00 (heure de l'Est).</p>
+        <p style="margin: 5px 0 0 0;">Système de gestion des achats fournisseurs - Services TMT Inc.</p>
       </div>
 
     </div>
@@ -300,29 +304,40 @@ export async function POST(request) {
 </html>
 `;
 
-    // Envoyer l'email
+    // Envoyer l'email avec le domaine vérifié
+    console.log('📧 Envoi email depuis: noreply@servicestmt.ca');
+    console.log('📧 Destinataires:', ['servicestmt@gmail.com', 'info.servicestmt@gmail.com']);
+    
     const { data, error: resendError } = await resend.emails.send({
-      from: 'Système de gestion <Services TMT Inc.>',
+      from: 'Système TMT <noreply@servicestmt.ca>',
       to: ['servicestmt@gmail.com', 'info.servicestmt@gmail.com'],
-      subject: `📋 Rapport quotidien des achats - ${purchases ? purchases.length : 0} achat(s) en cours`,
+      subject: `📋 Rapport quotidien - ${purchases?.length || 0} achat(s) en cours`,
       html: emailHtml,
+      reply_to: 'info.servicestmt@gmail.com',
     });
 
     if (resendError) {
-      console.error('Erreur Resend:', resendError);
-      return NextResponse.json({ error: 'Erreur lors de l\'envoi de l\'email' }, { status: 500 });
+      console.error('❌ Erreur Resend:', resendError);
+      return NextResponse.json({ 
+        error: 'Erreur envoi email', 
+        details: resendError 
+      }, { status: 500 });
     }
 
-    console.log('Email envoyé avec succès:', data);
+    console.log('✅ Email envoyé avec succès! ID:', data?.id);
     
     return NextResponse.json({ 
       success: true, 
-      message: `Email envoyé avec succès. ${purchases ? purchases.length : 0} achat(s) traité(s).`,
-      emailId: data.id
+      message: `Email envoyé avec succès. ${purchases?.length || 0} achat(s) traités.`,
+      emailId: data?.id,
+      purchaseCount: purchases?.length || 0
     });
 
   } catch (error) {
-    console.error('Erreur générale:', error);
-    return NextResponse.json({ error: 'Erreur interne du serveur' }, { status: 500 });
+    console.error('💥 Erreur générale:', error);
+    return NextResponse.json({ 
+      error: 'Erreur serveur', 
+      details: error.message 
+    }, { status: 500 });
   }
 }
