@@ -89,6 +89,16 @@ export async function POST(request) {
 
     console.log(`📊 ${purchases?.length || 0} achat(s) en cours trouvés`);
 
+    // ✅ NOUVEAU - Ne pas envoyer si 0 achats
+      if (!purchases || purchases.length === 0) {
+        console.log('ℹ️ Aucun achat en cours - Pas d\'email envoyé');
+        return NextResponse.json({ 
+          success: true, 
+          message: 'Aucun achat en cours - Email non envoyé',
+          purchaseCount: 0
+        });
+      }
+
     // Si aucun achat, on envoie quand même un email pour confirmer
     const purchaseRows = purchases && purchases.length > 0 
       ? purchases.map(purchase => {
