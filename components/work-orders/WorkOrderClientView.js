@@ -384,6 +384,9 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                         return m > 0 ? `${h}h ${m}min` : `${h}h`;
                       })()}
                     </span>
+                    {entry.end_time && workOrder.client?.travel_minutes > 0 && (
+                      <span className="text-orange-600 ml-2">(Retour: {workOrder.client.travel_minutes}min)</span>
+                    )}
                   </div>
                 ))}
                <div className="text-sm font-bold text-blue-900 pt-2 border-t mt-2">
