@@ -5,7 +5,8 @@ export default function TimeTracker({
   onTimeChange, 
   initialTimeEntries = [],
   workDate = null,
-  status = 'draft'
+  status = 'draft',
+  selectedClient = null
 }) {
   // État pour gérer PLUSIEURS sessions
   const [timeEntries, setTimeEntries] = useState(initialTimeEntries || []);
@@ -96,6 +97,17 @@ const getAllSessions = () => {
   };
   
   return [...timeEntries, sessionInProgress];
+};
+
+// ⭐ NOUVEAU - Vérifier si la session est terminée
+const isSessionCompleted = (entry) => {
+  return entry.end_time && !entry.in_progress;
+};
+
+// ⭐ NOUVEAU - Formater le texte de retour
+const getReturnText = () => {
+  if (!selectedClient || !selectedClient.travel_minutes) return '';
+  return ` (Retour: ${selectedClient.travel_minutes}min)`;
 };
 
 // ========================================
@@ -484,6 +496,9 @@ const formatDuration = (hours) => {
                   <div className={`font-bold ${entry.in_progress ? 'text-green-700' : 'text-blue-700'}`}>
                     {formatDuration(entry.total_hours || 0)}
                     {entry.in_progress && ' ⏱️'}
+                    {!entry.in_progress && isSessionCompleted(entry) && (
+                      <span className="text-orange-600 text-sm ml-1">{getReturnText()}</span>
+                    )}
                   </div>
                 </div>
               </div>
