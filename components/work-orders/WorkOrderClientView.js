@@ -386,9 +386,9 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                     </span>
                   </div>
                 ))}
-                <div className="text-sm font-bold text-blue-900 pt-2 border-t mt-2">
+               <div className="text-sm font-bold text-blue-900 pt-2 border-t mt-2">
                   TOTAL: {(() => {
-                    const total = workOrder.time_entries.reduce((sum, e) => sum + (e.total_hours || 0), 0);
+                    const total = workOrder.total_hours || 0;
                     const h = Math.floor(total);
                     const m = Math.round((total - h) * 60);
                     return m > 0 ? `${h}h ${m}min` : `${h}h`;
