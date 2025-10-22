@@ -1115,6 +1115,7 @@ useEffect(() => {
           initialTimeEntries={formData.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
+          selectedClient={selectedClient}
         />
 
         {console.log('🔍 DEBUG Checkbox:', {
