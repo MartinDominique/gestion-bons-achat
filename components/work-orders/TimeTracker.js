@@ -44,11 +44,34 @@ const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
     const [h, m] = String(t || '').split(':').map((n) => parseInt(n, 10) || 0);
     return h * 60 + m;
   };
+  
   const s = parseHHMM(startHHMM);
   const e = parseHHMM(endHHMM);
-  let net = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
-  const rounded = Math.ceil(net / 15) * 15;
-  return Math.round((rounded / 60) * 100) / 100;
+  let netMinutes = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
+  
+  if (netMinutes < 60) {
+    return 1.0;
+  }
+  
+  const hours = Math.floor(netMinutes / 60);
+  const minutes = netMinutes % 60;
+  
+  let roundedMinutes;
+  
+  if (minutes <= 6) {
+    roundedMinutes = 0;
+  } else if (minutes <= 21) {
+    roundedMinutes = 15;
+  } else if (minutes <= 36) {
+    roundedMinutes = 30;
+  } else if (minutes <= 51) {
+    roundedMinutes = 45;
+  } else {
+    return hours + 1;
+  }
+  
+  const totalMinutes = (hours * 60) + roundedMinutes;
+  return Math.round((totalMinutes / 60) * 100) / 100;
 };
 
 const getAllSessions = () => {
