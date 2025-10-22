@@ -1132,16 +1132,16 @@ export const NonInventoryModal = ({
               )}
             </div>
 
-            {/* PRIX VENDANT AVEC USD */}
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vendant CAD *</label>
+            {/* PRIX CÔTE À CÔTE */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Prix Coût CAD *</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  value={nonInventoryForm.selling_price}
-                  onChange={(e) => setNonInventoryForm({...nonInventoryForm, selling_price: e.target.value})}
+                  value={nonInventoryForm.cost_price}
+                  onChange={(e) => setNonInventoryForm({...nonInventoryForm, cost_price: e.target.value})}
                   className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                   placeholder="0.00"
                   required
@@ -1149,8 +1149,8 @@ export const NonInventoryModal = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setShowUsdCalculatorSelling(!showUsdCalculatorSelling);
-                    if (!showUsdCalculatorSelling) {
+                    setShowUsdCalculatorCost(!showUsdCalculatorCost);
+                    if (!showUsdCalculatorCost) {
                       fetchExchangeRate();
                     }
                   }}
@@ -1162,38 +1162,8 @@ export const NonInventoryModal = ({
                 </button>
               </div>
 
-              {/* BOUTONS DE PROFIT */}
-              {nonInventoryForm.cost_price && parseFloat(nonInventoryForm.cost_price) > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs text-gray-600 mb-2">Profit automatique:</p>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => applyProfitMargin(15)}
-                      className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
-                    >
-                      +15%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyProfitMargin(20)}
-                      className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
-                    >
-                      +20%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyProfitMargin(27)}
-                      className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
-                    >
-                      +27%
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* CALCULATEUR USD VENDANT */}
-              {showUsdCalculatorSelling && (
+              {/* CALCULATEUR USD COÛTANT */}
+              {showUsdCalculatorCost && (
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium text-blue-800 flex items-center">
@@ -1202,7 +1172,7 @@ export const NonInventoryModal = ({
                     </h4>
                     <button
                       type="button"
-                      onClick={() => setShowUsdCalculatorSelling(false)}
+                      onClick={() => setShowUsdCalculatorCost(false)}
                       className="text-blue-600 hover:text-blue-800"
                     >
                       <X className="w-4 h-4" />
@@ -1237,25 +1207,70 @@ export const NonInventoryModal = ({
                         type="number"
                         step="0.01"
                         min="0"
-                        value={usdAmountSelling}
-                        onChange={(e) => setUsdAmountSelling(e.target.value)}
+                        value={usdAmountCost}
+                        onChange={(e) => setUsdAmountCost(e.target.value)}
                         placeholder="Montant USD"
                         className="flex-1 rounded border-blue-300 text-sm p-2"
                       />
                       <span className="text-sm text-blue-700">USD</span>
                       <span className="text-sm">=</span>
                       <span className="font-medium text-green-700">
-                        {usdAmountSelling ? (parseFloat(usdAmountSelling) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                        {usdAmountCost ? (parseFloat(usdAmountCost) * usdToCadRate).toFixed(2) : '0.00'} CAD
                       </span>
                     </div>
                     
                     <button
                       type="button"
-                      onClick={useConvertedAmountSelling}
-                      disabled={!usdAmountSelling || parseFloat(usdAmountSelling) <= 0}
+                      onClick={useConvertedAmountCost}
+                      disabled={!usdAmountCost || parseFloat(usdAmountCost) <= 0}
                       className="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                     >
-                      ✅ Utiliser {usdAmountSelling ? (parseFloat(usdAmountSelling) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                      ✅ Utiliser {usdAmountCost ? (parseFloat(usdAmountCost) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* PRIX VENDANT SANS USD */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vente CAD *</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={nonInventoryForm.selling_price}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, selling_price: e.target.value})}
+                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                placeholder="0.00"
+                required
+              />
+
+              {/* BOUTONS DE PROFIT */}
+              {nonInventoryForm.cost_price && parseFloat(nonInventoryForm.cost_price) > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-600 mb-2">Profit automatique:</p>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => applyProfitMargin(15)}
+                      className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                    >
+                      +15%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyProfitMargin(20)}
+                      className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
+                    >
+                      +20%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyProfitMargin(27)}
+                      className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
+                    >
+                      +27%
                     </button>
                   </div>
                 </div>
