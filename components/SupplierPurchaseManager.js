@@ -234,6 +234,30 @@ export default function SupplierPurchaseManager() {
           resetAddressForm={resetAddressForm}
         />
 
+          // États modal non-inventaire
+          showNonInventoryModal={hookData.showNonInventoryModal}
+          setShowNonInventoryModal={hookData.setShowNonInventoryModal}
+          nonInventoryForm={hookData.nonInventoryForm}
+          setNonInventoryForm={hookData.setNonInventoryForm}
+          showUsdCalculatorCost={hookData.showUsdCalculatorCost}
+          setShowUsdCalculatorCost={hookData.setShowUsdCalculatorCost}
+          showUsdCalculatorSelling={hookData.showUsdCalculatorSelling}
+          setShowUsdCalculatorSelling={hookData.setShowUsdCalculatorSelling}
+          usdAmountCost={hookData.usdAmountCost}
+          setUsdAmountCost={hookData.setUsdAmountCost}
+          usdAmountSelling={hookData.usdAmountSelling}
+          setUsdAmountSelling={hookData.setUsdAmountSelling}
+          usdToCadRate={hookData.usdToCadRate}
+          loadingExchangeRate={hookData.loadingExchangeRate}
+          exchangeRateError={hookData.exchangeRateError}
+          
+          // Fonctions modal non-inventaire
+          fetchExchangeRate={hookData.fetchExchangeRate}
+          applyProfitMargin={hookData.applyProfitMargin}
+          useConvertedAmountCost={hookData.useConvertedAmountCost}
+          useConvertedAmountSelling={hookData.useConvertedAmountSelling}
+          addNonInventoryProduct={hookData.addNonInventoryProduct}  
+
         {/* MODAL IMPORT SOUMISSION */}
         <ImportSubmissionModal 
           showModal={showImportSubmissionModal}
