@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check } from 'lucide-react';
+import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check, PenTool } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
 import ClientModal from '../ClientModal';
@@ -81,6 +81,7 @@ export default function WorkOrderForm({
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [showClientModal, setShowClientModal] = useState(false);
+  const [editingClient, setEditingClient] = useState(null); // ⭐ NOUVEAU - Client en cours d'édition
   
   // Cache des produits pour vérification
   const [cachedProducts, setCachedProducts] = useState([]);
@@ -225,41 +226,75 @@ export default function WorkOrderForm({
   }, []);
 
   // Charger les clients avec auto-rechargement
-    useEffect(() => {
-      const loadClients = async () => {
-        try {
-          const response = await fetch('/api/clients');
-          if (response.ok) {
-            const data = await response.json();
-            setClients(data);
-            
-            // Si mode édition, sélectionner le client actuel
-            if (workOrder && mode === 'edit') {
-              const client = data.find(c => c.id === workOrder.client_id);
-              if (client) {
-                setSelectedClient(client);
-              }
-            }
+  // ⭐ Extraire la fonction pour pouvoir l'appeler ailleurs
+  const loadClients = async () => {
+    try {
+      const response = await fetch('/api/clients');
+      if (response.ok) {
+        const data = await response.json();
+        setClients(data);
+        
+        // Si mode édition, sélectionner le client actuel
+        if (workOrder && mode === 'edit') {
+          const client = data.find(c => c.id === workOrder.client_id);
+          if (client) {
+            setSelectedClient(client);
           }
-        } catch (error) {
-          console.error('Erreur chargement clients:', error);
         }
-      };
-      
-      loadClients(); // Chargement initial
-      
-      // ✅ SOLUTION 1 : Recharger automatiquement au retour sur la page
-      const handleFocus = () => {
-        console.log('🔄 Rechargement clients (retour focus)');
-        loadClients();
-      };
-      
-      window.addEventListener('focus', handleFocus);
-      
-      return () => {
-        window.removeEventListener('focus', handleFocus);
-      };
-    }, [workOrder, mode]);
+      }
+    } catch (error) {
+      console.error('Erreur chargement clients:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadClients(); // Chargement initial
+    
+    // ✅ SOLUTION 1 : Recharger automatiquement au retour sur la page
+    const handleFocus = () => {
+      console.log('🔄 Rechargement clients (retour focus)');
+      loadClients();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [workOrder, mode]);
+
+  // ⭐ NOUVEAU - Callback après création/modification d'un client
+  const handleClientSaved = async (savedClient) => {
+    console.log('✅ Client sauvegardé, rafraîchissement de la liste...', savedClient);
+    
+    // Rafraîchir la liste
+    await loadClients();
+    
+    // Sélectionner automatiquement le client créé/modifié
+    setSelectedClient(savedClient);
+    setFormData(prev => ({
+      ...prev,
+      client_id: savedClient.id.toString()
+    }));
+    
+    toast.success(`Client ${savedClient.name} ${editingClient ? 'modifié' : 'créé'} avec succès!`);
+  };
+
+  // ⭐ NOUVEAU - Ouvrir le modal en mode création
+  const handleNewClient = () => {
+    setEditingClient(null);
+    setShowClientModal(true);
+  };
+
+  // ⭐ NOUVEAU - Ouvrir le modal en mode édition
+  const handleEditClient = () => {
+    if (!selectedClient) {
+      toast.error('Veuillez sélectionner un client à modifier');
+      return;
+    }
+    setEditingClient(selectedClient);
+    setShowClientModal(true);
+  };
 
   // Synchroniser descriptions avec work_description
   useEffect(() => {
@@ -972,16 +1007,33 @@ useEffect(() => {
                 ))}
               </select>
               
-              {/* Bouton Nouveau Client à droite */}
-              <button
-                type="button"
-                onClick={() => setShowClientModal(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center whitespace-nowrap font-medium"
-                title="Créer un nouveau client"
-              >
-                <Plus className="mr-1" size={16} />
-                Nouveau
-              </button>
+              {/* Boutons Nouveau et Modifier à droite */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleEditClient}
+                  disabled={!selectedClient}
+                  className={`px-4 py-2 rounded-lg flex items-center whitespace-nowrap font-medium ${
+                    selectedClient
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                  title={selectedClient ? 'Modifier le client sélectionné' : 'Sélectionnez un client d\'abord'}
+                >
+                  <PenTool className="mr-1" size={16} />
+                  Modifier
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleNewClient}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center whitespace-nowrap font-medium"
+                  title="Créer un nouveau client"
+                >
+                  <Plus className="mr-1" size={16} />
+                  Nouveau
+                </button>
+              </div>
             </div>
             
             {errors.client_id && (
@@ -1291,12 +1343,15 @@ useEffect(() => {
         </div>
       </form>
 
-      {/* ✅ Modal Création Client */}
+      {/* ✅ Modal Création/Édition Client */}
       <ClientModal
         open={showClientModal}
-        onClose={() => setShowClientModal(false)}
+        onClose={() => {
+          setShowClientModal(false);
+          setEditingClient(null); // Réinitialiser après fermeture
+        }}
         onSaved={handleClientSaved}
-        client={null}
+        client={editingClient}
       />
     </div>
   );
