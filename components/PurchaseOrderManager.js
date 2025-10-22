@@ -275,111 +275,112 @@ const PurchaseOrderManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Moderne avec Gradient - Style Photo */}
-      <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-xl shadow-xl text-white p-6">
-        <div className="flex justify-between items-start mb-6">
+      {/* Header Moderne avec Gradient - Style Photo - COMPACT */}
+      <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-xl shadow-xl text-white p-4 md:p-6">
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Gestion des Bons d'Achat</h1>
-            <p className="text-blue-100">Gérez vos bons d'achat et commandes clients</p>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2">Gestion des Bons d'Achat</h1>
+            <p className="text-blue-100 text-sm">Gérez vos bons d'achat et commandes clients</p>
           </div>
-          <div className="flex gap-3">
-            <button className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-200 font-medium">
+          <div className="flex gap-2 md:gap-3">
+            <button className="bg-white/20 backdrop-blur-sm text-white px-3 md:px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-200 font-medium text-sm">
               Rapport
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2 font-medium shadow-lg transition-all duration-200"
+              className="bg-white text-blue-600 px-3 md:px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2 font-medium shadow-lg transition-all duration-200 text-sm"
             >
-              <Plus className="w-5 h-5" />
-              Nouveau Bon d'Achat
+              <Plus className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden sm:inline">Nouveau Bon d'Achat</span>
+              <span className="sm:hidden">Nouveau</span>
             </button>
           </div>
         </div>
 
-        {/* Statistiques Complètes - 7 Statuts + Total */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
+        {/* Statistiques Complètes - 7 Statuts + Total - COMPACT POUR TABLETTE */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2">
           {/* Total - Toujours visible */}
-          <div className="col-span-2 md:col-span-1 bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <BarChart3 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-200" />
-              <span className="text-xl sm:text-2xl font-bold">{stats.total}</span>
+          <div className="col-span-2 md:col-span-1 bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+            <div className="flex items-center justify-between mb-1">
+              <BarChart3 className="w-5 h-5 text-blue-200" />
+              <span className="text-base sm:text-xl font-bold">{stats.total}</span>
             </div>
-            <p className="text-blue-100 font-medium text-sm">Total</p>
+            <p className="text-blue-100 font-medium text-xs">Total</p>
           </div>
 
           {/* Brouillons */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-gray-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xs sm:text-sm">📝</span>
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+            <div className="flex items-center justify-between mb-1">
+              <div className="w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">📝</span>
               </div>
-              <span className="text-lg sm:text-2xl font-bold text-gray-200">{stats.draft}</span>
+              <span className="text-base sm:text-xl font-bold text-gray-200">{stats.draft}</span>
             </div>
-            <p className="text-gray-100 font-medium text-xs sm:text-sm">Brouillons</p>
+            <p className="text-gray-100 font-medium text-xs">Brouillons</p>
           </div>
 
           {/* En Attente */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xs sm:text-sm">⏳</span>
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+            <div className="flex items-center justify-between mb-1">
+              <div className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">⏳</span>
               </div>
-              <span className="text-lg sm:text-2xl font-bold text-yellow-200">{stats.pending}</span>
+              <span className="text-base sm:text-xl font-bold text-yellow-200">{stats.pending}</span>
             </div>
-            <p className="text-yellow-100 font-medium text-xs sm:text-sm">En Attente</p>
+            <p className="text-yellow-100 font-medium text-xs">En Attente</p>
           </div>
 
           {/* Approuvés */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-green-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xs sm:text-sm">✅</span>
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+            <div className="flex items-center justify-between mb-1">
+              <div className="w-5 h-5 bg-green-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">✅</span>
               </div>
-              <span className="text-lg sm:text-2xl font-bold text-green-200">{stats.approved}</span>
+              <span className="text-base sm:text-xl font-bold text-green-200">{stats.approved}</span>
             </div>
-            <p className="text-green-100 font-medium text-xs sm:text-sm">Approuvés</p>
+            <p className="text-green-100 font-medium text-xs">Approuvés</p>
           </div>
 
           {/* Partiellement Livrés */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-blue-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xs sm:text-sm">🚛</span>
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+            <div className="flex items-center justify-between mb-1">
+              <div className="w-5 h-5 bg-blue-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">🚛</span>
               </div>
-              <span className="text-lg sm:text-2xl font-bold text-blue-200">{stats.partial}</span>
+              <span className="text-base sm:text-xl font-bold text-blue-200">{stats.partial}</span>
             </div>
-            <p className="text-blue-100 font-medium text-xs sm:text-sm">Partiels</p>
+            <p className="text-blue-100 font-medium text-xs">Partiels</p>
           </div>
 
           {/* Livrés */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xs sm:text-sm">📦</span>
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+            <div className="flex items-center justify-between mb-1">
+              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">📦</span>
               </div>
-              <span className="text-lg sm:text-2xl font-bold text-green-200">{stats.delivered}</span>
+              <span className="text-base sm:text-xl font-bold text-green-200">{stats.delivered}</span>
             </div>
-            <p className="text-green-100 font-medium text-xs sm:text-sm">Livrés</p>
+            <p className="text-green-100 font-medium text-xs">Livrés</p>
           </div>
 
           {/* Complétés */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-6 sm:w-8 h-6 sm:h-8 bg-purple-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-xs sm:text-sm">🎉</span>
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+            <div className="flex items-center justify-between mb-1">
+              <div className="w-5 h-5 bg-purple-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xs">🎉</span>
               </div>
-              <span className="text-lg sm:text-2xl font-bold text-purple-200">{stats.completed}</span>
+              <span className="text-base sm:text-xl font-bold text-purple-200">{stats.completed}</span>
             </div>
-            <p className="text-purple-100 font-medium text-xs sm:text-sm">Complétés</p>
+            <p className="text-purple-100 font-medium text-xs">Complétés</p>
           </div>
 
           {/* Montant Total - Occupe 2 colonnes sur mobile */}
-          <div className="col-span-2 md:col-span-1 bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-            <div className="flex items-center justify-between mb-2">
-              <DollarSign className="w-6 sm:w-8 h-6 sm:h-8 text-pink-200" />
-              <span className="text-lg sm:text-xl font-bold text-pink-200">{formatCurrency(stats.totalValue)}</span>
+          <div className="col-span-2 md:col-span-1 bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+            <div className="flex items-center justify-between mb-1">
+              <DollarSign className="w-5 h-5 text-pink-200" />
+              <span className="text-base sm:text-lg font-bold text-pink-200">{formatCurrency(stats.totalValue)}</span>
             </div>
-            <p className="text-pink-100 font-medium text-sm">Montant Total</p>
+            <p className="text-pink-100 font-medium text-xs">Montant Total</p>
           </div>
         </div>
       </div>
