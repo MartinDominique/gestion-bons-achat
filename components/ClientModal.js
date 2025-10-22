@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { X, User, Users, Building } from 'lucide-react';
+import { X, User, Users, Building, PenTool } from 'lucide-react';
 
 export default function ClientModal({ open, onClose, onSaved, client }) {
   /* ---------- états ---------- */
@@ -20,7 +20,13 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       // Contact Administration
       contact_name_admin: client.contact_name_admin || '',
       email_admin: client.email_admin || '',
-      contact_admin: client.contact_admin || ''
+      contact_admin: client.contact_admin || '',
+      // Signataires
+      signatory_1: client.signatory_1 || '',
+      signatory_2: client.signatory_2 || '',
+      signatory_3: client.signatory_3 || '',
+      signatory_4: client.signatory_4 || '',
+      signatory_5: client.signatory_5 || ''
     } : { 
       name: '', 
       address: '',
@@ -36,7 +42,13 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       // Contact Administration
       contact_name_admin: '',
       email_admin: '', 
-      contact_admin: ''
+      contact_admin: '',
+      // Signataires
+      signatory_1: '',
+      signatory_2: '',
+      signatory_3: '',
+      signatory_4: '',
+      signatory_5: ''
     }
   );
   const [saving, setSaving] = useState(false);
@@ -56,7 +68,12 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
             contact_2: client.contact_2 || '',
             contact_name_admin: client.contact_name_admin || '',
             email_admin: client.email_admin || '',
-            contact_admin: client.contact_admin || ''
+            contact_admin: client.contact_admin || '',
+            signatory_1: client.signatory_1 || '',
+            signatory_2: client.signatory_2 || '',
+            signatory_3: client.signatory_3 || '',
+            signatory_4: client.signatory_4 || '',
+            signatory_5: client.signatory_5 || ''
           });
         }
       }, [client]);
@@ -98,7 +115,13 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
           // Contact Administration
           contact_name_admin: form.contact_name_admin?.trim() || '',
           email_admin: form.email_admin?.trim() || '',
-          contact_admin: form.contact_admin?.trim() || ''
+          contact_admin: form.contact_admin?.trim() || '',
+          // Signataires
+          signatory_1: form.signatory_1?.trim() || '',
+          signatory_2: form.signatory_2?.trim() || '',
+          signatory_3: form.signatory_3?.trim() || '',
+          signatory_4: form.signatory_4?.trim() || '',
+          signatory_5: form.signatory_5?.trim() || ''
         })
       });
       
@@ -121,7 +144,12 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
         contact_2: '', 
         contact_name_admin: '',
         email_admin: '', 
-        contact_admin: '' 
+        contact_admin: '',
+        signatory_1: '',
+        signatory_2: '',
+        signatory_3: '',
+        signatory_4: '',
+        signatory_5: ''
       });
       
     } catch (error) {
@@ -161,7 +189,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
               {client ? '✏️ Modifier le client' : '➕ Nouveau client'}
             </h2>
             <p className="text-blue-100 text-sm mt-1">
-              {client ? 'Modifiez les informations' : 'Créez un nouveau contact avec ses 3 contacts'}
+              {client ? 'Modifiez les informations' : 'Créez un nouveau contact avec ses 3 contacts et signataires'}
             </p>
           </div>
 
@@ -248,7 +276,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-200 text-sm"
                         value={form.contact_name}
                         onChange={onChange('contact_name')}
-                        placeholder="ex: Andre ST-Hilaire"
+                        placeholder="ex: Jean Tremblay"
                       />
                     </div>
 
@@ -261,7 +289,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-200 text-sm"
                         value={form.email}
                         onChange={onChange('email')}
-                        placeholder="principal@exemple.com"
+                        placeholder="contact@exemple.com"
                         autoComplete="email"
                       />
                     </div>
@@ -275,7 +303,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-200 text-sm"
                         value={form.phone}
                         onChange={onChange('phone')}
-                        placeholder="(514) 123-4567"
+                        placeholder="(514) 555-0000"
                         autoComplete="tel"
                       />
                     </div>
@@ -292,20 +320,20 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-blue-800 mb-1">
-                        👤 Nom du contact #2
+                        👤 Nom du contact
                       </label>
                       <input
                         type="text"
                         className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
                         value={form.contact_name_2}
                         onChange={onChange('contact_name_2')}
-                        placeholder="ex: Marie Tremblay"
+                        placeholder="ex: Marie Dupont"
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-blue-800 mb-1">
-                        📧 Courriel #2
+                        📧 Courriel
                       </label>
                       <input
                         type="email"
@@ -319,14 +347,14 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
 
                     <div>
                       <label className="block text-sm font-medium text-blue-800 mb-1">
-                        📱 Contact #2
+                        📱 Téléphone
                       </label>
                       <input
                         type="tel"
                         className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
                         value={form.contact_2}
                         onChange={onChange('contact_2')}
-                        placeholder="(514) 987-6543"
+                        placeholder="(514) 555-0001"
                         autoComplete="tel"
                       />
                     </div>
@@ -343,7 +371,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-purple-800 mb-1">
-                        👤 Nom du contact Admin
+                        👤 Nom Admin
                       </label>
                       <input
                         type="text"
@@ -384,6 +412,90 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                   </div>
                 </div>
               </div>
+
+              {/* 📱 NOUVELLE SECTION - Signataires */}
+              <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-orange-800 mb-4 flex items-center">
+                  <PenTool className="w-5 h-5 mr-2 text-orange-600" />
+                  Signataires autorisés
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {/* Signataire 1 */}
+                  <div>
+                    <label className="block text-sm font-medium text-orange-800 mb-1">
+                      ✍️ Signataire #1
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-200 text-sm"
+                      value={form.signatory_1}
+                      onChange={onChange('signatory_1')}
+                      placeholder="Nom complet"
+                    />
+                  </div>
+
+                  {/* Signataire 2 */}
+                  <div>
+                    <label className="block text-sm font-medium text-orange-800 mb-1">
+                      ✍️ Signataire #2
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-200 text-sm"
+                      value={form.signatory_2}
+                      onChange={onChange('signatory_2')}
+                      placeholder="Nom complet"
+                    />
+                  </div>
+
+                  {/* Signataire 3 */}
+                  <div>
+                    <label className="block text-sm font-medium text-orange-800 mb-1">
+                      ✍️ Signataire #3
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-200 text-sm"
+                      value={form.signatory_3}
+                      onChange={onChange('signatory_3')}
+                      placeholder="Nom complet"
+                    />
+                  </div>
+
+                  {/* Signataire 4 */}
+                  <div>
+                    <label className="block text-sm font-medium text-orange-800 mb-1">
+                      ✍️ Signataire #4
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-200 text-sm"
+                      value={form.signatory_4}
+                      onChange={onChange('signatory_4')}
+                      placeholder="Nom complet"
+                    />
+                  </div>
+
+                  {/* Signataire 5 */}
+                  <div>
+                    <label className="block text-sm font-medium text-orange-800 mb-1">
+                      ✍️ Signataire #5
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-200 text-sm"
+                      value={form.signatory_5}
+                      onChange={onChange('signatory_5')}
+                      placeholder="Nom complet"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-orange-600 mt-2">
+                  💡 Personnes autorisées à signer les bons de travail pour ce client
+                </p>
+              </div>
             </div>
           </div>
 
@@ -416,7 +528,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
             
             {/* 📱 Note de validation */}
             <p className="text-xs text-gray-500 mt-3 text-center">
-              * Le nom est obligatoire • Les contacts sont optionnels
+              * Le nom est obligatoire • Les contacts et signataires sont optionnels
             </p>
           </div>
         </div>
