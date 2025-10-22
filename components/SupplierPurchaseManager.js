@@ -232,8 +232,9 @@ export default function SupplierPurchaseManager() {
           // Reset forms
           resetSupplierForm={resetSupplierForm}
           resetAddressForm={resetAddressForm}
-        />
 
+          resetAddressForm={resetAddressForm}
+          
           // États modal non-inventaire
           showNonInventoryModal={hookData.showNonInventoryModal}
           setShowNonInventoryModal={hookData.setShowNonInventoryModal}
@@ -256,9 +257,10 @@ export default function SupplierPurchaseManager() {
           applyProfitMargin={hookData.applyProfitMargin}
           useConvertedAmountCost={hookData.useConvertedAmountCost}
           useConvertedAmountSelling={hookData.useConvertedAmountSelling}
-          addNonInventoryProduct={hookData.addNonInventoryProduct}  
+          addNonInventoryProduct={hookData.addNonInventoryProduct}
+        />
 
-        {/* MODAL IMPORT SOUMISSION */}
+          {/* MODAL IMPORT SOUMISSION */}
         <ImportSubmissionModal 
           showModal={showImportSubmissionModal}
           onClose={() => {
