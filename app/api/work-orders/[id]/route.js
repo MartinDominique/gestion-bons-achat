@@ -150,7 +150,7 @@ export async function PUT(request, { params }) {
     const supabase = supabaseAdmin;
     const workOrderId = parseInt(params.id);
 
-    const { materials = [], client, linked_po, ...updateData } = body;
+    const { materials = [], client, linked_po, include_travel_time = false, ...updateData } = body;
     
     console.log('📋 API - materials extraits:', materials);
     console.log('📋 API - materials.length extraits:', materials.length);
@@ -262,7 +262,8 @@ export async function PUT(request, { params }) {
       work_description: updateData.work_description || null,
       additional_notes: updateData.additional_notes || null,
       status: updateData.status || 'draft',
-      recipient_emails: updateData.recipient_emails || []
+      recipient_emails: updateData.recipient_emails || [],
+      include_travel_time: include_travel_time
     })
     .eq('id', workOrderId)
     .select()
