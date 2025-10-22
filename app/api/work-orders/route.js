@@ -54,7 +54,8 @@ export async function POST(request) {
       additional_notes,
       status,
       materials = [],
-      recipient_emails = []
+      recipient_emails = [],
+      include_travel_time = false
     } = body;
 
     //const pause_minutes = body.pause_minutes != null
@@ -155,7 +156,8 @@ if (linked_po_id) {
       work_description,
       additional_notes: additional_notes || null,
       status: status || 'draft',
-      recipient_emails: recipient_emails || []
+      recipient_emails: recipient_emails || [],
+      include_travel_time: include_travel_time
     };
 
     const { data: workOrder, error: workOrderError } = await client
@@ -385,7 +387,8 @@ export async function PUT(request) {
       work_description,
       additional_notes,
       status,
-      materials = []
+      materials = [],
+      include_travel_time = false
     } = body;
 
     if (!id) {
@@ -457,7 +460,8 @@ export async function PUT(request) {
       work_description,
       additional_notes: additional_notes || null,
       status: status || 'draft',
-      recipient_emails: recipient_emails || []
+      recipient_emails: recipient_emails || [],
+      include_travel_time: include_travel_time
     };
 
     const { data: workOrder, error: workOrderError } = await client
