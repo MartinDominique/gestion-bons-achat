@@ -38,7 +38,7 @@ function toQuarterHourUp(startHHMM, endHHMM, pauseMinutes = 0) {
   
   const totalMinutes = (hours * 60) + roundedMinutes;
   return Math.round((totalMinutes / 60) * 100) / 100;
-};}
+}
 
 
 // GET - Récupérer un bon de travail spécifique avec toutes ses relations
