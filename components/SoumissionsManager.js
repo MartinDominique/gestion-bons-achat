@@ -2629,45 +2629,45 @@ const cleanupFilesForSubmission = async (files) => {
           </div>
         </div>
 
-        {/* Statistiques responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+        {/* Statistiques responsive - COMPACT POUR TABLETTE */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">📊</span>
+              <span className="text-lg mr-2">📊</span>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Total</p>
-                <p className="text-xl sm:text-2xl font-bold">{soumissions.length}</p>
+                <p className="text-xs font-medium text-white/90">Total</p>
+                <p className="text-base sm:text-lg font-bold">{soumissions.length}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">📝</span>
+              <span className="text-lg mr-2">📝</span>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Brouillons</p>
-                <p className="text-xl sm:text-2xl font-bold">
+                <p className="text-xs font-medium text-white/90">Brouillons</p>
+                <p className="text-base sm:text-lg font-bold">
                   {soumissions.filter(s => s.status === 'draft').length}
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">📤</span>
+              <span className="text-lg mr-2">📤</span>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Envoyées</p>
-                <p className="text-xl sm:text-2xl font-bold">
+                <p className="text-xs font-medium text-white/90">Envoyées</p>
+                <p className="text-base sm:text-lg font-bold">
                   {soumissions.filter(s => s.status === 'sent').length}
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">✅</span>
+              <span className="text-lg mr-2">✅</span>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Total Accepté</p>
-                <p className="text-lg sm:text-2xl font-bold">
+                <p className="text-xs font-medium text-white/90">Total Accepté</p>
+                <p className="text-sm sm:text-base font-bold">
                   {formatCurrency(soumissions.filter(s => s.status === 'accepted').reduce((sum, s) => sum + (s.amount || 0), 0))}
                 </p>
                 <p className="text-xs text-white/70">
