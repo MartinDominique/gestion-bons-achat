@@ -190,28 +190,40 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     }).format(amount || 0);
   };
 
-        const calculateTotalHours = () => {
-          if (!workOrder?.start_time || !workOrder?.end_time) return 0;
-        
-          // Parse "HH:MM" -> minutes, sans objet Date (aucun décalage TZ/secondes)
-          const parseHHMM = (t) => {
-            const [h, m] = String(t).split(':').map((n) => parseInt(n, 10) || 0);
-            return h * 60 + m;
-          };
-        
-          const startMin = parseHHMM(workOrder.start_time);
-          const endMin   = parseHHMM(workOrder.end_time);
-        
-          // Durée nette en minutes
-          const pause = parseInt(workOrder.pause_minutes, 10) || 0;
-          let netMin = Math.max(0, endMin - startMin - pause);
-        
-          // Arrondi au quart d'heure supérieur (ceil)
-          const roundedMin = Math.ceil(netMin / 15) * 15;
-        
-          // Retour en heures décimales (arrondi 2 décimales pour stockage/affichage)
-          return Math.round((roundedMin / 60) * 100) / 100;
+        const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
+        const parseHHMM = (t) => {
+          const [h, m] = String(t || '').split(':').map((n) => parseInt(n, 10) || 0);
+          return h * 60 + m;
         };
+        
+        const s = parseHHMM(startHHMM);
+        const e = parseHHMM(endHHMM);
+        let netMinutes = Math.max(0, e - s - (parseInt(pauseMinutes, 10) || 0));
+        
+        if (netMinutes < 60) {
+          return 1.0;
+        }
+        
+        const hours = Math.floor(netMinutes / 60);
+        const minutes = netMinutes % 60;
+        
+        let roundedMinutes;
+        
+        if (minutes <= 6) {
+          roundedMinutes = 0;
+        } else if (minutes <= 21) {
+          roundedMinutes = 15;
+        } else if (minutes <= 36) {
+          roundedMinutes = 30;
+        } else if (minutes <= 51) {
+          roundedMinutes = 45;
+        } else {
+          return hours + 1;
+        }
+        
+        const totalMinutes = (hours * 60) + roundedMinutes;
+        return Math.round((totalMinutes / 60) * 100) / 100;
+      };
 
 
   const calculateTotal = () => {
