@@ -598,8 +598,8 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
             ) : (
               <div>
                 {/* ✅ NOUVEAU - Sélection du signataire */}
-                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <label className="block text-sm font-semibold text-blue-800 mb-3">
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <label className="block text-xs font-semibold text-blue-800 mb-2">
                     Qui signe ce formulaire? *
                   </label>
                   
@@ -610,17 +610,17 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                     if (signatories.length === 0) {
                       // Aucun signataire configuré - afficher seulement le champ texte
                       return (
-                        <div className="bg-white border-2 border-gray-300 rounded-lg p-3">
-                          <label className="flex items-start cursor-pointer">
+                        <div className="bg-white border border-gray-300 rounded p-2">
+                          <label className="flex items-center cursor-pointer">
                             <input
                               type="radio"
                               name="signatory"
                               checked={true}
                               onChange={() => {}}
-                              className="mt-1 mr-3 w-5 h-5"
+                              className="mr-2 w-4 h-4"
                             />
                             <div className="flex-1">
-                              <span className="font-medium text-gray-700 block mb-2">Entrer le nom:</span>
+                              <span className="text-xs font-medium text-gray-700 mr-2">Entrer le nom:</span>
                               <input
                                 type="text"
                                 value={customSignerName}
@@ -629,7 +629,7 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                                   setSelectedSignatoryMode('custom');
                                 }}
                                 placeholder="Ex: Jean Tremblay"
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full mt-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                                 maxLength={50}
                               />
                             </div>
@@ -638,36 +638,37 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                       );
                     }
                     
-                    // Signataires disponibles - afficher les options
+                    // Signataires disponibles - afficher en ligne compacte
                     return (
                       <div className="space-y-2">
-                        {signatories.map((signatory) => (
-                          <div key={signatory.index} className="bg-white border-2 border-gray-300 rounded-lg p-3 hover:border-blue-400 transition-colors">
-                            <label className="flex items-center cursor-pointer">
+                        {/* Signataires en ligne */}
+                        <div className="flex flex-wrap gap-2">
+                          {signatories.map((signatory) => (
+                            <label key={signatory.index} className="inline-flex items-center bg-white border border-gray-300 rounded px-2 py-1 hover:border-blue-400 cursor-pointer">
                               <input
                                 type="radio"
                                 name="signatory"
                                 checked={selectedSignatoryMode === 'checkbox' && selectedSignatoryIndex === signatory.index}
                                 onChange={() => handleSignatorySelect(signatory.index)}
-                                className="mr-3 w-5 h-5 cursor-pointer"
+                                className="mr-1.5 w-4 h-4 cursor-pointer"
                               />
-                              <span className="text-lg font-medium text-gray-800">{signatory.name}</span>
+                              <span className="text-sm text-gray-800">{signatory.name}</span>
                             </label>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                         
-                        {/* Option "Autre" */}
-                        <div className="bg-white border-2 border-gray-300 rounded-lg p-3 hover:border-blue-400 transition-colors">
+                        {/* Option "Autre" sur ligne séparée */}
+                        <div className="bg-white border border-gray-300 rounded p-2">
                           <label className="flex items-start cursor-pointer">
                             <input
                               type="radio"
                               name="signatory"
                               checked={selectedSignatoryMode === 'custom'}
                               onChange={handleCustomSelect}
-                              className="mt-1 mr-3 w-5 h-5 cursor-pointer"
+                              className="mt-0.5 mr-2 w-4 h-4 cursor-pointer flex-shrink-0"
                             />
-                            <div className="flex-1">
-                              <span className="font-medium text-gray-700 block mb-2">Autre (entrer le nom):</span>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium text-gray-700 block mb-1">Autre:</span>
                               <input
                                 type="text"
                                 value={customSignerName}
@@ -677,7 +678,7 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                                 }}
                                 onFocus={handleCustomSelect}
                                 placeholder="Ex: Jean Tremblay"
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                                 maxLength={50}
                               />
                             </div>
@@ -689,8 +690,8 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                   
                   {/* Aperçu du nom sélectionné */}
                   {signerName && (
-                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
-                      <p className="text-sm text-green-800">
+                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                      <p className="text-xs text-green-800">
                         <span className="font-semibold">Signataire:</span> {signerName}
                       </p>
                     </div>
