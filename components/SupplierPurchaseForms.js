@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, 
   Plus, Upload, X, ChevronDown, ShoppingCart, Building2, Truck,
-  MapPin, Calendar, Package, DollarSign, Printer, Wrench
+  MapPin, Calendar, Package, DollarSign, Printer, Wrench, MessageSquare, Calculator
 } from 'lucide-react';
 
 import { 
@@ -59,6 +59,30 @@ export const PurchaseForm = ({
   updateItemPrice,
   updateItemNotes,
   removeItemFromPurchase,
+
+  // États modal non-inventaire
+  showNonInventoryModal,
+  setShowNonInventoryModal,
+  nonInventoryForm,
+  setNonInventoryForm,
+  showUsdCalculatorCost,
+  setShowUsdCalculatorCost,
+  showUsdCalculatorSelling,
+  setShowUsdCalculatorSelling,
+  usdAmountCost,
+  setUsdAmountCost,
+  usdAmountSelling,
+  setUsdAmountSelling,
+  usdToCadRate,
+  loadingExchangeRate,
+  exchangeRateError,
+  
+  // Fonctions modal non-inventaire
+  fetchExchangeRate,
+  applyProfitMargin,
+  useConvertedAmountCost,
+  useConvertedAmountSelling,
+  addNonInventoryProduct,
   
   // États modals
   setShowSupplierFormModal,
@@ -654,6 +678,8 @@ export const PurchaseForm = ({
                 selectProductForQuantity={selectProductForQuantity}
                 setShowImportSubmissionModal={setShowImportSubmissionModal}
                 handleFetchAvailableSubmissions={handleFetchAvailableSubmissions}
+                setShowNonInventoryModal={setShowNonInventoryModal}
+                fetchExchangeRate={fetchExchangeRate}
               />
 
               {/* Modal quantité */}
@@ -669,6 +695,31 @@ export const PurchaseForm = ({
                 setProductSearchTerm={setProductSearchTerm}
                 setFocusedProductIndex={setFocusedProductIndex}
               />
+
+              {/* Modal produit non-inventaire */}
+              <NonInventoryModal 
+                showNonInventoryModal={showNonInventoryModal}
+                setShowNonInventoryModal={setShowNonInventoryModal}
+                nonInventoryForm={nonInventoryForm}
+                setNonInventoryForm={setNonInventoryForm}
+                showUsdCalculatorCost={showUsdCalculatorCost}
+                setShowUsdCalculatorCost={setShowUsdCalculatorCost}
+                showUsdCalculatorSelling={showUsdCalculatorSelling}
+                setShowUsdCalculatorSelling={setShowUsdCalculatorSelling}
+                usdAmountCost={usdAmountCost}
+                setUsdAmountCost={setUsdAmountCost}
+                usdAmountSelling={usdAmountSelling}
+                setUsdAmountSelling={setUsdAmountSelling}
+                usdToCadRate={usdToCadRate}
+                loadingExchangeRate={loadingExchangeRate}
+                exchangeRateError={exchangeRateError}
+                fetchExchangeRate={fetchExchangeRate}
+                applyProfitMargin={applyProfitMargin}
+                useConvertedAmountCost={useConvertedAmountCost}
+                useConvertedAmountSelling={useConvertedAmountSelling}
+                addNonInventoryProduct={addNonInventoryProduct}
+                formatCurrency={formatCurrency}
+              />    
 
               {/* Items sélectionnés */}
               <SelectedItemsTable 
@@ -742,7 +793,9 @@ export const ProductSearch = ({
   handleProductKeyDown,
   selectProductForQuantity,
   setShowImportSubmissionModal,
-  handleFetchAvailableSubmissions
+  handleFetchAvailableSubmissions,
+  setShowNonInventoryModal,
+  fetchExchangeRate 
 }) => {
   return (
     <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
@@ -769,6 +822,18 @@ export const ProductSearch = ({
             />
           </div>
         </div>
+        
+        <button
+          type="button"
+          onClick={() => {
+            fetchExchangeRate();
+            setShowNonInventoryModal(true);
+          }}
+          className="w-full sm:w-auto px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium flex items-center justify-center"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Produit Non-Inventaire
+        </button>
         
         <button
           type="button"
@@ -883,6 +948,362 @@ export const QuantityModal = ({
           >
             Ajouter
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===== MODAL PRODUIT NON-INVENTAIRE =====
+export const NonInventoryModal = ({
+  showNonInventoryModal,
+  setShowNonInventoryModal,
+  nonInventoryForm,
+  setNonInventoryForm,
+  showUsdCalculatorCost,
+  setShowUsdCalculatorCost,
+  showUsdCalculatorSelling,
+  setShowUsdCalculatorSelling,
+  usdAmountCost,
+  setUsdAmountCost,
+  usdAmountSelling,
+  setUsdAmountSelling,
+  usdToCadRate,
+  loadingExchangeRate,
+  exchangeRateError,
+  fetchExchangeRate,
+  applyProfitMargin,
+  useConvertedAmountCost,
+  useConvertedAmountSelling,
+  addNonInventoryProduct,
+  formatCurrency
+}) => {
+  if (!showNonInventoryModal) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6">
+          <h3 className="text-lg font-semibold mb-4 text-orange-600 flex items-center">
+            <Plus className="w-5 h-5 mr-2" />
+            Ajouter Produit Non-Inventaire
+          </h3>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Code Produit */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Code Produit *</label>
+              <input
+                type="text"
+                value={nonInventoryForm.product_id}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, product_id: e.target.value})}
+                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                placeholder="Ex: TEMP-001"
+                required
+              />
+            </div>
+
+            {/* Unité */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Unité</label>
+              <select
+                value={nonInventoryForm.unit}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, unit: e.target.value})}
+                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+              >
+                <option value="Un">Un</option>
+                <option value="M">m</option>
+                <option value="PI">Pi</option>
+                <option value="L">litre</option>
+                <option value="H">heure</option>
+              </select>
+            </div>
+
+            {/* Description */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+              <input
+                type="text"
+                value={nonInventoryForm.description}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, description: e.target.value})}
+                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                placeholder="Description du produit..."
+                required
+              />
+            </div>
+
+            {/* PRIX COÛTANT AVEC USD */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Prix Coûtant CAD *</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={nonInventoryForm.cost_price}
+                  onChange={(e) => setNonInventoryForm({...nonInventoryForm, cost_price: e.target.value})}
+                  className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                  placeholder="0.00"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUsdCalculatorCost(!showUsdCalculatorCost);
+                    if (!showUsdCalculatorCost) {
+                      fetchExchangeRate();
+                    }
+                  }}
+                  className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium flex items-center"
+                  title="Convertir USD → CAD"
+                >
+                  <DollarSign className="w-4 h-4 mr-1" />
+                  USD
+                </button>
+              </div>
+
+              {/* CALCULATEUR USD COÛTANT */}
+              {showUsdCalculatorCost && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-blue-800 flex items-center">
+                      <Calculator className="w-4 h-4 mr-1" />
+                      Convertir USD → CAD
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowUsdCalculatorCost(false)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-blue-700">Taux:</span>
+                      <span className="font-medium">1 USD = {usdToCadRate.toFixed(4)} CAD</span>
+                      {loadingExchangeRate && (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={fetchExchangeRate}
+                        className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded hover:bg-blue-300"
+                        disabled={loadingExchangeRate}
+                      >
+                        🔄 Actualiser
+                      </button>
+                    </div>
+                    
+                    {exchangeRateError && (
+                      <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                        {exchangeRateError}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={usdAmountCost}
+                        onChange={(e) => setUsdAmountCost(e.target.value)}
+                        placeholder="Montant USD"
+                        className="flex-1 rounded border-blue-300 text-sm p-2"
+                      />
+                      <span className="text-sm text-blue-700">USD</span>
+                      <span className="text-sm">=</span>
+                      <span className="font-medium text-green-700">
+                        {usdAmountCost ? (parseFloat(usdAmountCost) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                      </span>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={useConvertedAmountCost}
+                      disabled={!usdAmountCost || parseFloat(usdAmountCost) <= 0}
+                      className="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      ✅ Utiliser {usdAmountCost ? (parseFloat(usdAmountCost) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* PRIX VENDANT AVEC USD */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vendant CAD *</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={nonInventoryForm.selling_price}
+                  onChange={(e) => setNonInventoryForm({...nonInventoryForm, selling_price: e.target.value})}
+                  className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                  placeholder="0.00"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUsdCalculatorSelling(!showUsdCalculatorSelling);
+                    if (!showUsdCalculatorSelling) {
+                      fetchExchangeRate();
+                    }
+                  }}
+                  className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium flex items-center"
+                  title="Convertir USD → CAD"
+                >
+                  <DollarSign className="w-4 h-4 mr-1" />
+                  USD
+                </button>
+              </div>
+
+              {/* BOUTONS DE PROFIT */}
+              {nonInventoryForm.cost_price && parseFloat(nonInventoryForm.cost_price) > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-600 mb-2">Profit automatique:</p>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => applyProfitMargin(15)}
+                      className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                    >
+                      +15%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyProfitMargin(20)}
+                      className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
+                    >
+                      +20%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyProfitMargin(27)}
+                      className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
+                    >
+                      +27%
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* CALCULATEUR USD VENDANT */}
+              {showUsdCalculatorSelling && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-blue-800 flex items-center">
+                      <Calculator className="w-4 h-4 mr-1" />
+                      Convertir USD → CAD
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowUsdCalculatorSelling(false)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-blue-700">Taux:</span>
+                      <span className="font-medium">1 USD = {usdToCadRate.toFixed(4)} CAD</span>
+                      {loadingExchangeRate && (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={fetchExchangeRate}
+                        className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded hover:bg-blue-300"
+                        disabled={loadingExchangeRate}
+                      >
+                        🔄 Actualiser
+                      </button>
+                    </div>
+                    
+                    {exchangeRateError && (
+                      <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                        {exchangeRateError}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={usdAmountSelling}
+                        onChange={(e) => setUsdAmountSelling(e.target.value)}
+                        placeholder="Montant USD"
+                        className="flex-1 rounded border-blue-300 text-sm p-2"
+                      />
+                      <span className="text-sm text-blue-700">USD</span>
+                      <span className="text-sm">=</span>
+                      <span className="font-medium text-green-700">
+                        {usdAmountSelling ? (parseFloat(usdAmountSelling) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                      </span>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={useConvertedAmountSelling}
+                      disabled={!usdAmountSelling || parseFloat(usdAmountSelling) <= 0}
+                      className="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      ✅ Utiliser {usdAmountSelling ? (parseFloat(usdAmountSelling) * usdToCadRate).toFixed(2) : '0.00'} CAD
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Marge */}
+            {nonInventoryForm.selling_price && nonInventoryForm.cost_price && (
+              <div className="sm:col-span-2 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  💰 Marge: {formatCurrency(parseFloat(nonInventoryForm.selling_price || 0) - parseFloat(nonInventoryForm.cost_price || 0))} 
+                  ({((parseFloat(nonInventoryForm.selling_price || 0) - parseFloat(nonInventoryForm.cost_price || 0)) / parseFloat(nonInventoryForm.selling_price || 1) * 100).toFixed(1)}%)
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Boutons */}
+          <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <button
+              type="button"
+              onClick={() => {
+                setShowNonInventoryModal(false);
+                setNonInventoryForm({
+                  product_id: '',
+                  description: '',
+                  cost_price: '',
+                  selling_price: '',
+                  unit: 'Un',
+                  product_group: 'Non-Inventaire'
+                });
+                setShowUsdCalculatorCost(false);
+                setShowUsdCalculatorSelling(false);
+                setUsdAmountCost('');
+                setUsdAmountSelling('');
+              }}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={addNonInventoryProduct}
+              className="w-full sm:flex-1 px-4 py-2 border border-transparent rounded-lg text-white bg-orange-600 hover:bg-orange-700"
+            >
+              ✅ Sauvegarder et Ajouter
+            </button>
+          </div>
         </div>
       </div>
     </div>
