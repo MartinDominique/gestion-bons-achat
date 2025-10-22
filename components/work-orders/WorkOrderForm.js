@@ -821,44 +821,6 @@ useEffect(() => {
     }
   };
 
-  // Gestion création nouveau client depuis le formulaire
-   const handleClientSaved = async (newClient) => {
-    try {
-      if (newClient) {
-        // Ajouter immédiatement le nouveau client à la liste
-        setClients(prev => {
-          const exists = prev.find(c => c.id === newClient.id);
-          if (exists) {
-            return prev.map(c => c.id === newClient.id ? newClient : c);
-          }
-          return [...prev, newClient].sort((a, b) => 
-            a.name.localeCompare(b.name)
-          );
-        });
-        
-        // Sélectionner automatiquement
-        setSelectedClient(newClient);
-        handleChange('client_id', newClient.id);
-        toast.success('✅ Client créé et sélectionné !');
-        
-        // Recharger après 2 secondes
-        setTimeout(async () => {
-          const response = await fetch('/api/clients');
-          if (response.ok) {
-            const data = await response.json();
-            const clientExists = data.find(c => c.id === newClient.id);
-            if (clientExists) {
-              setClients(data);
-            }
-          }
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Erreur rechargement clients:', error);
-      toast.error('❌ Erreur actualisation clients');
-    }
-  };
-
   // ========================================
   // SOUMISSION
   // ========================================
