@@ -18,7 +18,14 @@ export async function GET() {
       throw error;
     }
 
-    return NextResponse.json(data || []);
+    // ⭐ AJOUTER ces headers pour désactiver le cache:
+    return NextResponse.json(data || [], {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache'
+      }
+    });
+
   } catch (error) {
     console.error('Erreur récupération clients:', error);
     return NextResponse.json(
