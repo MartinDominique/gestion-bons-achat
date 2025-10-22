@@ -228,22 +228,33 @@ export default function WorkOrderForm({
   // Charger les clients avec auto-rechargement
   // ⭐ Extraire la fonction pour pouvoir l'appeler ailleurs
   const loadClients = async () => {
+    console.log('📡 loadClients() appelé');
     try {
+      console.log('🌐 Fetch /api/clients...');
       const response = await fetch('/api/clients');
+      console.log('📥 Réponse reçue, status:', response.status, response.ok);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Clients chargés depuis API:', data.length, 'clients');
+        console.log('📋 Liste des clients:', data.map(c => `${c.id}: ${c.name}`).join(', '));
+        
         setClients(data);
+        console.log('💾 setClients() exécuté');
         
         // Si mode édition, sélectionner le client actuel
         if (workOrder && mode === 'edit') {
           const client = data.find(c => c.id === workOrder.client_id);
           if (client) {
             setSelectedClient(client);
+            console.log('🎯 Client sélectionné en mode édition:', client.name);
           }
         }
+      } else {
+        console.error('❌ Réponse API non-OK:', response.status);
       }
     } catch (error) {
-      console.error('Erreur chargement clients:', error);
+      console.error('💥 Erreur chargement clients:', error);
     }
   };
 
@@ -265,19 +276,49 @@ export default function WorkOrderForm({
 
   // ⭐ NOUVEAU - Callback après création/modification d'un client
   const handleClientSaved = async (savedClient) => {
-    console.log('✅ Client sauvegardé, rafraîchissement de la liste...', savedClient);
+    console.log('✅ Client sauvegardé:', savedClient);
+    console.log('📊 ID du client:', savedClient.id, typeof savedClient.id);
     
-    // Rafraîchir la liste
-    await loadClients();
+    // 1. Ajouter/Mettre à jour immédiatement dans la liste (optimistic update)
+    setClients(prevClients => {
+      const exists = prevClients.find(c => c.id === savedClient.id);
+      let updatedClients;
+      
+      if (exists) {
+        // Mise à jour d'un client existant
+        updatedClients = prevClients.map(c => c.id === savedClient.id ? savedClient : c);
+        console.log('🔄 Client mis à jour dans la liste');
+      } else {
+        // Nouveau client - ajouter et trier
+        updatedClients = [...prevClients, savedClient].sort((a, b) => 
+          a.name.localeCompare(b.name)
+        );
+        console.log('➕ Nouveau client ajouté à la liste');
+      }
+      
+      console.log('📋 Liste clients mise à jour:', updatedClients.length, 'clients');
+      return updatedClients;
+    });
     
-    // Sélectionner automatiquement le client créé/modifié
-    setSelectedClient(savedClient);
-    setFormData(prev => ({
-      ...prev,
-      client_id: savedClient.id.toString()
-    }));
+    // 2. Sélectionner automatiquement le client (avec un petit délai pour garantir que setClients est appliqué)
+    setTimeout(() => {
+      console.log('🎯 Sélection du client:', savedClient.name);
+      setSelectedClient(savedClient);
+      setFormData(prev => ({
+        ...prev,
+        client_id: String(savedClient.id) // Forcer en string
+      }));
+      console.log('✅ FormData.client_id défini à:', String(savedClient.id));
+    }, 50);
     
+    // 3. Notification
     toast.success(`Client ${savedClient.name} ${editingClient ? 'modifié' : 'créé'} avec succès!`);
+    
+    // 4. Recharger en arrière-plan pour confirmer (après 1 seconde)
+    setTimeout(() => {
+      console.log('🔄 Rechargement de la liste depuis l\'API');
+      loadClients();
+    }, 1000);
   };
 
   // ⭐ NOUVEAU - Ouvrir le modal en mode création
@@ -969,8 +1010,25 @@ useEffect(() => {
                 ))}
               </select>
               
-              {/* Boutons Nouveau et Modifier à droite */}
+              {/* Boutons Rafraîchir, Modifier et Nouveau */}
               <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('🔄 Rafraîchissement manuel de la liste clients');
+                    loadClients();
+                    toast.success('Liste des clients actualisée');
+                  }}
+                  className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center whitespace-nowrap font-medium"
+                  title="Rafraîchir la liste des clients"
+                >
+                  <svg className="mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                  Actualiser
+                </button>
+                
                 <button
                   type="button"
                   onClick={handleEditClient}
