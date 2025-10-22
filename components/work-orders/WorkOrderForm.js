@@ -62,7 +62,8 @@ export default function WorkOrderForm({
     time_entries: [], 
     work_description: '',
     additional_notes: '',
-    status: 'draft'
+    status: 'draft',
+    include_travel_time: false 
   });
 
   // État pour sélection des emails
@@ -194,7 +195,8 @@ export default function WorkOrderForm({
         time_entries: workOrder.time_entries || [],
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
-        status: workOrder.status || 'draft'
+        status: workOrder.status || 'draft',
+        include_travel_time: workOrder.include_travel_time || false
       });
       
       // Convertir description en tableau de paragraphes
@@ -730,13 +732,22 @@ useEffect(() => {
   };
 
  
-const handleTimeChange = (timeData) => {
-  setFormData(prev => ({
-    ...prev,
-    time_entries: timeData.time_entries || [],
-    total_hours: timeData.total_hours || 0
-  }));
-};
+  const handleTimeChange = (timeData) => {
+    console.log('📥 WorkOrderForm reçoit timeData:', timeData);
+    
+    let finalTotalHours = timeData.total_hours || 0;
+    
+    if (formData.include_travel_time && selectedClient?.travel_minutes) {
+      const travelHours = selectedClient.travel_minutes / 60;
+      finalTotalHours += travelHours;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      time_entries: timeData.time_entries || [],
+      total_hours: finalTotalHours
+    }));
+  };
 
 
   const validateForm = () => {
@@ -901,7 +912,8 @@ const handleTimeChange = (timeData) => {
     status,
     materials: normalizedMaterials,
     selected_client_emails: selectedEmails,
-    recipient_emails: getSelectedEmailAddresses()
+    recipient_emails: getSelectedEmailAddresses(),
+    include_travel_time: formData.include_travel_time
   };
 
   if (mode === 'edit' && workOrder) {
@@ -1104,6 +1116,54 @@ const handleTimeChange = (timeData) => {
           workDate={formData.work_date}
           status={formData.status}
         />
+
+        {selectedClient && selectedClient.travel_minutes > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.include_travel_time}
+                onChange={(e) => {
+                  const newValue = e.target.checked;
+                  const baseTotal = formData.time_entries?.reduce((sum, e) => sum + (e.total_hours || 0), 0) || 0;
+                  const travelHours = newValue ? (selectedClient.travel_minutes / 60) : 0;
+                  
+                  setFormData(prev => ({
+                    ...prev,
+                    total_hours: baseTotal + travelHours,
+                    include_travel_time: newValue
+                  }));
+                }}
+                className="mr-3 h-5 w-5 text-blue-600 rounded"
+              />
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 flex items-center">
+                  🚗 Inclure le temps de voyagement
+                  <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                    {selectedClient.travel_minutes} minutes
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Cochez pour ajouter le temps de voyagement au total.
+                </div>
+              </div>
+            </label>
+            
+            {formData.include_travel_time && (
+              <div className="mt-3 p-2 bg-white border border-blue-300 rounded text-sm">
+                <div className="font-medium text-blue-900">Temps total incluant le voyagement:</div>
+                <div className="text-lg font-bold text-blue-700">
+                  {(() => {
+                    const total = formData.total_hours || 0;
+                    const h = Math.floor(total);
+                    const m = Math.round((total - h) * 60);
+                    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Descriptions multiligne avec ajout de lignes */}
         <div className="bg-gray-50 p-4 rounded-lg">
