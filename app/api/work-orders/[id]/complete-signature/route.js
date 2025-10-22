@@ -156,27 +156,37 @@ export async function POST(request, { params }) {
       });
     }
 
-    // 4. ✅ CORRIGÉ : Récupérer les emails - TOUJOURS ENVOYER SI RECIPIENT_EMAILS EXISTE
+    // 4. ✅ CORRIGÉ : Récupérer les emails + TOUJOURS AJOUTER EMAIL BUREAU
     let recipientEmails = [];
     
     // Prioriser recipient_emails (qui contient emails client + CC bureau)
     if (workOrder.recipient_emails && Array.isArray(workOrder.recipient_emails) && workOrder.recipient_emails.length > 0) {
-      recipientEmails = workOrder.recipient_emails;
-      console.log('📧 Emails trouvés (client + CC):', recipientEmails);
+      recipientEmails = [...workOrder.recipient_emails];
+      console.log('📧 Emails trouvés dans recipient_emails:', recipientEmails);
     } else if (workOrder.client?.email) {
       // Fallback sur email principal du client
       recipientEmails = [workOrder.client.email];
       console.log('📧 Utilisation email principal client:', recipientEmails);
     }
     
-    // ⚠️ IMPORTANT: Ne bloquer QUE si vraiment aucun email
+    // ⭐ NOUVEAU: TOUJOURS ajouter l'email du bureau si configuré
+    if (process.env.COMPANY_EMAIL) {
+      if (!recipientEmails.includes(process.env.COMPANY_EMAIL)) {
+        recipientEmails.push(process.env.COMPANY_EMAIL);
+        console.log('📧 Email bureau ajouté:', process.env.COMPANY_EMAIL);
+      }
+    }
+    
+    console.log('📧 Liste finale des destinataires:', recipientEmails);
+    
+    // ⚠️ IMPORTANT: Ne bloquer QUE si vraiment aucun email (même pas le bureau)
     if (recipientEmails.length === 0) {
-      console.error('❌ Aucun email disponible (ni client, ni CC bureau)');
+      console.error('❌ Aucun email disponible (ni client, ni bureau)');
       await supabaseAdmin
         .from('work_orders')
         .update({ 
           status: 'pending_send',
-          auto_send_failed_reason: 'Aucun email configuré (client et bureau)'
+          auto_send_failed_reason: 'Aucun email configuré (ni client, ni bureau)'
         })
         .eq('id', workOrderId);
       
@@ -287,10 +297,11 @@ export async function POST(request, { params }) {
 // ============================================
 
 function checkCanAutoSend(workOrder) {
-  // 1. ✅ CORRIGÉ : Vérifier qu'il y a AU MOINS UN email (client OU CC bureau)
-  const hasEmails = (workOrder.recipient_emails && workOrder.recipient_emails.length > 0);
+  // 1. ✅ CORRIGÉ : Vérifier qu'il y a AU MOINS UN email (client OU CC bureau OU COMPANY_EMAIL)
+  const hasClientEmails = (workOrder.recipient_emails && workOrder.recipient_emails.length > 0);
+  const hasBureauEmail = !!process.env.COMPANY_EMAIL;
   
-  if (!hasEmails) {
+  if (!hasClientEmails && !hasBureauEmail) {
     return { 
       canSend: false, 
       reason: 'Aucune adresse email configurée (ni client, ni bureau)' 
@@ -299,8 +310,17 @@ function checkCanAutoSend(workOrder) {
 
   // 2. Vérifier format email (au moins un email valide)
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const emails = workOrder.recipient_emails || [];
-  const hasValidEmail = emails.some(email => email && emailRegex.test(email));
+  
+  // Construire la liste des emails à vérifier
+  let emailsToValidate = [];
+  if (hasClientEmails) {
+    emailsToValidate = [...workOrder.recipient_emails];
+  }
+  if (hasBureauEmail) {
+    emailsToValidate.push(process.env.COMPANY_EMAIL);
+  }
+  
+  const hasValidEmail = emailsToValidate.some(email => email && emailRegex.test(email));
   
   if (!hasValidEmail) {
     return { 
