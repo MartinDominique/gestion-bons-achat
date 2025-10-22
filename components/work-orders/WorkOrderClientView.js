@@ -229,10 +229,10 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 console.log('🔍 DEBUG PRIX CLIENT:');
 console.log('  - workOrder.materials:', workOrder.materials);
 console.log('  - show_price values:', workOrder.materials?.map(m => ({
-  code: m.product_code,
-  show_price: m.show_price,
-  type: typeof m.show_price
-})));
+    code: m.product_code,
+    show_price: m.show_price,
+    type: typeof m.show_price
+  })));
 console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.show_price === true));
 
     console.log('Material prices debug:', workOrder.materials?.map(m => ({
@@ -258,153 +258,263 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                   src="/logo.png" 
                   alt="Logo Entreprise" 
                   className="w-full h-full object-contain"
-                  onError={(e) => { e.target.style.display = 'none'; }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'block';
+                  }}
                 />
+                <div className="text-2xl font-bold text-gray-800 hidden">
+                  LOGO
+                </div>
               </div>
             </div>
-            
-            {/* Colonne 2: Info Entreprise */}
-            <div className="text-left text-xs sm:text-sm space-y-1">
-              <h2 className="font-bold text-base sm:text-lg">Services TMT Inc.</h2>
-              <p>3195 42e Rue Nord</p>
-              <p>Saint-Georges, QC, G5Z 0V9</p>
-              <p>(418) 225-3875</p>
-              <p>info.servicestmt@gmail.com</p>
+
+            {/* Colonne 2: Informations Entreprise - Masqué sur mobile */}
+            <div className="hidden sm:flex flex-col items-start">
+              <h1 className="text-xl font-bold text-gray-900 mb-2">Services TMT Inc.</h1>
+              <div className="text-sm text-gray-700 space-y-0.5">
+                <p>3195, 42e Rue Nord</p>
+                <p>Saint-Georges, QC G5Z 0V9</p>
+                <p>Tél: (418) 225-3875</p>
+                <p>info.servicestmt@gmail.com</p>
+              </div>
             </div>
-            
-            {/* Colonne 3: Infos BT (alignées à droite sur desktop) */}
-            <div className="col-span-2 sm:col-span-1 text-left sm:text-right text-xs sm:text-sm space-y-1">
-              <h1 className="text-base sm:text-lg font-bold">BON DE TRAVAIL</h1>
-              <p className="font-semibold">{workOrder.bt_number}</p>
-              <p>Date: {new Date(workOrder.work_date).toLocaleDateString('fr-CA')}</p>
-              {workOrder.linked_po && (
-                <p className="text-xs">BA Client: {workOrder.linked_po.po_number}</p>
-              )}
+         
+            {/* Colonne 3: Information Document */}
+            <div className="text-right">
+              <h2 className="text-base sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">BON DE TRAVAIL</h2>
+              <div className="text-xs sm:text-sm text-gray-700 space-y-0.5 sm:space-y-1">
+                <p><strong>N°:</strong> {workOrder.bt_number || `BT-2025-${String(workOrder.id).padStart(3, '0')}`}</p>
+                <p><strong>Date:</strong> {workOrder.work_date}</p>
+                <div className="flex items-center justify-end mt-2">
+                  {isOnline ? (
+                    <>
+                      <Wifi size={14} className="mr-1 text-green-600" />
+                      <span className="text-xs text-green-600">En ligne</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff size={14} className="mr-1 text-red-600" />
+                      <span className="text-xs text-red-600">Hors ligne</span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Ligne de séparation */}
-          <div className="border-b-2 border-gray-300 mb-4"></div>
+          <div className="border-t-2 border-gray-900"></div>
+        </div>
+      </div>
 
-          {/* Layout 2 colonnes desktop / 1 colonne mobile */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-            
-            {/* INFORMATIONS CLIENT */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
-                <User className="mr-2" size={20} />
-                Informations Client
-              </h3>
-              <div className="space-y-2 text-sm">
-                {workOrder.client.name && (
-                  <p className="font-semibold">{workOrder.client.name}</p>
-                )}
-                {workOrder.client.address && (
-                  <p className="text-gray-700">{workOrder.client.address}</p>
-                )}
-                {workOrder.client.phone && (
-                  <p className="text-gray-700">Tél: {workOrder.client.phone}</p>
-                )}
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Informations client - Ultra-compact */}
+        <div className="bg-gray-50 rounded-lg p-3 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 flex items-center">
+            <User className="mr-2" size={20} />
+            Informations Client
+          </h2>
+          
+          {/* ⭐ NOUVEAU - Infos client ultra-compactes sur 1 ligne */}
+          <div className="bg-white rounded-lg p-3 mb-4 border border-gray-300">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              {/* Nom en gras */}
+              <div className="font-bold text-gray-900">
+                {workOrder.client?.name || 'Client inconnu'}
               </div>
-            </div>
-
-            {/* HEURES TRAVAILLÉES */}
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-green-800 mb-3 flex items-center">
-                <Clock className="mr-2" size={20} />
-                Heures Travaillées
-              </h3>
               
-              {workOrder.time_entries && workOrder.time_entries.length > 0 ? (
-                <div className="space-y-2">
-                  {workOrder.time_entries.map((entry, index) => {
-                    const hours = Math.floor(entry.total_hours || 0);
-                    const minutes = Math.round(((entry.total_hours || 0) - hours) * 60);
-                    const pauseDisplay = entry.pause_minutes > 0 ? ` (-${entry.pause_minutes}min)` : '';
-                    
-                    return (
-                      <div key={index} className="text-sm bg-white p-2 rounded">
-                        <p className="font-semibold">{new Date(entry.date).toLocaleDateString('fr-CA')}</p>
-                        <p className="text-gray-700">
-                          {entry.start_time} - {entry.end_time}{pauseDisplay}
-                          <span className="font-semibold ml-2">
-                            = {hours}h{minutes > 0 ? ` ${minutes}min` : ''}
-                          </span>
-                        </p>
-                      </div>
-                    );
-                  })}
-                  
-                  {/* Total des heures */}
-                  {workOrder.time_entries.length > 1 && (
-                    <div className="bg-green-100 p-2 rounded mt-3">
-                      {(() => {
-                        const grandTotal = workOrder.time_entries.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-                        const totalH = Math.floor(grandTotal);
-                        const totalM = Math.round((grandTotal - totalH) * 60);
-                        return (
-                          <p className="font-bold text-green-800">
-                            TOTAL: {totalH}h{totalM > 0 ? ` ${totalM}min` : ''}
-                          </p>
-                        );
-                      })()}
-                    </div>
-                  )}
+              {/* Séparateur vertical */}
+              <div className="hidden sm:block text-gray-300">|</div>
+              
+              {/* Adresse complète */}
+              {workOrder.client?.address && (
+                <>
+                  <div className="text-gray-700">
+                    {workOrder.client.address}
+                  </div>
+                  <div className="hidden sm:block text-gray-300">|</div>
+                </>
+              )}
+              
+              {/* Téléphone sans label */}
+              {workOrder.client?.phone && (
+                <>
+                  <div className="text-gray-700 font-medium">
+                    {workOrder.client.phone}
+                  </div>
+                  <div className="hidden sm:block text-gray-300">|</div>
+                </>
+              )}
+              
+              {/* BA client si présent */}
+              {(workOrder.linked_po?.po_number || workOrder.linked_po_id) && (
+                <div className="text-blue-700 font-medium">
+                  BA: {workOrder.linked_po?.po_number || workOrder.linked_po_id}
                 </div>
-              ) : (
-                <p className="text-gray-500 text-sm">Aucune entrée de temps</p>
               )}
             </div>
           </div>
-
-          {/* DESCRIPTION DES TRAVAUX */}
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold text-orange-800 mb-3 flex items-center">
-              <FileText className="mr-2" size={20} />
-              Description des Travaux
-            </h3>
-            {workOrder.work_description ? (
-              <p className="text-gray-800 whitespace-pre-wrap">{workOrder.work_description}</p>
+        
+          {/* ⭐ Sessions de travail - Séparées et bien visibles */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Sessions de travail:</h3>
+            {workOrder.time_entries && workOrder.time_entries.length > 0 ? (
+              <div className="space-y-1">
+                {workOrder.time_entries.map((entry, index) => (
+                  <div key={index} className="text-sm bg-white p-2 rounded border">
+                    <span className="font-semibold">{entry.date}</span>: {entry.start_time} → {entry.end_time || 'En cours'}
+                    {entry.pause_minutes > 0 && <span className="text-orange-600 ml-2">(Pause: {entry.pause_minutes}min)</span>}
+                    <span className="font-bold text-blue-700 ml-2">
+                      {(() => {
+                        const h = Math.floor(entry.total_hours || 0);
+                        const m = Math.round(((entry.total_hours || 0) - h) * 60);
+                        return m > 0 ? `${h}h ${m}min` : `${h}h`;
+                      })()}
+                    </span>
+                  </div>
+                ))}
+                <div className="text-sm font-bold text-blue-900 pt-2 border-t mt-2">
+                  TOTAL: {(() => {
+                    const total = workOrder.time_entries.reduce((sum, e) => sum + (e.total_hours || 0), 0);
+                    const h = Math.floor(total);
+                    const m = Math.round((total - h) * 60);
+                    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+                  })()}
+                </div>
+              </div>
             ) : (
-              <p className="text-gray-500 italic">Aucune description</p>
+              <p className="text-sm text-gray-500">Aucune session enregistrée</p>
             )}
           </div>
+        </div>
+         {/* Emails destinataires - NOUVEAU */}
+          {workOrder.recipient_emails && workOrder.recipient_emails.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+              <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center">
+                <Mail className="mr-2" size={16} />
+                Email(s) destinataire(s) du bon de travail
+              </h3>
+              <div className="space-y-1">
+                {workOrder.recipient_emails.map((email, index) => (
+                  <div key={index} className="text-sm text-blue-800 flex items-center">
+                    <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
+                    {email}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-blue-600 mt-2">
+                {workOrder.recipient_emails.length} email(s) recevront ce bon de travail une fois signé
+              </p>
+            </div>
+          )}      
 
-        {/* MATÉRIAUX / ÉQUIPEMENT */}
+        {/* Description des travaux */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <FileText className="mr-2" size={24} />
+            Description des Travaux
+          </h2>
+          <div className="bg-white border rounded-lg p-6">
+            <div className="text-gray-800 leading-relaxed whitespace-pre-line">
+              {workOrder.description || workOrder.work_description || 'Aucune description disponible'}
+            </div>
+          </div>
+        </div>
+
+        {/* Matériaux utilisés - Format carte sur mobile */}
         {workOrder.materials && workOrder.materials.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">
-              Matériaux et Équipement
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border border-gray-300 text-sm">
-                <thead className="bg-gray-100 border-b border-gray-300">
+          <div className="mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4">Matériaux Utilisés</h2>
+            
+            {/* Version MOBILE - Cartes compactes */}
+            <div className="md:hidden bg-white border rounded-lg divide-y">
+              {workOrder.materials.map((material, index) => (
+                <div key={index} className="p-3">
+                  {/* Ligne 1: Code + Quantité */}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                      {material.product?.product_id || material.product_id || 'N/A'}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
+                      Qté: {material.quantity} {material.unit || material.product?.unit || 'UN'}
+                    </span>
+                  </div>
+                  
+                  {/* Ligne 2: Description */}
+                  <p className="text-sm text-gray-700 mb-1">
+                    {material.product?.description || material.description || 'Sans description'}
+                  </p>
+                  
+                  {/* Notes si présentes */}
+                  {material.notes && (
+                    <p className="text-xs text-gray-900 mt-1">
+                      {material.notes}
+                    </p>
+                  )}
+                  
+                  {/* Prix si affichés */}
+                  {material.show_price && (material.product?.selling_price || material.unit_price) && (
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t text-xs">
+                      <span className="text-gray-600">
+                        Prix unit.: {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
+                      </span>
+                      <span className="font-bold text-green-700">
+                        Total: {formatCurrency(material.quantity * (material.product?.selling_price || material.unit_price || 0))}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Total si prix affichés */}
+              {workOrder.materials.some(m => m.show_price === true) && (
+                <div className="p-3 bg-green-50 border-t-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-green-900">Total matériaux:</span>
+                    <span className="text-lg font-bold text-green-900">
+                      {formatCurrency(calculateTotal())}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Version DESKTOP - Tableau */}
+            <div className="hidden md:block bg-white border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left font-semibold">Code</th>
-                    <th className="px-4 py-2 text-left font-semibold">Description</th>
-                    <th className="px-4 py-2 text-center font-semibold">Qté</th>
-                    <th className="px-4 py-2 text-center font-semibold">Unité</th>
-                    {(workOrder.materials && workOrder.materials.some(m => m.show_price === true)) && (
+                    <th className="px-4 py-3 text-left">Code</th>
+                    <th className="px-4 py-3 text-left">Matériau / Description</th>
+                    <th className="px-4 py-3 text-center">Quantité</th>
+                    <th className="px-4 py-3 text-center">Unité</th>
+                   {(workOrder.materials && workOrder.materials.some(m => m.show_price === true)) && (
                       <>
-                        <th className="px-4 py-2 text-right font-semibold">Prix Unit.</th>
-                        <th className="px-4 py-2 text-right font-semibold">Total</th>
+                        <th className="px-4 py-3 text-right">Prix Unit.</th>
+                        <th className="px-4 py-3 text-right">Total</th>
                       </>
                     )}
                   </tr>
                 </thead>
                 <tbody>
                   {workOrder.materials.map((material, index) => (
-                    <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium">
-                        {material.product?.product_id || material.product_code}
+                    <tr key={index} className="border-t">
+                      <td className="px-4 py-3 font-mono text-sm font-bold">
+                        {material.product?.product_id || material.product_id || 'N/A'}
                       </td>
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium">
-                            {material.product?.product_name || material.description}
+                          <p className="font-semibold">
+                            {material.product?.product_id || material.product_id || 'Matériau sans code'}
                           </p>
+                          {(material.product?.description || material.description) && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {material.product?.description || material.description}
+                            </p>
+                          )}
                           {material.notes && (
-                            <p className="text-xs text-gray-600 mt-1 italic">
+                            <p className="text-sm text-gray-900 mt-1">
                               {material.notes}
                             </p>
                           )}
