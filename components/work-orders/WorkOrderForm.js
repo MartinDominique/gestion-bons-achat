@@ -1117,6 +1117,12 @@ useEffect(() => {
           status={formData.status}
         />
 
+        {console.log('🔍 DEBUG Checkbox:', {
+          selectedClient: selectedClient,
+          travel_minutes: selectedClient?.travel_minutes,
+          condition: selectedClient && selectedClient.travel_minutes > 0
+        })}
+
         {selectedClient && selectedClient.travel_minutes > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <label className="flex items-center cursor-pointer">
