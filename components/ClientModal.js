@@ -84,6 +84,30 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
   const onChange = (k) => (e) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  // 📱 Formatage automatique des numéros de téléphone
+  const formatPhoneNumber = (value) => {
+    // Enlever tous les caractères non-numériques
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limiter à 10 chiffres
+    const limited = numbers.slice(0, 10);
+    
+    // Formater selon le nombre de chiffres
+    if (limited.length <= 3) {
+      return limited;
+    } else if (limited.length <= 6) {
+      return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+    } else {
+      return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+    }
+  };
+
+  // Handler spécial pour les champs téléphone
+  const onPhoneChange = (fieldName) => (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setForm((f) => ({ ...f, [fieldName]: formatted }));
+  };
+
   /* ---------- save ---------- */
   async function save() {
     if (!form.name?.trim()) {
@@ -302,8 +326,8 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         type="tel"
                         className="w-full px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-200 text-sm"
                         value={form.phone}
-                        onChange={onChange('phone')}
-                        placeholder="(514) 555-0000"
+                        onChange={onPhoneChange('phone')}
+                        placeholder="(418) 225-3875"
                         autoComplete="tel"
                       />
                     </div>
@@ -353,8 +377,8 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         type="tel"
                         className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
                         value={form.contact_2}
-                        onChange={onChange('contact_2')}
-                        placeholder="(514) 555-0001"
+                        onChange={onPhoneChange('contact_2')}
+                        placeholder="(418) 225-3875"
                         autoComplete="tel"
                       />
                     </div>
@@ -404,8 +428,8 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         type="tel"
                         className="w-full px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 text-sm"
                         value={form.contact_admin}
-                        onChange={onChange('contact_admin')}
-                        placeholder="(514) 555-0000"
+                        onChange={onPhoneChange('contact_admin')}
+                        placeholder="(418) 225-3875"
                         autoComplete="tel"
                       />
                     </div>
