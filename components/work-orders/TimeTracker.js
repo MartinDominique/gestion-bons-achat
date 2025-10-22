@@ -5,7 +5,8 @@ export default function TimeTracker({
   onTimeChange, 
   initialTimeEntries = [],
   workDate = null,
-  status = 'draft'
+  status = 'draft',
+  selectedClient = null
 }) {
   // État pour gérer PLUSIEURS sessions
   const [timeEntries, setTimeEntries] = useState(initialTimeEntries || []);
@@ -261,11 +262,18 @@ const formatDuration = (hours) => {
       
       const now = new Date();
       const endTime = now.toTimeString().substring(0, 5);
-      const totalHours = toQuarterHourUp(
+      
+      // Calculer les heures de session (sans voyage)
+      const sessionHours = toQuarterHourUp(
         currentSession.start_time, 
         endTime, 
         currentSession.pause_minutes
       );
+      
+      // Par défaut, inclure le voyage si le client a travel_minutes
+      const includeTravel = selectedClient?.travel_minutes > 0;
+      const travelHours = includeTravel ? (selectedClient.travel_minutes / 60) : 0;
+      const totalHours = sessionHours + travelHours;
       
       const completedSession = {
         date: currentSession.date,
@@ -273,7 +281,8 @@ const formatDuration = (hours) => {
         end_time: endTime,
         pause_minutes: currentSession.pause_minutes,
         total_hours: totalHours,
-        in_progress: false // ⭐ Marquer comme complétée
+        include_travel: includeTravel,
+        in_progress: false
       };
       
       setTimeEntries([...timeEntries, completedSession]);
@@ -323,15 +332,22 @@ const formatDuration = (hours) => {
       return;
     }
 
-    const totalHours = manualEnd ? 
+    // Calculer les heures de session (sans voyage)
+    const sessionHours = manualEnd ? 
       toQuarterHourUp(manualStart, manualEnd, manualPause) : 0;
+    
+    // Par défaut, inclure le voyage si le client a travel_minutes
+    const includeTravel = selectedClient?.travel_minutes > 0;
+    const travelHours = includeTravel ? (selectedClient.travel_minutes / 60) : 0;
+    const totalHours = sessionHours + travelHours;
 
     const session = {
       date: manualDate,
       start_time: manualStart,
       end_time: manualEnd || null,
       pause_minutes: parseInt(manualPause) || 0,
-      total_hours: totalHours
+      total_hours: totalHours,
+      include_travel: includeTravel
     };
 
     if (editingIndex !== null) {
@@ -452,7 +468,7 @@ const formatDuration = (hours) => {
                   : 'bg-white border-gray-300'
               }`}
             >
-              <div className="flex-1 grid grid-cols-5 gap-2 text-sm">
+              <div className="flex-1 grid grid-cols-6 gap-2 text-sm">
                 <div>
                   <div className="text-xs text-gray-500">Date</div>
                   <div className="font-semibold flex items-center">
@@ -485,6 +501,37 @@ const formatDuration = (hours) => {
                     {formatDuration(entry.total_hours || 0)}
                     {entry.in_progress && ' ⏱️'}
                   </div>
+                </div>
+                {/* Nouvelle colonne: Checkbox voyage */}
+                <div>
+                  <div className="text-xs text-gray-500">Retour</div>
+                  {!entry.in_progress && selectedClient?.travel_minutes > 0 ? (
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={entry.include_travel || false}
+                        onChange={(e) => {
+                          const newEntries = [...timeEntries];
+                          const sessionHours = toQuarterHourUp(
+                            entry.start_time,
+                            entry.end_time,
+                            entry.pause_minutes
+                          );
+                          const travelHours = e.target.checked ? (selectedClient.travel_minutes / 60) : 0;
+                          newEntries[index] = {
+                            ...entry,
+                            include_travel: e.target.checked,
+                            total_hours: sessionHours + travelHours
+                          };
+                          setTimeEntries(newEntries);
+                        }}
+                        className="mr-1 h-4 w-4 text-orange-600"
+                      />
+                      <span className="text-xs text-orange-600">{selectedClient.travel_minutes}min</span>
+                    </label>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2 ml-3">
