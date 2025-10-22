@@ -156,24 +156,27 @@ export async function POST(request, { params }) {
       });
     }
 
-    // 4. ✅ NOUVEAU : Récupérer les emails sélectionnés
+    // 4. ✅ CORRIGÉ : Récupérer les emails - TOUJOURS ENVOYER SI RECIPIENT_EMAILS EXISTE
     let recipientEmails = [];
     
+    // Prioriser recipient_emails (qui contient emails client + CC bureau)
     if (workOrder.recipient_emails && Array.isArray(workOrder.recipient_emails) && workOrder.recipient_emails.length > 0) {
-      // Utiliser les emails sélectionnés dans le formulaire
       recipientEmails = workOrder.recipient_emails;
-      console.log('📧 Emails sélectionnés trouvés:', recipientEmails);
+      console.log('📧 Emails trouvés (client + CC):', recipientEmails);
     } else if (workOrder.client?.email) {
-      // Fallback sur email principal
+      // Fallback sur email principal du client
       recipientEmails = [workOrder.client.email];
-      console.log('📧 Utilisation email principal:', recipientEmails);
-    } else {
-      console.error('❌ Aucun email disponible');
+      console.log('📧 Utilisation email principal client:', recipientEmails);
+    }
+    
+    // ⚠️ IMPORTANT: Ne bloquer QUE si vraiment aucun email
+    if (recipientEmails.length === 0) {
+      console.error('❌ Aucun email disponible (ni client, ni CC bureau)');
       await supabaseAdmin
         .from('work_orders')
         .update({ 
           status: 'pending_send',
-          auto_send_failed_reason: 'Aucun email disponible'
+          auto_send_failed_reason: 'Aucun email configuré (client et bureau)'
         })
         .eq('id', workOrderId);
       
@@ -182,11 +185,13 @@ export async function POST(request, { params }) {
         autoSendResult: { 
           success: false, 
           needsManualSend: true, 
-          reason: 'Aucun email disponible' 
+          reason: 'Aucun email configuré' 
         },
         status: 'pending_send'
       });
     }
+    
+    console.log('✅ Envoi prévu vers:', recipientEmails.length, 'email(s)');
 
     // 5. Tenter l'envoi automatique avec les emails sélectionnés
     console.log('🚀 Envoi automatique en cours vers:', recipientEmails.join(', '));
@@ -282,20 +287,19 @@ export async function POST(request, { params }) {
 // ============================================
 
 function checkCanAutoSend(workOrder) {
-  // 1. ✅ MODIFIÉ : Vérifier emails (sélectionnés ou principal)
-  const hasEmails = (workOrder.recipient_emails && workOrder.recipient_emails.length > 0) ||
-                    (workOrder.client && workOrder.client.email);
+  // 1. ✅ CORRIGÉ : Vérifier qu'il y a AU MOINS UN email (client OU CC bureau)
+  const hasEmails = (workOrder.recipient_emails && workOrder.recipient_emails.length > 0);
   
   if (!hasEmails) {
     return { 
       canSend: false, 
-      reason: 'Aucune adresse email pour le client' 
+      reason: 'Aucune adresse email configurée (ni client, ni bureau)' 
     };
   }
 
   // 2. Vérifier format email (au moins un email valide)
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const emails = workOrder.recipient_emails || [workOrder.client?.email];
+  const emails = workOrder.recipient_emails || [];
   const hasValidEmail = emails.some(email => email && emailRegex.test(email));
   
   if (!hasValidEmail) {
