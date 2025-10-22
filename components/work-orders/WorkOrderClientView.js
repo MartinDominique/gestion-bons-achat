@@ -370,7 +370,7 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
         
           {/* ⭐ Sessions de travail - Séparées et bien visibles */}
           <div>
-            <h3 className="text-base font-semibold text-black mb-2">Sessions de travail:</h3>
+            <h3 className="text-lg font-semibold text-black mb-2">Sessions de travail:</h3>
             {workOrder.time_entries && workOrder.time_entries.length > 0 ? (
               <div className="space-y-1">
                 {workOrder.time_entries.map((entry, index) => (
