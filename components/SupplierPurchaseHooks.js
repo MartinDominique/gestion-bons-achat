@@ -132,6 +132,25 @@ export const useSupplierPurchase = () => {
     is_default: false
   });
 
+  const [nonInventoryForm, setNonInventoryForm] = useState({
+  product_id: '',
+  description: '',
+  cost_price: '',
+  selling_price: '',
+  unit: 'Un',
+  product_group: 'Non-Inventaire'
+});
+
+  // États pour le modal non-inventaire
+const [showNonInventoryModal, setShowNonInventoryModal] = useState(false);
+const [showUsdCalculatorCost, setShowUsdCalculatorCost] = useState(false);
+const [showUsdCalculatorSelling, setShowUsdCalculatorSelling] = useState(false);
+const [usdAmountCost, setUsdAmountCost] = useState('');
+const [usdAmountSelling, setUsdAmountSelling] = useState('');
+const [usdToCadRate, setUsdToCadRate] = useState(1.35);
+const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
+const [exchangeRateError, setExchangeRateError] = useState('');
+
   // ===== NOUVELLE FONCTION HELPER POUR STATISTIQUES PAR DATE =====
   const getDateFilterStats = () => {
     const today = new Date();
@@ -235,6 +254,10 @@ export const useSupplierPurchase = () => {
       total_amount: total
     }));
   }, [selectedItems, purchaseForm.shipping_cost, purchaseForm.supplier_id, suppliers]);
+
+  useEffect(() => {
+  fetchExchangeRate();
+}, []);
 
   // ===== FONCTIONS DE CHARGEMENT =====
   const loadAllData = async () => {
@@ -479,6 +502,104 @@ export const useSupplierPurchase = () => {
   const removeItemFromPurchase = (productId) => {
     setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
   };
+
+  // ===== GESTION MODAL NON-INVENTAIRE =====
+const fetchExchangeRate = async () => {
+  setLoadingExchangeRate(true);
+  setExchangeRateError('');
+  
+  try {
+    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const data = await response.json();
+    
+    if (data && data.rates && data.rates.CAD) {
+      setUsdToCadRate(data.rates.CAD);
+    } else {
+      throw new Error('Taux CAD non trouvé');
+    }
+  } catch (error) {
+    console.error('Erreur récupération taux de change:', error);
+    setExchangeRateError('Erreur de connexion - Taux par défaut utilisé');
+    setUsdToCadRate(1.35);
+  } finally {
+    setLoadingExchangeRate(false);
+  }
+};
+
+const applyProfitMargin = (percentage) => {
+  const costPrice = parseFloat(nonInventoryForm.cost_price) || 0;
+  if (costPrice > 0) {
+    const sellingPrice = costPrice * (1 + percentage / 100);
+    setNonInventoryForm(prev => ({
+      ...prev,
+      selling_price: sellingPrice.toFixed(2)
+    }));
+  }
+};
+
+const useConvertedAmountCost = () => {
+  const convertedAmount = parseFloat(usdAmountCost) * usdToCadRate;
+  setNonInventoryForm(prev => ({
+    ...prev,
+    cost_price: convertedAmount.toFixed(2)
+  }));
+  setShowUsdCalculatorCost(false);
+  setUsdAmountCost('');
+};
+
+const useConvertedAmountSelling = () => {
+  const convertedAmount = parseFloat(usdAmountSelling) * usdToCadRate;
+  setNonInventoryForm(prev => ({
+    ...prev,
+    selling_price: convertedAmount.toFixed(2)
+  }));
+  setShowUsdCalculatorSelling(false);
+  setUsdAmountSelling('');
+};
+
+const addNonInventoryProduct = () => {
+  if (!nonInventoryForm.product_id || !nonInventoryForm.description || 
+      !nonInventoryForm.cost_price || !nonInventoryForm.selling_price) {
+    alert('⚠️ Veuillez remplir tous les champs obligatoires');
+    return;
+  }
+
+  const newItem = {
+    product_id: nonInventoryForm.product_id,
+    description: nonInventoryForm.description,
+    cost_price: parseFloat(nonInventoryForm.cost_price),
+    selling_price: parseFloat(nonInventoryForm.selling_price), // Stocké mais pas affiché
+    unit: nonInventoryForm.unit,
+    product_group: nonInventoryForm.product_group,
+    quantity: 1,
+    notes: '',
+    is_non_inventory: true
+  };
+
+  const existingItem = selectedItems.find(item => item.product_id === newItem.product_id);
+  
+  if (existingItem) {
+    alert('⚠️ Ce code produit existe déjà dans la liste');
+    return;
+  }
+
+  setSelectedItems([...selectedItems, newItem]);
+  
+  // Reset form
+  setNonInventoryForm({
+    product_id: '',
+    description: '',
+    cost_price: '',
+    selling_price: '',
+    unit: 'Un',
+    product_group: 'Non-Inventaire'
+  });
+  setShowNonInventoryModal(false);
+  setShowUsdCalculatorCost(false);
+  setShowUsdCalculatorSelling(false);
+  setUsdAmountCost('');
+  setUsdAmountSelling('');
+};
 
   // ===== GESTION ACHATS FOURNISSEURS =====
   const handlePurchaseSubmit = async (e) => {
@@ -1008,6 +1129,30 @@ export const useSupplierPurchase = () => {
     setSelectedProductForQuantity,
     tempQuantity,
     setTempQuantity,
+
+    // États modal non-inventaire
+    showNonInventoryModal,
+    setShowNonInventoryModal,
+    nonInventoryForm,
+    setNonInventoryForm,
+    showUsdCalculatorCost,
+    setShowUsdCalculatorCost,
+    showUsdCalculatorSelling,
+    setShowUsdCalculatorSelling,
+    usdAmountCost,
+    setUsdAmountCost,
+    usdAmountSelling,
+    setUsdAmountSelling,
+    usdToCadRate,
+    loadingExchangeRate,
+    exchangeRateError,
+    
+    // Fonctions modal non-inventaire
+    fetchExchangeRate,
+    applyProfitMargin,
+    useConvertedAmountCost,
+    useConvertedAmountSelling,
+    addNonInventoryProduct,
     
     // État correction
     isFixingPOs,
