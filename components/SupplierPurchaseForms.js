@@ -1421,6 +1421,30 @@ export const SupplierFormModal = ({
   setSupplierForm,
   handleSupplierSubmit
 }) => {
+  // 📱 Formatage automatique des numéros de téléphone
+  const formatPhoneNumber = (value) => {
+    // Enlever tous les caractères non-numériques
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limiter à 10 chiffres
+    const limited = numbers.slice(0, 10);
+    
+    // Formater selon le nombre de chiffres
+    if (limited.length <= 3) {
+      return limited;
+    } else if (limited.length <= 6) {
+      return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+    } else {
+      return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+    }
+  };
+
+  // Handler spécial pour le champ téléphone
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setSupplierForm({...supplierForm, phone: formatted});
+  };
+
   return (
     <dialog id="supplier-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
       <div className="bg-white rounded-lg w-full max-w-2xl p-6">
@@ -1474,8 +1498,9 @@ export const SupplierFormModal = ({
               <input
                 type="tel"
                 value={supplierForm.phone}
-                onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
+                onChange={handlePhoneChange}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                placeholder="(418) 225-3875"
               />
             </div>
             
@@ -1666,6 +1691,30 @@ export const SupplierFormSimpleModal = ({
   handleSupplierFormSubmit,
   resetSupplierForm
 }) => {
+  // 📱 Formatage automatique des numéros de téléphone
+  const formatPhoneNumber = (value) => {
+    // Enlever tous les caractères non-numériques
+    const numbers = value.replace(/\D/g, '');
+    
+    // Limiter à 10 chiffres
+    const limited = numbers.slice(0, 10);
+    
+    // Formater selon le nombre de chiffres
+    if (limited.length <= 3) {
+      return limited;
+    } else if (limited.length <= 6) {
+      return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+    } else {
+      return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+    }
+  };
+
+  // Handler spécial pour le champ téléphone
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setSupplierForm({...supplierForm, phone: formatted});
+  };
+
   if (!showModal) return null;
 
   return (
@@ -1695,7 +1744,7 @@ export const SupplierFormSimpleModal = ({
               type="tel"
               placeholder="Téléphone"
               value={supplierForm.phone}
-              onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
+              onChange={handlePhoneChange}
               className="w-full rounded-lg border-gray-300 p-3"
             />
           </div>
