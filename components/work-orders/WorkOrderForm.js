@@ -1012,22 +1012,22 @@ useEffect(() => {
               
               {/* Boutons Rafraîchir, Modifier et Nouveau */}
               <div className="flex gap-2">
-               // <button
-                //  type="button"
-                 // onClick={() => {
-                 //   console.log('🔄 Rafraîchissement manuel de la liste clients');
-                 //   loadClients();
-                 //   toast.success('Liste des clients actualisée');
-                //  }}
-                //  className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center whitespace-nowrap font-medium"
-                //  title="Rafraîchir la liste des clients"
-              //  >
-               //   <svg className="mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-               //     <polyline points="23 4 23 10 17 10"></polyline>
-              //      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-               //   </svg>
-               //   Actualiser
-              //  </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('🔄 Rafraîchissement manuel de la liste clients');
+                    loadClients();
+                    toast.success('Liste des clients actualisée');
+                  }}
+                  className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center whitespace-nowrap font-medium"
+                  title="Rafraîchir la liste des clients"
+                >
+                  <svg className="mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                  </svg>
+                 Actualiser
+                </button>
                 
                 <button
                   type="button"
