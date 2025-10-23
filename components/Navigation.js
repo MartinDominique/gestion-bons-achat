@@ -24,15 +24,12 @@ export default function Navigation() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showClientManager, setShowClientManager] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // ✨ NOUVEAU : Sauvegarder la dernière page visitée
+  // Sauvegarder la dernière page visitée
   useEffect(() => {
-    // Vérifier si le pathname correspond à une des pages principales
     const currentPage = pages.find(page => pathname.startsWith('/' + page.id));
     
     if (currentPage) {
-      // Sauvegarder dans localStorage
       localStorage.setItem('lastVisitedPage', currentPage.id);
       console.log('Page sauvegardée:', currentPage.id);
     }
@@ -58,14 +55,13 @@ export default function Navigation() {
           router.push('/login');
         }
         
-        // ✨ NOUVEAU : Rediriger vers la dernière page visitée si on est sur la racine
+        // Rediriger vers la dernière page visitée si on est sur la racine
         if (user && pathname === '/') {
           const lastPage = localStorage.getItem('lastVisitedPage');
           if (lastPage) {
             console.log('Redirection vers la dernière page visitée:', lastPage);
             router.push('/' + lastPage);
           } else {
-            // Page par défaut si aucune page n'a été visitée
             router.push('/bons-achat');
           }
         }
@@ -81,12 +77,6 @@ export default function Navigation() {
 
     checkAuth();
 
-    //const handleBeforeUnload = () => {
-     // supabase.auth.signOut();
-    //};
-
-    //window.addEventListener('beforeunload', handleBeforeUnload);
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth event:', event);
       setUser(session?.user || null);
@@ -98,19 +88,12 @@ export default function Navigation() {
 
     return () => {
       subscription.unsubscribe();
-     // window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [supabase.auth, pathname, router]);
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
 
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
-      // ✨ NOUVEAU : Optionnel - Effacer la dernière page lors de la déconnexion
-      // localStorage.removeItem('lastVisitedPage');
       router.push('/login');
     } catch (error) {
       console.error('Erreur déconnexion:', error);
@@ -182,39 +165,39 @@ export default function Navigation() {
               </button>
             </div>
 
-            {/* Navigation tablette (icônes + labels courts) */}
-            <div className="hidden md:flex lg:hidden items-center space-x-1">
+            {/* Navigation tablette ET mobile (icônes compactes - TOUJOURS VISIBLE) */}
+            <div className="flex lg:hidden items-center space-x-1 overflow-x-auto scrollbar-hide">
               {pages.map(({ id, name, shortName, icon: Icon }) => {
                 const active = pathname.startsWith('/' + id);
                 return (
                   <Link
                     key={id}
                     href={`/${id}`}
-                    className={`flex flex-col items-center px-3 py-2 rounded-lg font-medium transition-colors min-w-[70px] ${
+                    className={`flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0 ${
                       active
                         ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                     title={name}
                   >
-                    <Icon className="w-6 h-6 mb-1" />
-                    <span className="text-xs">{shortName}</span>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
+                    <span className="text-[10px] sm:text-xs leading-tight text-center">{shortName}</span>
                   </Link>
                 );
               })}
               
               <button
                 onClick={() => setShowClientManager(true)}
-                className="flex flex-col items-center px-3 py-2 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors min-w-[70px]"
+                className="flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0"
                 title="Gestion des Clients"
               >
-                <Users className="w-6 h-6 mb-1" />
-                <span className="text-xs">Clients</span>
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
+                <span className="text-[10px] sm:text-xs leading-tight text-center">Clients</span>
               </button>
             </div>
 
             {/* Actions à droite */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               {/* Info utilisateur desktop */}
               {user && (
                 <div className="hidden sm:flex items-center space-x-3">
@@ -239,72 +222,9 @@ export default function Navigation() {
               >
                 <LogOut className="w-5 h-5" />
               </button>
-
-              {/* Menu hamburger mobile (seulement pour petits écrans) */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                aria-label="Menu mobile"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-6 h-6" />
-                ) : (
-                  <Menu className="w-6 h-6" />
-                )}
-              </button>
             </div>
           </div>
         </div>
-
-        {/* Menu mobile déroulant */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
-            <div className="px-4 py-2 space-y-1">
-              {/* Navigation mobile */}
-              {pages.map(({ id, name, icon: Icon }) => {
-                const active = pathname.startsWith('/' + id);
-                return (
-                  <Link
-                    key={id}
-                    href={`/${id}`}
-                    className={`flex items-center px-3 py-3 rounded-lg font-medium transition-colors ${
-                      active
-                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 mr-3" />
-                    {name}
-                  </Link>
-                );
-              })}
-              
-              {/* Gestion clients mobile */}
-              <button
-                onClick={() => {
-                  setShowClientManager(true);
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center px-3 py-3 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors"
-              >
-                <Users className="w-5 h-5 mr-3" />
-                Gestion des Clients
-              </button>
-
-              {/* Info utilisateur mobile */}
-              {user && (
-                <div className="border-t border-gray-200 pt-2 mt-2">
-                  <div className="px-3 py-2 text-sm text-gray-600">
-                    Connecté en tant que:
-                  </div>
-                  <div className="px-3 py-1 text-sm font-medium text-gray-900 truncate">
-                    {user.email}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </nav>
 
       {/* Modal ClientManager */}
