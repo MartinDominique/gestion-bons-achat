@@ -232,36 +232,6 @@ const PurchaseOrderManager = () => {
     { value: 'cancelled', label: 'Annulé', emoji: '🚫' }
   ];
 
-  // Composant StatusSelector pour éviter la duplication
-  const StatusSelector = ({ po }) => {
-    const isUpdating = updatingStatus[po.id];
-
-    return (
-      <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
-        {isUpdating ? (
-          <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span className="hidden sm:inline">Mise à jour...</span>
-          </div>
-        ) : (
-          <select
-            value={po.status}
-            onChange={(e) => updatePOStatus(po.id, e.target.value, po)}
-            disabled={isUpdating}
-            className={`text-xs font-medium rounded-full border-0 py-1 px-2 sm:px-3 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all duration-200 ${getStatusColor(po.status)}`}
-            title="Cliquer pour changer le statut"
-          >
-            {statusOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.emoji} {option.label}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -403,18 +373,9 @@ const PurchaseOrderManager = () => {
           </div>
         </div>
 
-        {/* En-têtes de tableau (PC uniquement) */}
-        <div className="hidden lg:grid lg:grid-cols-8 gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-          <div>BON D'ACHAT</div>
-          <div className="col-span-2">CLIENT & DESCRIPTION</div>
-          <div>DATE</div>
-          <div>MONTANT</div>
-          <div>STATUT</div>
-          <div>LIVRAISON</div>
-          <div className="text-center">ACTION</div>
-        </div>
+        {/* Pas d'en-têtes - Layout 2 lignes */}
 
-        {/* Liste des BAs - Format COMPACT et CLIQUABLE */}
+        {/* Liste des BAs - Format 2 LIGNES ULTRA-COMPACT */}
         <div className="divide-y divide-gray-100">
           {filteredPOs.length === 0 ? (
             <div className="text-center py-12 sm:py-16 px-4 sm:px-6">
@@ -439,58 +400,64 @@ const PurchaseOrderManager = () => {
               <div 
                 key={po.id} 
                 onClick={() => handleEditPO(po)}
-                className="grid lg:grid-cols-8 gap-2 sm:gap-3 p-3 sm:p-4 lg:p-4 hover:bg-blue-50 active:bg-blue-100 transition-all duration-150 cursor-pointer touch-manipulation"
+                className="p-2 sm:p-3 hover:bg-blue-50 active:bg-blue-100 transition-all duration-150 cursor-pointer touch-manipulation"
               >
-                {/* BON D'ACHAT - Compact */}
-                <div className="flex items-center">
-                  <div className="bg-gradient-to-r from-blue-100 to-purple-100 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg">
-                    <div className="font-mono text-xs sm:text-sm font-bold text-blue-700">#{po.po_number}</div>
-                    {po.submission_no && (
-                      <div className="text-[10px] sm:text-xs text-purple-600 mt-0.5">#{po.submission_no}</div>
-                    )}
+                {/* LIGNE 1: Informations principales */}
+                <div className="flex items-center gap-2 sm:gap-3 mb-1">
+                  {/* #BA */}
+                  <div className="bg-gradient-to-r from-blue-100 to-purple-100 px-2 py-1 rounded flex-shrink-0">
+                    <div className="font-mono text-xs font-bold text-blue-700">#{po.po_number}</div>
                   </div>
-                </div>
 
-                {/* CLIENT & DESCRIPTION - Compact */}
-                <div className="col-span-2 flex items-center min-w-0">
-                  <div className="min-w-0 w-full">
-                    <div className="font-semibold text-gray-900 text-sm sm:text-base truncate">{po.client_name || 'N/A'}</div>
-                    <div className="text-xs sm:text-sm text-gray-600 truncate">
-                      {po.description || (po.submission_no ? `Soumission: #${po.submission_no}` : 'Aucune description')}
-                    </div>
+                  {/* CLIENT */}
+                  <div className="font-semibold text-gray-900 text-sm truncate flex-1 min-w-0">
+                    {po.client_name || 'N/A'}
                   </div>
-                </div>
 
-                {/* DATE - Compact */}
-                <div className="flex items-center">
-                  <div className="text-xs sm:text-sm font-medium text-gray-700">{formatDate(po.date)}</div>
-                </div>
+                  {/* DATE */}
+                  <div className="text-xs font-medium text-gray-700 flex-shrink-0 hidden sm:block">
+                    {formatDate(po.date)}
+                  </div>
 
-                {/* MONTANT - Compact */}
-                <div className="flex items-center">
-                  <div className="bg-green-50 text-green-700 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap">
+                  {/* MONTANT */}
+                  <div className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
                     {formatCurrency(po.amount)}
                   </div>
-                </div>
 
-                {/* STATUT - Modifiable (empêche propagation du clic) */}
-                <StatusSelector po={po} />
+                  {/* STATUT - Modifiable */}
+                  <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+                    {updatingStatus[po.id] ? (
+                      <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      </div>
+                    ) : (
+                      <select
+                        value={po.status}
+                        onChange={(e) => updatePOStatus(po.id, e.target.value, po)}
+                        className={`text-[10px] sm:text-xs font-medium rounded-full border-0 py-0.5 px-2 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all ${getStatusColor(po.status)}`}
+                      >
+                        {statusOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.emoji} {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
 
-                {/* LIVRAISON - Compact */}
-                <div className="flex items-center">
-                  <div className="flex items-center gap-1.5 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">
-                    <Truck className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" />
-                    <span className="text-xs sm:text-sm font-medium text-gray-700">
-                      {deliveryCounts[po.id] || 0}
-                    </span>
+                  {/* LIVRAISON */}
+                  <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                    <Truck className="w-3 h-3 text-gray-600" />
+                    <span className="text-xs font-medium text-gray-700">{deliveryCounts[po.id] || 0}</span>
                   </div>
                 </div>
 
-                {/* ACTIONS - Icône seulement sur desktop */}
-                <div className="hidden lg:flex items-center justify-center">
-                  <div className="text-blue-600 hover:text-blue-700 transition-colors p-1.5 rounded-lg hover:bg-blue-100">
-                    <Edit className="w-4 h-4" />
-                  </div>
+                {/* LIGNE 2: Description + Soumission */}
+                <div className="text-xs text-gray-600 pl-2 truncate">
+                  {po.submission_no && (
+                    <span className="text-purple-600 font-medium">#{po.submission_no} • </span>
+                  )}
+                  {po.description || 'Aucune description'}
                 </div>
               </div>
             ))
