@@ -10,11 +10,11 @@ import InventoryManager from './InventoryManager.js';
 import ClientManager from './ClientManager';
 
 const pages = [
-  { id: 'bons-achat', name: "Clients", icon: Package },
-  { id: 'soumissions', name: 'Soumissions', icon: FileText },
-  { id: 'inventaire', name: 'Inventaire', icon: Warehouse },
-  { id: 'achat-materiels', name: 'Achat', icon: ShoppingCart },
-  { id: 'bons-travail', name: 'Bons de Travail', icon: FileText },
+  { id: 'bons-achat', name: "Clients", shortName: "BA", icon: Package },
+  { id: 'soumissions', name: 'Soumissions', shortName: "Soum.", icon: FileText },
+  { id: 'inventaire', name: 'Inventaire', shortName: "Inv.", icon: Warehouse },
+  { id: 'achat-materiels', name: 'Achat', shortName: "Achat", icon: ShoppingCart },
+  { id: 'bons-travail', name: 'Bons de Travail', shortName: "BT", icon: FileText },
 ];
 
 export default function Navigation() {
@@ -153,8 +153,8 @@ export default function Navigation() {
               </div>
             </div>
 
-            {/* Navigation desktop */}
-            <div className="hidden md:flex md:items-center md:space-x-4">
+            {/* Navigation desktop (grand écran) */}
+            <div className="hidden lg:flex lg:items-center lg:space-x-4">
               {pages.map(({ id, name, icon: Icon }) => {
                 const active = pathname.startsWith('/' + id);
                 return (
@@ -179,6 +179,37 @@ export default function Navigation() {
               >
                 <Users className="w-5 h-5 mr-2" />
                 Gestion des Clients
+              </button>
+            </div>
+
+            {/* Navigation tablette (icônes + labels courts) */}
+            <div className="hidden md:flex lg:hidden items-center space-x-1">
+              {pages.map(({ id, name, shortName, icon: Icon }) => {
+                const active = pathname.startsWith('/' + id);
+                return (
+                  <Link
+                    key={id}
+                    href={`/${id}`}
+                    className={`flex flex-col items-center px-3 py-2 rounded-lg font-medium transition-colors min-w-[70px] ${
+                      active
+                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                    title={name}
+                  >
+                    <Icon className="w-6 h-6 mb-1" />
+                    <span className="text-xs">{shortName}</span>
+                  </Link>
+                );
+              })}
+              
+              <button
+                onClick={() => setShowClientManager(true)}
+                className="flex flex-col items-center px-3 py-2 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors min-w-[70px]"
+                title="Gestion des Clients"
+              >
+                <Users className="w-6 h-6 mb-1" />
+                <span className="text-xs">Clients</span>
               </button>
             </div>
 
@@ -209,7 +240,7 @@ export default function Navigation() {
                 <LogOut className="w-5 h-5" />
               </button>
 
-              {/* Menu hamburger mobile */}
+              {/* Menu hamburger mobile (seulement pour petits écrans) */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
