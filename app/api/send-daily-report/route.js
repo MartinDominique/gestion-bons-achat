@@ -61,7 +61,8 @@ function translateStatus(status) {
   return statusMap[status] || status;
 }
 
-export async function POST(request) {
+// Fonction principale pour générer et envoyer le rapport
+async function sendDailyReport() {
   try {
     console.log('🚀 Début envoi rapport quotidien des achats fournisseurs');
     
@@ -350,4 +351,16 @@ export async function POST(request) {
       details: error.message 
     }, { status: 500 });
   }
+}
+
+// Export GET pour Vercel Cron Jobs
+export async function GET() {
+  console.log('📅 Cron job déclenché (GET)');
+  return await sendDailyReport();
+}
+
+// Export POST pour appels manuels via bouton
+export async function POST(request) {
+  console.log('🔘 Appel manuel déclenché (POST)');
+  return await sendDailyReport();
 }
