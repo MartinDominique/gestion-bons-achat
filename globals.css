@@ -1,3 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ======================================
+   NAVIGATION TABLETTE - STYLES OPTIMISÉS
+   ====================================== */
+
+/* Cacher la scrollbar horizontale pour la navigation tablette/mobile */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Safari et Chrome */
+}
+
+/* Améliorer le scroll tactile sur mobile et tablette */
+@media (max-width: 1023px) {
+  nav .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Optionnel: Améliorer la lisibilité des petits textes sur tablette */
+@media (max-width: 1023px) {
+  nav .text-\[10px\] {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
