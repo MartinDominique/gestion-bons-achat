@@ -15,6 +15,7 @@ export default function ModifierBonTravailPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [hasChanges, setHasChanges] = useState(false); // ✅ Suivre si des changements ont été faits
 
   // Charger le bon de travail
   useEffect(() => {
@@ -153,6 +154,9 @@ export default function ModifierBonTravailPage({ params }) {
         }, 2000);
       }
       
+      // ✅ Réinitialiser les changements après sauvegarde
+      setHasChanges(false);
+      
       // IMPORTANT: Retourner le work order sauvegardé pour WorkOrderForm
       return savedWorkOrder;
 
@@ -168,7 +172,20 @@ export default function ModifierBonTravailPage({ params }) {
 
   // Annuler et retourner à la liste
   const handleCancel = () => {
-    router.push('/bons-travail');
+    // Afficher confirmation SEULEMENT si des changements ont été faits
+    if (hasChanges) {
+      if (confirm('Annuler les modifications ? Les changements non sauvegardés seront perdus.')) {
+        router.push('/bons-travail');
+      }
+    } else {
+      // Pas de changements → pas de confirmation
+      router.push('/bons-travail');
+    }
+  };
+
+  // Fonction appelée quand le formulaire change
+  const handleFormChange = () => {
+    setHasChanges(true);
   };
 
   // États de chargement
@@ -265,6 +282,7 @@ export default function ModifierBonTravailPage({ params }) {
         mode="edit"
         onSave={handleSave}
         onCancel={handleCancel}
+        onFormChange={handleFormChange}
         saving={saving}
       />
     </div>
