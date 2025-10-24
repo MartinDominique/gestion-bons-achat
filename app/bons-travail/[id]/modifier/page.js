@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -165,9 +164,7 @@ export default function ModifierBonTravailPage({ params }) {
 
   // Annuler et retourner à la liste
   const handleCancel = () => {
-    if (confirm('Annuler les modifications ? Les changements non sauvegardés seront perdus.')) {
-      router.push('/bons-travail');
-    }
+    router.push('/bons-travail');
   };
 
   // États de chargement
