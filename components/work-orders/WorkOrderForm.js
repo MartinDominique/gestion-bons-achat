@@ -50,6 +50,7 @@ export default function WorkOrderForm({
   workOrder = null, 
   onSave, 
   onCancel, 
+  onFormChange, // ✅ Nouvelle prop pour notifier les changements
   mode = 'create',
   saving = false 
 }) {
@@ -792,16 +793,28 @@ useEffect(() => {
     const newDescriptions = [...descriptions];
     newDescriptions[index] = value;
     setDescriptions(newDescriptions);
+    // ✅ Notifier le parent qu'un changement a été fait
+    if (onFormChange) {
+      onFormChange();
+    }
   };
 
   const addDescription = () => {
     setDescriptions([...descriptions, '']);
+    // ✅ Notifier le parent qu'un changement a été fait
+    if (onFormChange) {
+      onFormChange();
+    }
   };
 
   const removeDescription = (index) => {
     if (descriptions.length > 1) {
       const newDescriptions = descriptions.filter((_, i) => i !== index);
       setDescriptions(newDescriptions);
+      // ✅ Notifier le parent qu'un changement a été fait
+      if (onFormChange) {
+        onFormChange();
+      }
     }
   };
 
@@ -814,6 +827,10 @@ useEffect(() => {
       time_entries: timeData.time_entries || [],
       total_hours: timeData.total_hours || 0
     }));
+    // ✅ Notifier le parent qu'un changement a été fait
+    if (onFormChange) {
+      onFormChange();
+    }
   };
 
 
@@ -841,6 +858,10 @@ useEffect(() => {
         return newErrors;
       });
     }
+    // ✅ Notifier le parent qu'un changement a été fait
+    if (onFormChange) {
+      onFormChange();
+    }
   };
 
   const handleClientSelect = (clientId) => {
@@ -859,6 +880,10 @@ useEffect(() => {
         delete newErrors.materials;
         return newErrors;
       });
+    }
+    // ✅ Notifier le parent qu'un changement a été fait
+    if (onFormChange) {
+      onFormChange();
     }
   };
 
