@@ -83,6 +83,7 @@ export default function WorkOrderForm({
   const [selectedClient, setSelectedClient] = useState(null);
   const [showClientModal, setShowClientModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null); // ⭐ NOUVEAU - Client en cours d'édition
+  const [isInitializing, setIsInitializing] = useState(true); // ✅ Flag pour ignorer les changements durant l'initialisation
   
   // Cache des produits pour vérification
   const [cachedProducts, setCachedProducts] = useState([]);
@@ -220,6 +221,15 @@ export default function WorkOrderForm({
       }
     }
   }, [workOrder, mode]);
+
+  // ✅ Marquer la fin de l'initialisation après le premier rendu
+  useEffect(() => {
+    // Petit délai pour s'assurer que toutes les initialisations sont terminées
+    const timer = setTimeout(() => {
+      setIsInitializing(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Charger les produits et non-inventory items au démarrage
   useEffect(() => {
@@ -793,16 +803,16 @@ useEffect(() => {
     const newDescriptions = [...descriptions];
     newDescriptions[index] = value;
     setDescriptions(newDescriptions);
-    // ✅ Notifier le parent qu'un changement a été fait
-    if (onFormChange) {
+    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
+    if (onFormChange && !isInitializing) {
       onFormChange();
     }
   };
 
   const addDescription = () => {
     setDescriptions([...descriptions, '']);
-    // ✅ Notifier le parent qu'un changement a été fait
-    if (onFormChange) {
+    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
+    if (onFormChange && !isInitializing) {
       onFormChange();
     }
   };
@@ -811,8 +821,8 @@ useEffect(() => {
     if (descriptions.length > 1) {
       const newDescriptions = descriptions.filter((_, i) => i !== index);
       setDescriptions(newDescriptions);
-      // ✅ Notifier le parent qu'un changement a été fait
-      if (onFormChange) {
+      // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
+      if (onFormChange && !isInitializing) {
         onFormChange();
       }
     }
@@ -827,8 +837,8 @@ useEffect(() => {
       time_entries: timeData.time_entries || [],
       total_hours: timeData.total_hours || 0
     }));
-    // ✅ Notifier le parent qu'un changement a été fait
-    if (onFormChange) {
+    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
+    if (onFormChange && !isInitializing) {
       onFormChange();
     }
   };
@@ -858,8 +868,8 @@ useEffect(() => {
         return newErrors;
       });
     }
-    // ✅ Notifier le parent qu'un changement a été fait
-    if (onFormChange) {
+    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
+    if (onFormChange && !isInitializing) {
       onFormChange();
     }
   };
@@ -881,8 +891,8 @@ useEffect(() => {
         return newErrors;
       });
     }
-    // ✅ Notifier le parent qu'un changement a été fait
-    if (onFormChange) {
+    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
+    if (onFormChange && !isInitializing) {
       onFormChange();
     }
   };
