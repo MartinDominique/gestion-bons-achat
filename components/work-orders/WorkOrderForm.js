@@ -975,13 +975,13 @@ useEffect(() => {
     <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
     
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h2 className="text-xl font-bold text-gray-900">
           {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
         </h2>
         
         {/* Boutons workflow - en haut (colonne sur mobile, ligne sur tablet/PC) */}
-        <div className="flex flex-col md:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {/* Afficher bouton Fermer si BT déjà signé/envoyé */}
           {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
             <button
