@@ -2939,7 +2939,7 @@ const cleanupFilesForSubmission = async (files) => {
             ))}
           </div>
         )}
-      </div>      </div>
+      </div>
     </div>
   );
 }
