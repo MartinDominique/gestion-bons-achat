@@ -794,7 +794,7 @@ export default function SupplierPurchaseManager() {
         )}
       </div>
 
-      </div>
+   
 
       {/* Modal Gestion Fournisseurs */}
       <SupplierModal 
