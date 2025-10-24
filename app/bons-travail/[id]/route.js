@@ -1,3 +1,7 @@
+//=====================================
+//app/bons-travail/[id]/route.js
+//======================================
+
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase';
 
