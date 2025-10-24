@@ -26,9 +26,23 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'BT non trouvé' }, { status: 404 });
     }
 
+    // DÉBOGAGE : Afficher le statut exact
+    console.log('BT ID:', workOrderId);
+    console.log('Status exact:', data.status);
+    console.log('Type du status:', typeof data.status);
+    console.log('Longueur du status:', data.status?.length);
+
     // Vérifier que le BT est dans un état présentable
-    if (data.status !== 'ready_for_signature' && data.status !== 'signed' && data.status !== 'completed') {
-      return NextResponse.json({ error: 'BT non disponible' }, { status: 403 });
+    const allowedStatuses = ['ready_for_signature', 'signed', 'completed'];
+    if (!allowedStatuses.includes(data.status)) {
+      console.error('Status refusé:', data.status, '- Attendu:', allowedStatuses);
+      return NextResponse.json({ 
+        error: 'BT non disponible',
+        debug: {
+          currentStatus: data.status,
+          allowedStatuses: allowedStatuses
+        }
+      }, { status: 403 });
     }
 
     // Enrichir les matériaux avec les infos produit
