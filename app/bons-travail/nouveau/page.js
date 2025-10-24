@@ -11,6 +11,7 @@ export default function NouveauBonTravailPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false); // ✅ Suivre si le BT a été sauvegardé
+  const [hasChanges, setHasChanges] = useState(false); // ✅ Suivre si des changements ont été faits
 
   const handleSave = async (workOrderData, status) => {
     setSaving(true);
@@ -50,6 +51,8 @@ export default function NouveauBonTravailPage() {
         
         // ✅ Marquer que le BT a été sauvegardé
         setHasSaved(true);
+        // ✅ Réinitialiser les changements après sauvegarde
+        setHasChanges(false);
         
         // ⭐ NOUVEAU : Toast au lieu de alert
         if (status !== 'ready_for_signature') {
@@ -110,15 +113,20 @@ export default function NouveauBonTravailPage() {
   };
 
   const handleCancel = () => {
-    // Afficher confirmation SEULEMENT si le BT n'a jamais été sauvegardé
-    if (!hasSaved) {
+    // Afficher confirmation SEULEMENT si des changements ont été faits ET jamais sauvegardé
+    if (hasChanges && !hasSaved) {
       if (confirm('Annuler la création ? Toutes les données saisies seront perdues.')) {
         router.push('/bons-travail');
       }
     } else {
-      // Si déjà sauvegardé au moins une fois, pas de confirmation
+      // Pas de changements ou déjà sauvegardé → pas de confirmation
       router.push('/bons-travail');
     }
+  };
+
+  // Fonction appelée quand le formulaire change
+  const handleFormChange = () => {
+    setHasChanges(true);
   };
 
   return (
@@ -157,6 +165,7 @@ export default function NouveauBonTravailPage() {
         mode="create"
         onSave={handleSave}
         onCancel={handleCancel}
+        onFormChange={handleFormChange}
         saving={saving}
       />
     </div>
