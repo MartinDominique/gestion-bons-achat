@@ -35,6 +35,7 @@ export default function MaterialSelector({
   // Modal de quantité avant ajout
   const [pendingProduct, setPendingProduct] = useState(null);
   const [pendingQuantity, setPendingQuantity] = useState('1');
+  const [pendingShowPrice, setPendingShowPrice] = useState(false);
   const quantityInputRef = useRef(null);
 
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
@@ -169,6 +170,7 @@ export default function MaterialSelector({
     // Ouvrir modal de quantité
     setPendingProduct(product);
     setPendingQuantity('1');
+    setPendingShowPrice(false);
     
     // Focus sur input après ouverture du modal
     setTimeout(() => {
@@ -195,7 +197,7 @@ export default function MaterialSelector({
       quantity: quantity,
       unit: pendingProduct.unit || 'pcs',
       notes: '',
-      showPrice: false
+      showPrice: pendingShowPrice
     };
     
     onMaterialsChange([newMaterial, ...safeMaterials]);
@@ -203,6 +205,7 @@ export default function MaterialSelector({
     // Fermer tout
     setPendingProduct(null);
     setPendingQuantity('1');
+    setPendingShowPrice(false);
     setShowProductSearch(false);
     setSearchTerm('');
   };
@@ -210,6 +213,7 @@ export default function MaterialSelector({
   const cancelAddMaterial = () => {
     setPendingProduct(null);
     setPendingQuantity('1');
+    setPendingShowPrice(false);
   };
   
    const removeMaterial = (materialId) => {
@@ -739,6 +743,38 @@ export default function MaterialSelector({
                   Ex: 10.5 ou 12 puis Enter ⏎
                 </p>
               </div>
+
+              {/* Afficher prix - NOUVEAU */}
+              {pendingProduct.unit_price && (
+                <div className="px-8 pb-4">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center gap-2">
+                      {pendingShowPrice ? <Eye size={18} className="text-blue-600" /> : <EyeOff size={18} className="text-gray-400" />}
+                      <span className="text-sm font-medium text-gray-700">
+                        Afficher le prix sur le bon
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingShowPrice(!pendingShowPrice)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        pendingShowPrice ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          pendingShowPrice ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {pendingShowPrice && (
+                    <p className="text-xs text-gray-600 mt-2 text-center">
+                      Prix unitaire: {pendingProduct.unit_price.toFixed(2)} $ | Total: {(parseFloat(pendingQuantity || 0) * pendingProduct.unit_price).toFixed(2)} $
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Actions - Fixes en bas */}
