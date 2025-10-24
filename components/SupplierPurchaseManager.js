@@ -700,121 +700,62 @@ export default function SupplierPurchaseManager() {
         )}
       </div>
 
-      {/* Liste mobile AVEC DATE DE CRÉATION */}
-      <div className="lg:hidden space-y-4">
+      {/* Liste mobile - Layout 2 lignes ULTRA-COMPACT */}
+      <div className="lg:hidden">
         {filteredPurchases.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500">Aucun achat fournisseur trouvé</p>
           </div>
         ) : (
-          filteredPurchases.map((purchase) => {
-            const poNumber = getPONumber(purchase, purchaseOrders);
-            return (
-              <div key={purchase.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-orange-50 to-red-50 px-4 py-3 border-b">
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{purchase.purchase_number}</h3>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <p className="text-sm text-gray-600">{purchase.supplier_name}</p>
-                        {/* NOUVELLE SECTION - DATE DE CRÉATION */}
-                        <span className="text-gray-400">•</span>
-                        <div className="text-xs text-gray-500">
-                          <span className="bg-gray-100 px-2 py-1 rounded">
-                            Créé le {formatDate(purchase.created_at)}
-                          </span>
-                        </div>
-                      </div>
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden divide-y divide-gray-100">
+            {filteredPurchases.map((purchase, index) => {
+              const poNumber = getPONumber(purchase, purchaseOrders);
+              return (
+                <div
+                  key={purchase.id}
+                  onClick={() => handleEditPurchase(purchase)}
+                  className={`p-2 sm:p-3 hover:bg-orange-50 active:bg-orange-100 transition-all duration-150 cursor-pointer touch-manipulation ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  }`}
+                >
+                  {/* LIGNE 1: Infos principales */}
+                  <div className="flex items-center gap-2 mb-1">
+                    {/* Numéro achat */}
+                    <div className="bg-gradient-to-r from-orange-100 to-red-100 px-2 py-1 rounded flex-shrink-0">
+                      <div className="font-mono text-xs font-bold text-orange-700">{purchase.purchase_number}</div>
                     </div>
-                    <div className="relative">
-                      <button
-                        onClick={() => setSelectedPurchaseId(selectedPurchaseId === purchase.id ? null : purchase.id)}
-                        className="p-2 text-gray-400 hover:text-gray-600"
-                      >
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-                      
-                      {selectedPurchaseId === purchase.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border z-10">
-                          <div className="py-1">
-                            <button
-                              onClick={() => {
-                                handleEditPurchase(purchase);
-                                setSelectedPurchaseId(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                            >
-                              <Edit className="w-4 h-4 inline mr-2" />
-                              Modifier
-                            </button>
-                            <hr />
-                            <button
-                              onClick={() => {
-                                handleDeletePurchase(purchase.id);
-                                setSelectedPurchaseId(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4 inline mr-2" />
-                              Supprimer
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="p-4 space-y-3">
-                  {/* SECTION DÉTAILS AVEC DATE DE CRÉATION */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500 block">Date création</span>
-                      <div className="font-medium">
-                        {formatDate(purchase.created_at)}
-                        {purchase.created_at && (
-                          <div className="text-xs text-gray-500">
-                            {new Date(purchase.created_at).toLocaleTimeString('fr-FR', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                        )}
-                      </div>
+                    {/* Fournisseur */}
+                    <div className="font-semibold text-gray-900 text-sm truncate flex-1 min-w-0">
+                      {purchase.supplier_name}
                     </div>
-                    <div>
-                      <span className="text-gray-500 block">Date livraison</span>
-                      <span className="font-medium">{formatDate(purchase.delivery_date)}</span>
+
+                    {/* Date création */}
+                    <div className="text-xs font-medium text-gray-700 flex-shrink-0 hidden sm:block">
+                      {formatDate(purchase.created_at)}
                     </div>
-                  </div>
-                  
-                  {purchase.ba_acomba && (
-                    <div>
-                      <span className="text-gray-500 text-sm">BA Acomba</span>
-                      <p className="font-medium">{purchase.ba_acomba}</p>
+
+                    {/* Date livraison */}
+                    <div className="text-xs font-medium text-blue-600 flex-shrink-0">
+                      📅 {formatDate(purchase.delivery_date)}
                     </div>
-                  )}
-                  
-                  {poNumber && (
-                    <div>
-                      <span className="text-gray-500 text-sm">PO Client lié</span>
-                      <p className="font-medium">{poNumber}</p>
+
+                    {/* Montant */}
+                    <div className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
+                      {formatCurrency(purchase.total_amount)}
                     </div>
-                  )}
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500 block">Montant</span>
-                      <span className="font-bold text-green-600">{formatCurrency(purchase.total_amount)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block">Statut</span>
+
+                    {/* Statut */}
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-shrink-0"
+                    >
                       <select
                         value={purchase.status}
                         onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
                         disabled={isLoadingEmail}
-                        className={`px-2 py-1 rounded text-xs border-0 cursor-pointer ${
+                        className={`text-[10px] font-medium rounded-full border-0 py-0.5 px-2 cursor-pointer ${
                           purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
                           purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
                           purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
@@ -828,11 +769,31 @@ export default function SupplierPurchaseManager() {
                       </select>
                     </div>
                   </div>
+
+                  {/* LIGNE 2: BA Acomba + PO Client */}
+                  <div className="flex items-center justify-between gap-2 text-xs text-gray-600 pl-2">
+                    <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                      {purchase.ba_acomba && (
+                        <span className="text-purple-600 font-medium">BA: {purchase.ba_acomba}</span>
+                      )}
+                      {poNumber && (
+                        <>
+                          {purchase.ba_acomba && <span className="text-gray-400">•</span>}
+                          <span className="text-blue-600 font-medium">PO: {poNumber}</span>
+                        </>
+                      )}
+                      {!purchase.ba_acomba && !poNumber && (
+                        <span className="text-gray-400 italic">Aucune référence</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
+      </div>
+
       </div>
 
       {/* Modal Gestion Fournisseurs */}
