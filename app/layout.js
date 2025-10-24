@@ -8,7 +8,7 @@ export const metadata = {
   
   // 👇 AJOUT PWA - Début
   manifest: '/manifest.json',
-  themeColor: '#1e40af',
+  // ❌ themeColor retiré d'ici - déplacé vers viewport
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -24,6 +24,11 @@ export const metadata = {
     ]
   }
   // 👆 AJOUT PWA - Fin
+};
+
+// ✅ NOUVEAU: viewport séparé pour themeColor
+export const viewport = {
+  themeColor: '#1e40af'
 };
 
 export default function RootLayout({ children }) {
