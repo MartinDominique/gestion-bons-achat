@@ -220,622 +220,529 @@ export default function MaterialSelector({
   };
 
   const startEditMaterial = (material) => {
-  setEditingMaterial(material.id);
-  setEditForm({
-    quantity: material.quantity?.toString() || '1',
-    notes: material.notes || '',
-    showPrice: material.showPrice || false
-  });
-  
-  // Focus sur input après ouverture
-  setTimeout(() => {
-    if (editQuantityInputRef.current) {
-      editQuantityInputRef.current.select();
-    }
-  }, 100);
-};
-
-const saveEditMaterial = () => {
-  if (!editingMaterial) return;
-  
-  const quantity = parseFloat(editForm.quantity);
-  if (isNaN(quantity) || quantity <= 0) {
-    alert('Veuillez entrer une quantité valide');
-    return;
-  }
-  
-  const safeMaterials = materials || [];
-  onMaterialsChange(safeMaterials.map(m => 
-    m.id === editingMaterial
-      ? { 
-          ...m, 
-          quantity: quantity,
-          notes: editForm.notes,
-          showPrice: editForm.showPrice
-        }
-      : m
-  ));
-  
-  setEditingMaterial(null);
-  setEditForm({ quantity: '', notes: '', showPrice: false });
-};
-
-const cancelEditMaterial = () => {
-  setEditingMaterial(null);
-  setEditForm({ quantity: '', notes: '', showPrice: false });
-};
-
-const deleteMaterialFromModal = () => {
-  if (!editingMaterial) return;
-  
-  if (confirm('Retirer ce matériau de la liste ?')) {
-    const safeMaterials = materials || [];
-    onMaterialsChange(safeMaterials.filter(m => m.id !== editingMaterial));
-    setEditingMaterial(null);
-    setEditForm({ quantity: '', notes: '', showPrice: false });
-  }
-};
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
+    setEditingMaterial(material);
+    setEditForm({
+      quantity: material.quantity.toString(),
+      notes: material.notes || '',
+      showPrice: material.showPrice || false
+    });
+    
+    // Focus sur input après ouverture du modal
+    setTimeout(() => {
+      if (editQuantityInputRef.current) {
+        editQuantityInputRef.current.select();
+      }
+    }, 100);
   };
 
-  // 🆕 NOUVELLE FONCTION - AJOUT RAPIDE PRODUIT NON-INVENTAIRE
-      const saveQuickAddProduct = async () => {
-        // Validation
-        if (!quickAddForm.product_id || !quickAddForm.description) {
-          alert('⚠️ Code produit et description sont requis');
-          return;
-        }
+  const saveEditMaterial = () => {
+    if (!editingMaterial) return;
+    
+    const quantity = parseFloat(editForm.quantity);
+    if (isNaN(quantity) || quantity <= 0) {
+      alert('Veuillez entrer une quantité valide');
+      return;
+    }
+    
+    const safeMaterials = materials || [];
+    onMaterialsChange(safeMaterials.map(m => 
+      m.id === editingMaterial.id 
+        ? { ...m, quantity, notes: editForm.notes, showPrice: editForm.showPrice }
+        : m
+    ));
+    
+    setEditingMaterial(null);
+  };
+
+  const cancelEditMaterial = () => {
+    setEditingMaterial(null);
+  };
+
+  const saveQuickAddProduct = async () => {
+    if (!quickAddForm.product_id || !quickAddForm.description) {
+      alert('Veuillez remplir tous les champs requis');
+      return;
+    }
+
+    try {
+      console.log('💾 Sauvegarde produit non-inventaire:', quickAddForm);
       
-        try {
-          const nonInventoryData = {
-            product_id: quickAddForm.product_id.trim().toUpperCase(),
-            description: quickAddForm.description.trim(),
-            unit: quickAddForm.unit || 'UN',
-            product_group: 'Non-Inventaire',
-            selling_price: 0,
-            cost_price: 0,
-            stock_qty: 0
-          };
-      
-          console.log('💾 Sauvegarde produit non-inventaire:', nonInventoryData);
-      
-          // Vérifier si existe déjà
-          const { data: existingItem, error: checkError } = await supabase
-            .from('non_inventory_items')
-            .select('*')
-            .eq('product_id', nonInventoryData.product_id)
-            .single();
-      
-          if (checkError && checkError.code !== 'PGRST116') {
-            throw checkError;
-          }
-      
-          let savedProduct;
-          if (existingItem) {
-            // Mise à jour
-            const { data, error } = await supabase
-              .from('non_inventory_items')
-              .update(nonInventoryData)
-              .eq('product_id', nonInventoryData.product_id)
-              .select()
-              .single();
-            
-            if (error) throw error;
-            savedProduct = data;
-            console.log('✅ Produit mis à jour:', savedProduct);
-          } else {
-            // Création
-            const { data, error } = await supabase
-              .from('non_inventory_items')
-              .insert([nonInventoryData])
-              .select()
-              .single();
-            
-            if (error) throw error;
-            savedProduct = data;
-            console.log('✅ Nouveau produit créé:', savedProduct);
-          }
-      
-          // Ajouter directement au bon de travail
-          if (savedProduct) {
-            const newMaterial = {
-              id: Date.now().toString(),
-              product_id: savedProduct.product_id,
-              product: {
-                id: savedProduct.product_id,
-                product_id: savedProduct.product_id,
-                description: savedProduct.description,
-                unit: savedProduct.unit,
-                product_group: 'Non-Inventaire',
-                selling_price: 0
-              },
-              quantity: 1,
-              unit: savedProduct.unit,
-              notes: '',
-              showPrice: false
-            };
-      
-            const safeMaterials = materials || [];
-            onMaterialsChange([newMaterial, ...safeMaterials]);
-          }
-      
-          // Réinitialiser et fermer
-          setShowQuickAddModal(false);
-          setQuickAddForm({
-            product_id: '',
-            description: '',
-            unit: 'UN'
-          });
-      
-          // Recharger les produits
-          await loadProducts(true);
-      
-        } catch (error) {
-          console.error('❌ Erreur sauvegarde:', error);
-          alert(`❌ Erreur: ${error.message}`);
-        }
+      // Vérifier si le produit existe déjà
+      const { data: existingProducts, error: checkError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('product_id', quickAddForm.product_id)
+        .limit(1);
+
+      if (checkError) {
+        console.error('Erreur vérification produit:', checkError);
+        throw checkError;
+      }
+
+      if (existingProducts && existingProducts.length > 0) {
+        alert(`Le code produit "${quickAddForm.product_id}" existe déjà!`);
+        return;
+      }
+
+      // Insérer le nouveau produit
+      const { data: newProduct, error: insertError } = await supabase
+        .from('products')
+        .insert([{
+          product_id: quickAddForm.product_id,
+          description: quickAddForm.description,
+          unit: quickAddForm.unit,
+          product_group: 'NON-INVENTAIRE',
+          is_active: true
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Erreur insertion produit:', insertError);
+        throw insertError;
+      }
+
+      console.log('✅ Produit créé:', newProduct);
+
+      // Recharger les produits pour inclure le nouveau
+      await loadProducts(true);
+
+      // Ajouter automatiquement le produit aux matériaux
+      const safeMaterials = materials || [];
+      const newMaterial = {
+        id: Date.now().toString(),
+        product_id: newProduct.id,
+        product: newProduct,
+        quantity: 1,
+        unit: newProduct.unit,
+        notes: '',
+        showPrice: false
       };
-
- return (
-  <div className="space-y-4">
-    {/* Header avec boutons d'ajout */}
-    <div className="flex items-center justify-between">
-      <h3 className="text-lg font-medium text-gray-900">
-        Matériaux utilisés ({(materials || []).length})
-      </h3>
       
-      {/* 🆕 DEUX BOUTONS AU LIEU D'UN */}
-      <div className="flex gap-2">
-        {/* Nouveau bouton pour ajout rapide */}
-        <button
-          type="button"
-          onClick={() => setShowQuickAddModal(true)}
-          className="bg-orange-600 text-white px-3 py-2 rounded-lg hover:bg-orange-700 flex items-center text-sm"
-        >
-          <Plus className="mr-1" size={16} />
-          Produit Non-Inventaire
-        </button>
-        
-        {/* Bouton existant */}
-        <button
-          type="button"
-          onClick={() => {
-            setShowProductSearch(true);
-            setTimeout(() => {
-              if (searchRef.current) {
-                searchRef.current.focus();
-              }
-            }, 100);
-          }}
-          className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 flex items-center text-sm"
-        >
-          <Plus className="mr-1" size={16} />
-          Ajouter matériau
-        </button>
+      onMaterialsChange([newMaterial, ...safeMaterials]);
+
+      // Fermer le modal et réinitialiser
+      setShowQuickAddModal(false);
+      setQuickAddForm({ product_id: '', description: '', unit: 'UN' });
+      
+      alert('✅ Produit ajouté à la base de données et à votre bon de travail!');
+
+    } catch (error) {
+      console.error('Erreur sauvegarde produit:', error);
+      alert('❌ Erreur lors de la sauvegarde du produit. Vérifiez la console.');
+    }
+  };
+
+  // Liste matériaux (partie visible principale)
+  const safeMaterials = materials || [];
+
+  return (
+    <div className="space-y-4">
+      {/* Header + Bouton Ajouter */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+          <Package size={20} className="text-blue-600" />
+          Matériel et Équipement
+        </h3>
+        <div className="flex gap-2">
+          {/* Bouton Ajout Rapide Non-Inventaire */}
+          <button
+            type="button"
+            onClick={() => setShowQuickAddModal(true)}
+            className="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-lg flex items-center gap-1 text-sm"
+            title="Ajouter un produit non-inventaire"
+          >
+            <Hash size={18} />
+            <span className="hidden sm:inline">Non-Inv</span>
+          </button>
+
+          {/* Bouton Recherche Principale */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowProductSearch(!showProductSearch);
+              setTimeout(() => searchRef.current?.focus(), 100);
+            }}
+            className={`${
+              showProductSearch 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : 'bg-blue-600 hover:bg-blue-700'
+            } text-white p-2 rounded-lg flex items-center gap-1`}
+          >
+            {showProductSearch ? <X size={18} /> : <Plus size={18} />}
+            <span className="hidden sm:inline">
+              {showProductSearch ? 'Fermer' : 'Ajouter'}
+            </span>
+          </button>
+        </div>
       </div>
-    </div>
 
-      {/* Liste des matériaux ajoutés - VERSION COMPACTE */}
-      {(!materials || materials.length === 0) ? (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-          <Package className="mx-auto mb-2 text-gray-300" size={32} />
-          <p className="text-gray-500 mb-2">Aucun matériau ajouté</p>
-          <p className="text-sm text-gray-400">
-            Cliquez sur "Ajouter matériau" pour commencer
-          </p>
-        </div>
-      ) : (
-        <div className="bg-white border rounded-lg divide-y">
-          {(materials || []).map((material) => (
-            <div 
-              key={material.id} 
-              onClick={() => startEditMaterial(material)}
-              className="p-3 hover:bg-blue-50 cursor-pointer active:bg-blue-100 transition-colors"
-            >
-              {/* Vue compacte - 2 lignes max */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  {/* Ligne 1: Code + Quantité */}
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-mono font-semibold">
-                        {material.product?.product_id || 'N/A'}
-                      </span>
-                      {material.showPrice && (
-                        <span className="text-green-600 text-xs font-semibold">
-                          {formatCurrency(material.product?.selling_price || 0)}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-sm font-bold text-gray-900">
-                      Qté: {material.quantity}
-                    </span>
-                  </div>
-                  
-                  {/* Ligne 2: Description (tronquée) */}
-                  <p className="text-sm text-gray-700 truncate">
-                    {material.product?.description || 'Sans description'}
-                  </p>
-                  
-                  {/* Notes si présentes */}
-                  {material.notes && (
-                    <p className="text-xs text-blue-600 mt-1 truncate">
-                      📝 {material.notes}
-                    </p>
-                  )}
-                </div>
-                
-                {/* Icône de menu */}
-                <div className="text-gray-400 mt-1">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          ))}
-          
-          {/* Total si prix affichés */}
-          {materials && materials.some(m => m.showPrice && m.product?.selling_price) && (
-            <div className="p-3 bg-green-50 border-t-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-green-900">Total matériaux:</span>
-                <span className="text-lg font-bold text-green-900">
-                  {formatCurrency(
-                    materials
-                      .filter(m => m.showPrice && m.product?.selling_price)
-                      .reduce((total, m) => 
-                        total + (m.product.selling_price || 0) * (m.quantity || 0), 0
-                      )
-                  )}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Modal de recherche de produits */}
+      {/* Recherche de produits */}
       {showProductSearch && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Rechercher un produit</h3>
-              
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => loadProducts(true)}
-                  disabled={loading}
-                  className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                  title="Actualiser"
-                >
-                  <RotateCcw size={16} />
-                </button>
-                <button
-                  onClick={() => {
-                    setShowProductSearch(false);
-                    setSearchTerm('');
-                  }}
-                  className="p-2 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Recherche */}
-            <div className="p-4 border-b">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                <input
-                  ref={searchRef}
-                  type="text"
-                  placeholder="Rechercher par code, description ou groupe..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              {!searchTerm && (
-                <p className="text-sm text-gray-500 mt-2">
-                  💡 Tapez au moins 2 caractères pour rechercher dans vos {(products || []).length} produits
-                </p>
-              )}
-            </div>
-
-            {/* Liste produits */}
-            <div className="flex-1 overflow-y-auto">
-              {loading ? (
-                <div className="flex justify-center items-center h-32">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                  <p className="ml-2 text-gray-600">Chargement produits...</p>
-                </div>
-              ) : (filteredProducts || []).length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <Package className="mx-auto mb-4 text-gray-300" size={48} />
-                  <p className="text-lg font-medium">
-                    {searchTerm ? `Aucun produit trouvé pour "${searchTerm}"` : 'Commencez à taper pour rechercher'}
-                  </p>
-                  {searchTerm && (
-                    <p className="text-sm mt-1">
-                      Essayez avec un code produit ou une description différente
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="divide-y">
-                  {(filteredProducts || []).map((product) => (
-                    <div
-                      key={product.id}
-                      className="p-4 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => addMaterial(product)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
-                              {product.product_id}
-                            </span>
-                            {product.product_group && (
-                              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
-                                {product.product_group}
-                              </span>
-                            )}
-                            {product.stock_qty < 10 && (
-                              <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
-                                Stock faible
-                              </span>
-                            )}
-                          </div>
-                          
-                          <h4 className="text-sm font-medium text-gray-900 mb-1">
-                            {product.description}
-                          </h4>
-                          
-                          <div className="flex gap-4 text-xs text-gray-600">
-                            {product.unit && <span>Unité: {product.unit}</span>}
-                            <span>Stock: {product.stock_qty || 0}</span>
-                            {/* SUPPRIMÉ: Plus de coûts affichés dans la recherche */}
-                          </div>
-                        </div>
-                        
-                        <Plus className="text-blue-600 ml-4" size={20} />
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {(filteredProducts || []).length >= 100 && (
-                    <div className="p-4 bg-blue-50 text-center">
-                      <p className="text-sm text-blue-600">
-                        Plus de 100 résultats. Affinez votre recherche pour voir plus de produits.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t bg-gray-50 text-sm text-gray-600">
-              {searchTerm && (
-                <span>{(filteredProducts || []).length} produit(s) trouvé(s) pour "{searchTerm}"</span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-        {/* Modal d'édition matériau - Mobile Friendly */}
-      {editingMaterial && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="bg-blue-600 text-white p-4 rounded-t-lg sticky top-0">
-              <h3 className="text-lg font-semibold">Modifier matériau</h3>
-            </div>
-            
-            {/* Produit info */}
-            {(() => {
-              const material = materials.find(m => m.id === editingMaterial);
-              if (!material) return null;
-              
-              return (
-                <>
-                  <div className="p-4 bg-gray-50 border-b">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
-                        {material.product?.product_id}
-                      </span>
-                      {material.product?.product_group && (
-                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
-                          {material.product.product_group}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {material.product?.description}
-                    </p>
-                    {material.product?.selling_price && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Prix: {formatCurrency(material.product.selling_price)} / {material.product?.unit || 'UN'}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* Formulaire d'édition */}
-                  <div className="p-6 space-y-6">
-                    {/* Quantité */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Quantité
-                      </label>
-                      <input
-                        ref={editQuantityInputRef}
-                        type="number"
-                        step="0.5"
-                        min="0.1"
-                        value={editForm.quantity}
-                        onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            saveEditMaterial();
-                          }
-                        }}
-                        className="w-full text-center text-4xl font-bold border-2 border-blue-500 rounded-lg py-4 px-4 focus:ring-4 focus:ring-blue-300"
-                        inputMode="decimal"
-                      />
-                      <p className="text-center text-xs text-gray-500 mt-2">
-                        Unité: {material.product?.unit || 'UN'}
-                      </p>
-                    </div>
-                    
-                    {/* Notes */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Notes (optionnel)
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={editForm.notes}
-                        onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
-                        placeholder="Ex: Installé dans le corridor, remplacer en mars..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                      />
-                    </div>
-                    
-                    {/* Toggle prix */}
-                    {material.product?.selling_price && (
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">Afficher le prix au client</p>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            {editForm.showPrice 
-                              ? `Visible: ${formatCurrency(material.product.selling_price * parseFloat(editForm.quantity || 0))}`
-                              : 'Prix masqué'
-                            }
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setEditForm({...editForm, showPrice: !editForm.showPrice})}
-                          className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                            editForm.showPrice ? 'bg-green-600' : 'bg-gray-300'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                              editForm.showPrice ? 'translate-x-7' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-            
-            {/* Actions */}
-            <div className="p-4 bg-gray-50 border-t space-y-2 sticky bottom-0">
-              {/* Bouton Supprimer */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-3">
+            <Search size={18} className="text-gray-400" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Code produit, description ou groupe..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            />
+            {searchTerm && (
               <button
                 type="button"
-                onClick={deleteMaterialFromModal}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg text-lg flex items-center justify-center gap-2"
+                onClick={() => setSearchTerm('')}
+                className="text-gray-400 hover:text-gray-600"
               >
-                <X size={20} />
-                Supprimer ce matériau
+                <X size={18} />
               </button>
+            )}
+          </div>
+
+          {loading && (
+            <div className="text-center py-4 text-gray-600 text-sm">
+              Chargement des produits...
+            </div>
+          )}
+
+          {!loading && filteredProducts.length === 0 && searchTerm && (
+            <div className="text-center py-4 text-gray-600 text-sm">
+              Aucun produit trouvé
+            </div>
+          )}
+
+          {!loading && filteredProducts.length === 0 && !searchTerm && (
+            <div className="text-center py-4 text-gray-600 text-sm">
+              Tapez pour rechercher un produit
+            </div>
+          )}
+
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {filteredProducts.map((product) => {
+              const alreadyAdded = safeMaterials.some(m => m.product_id === product.id);
               
-              {/* Boutons Annuler / Sauvegarder */}
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={cancelEditMaterial}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-4 rounded-lg text-lg"
+              return (
+                <div 
+                  key={product.id}
+                  className={`p-3 rounded-lg border transition-colors ${
+                    alreadyAdded 
+                      ? 'bg-gray-100 border-gray-300 opacity-50' 
+                      : 'bg-white border-gray-200 hover:bg-blue-50 cursor-pointer'
+                  }`}
+                  onClick={() => !alreadyAdded && addMaterial(product)}
                 >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={saveEditMaterial}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg text-lg flex items-center justify-center gap-2"
-                >
-                  <Save size={20} />
-                  Sauvegarder
-                </button>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-mono">
+                          {product.product_id}
+                        </span>
+                        {product.product_group && (
+                          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">
+                            {product.product_group}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-900 truncate">
+                        {product.description}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Unité: {product.unit || 'pcs'}
+                      </p>
+                    </div>
+                    
+                    {alreadyAdded ? (
+                      <CheckCircle size={20} className="text-green-500 flex-shrink-0" />
+                    ) : (
+                      <Plus size={20} className="text-blue-600 flex-shrink-0" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-xs text-gray-500 mt-3 text-center">
+            {filteredProducts.length > 0 
+              ? `${filteredProducts.length} produit(s) affiché(s)` 
+              : 'Affichage des 50 premiers produits par défaut'
+            }
+          </p>
+        </div>
+      )}
+
+      {/* Liste des matériaux ajoutés */}
+      {safeMaterials.length === 0 ? (
+        <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+          <Package size={32} className="mx-auto mb-2 text-gray-400" />
+          <p className="text-sm">Aucun matériau ajouté</p>
+          <p className="text-xs mt-1">Cliquez sur "Ajouter" pour commencer</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {safeMaterials.map((material) => {
+            const product = material.product || {};
+            
+            return (
+              <div 
+                key={material.id} 
+                className="bg-white border border-gray-200 rounded-lg p-3"
+              >
+                <div className="flex items-start gap-3">
+                  {/* Infos produit */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-mono">
+                        {product.product_id}
+                      </span>
+                      {product.product_group && (
+                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">
+                          {product.product_group}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <p className="text-sm font-medium text-gray-900 mb-1">
+                      {product.description}
+                    </p>
+                    
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-gray-700">
+                        <strong>Qté:</strong> {material.quantity} {material.unit}
+                      </span>
+                      
+                      {/* Toggle prix avec condition */}
+                      {material.showPrice && product.unit_price && (
+                        <>
+                          <span className="text-gray-400">|</span>
+                          <span className="text-gray-700">
+                            <strong>Prix:</strong> {product.unit_price.toFixed(2)} $
+                          </span>
+                          <span className="text-gray-400">|</span>
+                          <span className="text-blue-700 font-semibold">
+                            Total: {(material.quantity * product.unit_price).toFixed(2)} $
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    
+                    {material.notes && (
+                      <p className="text-xs text-gray-600 mt-2 italic">
+                        📝 {material.notes}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => startEditMaterial(material)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      title="Modifier"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeMaterial(material.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      title="Retirer"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal d'édition - ADAPTÉ POUR TABLETTE */}
+      {editingMaterial && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-[60] overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-lg my-4 max-h-[calc(100vh-2rem)] flex flex-col">
+            {/* Header - Fixe */}
+            <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0">
+              <h3 className="text-lg font-semibold">Modifier le matériau</h3>
+            </div>
+            
+            {/* Contenu - Scrollable */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Produit info */}
+              <div className="p-4 bg-gray-50 border-b">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
+                    {editingMaterial.product?.product_id}
+                  </span>
+                  {editingMaterial.product?.product_group && (
+                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                      {editingMaterial.product.product_group}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-gray-900">
+                  {editingMaterial.product?.description}
+                </p>
+              </div>
+
+              {/* Formulaire */}
+              <div className="p-4 space-y-4">
+                {/* Quantité */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Quantité *
+                  </label>
+                  <input
+                    ref={editQuantityInputRef}
+                    type="number"
+                    step="0.5"
+                    min="0.1"
+                    value={editForm.quantity}
+                    onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveEditMaterial();
+                      }
+                    }}
+                    className="w-full text-center text-3xl font-bold border-2 border-blue-500 rounded-lg py-4 px-3 focus:ring-2 focus:ring-blue-300"
+                    inputMode="decimal"
+                  />
+                  <p className="text-xs text-gray-600 mt-1 text-center">
+                    Unité: {editingMaterial.unit}
+                  </p>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes (optionnel)
+                  </label>
+                  <textarea
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    rows={3}
+                    placeholder="Ex: Pièce de remplacement, client fourni..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+
+                {/* Afficher prix */}
+                {editingMaterial.product?.unit_price && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      {editForm.showPrice ? <Eye size={18} className="text-blue-600" /> : <EyeOff size={18} className="text-gray-400" />}
+                      <span className="text-sm font-medium text-gray-700">
+                        Afficher le prix sur le bon
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, showPrice: !editForm.showPrice })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        editForm.showPrice ? 'bg-blue-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          editForm.showPrice ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Actions - Fixes en bas */}
+            <div className="p-4 bg-gray-50 border-t flex gap-3 rounded-b-lg flex-shrink-0">
+              <button
+                type="button"
+                onClick={cancelEditMaterial}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-4 rounded-lg text-lg"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={saveEditMaterial}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg text-lg flex items-center justify-center gap-2"
+              >
+                <Save size={20} />
+                Sauvegarder
+              </button>
             </div>
           </div>
         </div>
       )}
 
-        {/* Modal de quantité - Clavier numérique */}
+      {/* Modal de quantité - ADAPTÉ POUR TABLETTE */}
       {pendingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-lg w-full max-w-md">
-            {/* Header */}
-            <div className="bg-blue-600 text-white p-4 rounded-t-lg">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-[60] overflow-y-auto">
+          <div className="bg-white rounded-lg w-full max-w-md my-4 max-h-[calc(100vh-2rem)] flex flex-col">
+            {/* Header - Fixe */}
+            <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0">
               <h3 className="text-lg font-semibold">Quantité</h3>
             </div>
             
-            {/* Produit info */}
-            <div className="p-4 bg-gray-50 border-b">
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
-                  {pendingProduct.product_id}
-                </span>
-                {pendingProduct.product_group && (
-                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
-                    {pendingProduct.product_group}
+            {/* Contenu - Scrollable */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Produit info */}
+              <div className="p-4 bg-gray-50 border-b">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
+                    {pendingProduct.product_id}
                   </span>
-                )}
+                  {pendingProduct.product_group && (
+                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                      {pendingProduct.product_group}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-gray-900">
+                  {pendingProduct.description}
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Unité: {pendingProduct.unit || 'pcs'}
+                </p>
               </div>
-              <p className="text-sm font-medium text-gray-900">
-                {pendingProduct.description}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">
-                Unité: {pendingProduct.unit || 'pcs'}
-              </p>
+              
+              {/* Input quantité */}
+              <div className="p-8">
+                <label className="block text-center text-sm font-medium text-gray-700 mb-4">
+                  Entrez la quantité puis appuyez sur Enter
+                </label>
+                
+                <input
+                  ref={quantityInputRef}
+                  type="number"
+                  step="0.5"
+                  min="0.1"
+                  value={pendingQuantity}
+                  onChange={(e) => setPendingQuantity(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      confirmAddMaterial();
+                    }
+                  }}
+                  className="w-full text-center text-5xl font-bold border-4 border-blue-500 rounded-lg py-6 px-4 focus:ring-4 focus:ring-blue-300 focus:border-blue-600"
+                  inputMode="decimal"
+                  autoFocus
+                  placeholder="0"
+                />
+                
+                <p className="text-center text-sm text-gray-500 mt-3">
+                  Ex: 10.5 ou 12 puis Enter ⏎
+                </p>
+              </div>
             </div>
             
-            {/* Input quantité - GROS et clavier numérique */}
-            <div className="p-8">
-              <label className="block text-center text-sm font-medium text-gray-700 mb-4">
-                Entrez la quantité puis appuyez sur Enter
-              </label>
-              
-              <input
-                ref={quantityInputRef}
-                type="number"
-                step="0.5"
-                min="0.1"
-                value={pendingQuantity}
-                onChange={(e) => setPendingQuantity(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    confirmAddMaterial();
-                  }
-                }}
-                className="w-full text-center text-5xl font-bold border-4 border-blue-500 rounded-lg py-6 px-4 focus:ring-4 focus:ring-blue-300 focus:border-blue-600"
-                inputMode="decimal"
-                autoFocus
-                placeholder="0"
-              />
-              
-              <p className="text-center text-sm text-gray-500 mt-3">
-                Ex: 10.5 ou 12 puis Enter ⏎
-              </p>
-            </div>
-            
-            {/* Actions */}
-            <div className="p-4 bg-gray-50 flex gap-3 rounded-b-lg">
+            {/* Actions - Fixes en bas */}
+            <div className="p-4 bg-gray-50 border-t flex gap-3 rounded-b-lg flex-shrink-0">
               <button
                 type="button"
                 onClick={cancelAddMaterial}
@@ -854,7 +761,6 @@ const deleteMaterialFromModal = () => {
           </div>
         </div>
       )}
-
 
       {/* 🆕 NOUVEAU MODAL - AJOUT RAPIDE PRODUIT NON-INVENTAIRE */}
       {showQuickAddModal && (
@@ -979,4 +885,3 @@ const deleteMaterialFromModal = () => {
     </div>
   );
 }
-      
