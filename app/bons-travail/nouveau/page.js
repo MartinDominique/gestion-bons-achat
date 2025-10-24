@@ -10,6 +10,7 @@ import WorkOrderForm from '../../../components/work-orders/WorkOrderForm';
 export default function NouveauBonTravailPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false); // ✅ Suivre si le BT a été sauvegardé
 
   const handleSave = async (workOrderData, status) => {
     setSaving(true);
@@ -46,6 +47,9 @@ export default function NouveauBonTravailPage() {
         
         const savedWorkOrder = responseData.success ? responseData.data : responseData;
         console.log('📋 CRÉATION - savedWorkOrder extrait:', savedWorkOrder);
+        
+        // ✅ Marquer que le BT a été sauvegardé
+        setHasSaved(true);
         
         // ⭐ NOUVEAU : Toast au lieu de alert
         if (status !== 'ready_for_signature') {
@@ -106,7 +110,13 @@ export default function NouveauBonTravailPage() {
   };
 
   const handleCancel = () => {
-    if (confirm('Annuler la création ? Toutes les données saisies seront perdues.')) {
+    // Afficher confirmation SEULEMENT si le BT n'a jamais été sauvegardé
+    if (!hasSaved) {
+      if (confirm('Annuler la création ? Toutes les données saisies seront perdues.')) {
+        router.push('/bons-travail');
+      }
+    } else {
+      // Si déjà sauvegardé au moins une fois, pas de confirmation
       router.push('/bons-travail');
     }
   };
