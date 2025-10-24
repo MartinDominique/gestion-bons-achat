@@ -979,9 +979,51 @@ useEffect(() => {
         <h2 className="text-xl font-bold text-gray-900">
           {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
         </h2>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
-          <X size={24} />
-        </button>
+        
+        {/* Boutons workflow - en haut */}
+        <div className="flex gap-2">
+          {/* Afficher bouton Fermer si BT déjà signé/envoyé */}
+          {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center font-medium text-sm"
+            >
+              <Check className="mr-2" size={16} />
+              Terminer
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleSubmit('draft')}
+                disabled={saving}
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center font-medium text-sm"
+              >
+                <Save className="mr-2" size={16} />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              </button>
+        
+              <button
+                type="button"
+                onClick={() => handleSubmit('ready_for_signature')}
+                disabled={saving}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center font-medium text-sm"
+              >
+                <FileText className="mr-2" size={16} />
+                {saving ? 'Préparation...' : 'Présenter'}
+              </button>
+        
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium text-sm"
+              >
+                Annuler
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
