@@ -2831,195 +2831,115 @@ const cleanupFilesForSubmission = async (files) => {
         )}
       </div>
 
-      {/* MOBILE VIEW - Cards empilées */}
-      <div className="lg:hidden space-y-4">
+      {/* Vue MOBILE/TABLETTE - Layout 2 lignes ULTRA-COMPACT */}
+      <div className="lg:hidden">
         {filteredSoumissions.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <span className="text-6xl mb-4 block">📝</span>
             <p className="text-gray-500 text-lg">Aucune soumission trouvée</p>
           </div>
         ) : (
-          filteredSoumissions.map((submission) => (
-            <div key={submission.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-              
-              {/* En-tête de la card */}
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">
-                      {submission.status === 'sent' ? '📤' :
-                       submission.status === 'draft' ? '📝' : '✅'}
-                    </span>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-base">
-                        👤 {submission.client_name}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        {submission.submission_number && (
-                          <p className="text-sm text-purple-600">N°: {submission.submission_number}</p>
-                        )}
-                        {submission.items?.some(item => item.comment) && (
-                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-                            💬 Commentaires
-                          </span>
-                        )}
-                      </div>
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden divide-y divide-gray-100">
+            {filteredSoumissions.map((submission, index) => (
+              <div
+                key={submission.id}
+                onClick={() => {
+                  setEditingSubmission(submission);
+                  setSubmissionForm({
+                    client_name: submission.client_name,
+                    description: submission.description,
+                    amount: submission.amount,
+                    status: submission.status,
+                    items: submission.items || [],
+                    submission_number: submission.submission_number || ''
+                  });
+                  setSelectedItems(submission.items || []);
+                  const existingCostTotal = (submission.items || []).reduce((sum, item) => 
+                    sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
+                  );
+                  setCalculatedCostTotal(existingCostTotal);
+                  setShowForm(true);
+                }}
+                className={`p-2 sm:p-3 hover:bg-purple-50 active:bg-purple-100 transition-all duration-150 cursor-pointer touch-manipulation ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                }`}
+              >
+                {/* LIGNE 1: Infos principales */}
+                <div className="flex items-center gap-2 mb-1">
+                  {/* Icône statut */}
+                  <div className="text-xl flex-shrink-0">
+                    {submission.status === 'sent' ? '📤' :
+                     submission.status === 'draft' ? '📝' : '✅'}
+                  </div>
+
+                  {/* Numéro soumission */}
+                  {submission.submission_number && (
+                    <div className="bg-gradient-to-r from-purple-100 to-indigo-100 px-2 py-1 rounded flex-shrink-0">
+                      <div className="font-mono text-xs font-bold text-purple-700">#{submission.submission_number}</div>
                     </div>
-                  </div>
-                  
-                  {/* Menu actions mobile */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setSelectedSubmissionId(selectedSubmissionId === submission.id ? null : submission.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-white/50"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                    
-                    {/* Dropdown actions */}
-                    {selectedSubmissionId === submission.id && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                        <div className="py-1">
-                          <button
-                            onClick={() => {
-                              setEditingSubmission(submission);
-                              setSubmissionForm({
-                                client_name: submission.client_name,
-                                description: submission.description,
-                                amount: submission.amount,
-                                status: submission.status,
-                                items: submission.items || [],
-                                submission_number: submission.submission_number || ''
-                              });
-                              setSelectedItems(submission.items || []);
-                              const existingCostTotal = (submission.items || []).reduce((sum, item) => 
-                                sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
-                              );
-                              setCalculatedCostTotal(existingCostTotal);
-                              setShowForm(true);
-                              setSelectedSubmissionId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Modifier
-                          </button>
-                          <hr className="my-1" />
-                          <button
-                            onClick={() => {
-                              handleDeleteSubmission(submission.id);
-                              setSelectedSubmissionId(null);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                  )}
 
-              {/* Contenu de la card */}
-              <div className="p-4 space-y-3">
-                
-                {/* Description */}
-                <div>
-                  <span className="text-gray-500 text-sm block">📝 Description</span>
-                  <p className="text-gray-900 font-medium">{submission.description}</p>
-                </div>
-
-                {/* Informations principales */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-500 block">💰 Montant</span>
-                    <span className="font-bold text-green-600 text-base">{formatCurrency(submission.amount)}</span>
+                  {/* Client */}
+                  <div className="font-semibold text-gray-900 text-sm truncate flex-1 min-w-0">
+                    {submission.client_name}
                   </div>
-                  <div>
-                    <span className="text-gray-500 block">📅 Date</span>
-                    <span className="font-medium text-gray-900">{formatDate(submission.created_at)}</span>
-                  </div>
-                </div>
 
-                {/* Statut */}
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm">Statut</span>
-                  <span className={`px-2 py-1 rounded text-xs ${
+                  {/* Date */}
+                  <div className="text-xs font-medium text-gray-700 flex-shrink-0 hidden sm:block">
+                    {formatDate(submission.created_at)}
+                  </div>
+
+                  {/* Montant */}
+                  <div className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
+                    {formatCurrency(submission.amount)}
+                  </div>
+
+                  {/* Statut */}
+                  <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${
                     submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
                     submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
                     'bg-green-100 text-green-800'
                   }`}>
-                    {submission.status === 'sent' ? 'Envoyée' :
-                     submission.status === 'draft' ? 'Brouillon' : 'Acceptée'}
-                  </span>
+                    {submission.status === 'sent' ? '📤' :
+                     submission.status === 'draft' ? '📝' : '✅'}
+                  </div>
+
+                  {/* Indicateurs */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {submission.items && submission.items.length > 0 && (
+                      <span className="text-xs text-gray-600">📦{submission.items.length}</span>
+                    )}
+                    {submission.items?.some(item => item.comment) && (
+                      <span className="text-xs text-blue-600">💬</span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Marge et coût */}
-                {submission.items && submission.items.length > 0 && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-orange-600 font-medium">
-                          🏷️ Coût: {formatCurrency(
-                            submission.items.reduce((sum, item) => sum + ((item.cost_price || 0) * (item.quantity || 0)), 0)
-                          )}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-blue-600 font-medium">
-                          📈 Marge: {formatCurrency(
-                            submission.amount - submission.items.reduce((sum, item) => sum + ((item.cost_price || 0) * (item.quantity || 0)), 0)
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-1 text-xs text-gray-600 flex justify-between">
-                      <span>📦 {submission.items.length} item(s)</span>
-                      {submission.items.some(item => item.comment) && (
-                        <span className="text-blue-600">💬 {submission.items.filter(item => item.comment).length} commentaire(s)</span>
-                      )}
-                    </div>
+                {/* LIGNE 2: Description + Marge */}
+                <div className="flex items-center justify-between gap-2 text-xs text-gray-600 pl-2">
+                  <div className="truncate flex-1 min-w-0">
+                    {submission.description || 'Aucune description'}
                   </div>
-                )}
+                  {submission.items && submission.items.length > 0 && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-orange-600 font-medium">
+                        🏷️ {formatCurrency(
+                          submission.items.reduce((sum, item) => sum + ((item.cost_price || 0) * (item.quantity || 0)), 0)
+                        )}
+                      </span>
+                      <span className="text-blue-600 font-medium">
+                        📈 {formatCurrency(
+                          submission.amount - submission.items.reduce((sum, item) => sum + ((item.cost_price || 0) * (item.quantity || 0)), 0)
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-
-              {/* Actions rapides en bas */}
-              <div className="bg-gray-50 px-4 py-3 flex gap-2">
-                <button
-                  onClick={() => {
-                    setEditingSubmission(submission);
-                    setSubmissionForm({
-                      client_name: submission.client_name,
-                      description: submission.description,
-                      amount: submission.amount,
-                      status: submission.status,
-                      items: submission.items || [],
-                      submission_number: submission.submission_number || ''
-                    });
-                    setSelectedItems(submission.items || []);
-                    const existingCostTotal = (submission.items || []).reduce((sum, item) => 
-                      sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
-                    );
-                    setCalculatedCostTotal(existingCostTotal);
-                    setShowForm(true);
-                  }}
-                  className="flex-1 bg-purple-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors"
-                >
-                  ✏️ Modifier
-                </button>
-                <button
-                  onClick={() => handleDeleteSubmission(submission.id)}
-                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
-                >
-                  🗑️ Supprimer
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
-      </div>
+      </div>      </div>
     </div>
   );
 }
