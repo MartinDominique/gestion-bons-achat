@@ -400,7 +400,9 @@ const PurchaseOrderManager = () => {
               <div 
                 key={po.id} 
                 onClick={() => handleEditPO(po)}
-                className="p-2 sm:p-3 hover:bg-blue-50 active:bg-blue-100 transition-all duration-150 cursor-pointer touch-manipulation"
+                className={`p-2 sm:p-3 hover:bg-blue-50 active:bg-blue-100 transition-all duration-150 cursor-pointer touch-manipulation ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                }`}
               >
                 {/* LIGNE 1: Informations principales */}
                 <div className="flex items-center gap-2 sm:gap-3 mb-1">
