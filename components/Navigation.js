@@ -14,7 +14,7 @@ const pages = [
   { id: 'soumissions', name: 'Soumissions', shortName: "Soum.", icon: FileText },
   { id: 'inventaire', name: 'Inventaire', shortName: "Inv.", icon: Warehouse },
   { id: 'achat-materiels', name: 'Achat', shortName: "Achat", icon: ShoppingCart },
-  { id: 'bons-travail', name: 'Bons de Travail', shortName: "BT", icon: FileText },
+  { id: 'bons-travail', name: 'Bons Travail', shortName: "BT", icon: FileText },
 ];
 
 export default function Navigation() {
@@ -161,7 +161,7 @@ export default function Navigation() {
                 className="flex items-center px-4 py-2 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors"
               >
                 <Users className="w-5 h-5 mr-2" />
-                Gestion des Clients
+                Gestion Clients
               </button>
             </div>
 
