@@ -200,21 +200,45 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
           onClick={(e) => e.stopPropagation()}
         >
           
-          {/* 📱 En-tête avec gradient */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4 relative">
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-white/20"
-            >
-              <X className="w-5 h-5" />
-            </button>
+          {/* 📱 En-tête avec gradient et boutons */}
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              {/* Titre */}
+              <div className="flex-1">
+                <h2 className="text-xl font-bold">
+                  {client ? '✏️ Modifier le client' : '➕ Nouveau client'}
+                </h2>
+                <p className="text-blue-100 text-sm mt-1">
+                  {client ? 'Modifiez les informations' : 'Créez un nouveau contact avec ses 3 contacts et signataires'}
+                </p>
+              </div>
 
-            <h2 className="text-xl font-bold pr-8">
-              {client ? '✏️ Modifier le client' : '➕ Nouveau client'}
-            </h2>
-            <p className="text-blue-100 text-sm mt-1">
-              {client ? 'Modifiez les informations' : 'Créez un nouveau contact avec ses 3 contacts et signataires'}
-            </p>
+              {/* Boutons d'action */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all font-medium border border-white/30 text-sm"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={save}
+                  disabled={saving || !form.name?.trim()}
+                  className="px-4 py-2 bg-white text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg disabled:shadow-none text-sm"
+                >
+                  {saving ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent mr-2"></div>
+                      Sauvegarde…
+                    </div>
+                  ) : (
+                    <>
+                      {client ? '💾 Mettre à jour' : '✨ Créer le client'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* 📱 Contenu du formulaire avec scroll */}
@@ -523,38 +547,6 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
             </div>
           </div>
 
-          {/* 📱 Boutons d'action fixes en bas */}
-          <div className="border-t bg-white px-6 py-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={onClose}
-                className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all font-medium"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={save}
-                disabled={saving || !form.name?.trim()}
-                className="w-full sm:flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg disabled:shadow-none"
-              >
-                {saving ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                    Sauvegarde…
-                  </div>
-                ) : (
-                  <>
-                    {client ? '💾 Mettre à jour' : '✨ Créer le client'}
-                  </>
-                )}
-              </button>
-            </div>
-            
-            {/* 📱 Note de validation */}
-            <p className="text-xs text-gray-500 mt-3 text-center">
-              * Le nom est obligatoire • Les contacts et signataires sont optionnels
-            </p>
-          </div>
         </div>
       </div>
     </>
