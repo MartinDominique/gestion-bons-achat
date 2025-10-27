@@ -357,7 +357,7 @@ export default function WorkOrderForm({
     try {
       const { data, error } = await supabase
         .from('purchase_orders')
-        .select('id, po_number, notes, date, created_at')
+        .select('id, po_number, description, amount, date, created_at')
         .eq('client_name', clientName)
         .order('created_at', { ascending: false });
 
