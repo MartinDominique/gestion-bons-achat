@@ -50,7 +50,7 @@ export default function WorkOrderForm({
   workOrder = null, 
   onSave, 
   onCancel, 
-  onFormChange, // ✅ Nouvelle prop pour notifier les changements
+  onFormChange,
   mode = 'create',
   saving = false 
 }) {
@@ -66,14 +66,12 @@ export default function WorkOrderForm({
     status: 'draft'
   });
 
-  // État pour sélection des emails
   const [selectedEmails, setSelectedEmails] = useState({
     email: true,      
     email_2: false,
     email_admin: false
   });
 
-  // État pour descriptions multiligne
   const [descriptions, setDescriptions] = useState(['']);
 
   const [materials, setMaterials] = useState([]);
@@ -82,14 +80,12 @@ export default function WorkOrderForm({
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [showClientModal, setShowClientModal] = useState(false);
-  const [editingClient, setEditingClient] = useState(null); // ⭐ NOUVEAU - Client en cours d'édition
-  const [isInitializing, setIsInitializing] = useState(true); // ✅ Flag pour ignorer les changements durant l'initialisation
+  const [editingClient, setEditingClient] = useState(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   
-  // Cache des produits pour vérification
   const [cachedProducts, setCachedProducts] = useState([]);
   const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState([]);
 
-  // NOUVEAUX ÉTATS POUR IMPORTS
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [showSupplierImportModal, setShowSupplierImportModal] = useState(false);
   const [submissions, setSubmissions] = useState([]);
@@ -99,7 +95,6 @@ export default function WorkOrderForm({
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [isLoadingSupplierPurchases, setIsLoadingSupplierPurchases] = useState(false);
   
-  // États pour la sélection de soumission
   const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
   const [selectedSubmissionItems, setSelectedSubmissionItems] = useState([]);
 
@@ -123,7 +118,6 @@ export default function WorkOrderForm({
       }
     }
     
-    // Par défaut : sélectionner l'email principal
     setSelectedEmails({ email: true, email_2: false, email_admin: false });
   };
 
@@ -153,7 +147,6 @@ export default function WorkOrderForm({
     
     setSelectedEmails(newSelection);
     
-    // Sauvegarder la préférence
     if (formData.client_id) {
       saveEmailPreferences(formData.client_id, newSelection);
     }
@@ -176,7 +169,6 @@ export default function WorkOrderForm({
     return emails;
   };
 
-  // Charger les préférences email quand le client change
   useEffect(() => {
     if (formData.client_id && selectedClient) {
       loadEmailPreferences(formData.client_id);
@@ -187,7 +179,6 @@ export default function WorkOrderForm({
   // INITIALISATION
   // ========================================
 
-  // Initialisation pour mode édition
   useEffect(() => {
     if (workOrder && mode === 'edit') {
       setFormData({
@@ -200,7 +191,6 @@ export default function WorkOrderForm({
         status: workOrder.status || 'draft'
       });
       
-      // Convertir description en tableau de paragraphes
       if (workOrder.work_description) {
         const paragraphs = workOrder.work_description.split('\n\n').filter(p => p.trim());
         setDescriptions(paragraphs.length > 0 ? paragraphs : ['']);
@@ -210,34 +200,27 @@ export default function WorkOrderForm({
         setSelectedClient(workOrder.client);
       }
 
-      // Charger les matériaux existants
       if (workOrder.materials) {
         setMaterials(workOrder.materials);
       }
 
-      // Charger les emails sélectionnés si disponibles
       if (workOrder.selected_client_emails) {
         setSelectedEmails(workOrder.selected_client_emails);
       }
     }
   }, [workOrder, mode]);
 
-  // ✅ Marquer la fin de l'initialisation après le premier rendu
   useEffect(() => {
-    // Petit délai pour s'assurer que toutes les initialisations sont terminées
     const timer = setTimeout(() => {
       setIsInitializing(false);
     }, 100);
     return () => clearTimeout(timer);
   }, []);
 
-  // Charger les produits et non-inventory items au démarrage
   useEffect(() => {
     loadProductsCache();
   }, []);
 
-  // Charger les clients avec auto-rechargement
-  // ⭐ Extraire la fonction pour pouvoir l'appeler ailleurs
   const loadClients = async () => {
     console.log('📡 loadClients() appelé');
     try {
@@ -253,7 +236,6 @@ export default function WorkOrderForm({
         setClients(data);
         console.log('💾 setClients() exécuté');
         
-        // Si mode édition, sélectionner le client actuel
         if (workOrder && mode === 'edit') {
           const client = data.find(c => c.id === workOrder.client_id);
           if (client) {
@@ -270,9 +252,8 @@ export default function WorkOrderForm({
   };
 
   useEffect(() => {
-    loadClients(); // Chargement initial
+    loadClients();
     
-    // ✅ SOLUTION 1 : Recharger automatiquement au retour sur la page
     const handleFocus = () => {
       console.log('🔄 Rechargement clients (retour focus)');
       loadClients();
@@ -285,22 +266,18 @@ export default function WorkOrderForm({
     };
   }, [workOrder, mode]);
 
-  // ⭐ NOUVEAU - Callback après création/modification d'un client
   const handleClientSaved = async (savedClient) => {
     console.log('✅ Client sauvegardé:', savedClient);
     console.log('📊 ID du client:', savedClient.id, typeof savedClient.id);
     
-    // 1. Ajouter/Mettre à jour immédiatement dans la liste (optimistic update)
     setClients(prevClients => {
       const exists = prevClients.find(c => c.id === savedClient.id);
       let updatedClients;
       
       if (exists) {
-        // Mise à jour d'un client existant
         updatedClients = prevClients.map(c => c.id === savedClient.id ? savedClient : c);
         console.log('🔄 Client mis à jour dans la liste');
       } else {
-        // Nouveau client - ajouter et trier
         updatedClients = [...prevClients, savedClient].sort((a, b) => 
           a.name.localeCompare(b.name)
         );
@@ -311,34 +288,29 @@ export default function WorkOrderForm({
       return updatedClients;
     });
     
-    // 2. Sélectionner automatiquement le client (avec un petit délai pour garantir que setClients est appliqué)
     setTimeout(() => {
       console.log('🎯 Sélection du client:', savedClient.name);
       setSelectedClient(savedClient);
       setFormData(prev => ({
         ...prev,
-        client_id: String(savedClient.id) // Forcer en string
+        client_id: String(savedClient.id)
       }));
       console.log('✅ FormData.client_id défini à:', String(savedClient.id));
     }, 50);
     
-    // 3. Notification
     toast.success(`Client ${savedClient.name} ${editingClient ? 'modifié' : 'créé'} avec succès!`);
     
-    // 4. Recharger en arrière-plan pour confirmer (après 1 seconde)
     setTimeout(() => {
       console.log('🔄 Rechargement de la liste depuis l\'API');
       loadClients();
     }, 1000);
   };
 
-  // ⭐ NOUVEAU - Ouvrir le modal en mode création
   const handleNewClient = () => {
     setEditingClient(null);
     setShowClientModal(true);
   };
 
-  // ⭐ NOUVEAU - Ouvrir le modal en mode édition
   const handleEditClient = () => {
     if (!selectedClient) {
       toast.error('Veuillez sélectionner un client à modifier');
@@ -348,7 +320,6 @@ export default function WorkOrderForm({
     setShowClientModal(true);
   };
 
-  // Synchroniser descriptions avec work_description
   useEffect(() => {
     const combinedDescription = descriptions
       .filter(desc => desc.trim())
@@ -357,83 +328,27 @@ export default function WorkOrderForm({
     setFormData(prev => ({ ...prev, work_description: combinedDescription }));
   }, [descriptions]);
 
-  // ========================================
-// VÉRIFIER STATUS PÉRIODIQUEMENT SI EN ATTENTE DE SIGNATURE
-// ========================================
-useEffect(() => {
-  if (mode === 'edit' && formData.status === 'ready_for_signature' && workOrder?.id) {
-    console.log('👀 Mode surveillance activé');
-    
-    let intervalId = null;
-    
-    const checkStatus = async () => {
-      try {
-        const response = await fetch(`/api/work-orders/${workOrder.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          const currentStatus = data.data?.status;
-          
-          console.log('📊 Status vérifié:', currentStatus);
-          
-          if (currentStatus === 'sent' || currentStatus === 'signed' || currentStatus === 'pending_send') {
-            console.log('✅ Signature détectée !');
+  useEffect(() => {
+    if (mode === 'edit' && formData.status === 'ready_for_signature' && workOrder?.id) {
+      console.log('👀 Mode surveillance activé');
+      
+      let intervalId = null;
+      
+      const checkStatus = async () => {
+        try {
+          const response = await fetch(`/api/work-orders/${workOrder.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            const currentStatus = data.data?.status;
             
-            // Arrêter le polling
-            if (intervalId) clearInterval(intervalId);
+            console.log('📊 Status vérifié:', currentStatus);
             
-            toast.success('✅ Le client a signé le bon de travail !', {
-              duration: 2000,
-            });
-            
-            setTimeout(() => {
-              router.push('/bons-travail');
-            }, 2000);
-          }
-        }
-      } catch (error) {
-        console.error('Erreur vérification status:', error);
-      }
-    };
-    
-    // Première vérification immédiate
-    checkStatus();
-    
-    // Puis toutes les 3 secondes
-    intervalId = setInterval(checkStatus, 3000);
-    
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-      console.log('🛑 Surveillance arrêtée');
-    };
-  }
-}, [mode, formData.status, workOrder?.id, router]);
-
-  // ========================================
-// RECHARGER LES DONNÉES AU RETOUR SUR LA PAGE
-// ========================================
-useEffect(() => {
-  const workOrderId = currentWorkOrderId || workOrder?.id;
-  
-  if (workOrderId) {
-    const handleFocus = async () => {
-      try {
-        const response = await fetch(`/api/work-orders/${workOrderId}`);
-        if (response.ok) {
-          const data = await response.json();
-          const updatedWorkOrder = data.data;
-          
-          if (updatedWorkOrder?.status !== formData.status) {
-            console.log(`🔄 Status changé: ${formData.status} → ${updatedWorkOrder.status}`);
-            
-            // Mettre à jour le status dans le formulaire
-            setFormData(prev => ({
-              ...prev,
-              status: updatedWorkOrder.status
-            }));
-            
-            // Si le BT est maintenant signé/envoyé, rediriger
-            if (['signed', 'sent', 'pending_send'].includes(updatedWorkOrder.status)) {
-              toast.success('✅ Le bon de travail a été traité avec succès !', {
+            if (currentStatus === 'sent' || currentStatus === 'signed' || currentStatus === 'pending_send') {
+              console.log('✅ Signature détectée !');
+              
+              if (intervalId) clearInterval(intervalId);
+              
+              toast.success('✅ Le client a signé le bon de travail !', {
                 duration: 2000,
               });
               
@@ -442,20 +357,64 @@ useEffect(() => {
               }, 2000);
             }
           }
+        } catch (error) {
+          console.error('Erreur vérification status:', error);
         }
-      } catch (error) {
-        console.error('❌ Erreur rechargement status:', error);
-      }
-    };
+      };
+      
+      checkStatus();
+      
+      intervalId = setInterval(checkStatus, 3000);
+      
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+        console.log('🛑 Surveillance arrêtée');
+      };
+    }
+  }, [mode, formData.status, workOrder?.id, router]);
+
+  useEffect(() => {
+    const workOrderId = currentWorkOrderId || workOrder?.id;
     
-    // Écouter quand la fenêtre redevient active
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }
-}, [currentWorkOrderId, workOrder?.id, formData.status, router]);
+    if (workOrderId) {
+      const handleFocus = async () => {
+        try {
+          const response = await fetch(`/api/work-orders/${workOrderId}`);
+          if (response.ok) {
+            const data = await response.json();
+            const updatedWorkOrder = data.data;
+            
+            if (updatedWorkOrder?.status !== formData.status) {
+              console.log(`🔄 Status changé: ${formData.status} → ${updatedWorkOrder.status}`);
+              
+              setFormData(prev => ({
+                ...prev,
+                status: updatedWorkOrder.status
+              }));
+              
+              if (['signed', 'sent', 'pending_send'].includes(updatedWorkOrder.status)) {
+                toast.success('✅ Le bon de travail a été traité avec succès !', {
+                  duration: 2000,
+                });
+                
+                setTimeout(() => {
+                  router.push('/bons-travail');
+                }, 2000);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Erreur rechargement status:', error);
+        }
+      };
+      
+      window.addEventListener('focus', handleFocus);
+      
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+      };
+    }
+  }, [currentWorkOrderId, workOrder?.id, formData.status, router]);
 
   // ========================================
   // FONCTIONS CACHE PRODUITS
@@ -463,7 +422,6 @@ useEffect(() => {
 
   const loadProductsCache = async () => {
     try {
-      // Charger les produits d'inventaire
       const productsResponse = await fetch('/api/products?limit=5000');
       if (productsResponse.ok) {
         const productsData = await productsResponse.json();
@@ -472,7 +430,6 @@ useEffect(() => {
         console.log(`${products.length} produits d'inventaire chargés en cache`);
       }
 
-      // Charger les non-inventory items depuis Supabase
       const { data: nonInventoryData, error } = await supabase
         .from('non_inventory_items')
         .select('*')
@@ -495,7 +452,6 @@ useEffect(() => {
       return { found: false };
     }
   
-    // Chercher dans les produits d'inventaire par product_id (qui est le code)
     const inventoryProduct = cachedProducts.find(p => 
       p.product_id === productCode
     );
@@ -511,7 +467,6 @@ useEffect(() => {
       };
     }
   
-    // Chercher dans les non-inventory items par product_id
     const nonInventoryProduct = cachedNonInventoryItems.find(p => 
       p.product_id === productCode
     );
@@ -817,7 +772,6 @@ useEffect(() => {
     const newDescriptions = [...descriptions];
     newDescriptions[index] = value;
     setDescriptions(newDescriptions);
-    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
     if (onFormChange && !isInitializing) {
       onFormChange();
     }
@@ -825,7 +779,6 @@ useEffect(() => {
 
   const addDescription = () => {
     setDescriptions([...descriptions, '']);
-    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
     if (onFormChange && !isInitializing) {
       onFormChange();
     }
@@ -835,14 +788,12 @@ useEffect(() => {
     if (descriptions.length > 1) {
       const newDescriptions = descriptions.filter((_, i) => i !== index);
       setDescriptions(newDescriptions);
-      // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
       if (onFormChange && !isInitializing) {
         onFormChange();
       }
     }
   };
 
- 
   const handleTimeChange = (timeData) => {
     console.log('📥 WorkOrderForm reçoit timeData:', timeData);
     
@@ -851,12 +802,10 @@ useEffect(() => {
       time_entries: timeData.time_entries || [],
       total_hours: timeData.total_hours || 0
     }));
-    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
     if (onFormChange && !isInitializing) {
       onFormChange();
     }
   };
-
 
   const validateForm = () => {
     const newErrors = {};
@@ -882,7 +831,6 @@ useEffect(() => {
         return newErrors;
       });
     }
-    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
     if (onFormChange && !isInitializing) {
       onFormChange();
     }
@@ -905,137 +853,178 @@ useEffect(() => {
         return newErrors;
       });
     }
-    // ✅ Notifier le parent qu'un changement a été fait (sauf durant l'initialisation)
     if (onFormChange && !isInitializing) {
       onFormChange();
     }
   };
 
+  // ========================================
+  // SOUMISSION
+  // ========================================
+
   const handleSubmit = async (status = 'draft') => {
-  if (!validateForm()) return;
+    if (!validateForm()) return;
 
-  // Sécurité: si des heures sont présentes, on recalcule selon la même règle
-  let payload = { ...formData };
-  if (payload.start_time && payload.end_time) {
-    payload.total_hours = toQuarterHourUp(
-      payload.start_time,
-      payload.end_time,
-      payload.pause_minutes
-    );
-  }
+    let payload = { ...formData };
+    if (payload.start_time && payload.end_time) {
+      payload.total_hours = toQuarterHourUp(
+        payload.start_time,
+        payload.end_time,
+        payload.pause_minutes
+      );
+    }
 
-  console.log('📋 Matériaux AVANT normalisation:', materials);
+    console.log('📋 Matériaux AVANT normalisation:', materials);
 
-  // Normaliser les matériaux avec validation stricte
-  const normalizedMaterials = materials.map((material, index) => {
-    console.log(`\n🔄 Normalisation matériau ${index}:`, material);
+    const normalizedMaterials = materials.map((material, index) => {
+      console.log(`\n🔄 Normalisation matériau ${index}:`, material);
 
-    let normalizedProductId = null;
+      let normalizedProductId = null;
 
-    if (material.product_id !== undefined && material.product_id !== null) {
-      const id = material.product_id;
+      if (material.product_id !== undefined && material.product_id !== null) {
+        const id = material.product_id;
 
-      const isValidUUID = typeof id === 'string' &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-      const isNumber = typeof id === 'number';
+        const isValidUUID = typeof id === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        const isNumber = typeof id === 'number';
 
-      if (isValidUUID || isNumber) {
-        normalizedProductId = id;
-        console.log(`✅ product_id valide: ${normalizedProductId}`);
-      } else {
-        console.log(`⚠️ product_id "${id}" n'est pas valide, recherche...`);
-        const existingProduct = findExistingProduct(id);
-        if (existingProduct.found) {
-          normalizedProductId = existingProduct.id;
-          console.log(`✅ ID trouvé: ${normalizedProductId}`);
+        if (isValidUUID || isNumber) {
+          normalizedProductId = id;
+          console.log(`✅ product_id valide: ${normalizedProductId}`);
         } else {
-          normalizedProductId = null;
-          console.log(`❌ Produit non trouvé, mis à NULL`);
+          console.log(`⚠️ product_id "${id}" n'est pas valide, recherche...`);
+          const existingProduct = findExistingProduct(id);
+          if (existingProduct.found) {
+            normalizedProductId = existingProduct.id;
+            console.log(`✅ ID trouvé: ${normalizedProductId}`);
+          } else {
+            normalizedProductId = null;
+            console.log(`❌ Produit non trouvé, mis à NULL`);
+          }
         }
       }
-    }
 
-    const normalized = {
-      ...material,
-      product_id: normalizedProductId,
-      description: material.description || material.product?.description || 'Article sans description',
-      code: material.code || material.product?.product_id || material.display_code || '',
-      unit: material.unit || material.product?.unit || 'UN',
-      unit_price: material.unit_price || material.product?.selling_price || 0,
-      show_price: material.showPrice || material.show_price || false
+      const normalized = {
+        ...material,
+        product_id: normalizedProductId,
+        description: material.description || material.product?.description || 'Article sans description',
+        code: material.code || material.product?.product_id || material.display_code || '',
+        unit: material.unit || material.product?.unit || 'UN',
+        unit_price: material.unit_price || material.product?.selling_price || 0,
+        show_price: material.showPrice || material.show_price || false
+      };
+
+      if (normalizedProductId === null) {
+        delete normalized.product;
+      }
+
+      console.log(`📦 Matériau ${index} normalisé - product_id: ${normalized.product_id}`);
+      return normalized;
+    });
+
+    console.log('\n✅ MATÉRIAUX NORMALISÉS:', normalizedMaterials);
+    console.log('🔍 Vérification finale des product_id:');
+    normalizedMaterials.forEach((m, i) => {
+      console.log(`  ${i}: product_id=${m.product_id} (type: ${typeof m.product_id}), code="${m.code}"`);
+    });
+
+    const dataToSave = {
+      ...payload,
+      client_id: parseInt(payload.client_id),
+      status,
+      materials: normalizedMaterials,
+      selected_client_emails: selectedEmails,
+      recipient_emails: getSelectedEmailAddresses()
     };
 
-    if (normalizedProductId === null) {
-      delete normalized.product;
+    if (mode === 'edit' && workOrder) {
+      dataToSave.id = workOrder.id;
     }
 
-    console.log(`📦 Matériau ${index} normalisé - product_id: ${normalized.product_id}`);
-    return normalized;
-  });
+    try {
+      const savedWorkOrder = await onSave(dataToSave, status);
+      if (savedWorkOrder?.id) {
+        setCurrentWorkOrderId(savedWorkOrder.id);
+      }
+      
+      console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
 
-  console.log('\n✅ MATÉRIAUX NORMALISÉS:', normalizedMaterials);
-  console.log('🔍 Vérification finale des product_id:');
-  normalizedMaterials.forEach((m, i) => {
-    console.log(`  ${i}: product_id=${m.product_id} (type: ${typeof m.product_id}), code="${m.code}"`);
-  });
-
-  // 🔴 ICI: utiliser payload (pas formData)
-  const dataToSave = {
-    ...payload,
-    client_id: parseInt(payload.client_id),
-    status,
-    materials: normalizedMaterials,
-    selected_client_emails: selectedEmails,
-    recipient_emails: getSelectedEmailAddresses()
+      if (status === 'ready_for_signature' && savedWorkOrder) {
+        const workOrderId = savedWorkOrder.id || workOrder?.id;
+        if (workOrderId) {
+          window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde:', error);
+      setErrors({ general: 'Erreur lors de la sauvegarde' });
+    }
   };
 
-  if (mode === 'edit' && workOrder) {
-    dataToSave.id = workOrder.id;
-  }
-
-  try {
-    const savedWorkOrder = await onSave(dataToSave, status);
-    // ✅ NOUVEAU : Sauvegarder l'ID pour le polling
-    if (savedWorkOrder?.id) {
-      setCurrentWorkOrderId(savedWorkOrder.id);
-    }
-    
-    console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
-
-    if (status === 'ready_for_signature' && savedWorkOrder) {
-      const workOrderId = savedWorkOrder.id || workOrder?.id;
-      if (workOrderId) {
-        window.open(`/bons-travail/${workOrderId}/client`, '_blank');
-      }
-    }
-  } catch (error) {
-    console.error('❌ Erreur sauvegarde:', error);
-    setErrors({ general: 'Erreur lors de la sauvegarde' });
-  }
-};
-
-  // ========================================
-  // RENDER
-  // ========================================
-
   return (
-    <div className="space-y-6">
-      <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-        {/* Section Client */}
-        <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-          <h3 className="text-lg font-medium text-gray-900 flex items-center mb-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-              <span className="text-blue-600 font-bold text-sm">1</span>
-            </div>
-            Informations Client
-          </h3>
-          
+    <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
+    
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h2 className="text-xl font-bold text-gray-900">
+          {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
+        </h2>
+        
+        {/* Boutons workflow - en haut (colonne sur mobile, ligne sur tablet/PC) */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center font-medium text-sm"
+            >
+              <Check className="mr-2" size={16} />
+              Terminer
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleSubmit('draft')}
+                disabled={saving}
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
+              >
+                <Save className="mr-2" size={16} />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              </button>
+        
+              <button
+                type="button"
+                onClick={() => handleSubmit('ready_for_signature')}
+                disabled={saving}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
+              >
+                <FileText className="mr-2" size={16} />
+                {saving ? 'Préparation...' : 'Présenter'}
+              </button>
+        
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium text-sm"
+              >
+                Annuler
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
+        {/* Section Client + Bon d'achat */}
+        <div className="bg-blue-50 p-4 rounded-lg space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <User className="inline mr-2" size={16} />
               Client *
             </label>
-            <div className="flex gap-2">
+            
+            <div className="flex flex-col sm:flex-row gap-2">
               <select
                 className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
                   errors.client_id ? 'border-red-500' : 'border-gray-300'
@@ -1054,8 +1043,12 @@ useEffect(() => {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={loadClients}
-                  className="p-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 flex items-center justify-center"
+                  onClick={() => {
+                    console.log('🔄 Rafraîchissement manuel de la liste clients');
+                    loadClients();
+                    toast.success('Liste des clients actualisée');
+                  }}
+                  className="p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center"
                   title="🔄 Actualiser la liste des clients"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1100,7 +1093,6 @@ useEffect(() => {
             )}
           </div>
 
-          {/* Section Sélection des emails - NOUVEAU */}
           {selectedClient && (selectedClient.email || selectedClient.email_2 || selectedClient.email_admin) && (
             <div className="bg-white border border-blue-200 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
@@ -1108,7 +1100,6 @@ useEffect(() => {
                 Emails pour envoi du bon de travail
               </h3>
               <div className="space-y-2">
-                {/* Email principal */}
                 {selectedClient.email && (
                   <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
                     <input
@@ -1124,7 +1115,6 @@ useEffect(() => {
                   </label>
                 )}
                 
-                {/* Email secondaire */}
                 {selectedClient.email_2 && (
                   <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
                     <input
@@ -1140,7 +1130,6 @@ useEffect(() => {
                   </label>
                 )}
                 
-                {/* Email admin */}
                 {selectedClient.email_admin && (
                   <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
                     <input
@@ -1157,7 +1146,6 @@ useEffect(() => {
                 )}
               </div>
               
-              {/* Compteur d'emails sélectionnés */}
               <div className="mt-3 pt-3 border-t border-blue-200">
                 <p className="text-xs text-blue-700">
                   {Object.values(selectedEmails).filter(Boolean).length} email(s) sélectionné(s) pour l'envoi
@@ -1166,7 +1154,6 @@ useEffect(() => {
             </div>
           )}
 
-          {/* Champ texte simple pour PO */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               📋 Numéro bon d'achat / Job client (optionnel)
@@ -1184,7 +1171,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Date de travail */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <Calendar className="inline mr-2" size={16} />
@@ -1203,8 +1189,6 @@ useEffect(() => {
           )}
         </div>
 
-        {/* Système Punch-in/Punch-out */}
-        
         <TimeTracker
           onTimeChange={handleTimeChange}
           initialTimeEntries={formData.time_entries || []}
@@ -1213,7 +1197,6 @@ useEffect(() => {
           selectedClient={selectedClient}
         />
 
-        {/* Descriptions multiligne avec ajout de lignes */}
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex items-center justify-between mb-3">
             <label className="block text-sm font-medium text-gray-700">
@@ -1230,7 +1213,7 @@ useEffect(() => {
             </button>
           </div>
           
-           {descriptions.map((description, index) => (
+          {descriptions.map((description, index) => (
             <div key={index} className="mb-3 flex gap-2">
               <div className="flex-1">
                 <textarea
@@ -1261,7 +1244,6 @@ useEffect(() => {
             <p className="text-red-500 text-sm mt-1">{errors.work_description}</p>
           )}
           
-          {/* Aperçu combiné */}
           {descriptions.some(d => d.trim()) && (
             <div className="mt-3 p-3 bg-white border rounded-lg">
               <div className="text-xs text-gray-500 mb-2">Aperçu final:</div>
@@ -1272,7 +1254,6 @@ useEffect(() => {
           )}
         </div>
 
-        {/* Notes */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Notes additionnelles
@@ -1287,7 +1268,6 @@ useEffect(() => {
           />
         </div>
 
-        {/* Section Matériaux */}
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-medium text-gray-900 flex items-center mb-3">
             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
@@ -1296,7 +1276,6 @@ useEffect(() => {
             Matériaux et Produits
           </h3>
           
-          {/* BOUTONS D'IMPORT */}
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               type="button"
@@ -1334,9 +1313,7 @@ useEffect(() => {
           )}
         </div>
 
-        {/* Boutons workflow terrain */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-          {/* Afficher bouton Fermer si BT déjà signé/envoyé */}
           {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
             <button
               type="button"
@@ -1379,7 +1356,6 @@ useEffect(() => {
           )}
         </div>
 
-        {/* Aide contextuelle workflow */}
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <h4 className="font-medium text-blue-900 mb-2">💡 Workflow Terrain</h4>
           <div className="text-sm text-blue-800 space-y-1">
@@ -1396,7 +1372,6 @@ useEffect(() => {
       {showSubmissionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-            {/* Header */}
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <FileText className="text-blue-600" size={24} />
@@ -1414,10 +1389,8 @@ useEffect(() => {
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               {!selectedSubmissionForImport ? (
-                // Liste des soumissions
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600 mb-4">
                     Sélectionnez une soumission pour voir ses articles
@@ -1456,7 +1429,6 @@ useEffect(() => {
                   ))}
                 </div>
               ) : (
-                // Liste des articles de la soumission sélectionnée
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
                     <button
@@ -1532,7 +1504,6 @@ useEffect(() => {
               )}
             </div>
 
-            {/* Footer */}
             <div className="p-6 border-t flex justify-end gap-3">
               <button
                 onClick={() => {
@@ -1564,7 +1535,6 @@ useEffect(() => {
       {showSupplierImportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-            {/* Header */}
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Package className="text-purple-600" size={24} />
@@ -1582,10 +1552,8 @@ useEffect(() => {
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               {!selectedPurchaseForImport ? (
-                // Liste des achats fournisseurs
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600 mb-4">
                     Sélectionnez un achat fournisseur pour voir ses articles
@@ -1624,7 +1592,6 @@ useEffect(() => {
                   ))}
                 </div>
               ) : (
-                // Liste des articles de l'achat sélectionné
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
                     <button
@@ -1705,7 +1672,6 @@ useEffect(() => {
               )}
             </div>
 
-            {/* Footer */}
             <div className="p-6 border-t flex justify-end gap-3">
               <button
                 onClick={() => {
@@ -1731,12 +1697,11 @@ useEffect(() => {
         </div>
       )}
 
-      {/* ✅ Modal Création/Édition Client */}
       <ClientModal
         open={showClientModal}
         onClose={() => {
           setShowClientModal(false);
-          setEditingClient(null); // Réinitialiser après fermeture
+          setEditingClient(null);
         }}
         onSaved={handleClientSaved}
         client={editingClient}
