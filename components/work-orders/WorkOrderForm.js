@@ -216,20 +216,36 @@ export default function WorkOrderForm({
       }
 
       // Déterminer si le linked_po_id est un BA de la BD ou une saisie manuelle
-      // On va charger les BAs du client et vérifier si le PO existe
       if (workOrder.linked_po_id && workOrder.client) {
         const checkPOExists = async () => {
-          const { data } = await supabase
-            .from('purchase_orders')
-            .select('po_number')
-            .eq('client_name', workOrder.client.name)
-            .eq('po_number', workOrder.linked_po_id)
-            .single();
-          
-          if (!data) {
-            // C'est une saisie manuelle
-            setUseManualPO(true);
-            setManualPOValue(workOrder.linked_po_id);
+          // Si c'est un nombre, c'est l'ID - on doit convertir en po_number
+          if (typeof workOrder.linked_po_id === 'number' || !isNaN(workOrder.linked_po_id)) {
+            const { data } = await supabase
+              .from('purchase_orders')
+              .select('po_number')
+              .eq('id', parseInt(workOrder.linked_po_id))
+              .single();
+            
+            if (data?.po_number) {
+              // Mettre à jour avec le vrai po_number
+              setFormData(prev => ({ ...prev, linked_po_id: data.po_number }));
+            } else {
+              setUseManualPO(true);
+              setManualPOValue(workOrder.linked_po_id.toString());
+            }
+          } else {
+            // C'est déjà une string, vérifier si c'est un BA existant
+            const { data } = await supabase
+              .from('purchase_orders')
+              .select('po_number')
+              .eq('client_name', workOrder.client.name)
+              .eq('po_number', workOrder.linked_po_id)
+              .single();
+            
+            if (!data) {
+              setUseManualPO(true);
+              setManualPOValue(workOrder.linked_po_id);
+            }
           }
         };
         checkPOExists();
