@@ -911,25 +911,108 @@ useEffect(() => {
     }
   };
 
-  // ========================================
-  // SOUMISSION
-  // ========================================
+  const handleSubmit = async (status = 'draft') => {
+  if (!validateForm()) return;
 
-  const handleSubmit = async (status) => {
-    if (!validateForm()) {
-      toast.error('Veuillez remplir tous les champs requis');
-      return;
+  // Sécurité: si des heures sont présentes, on recalcule selon la même règle
+  let payload = { ...formData };
+  if (payload.start_time && payload.end_time) {
+    payload.total_hours = toQuarterHourUp(
+      payload.start_time,
+      payload.end_time,
+      payload.pause_minutes
+    );
+  }
+
+  console.log('📋 Matériaux AVANT normalisation:', materials);
+
+  // Normaliser les matériaux avec validation stricte
+  const normalizedMaterials = materials.map((material, index) => {
+    console.log(`\n🔄 Normalisation matériau ${index}:`, material);
+
+    let normalizedProductId = null;
+
+    if (material.product_id !== undefined && material.product_id !== null) {
+      const id = material.product_id;
+
+      const isValidUUID = typeof id === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const isNumber = typeof id === 'number';
+
+      if (isValidUUID || isNumber) {
+        normalizedProductId = id;
+        console.log(`✅ product_id valide: ${normalizedProductId}`);
+      } else {
+        console.log(`⚠️ product_id "${id}" n'est pas valide, recherche...`);
+        const existingProduct = findExistingProduct(id);
+        if (existingProduct.found) {
+          normalizedProductId = existingProduct.id;
+          console.log(`✅ ID trouvé: ${normalizedProductId}`);
+        } else {
+          normalizedProductId = null;
+          console.log(`❌ Produit non trouvé, mis à NULL`);
+        }
+      }
     }
 
-    const dataToSave = {
-      ...formData,
-      status,
-      materials,
-      selected_client_emails: selectedEmails
+    const normalized = {
+      ...material,
+      product_id: normalizedProductId,
+      description: material.description || material.product?.description || 'Article sans description',
+      code: material.code || material.product?.product_id || material.display_code || '',
+      unit: material.unit || material.product?.unit || 'UN',
+      unit_price: material.unit_price || material.product?.selling_price || 0,
+      show_price: material.showPrice || material.show_price || false
     };
 
-    onSave(dataToSave);
+    if (normalizedProductId === null) {
+      delete normalized.product;
+    }
+
+    console.log(`📦 Matériau ${index} normalisé - product_id: ${normalized.product_id}`);
+    return normalized;
+  });
+
+  console.log('\n✅ MATÉRIAUX NORMALISÉS:', normalizedMaterials);
+  console.log('🔍 Vérification finale des product_id:');
+  normalizedMaterials.forEach((m, i) => {
+    console.log(`  ${i}: product_id=${m.product_id} (type: ${typeof m.product_id}), code="${m.code}"`);
+  });
+
+  // 🔴 ICI: utiliser payload (pas formData)
+  const dataToSave = {
+    ...payload,
+    client_id: parseInt(payload.client_id),
+    status,
+    materials: normalizedMaterials,
+    selected_client_emails: selectedEmails,
+    recipient_emails: getSelectedEmailAddresses()
   };
+
+  if (mode === 'edit' && workOrder) {
+    dataToSave.id = workOrder.id;
+  }
+
+  try {
+    const savedWorkOrder = await onSave(dataToSave, status);
+    // ✅ NOUVEAU : Sauvegarder l'ID pour le polling
+    if (savedWorkOrder?.id) {
+      setCurrentWorkOrderId(savedWorkOrder.id);
+    }
+    
+    console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
+
+    if (status === 'ready_for_signature' && savedWorkOrder) {
+      const workOrderId = savedWorkOrder.id || workOrder?.id;
+      if (workOrderId) {
+        window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erreur sauvegarde:', error);
+    setErrors({ general: 'Erreur lors de la sauvegarde' });
+  }
+};
 
   // ========================================
   // RENDER
