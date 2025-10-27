@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/send-daily-report", 
-      "schedule": "0 12 * * *"
+      "schedule": "0 12 * * 1-5"
     }
   ]
 }
