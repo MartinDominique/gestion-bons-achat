@@ -6,6 +6,7 @@ import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, 
 import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
 import ClientModal from '../ClientModal';
+import PurchaseOrderModal from '../PurchaseOrderModal';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -97,6 +98,12 @@ export default function WorkOrderForm({
   
   const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
   const [selectedSubmissionItems, setSelectedSubmissionItems] = useState([]);
+
+  // États pour les bons d'achat
+  const [clientPurchaseOrders, setClientPurchaseOrders] = useState([]);
+  const [showPOModal, setShowPOModal] = useState(false);
+  const [useManualPO, setUseManualPO] = useState(false);
+  const [manualPOValue, setManualPOValue] = useState('');
 
   // ========================================
   // FONCTIONS POUR GESTION DES EMAILS
@@ -206,6 +213,26 @@ export default function WorkOrderForm({
 
       if (workOrder.selected_client_emails) {
         setSelectedEmails(workOrder.selected_client_emails);
+      }
+
+      // Déterminer si le linked_po_id est un BA de la BD ou une saisie manuelle
+      // On va charger les BAs du client et vérifier si le PO existe
+      if (workOrder.linked_po_id && workOrder.client) {
+        const checkPOExists = async () => {
+          const { data } = await supabase
+            .from('purchase_orders')
+            .select('po_number')
+            .eq('client_name', workOrder.client.name)
+            .eq('po_number', workOrder.linked_po_id)
+            .single();
+          
+          if (!data) {
+            // C'est une saisie manuelle
+            setUseManualPO(true);
+            setManualPOValue(workOrder.linked_po_id);
+          }
+        };
+        checkPOExists();
       }
     }
   }, [workOrder, mode]);
@@ -319,6 +346,39 @@ export default function WorkOrderForm({
     setEditingClient(selectedClient);
     setShowClientModal(true);
   };
+
+  // Charger les bons d'achat du client
+  const loadClientPurchaseOrders = async (clientName) => {
+    if (!clientName) {
+      setClientPurchaseOrders([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .select('id, po_number, notes, date, created_at')
+        .eq('client_name', clientName)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setClientPurchaseOrders(data || []);
+      console.log(`✅ ${data?.length || 0} bons d'achat chargés pour ${clientName}`);
+    } catch (error) {
+      console.error('❌ Erreur chargement bons d\'achat:', error);
+      toast.error('Erreur lors du chargement des bons d\'achat');
+    }
+  };
+
+  // Charger les BAs quand le client change
+  useEffect(() => {
+    if (selectedClient?.name) {
+      loadClientPurchaseOrders(selectedClient.name);
+    } else {
+      setClientPurchaseOrders([]);
+    }
+  }, [selectedClient]);
 
   useEffect(() => {
     const combinedDescription = descriptions
@@ -1156,17 +1216,120 @@ export default function WorkOrderForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              📋 Numéro bon d'achat / Job client (optionnel)
+              📋 Bon d'achat client (optionnel)
             </label>
-            <input
-              type="text"
-              placeholder="Ex: BA-2025-001, Job#12345, PO-ABC-789..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.linked_po_id}
-              onChange={(e) => handleChange('linked_po_id', e.target.value)}
-            />
+            
+            {/* Toggle entre Select et Saisie manuelle */}
+            <div className="flex items-center gap-4 mb-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={!useManualPO}
+                  onChange={() => {
+                    setUseManualPO(false);
+                    setManualPOValue('');
+                  }}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm text-gray-700">Sélectionner un BA</span>
+              </label>
+              
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={useManualPO}
+                  onChange={() => {
+                    setUseManualPO(true);
+                    setFormData(prev => ({ ...prev, linked_po_id: '' }));
+                  }}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm text-gray-700">Saisie manuelle</span>
+              </label>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              {!useManualPO ? (
+                // Mode sélection
+                <>
+                  <select
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    value={formData.linked_po_id}
+                    onChange={(e) => handleChange('linked_po_id', e.target.value)}
+                    disabled={!selectedClient}
+                  >
+                    <option value="">
+                      {selectedClient 
+                        ? clientPurchaseOrders.length > 0 
+                          ? 'Sélectionner un bon d\'achat' 
+                          : 'Aucun BA trouvé pour ce client'
+                        : 'Sélectionnez d\'abord un client'}
+                    </option>
+                    {clientPurchaseOrders.map(po => (
+                      <option key={po.id} value={po.po_number}>
+                        {po.po_number} - {po.notes ? po.notes.substring(0, 50) : 'Sans description'} ({new Date(po.date).toLocaleDateString('fr-CA')})
+                      </option>
+                    ))}
+                  </select>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedClient?.name) {
+                          loadClientPurchaseOrders(selectedClient.name);
+                          toast.success('Liste des bons d\'achat actualisée');
+                        }
+                      }}
+                      disabled={!selectedClient}
+                      className={`p-3 rounded-lg flex items-center justify-center ${
+                        selectedClient
+                          ? 'bg-gray-600 text-white hover:bg-gray-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                      title="🔄 Actualiser la liste des BAs"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                      </svg>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setShowPOModal(true)}
+                      disabled={!selectedClient}
+                      className={`p-3 rounded-lg flex items-center justify-center ${
+                        selectedClient
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                      title="➕ Créer un nouveau BA"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                // Mode saisie manuelle
+                <input
+                  type="text"
+                  placeholder="Ex: BA-2025-001, Job#12345, PO-ABC-789..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  value={manualPOValue}
+                  onChange={(e) => {
+                    setManualPOValue(e.target.value);
+                    handleChange('linked_po_id', e.target.value);
+                  }}
+                />
+              )}
+            </div>
+            
             <p className="text-xs text-gray-500 mt-1">
-              Référence du bon d'achat ou job client pour votre suivi
+              {useManualPO 
+                ? 'Saisissez une référence manuelle (pour les BAs externes)'
+                : 'Sélectionnez un BA existant ou créez-en un nouveau'
+              }
             </p>
           </div>
         </div>
@@ -1705,6 +1868,19 @@ export default function WorkOrderForm({
         }}
         onSaved={handleClientSaved}
         client={editingClient}
+      />
+
+      {/* Modal Création Bon d'Achat */}
+      <PurchaseOrderModal
+        isOpen={showPOModal}
+        onClose={() => setShowPOModal(false)}
+        editingPO={null}
+        onRefresh={() => {
+          // Après création du BA, recharger la liste et sélectionner le nouveau
+          if (selectedClient?.name) {
+            loadClientPurchaseOrders(selectedClient.name);
+          }
+        }}
       />
     </div>
   );
