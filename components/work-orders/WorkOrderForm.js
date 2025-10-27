@@ -1267,7 +1267,7 @@ export default function WorkOrderForm({
                     </option>
                     {clientPurchaseOrders.map(po => (
                       <option key={po.id} value={po.po_number}>
-                        {po.po_number} - {po.notes ? po.notes.substring(0, 50) : 'Sans description'} ({new Date(po.date).toLocaleDateString('fr-CA')})
+                        {po.po_number} - {po.description ? po.description.substring(0, 50) : 'Sans description'} - {new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(po.amount || 0)} ({new Date(po.date).toLocaleDateString('fr-CA')})
                       </option>
                     ))}
                   </select>
