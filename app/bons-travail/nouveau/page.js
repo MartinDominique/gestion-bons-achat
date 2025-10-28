@@ -4,16 +4,23 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast'; // ⭐ NOUVEAU
+import toast, { Toaster } from 'react-hot-toast';
 import WorkOrderForm from '../../../components/work-orders/WorkOrderForm';
 
 export default function NouveauBonTravailPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [hasSaved, setHasSaved] = useState(false); // ✅ Suivre si le BT a été sauvegardé
-  const [hasChanges, setHasChanges] = useState(false); // ✅ Suivre si des changements ont été faits
+  const [hasSaved, setHasSaved] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const handleSave = async (workOrderData, status) => {
+    // ✅ PROTECTION CRITIQUE: Bloquer si déjà en cours de sauvegarde
+    if (saving) {
+      console.log('⏸️ Sauvegarde déjà en cours - Requête ignorée');
+      toast.error('Sauvegarde déjà en cours...', { duration: 2000 });
+      return;
+    }
+
     setSaving(true);
 
     console.log('📋 CRÉATION - PARENT REÇOIT - workOrderData complet:', workOrderData);
@@ -54,7 +61,6 @@ export default function NouveauBonTravailPage() {
         // ✅ Réinitialiser les changements après sauvegarde
         setHasChanges(false);
         
-        // ⭐ NOUVEAU : Toast au lieu de alert
         if (status !== 'ready_for_signature') {
           const messages = {
             draft: { text: '💾 Bon de travail sauvegardé en brouillon', duration: 3000 },
@@ -87,7 +93,6 @@ export default function NouveauBonTravailPage() {
         const errorData = await response.json();
         console.error('📋 CRÉATION - ERREUR API:', errorData);
         
-        // ⭐ NOUVEAU : Toast d'erreur
         toast.error('Erreur lors de la création: ' + (errorData.error || 'Erreur inconnue'), {
           duration: 5000,
           style: {
@@ -101,7 +106,6 @@ export default function NouveauBonTravailPage() {
     } catch (error) {
       console.error('📋 CRÉATION - ERREUR CATCH:', error);
       
-      // ⭐ NOUVEAU : Toast d'erreur
       toast.error('Erreur: ' + error.message, {
         duration: 5000,
       });
@@ -131,7 +135,6 @@ export default function NouveauBonTravailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* ⭐ NOUVEAU : Toaster component */}
       <Toaster 
         position="top-right"
         toastOptions={{
