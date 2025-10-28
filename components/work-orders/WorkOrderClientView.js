@@ -576,25 +576,20 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
         )}
 
         {/* Zone de signature - MODAL */}
-          {workOrder.status === 'ready_for_signature' && (
-            <>
-              {!isSigning ? (
-                <>
-                  {/* Message d'info au-dessus du contenu */}
-                  <div className="bg-gradient-to-r from-orange-100 to-yellow-100 border-2 border-orange-300 rounded-lg p-4 mb-6">
-                    <h2 className="text-lg font-bold text-orange-800 mb-2 flex items-center">
-                      <FileText className="mr-2" size={24} />
-                      Bon de Travail - Prêt pour Signature
-                    </h2>
-                    <p className="text-orange-700 text-base">
-                      Veuillez vérifier tous les détails du bon de travail ci-dessus. 
-                      Une fois vérifié, utilisez les boutons en bas de l'écran pour accepter et signer.
+        {workOrder.status === 'ready_for_signature' && (
+          <>
+            {!isSigning ? (
+              <>
+                {/* 🎯 BARRE DE BOUTONS FIXÉE EN BAS - TOUJOURS VISIBLE */}
+                <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-orange-50 to-yellow-50 border-t-4 border-orange-400 shadow-2xl z-40 p-3">
+                  <div className="max-w-6xl mx-auto">
+                    {/* Texte explicatif compact */}
+                    <p className="text-orange-800 text-sm font-semibold mb-2 text-center">
+                      ✓ Vérifiez tous les détails ci-dessus puis signez pour accepter les travaux
                     </p>
-                  </div>
-          
-                  {/* 🎯 BARRE DE BOUTONS FIXÉE EN BAS - TOUJOURS VISIBLE */}
-                  <div className="fixed bottom-0 left-0 right-0 bg-white border-t-4 border-orange-400 shadow-2xl z-40 p-4">
-                    <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-3">
+                    
+                    {/* Boutons */}
+                    <div className="flex flex-col sm:flex-row gap-2">
                       {/* Bouton Fermer */}
                       <button
                         onClick={() => {
@@ -603,27 +598,28 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
                             window.location.href = `/bons-travail`;
                           }, 100);
                         }}
-                        className="flex-1 bg-gray-500 text-white px-6 py-4 rounded-lg hover:bg-gray-600 transition-all font-bold text-lg flex items-center justify-center shadow-lg"
+                        className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all font-bold text-base flex items-center justify-center shadow-lg"
                       >
-                        <X className="mr-2" size={24} />
+                        <X className="mr-2" size={20} />
                         Fermer
                       </button>
                       
                       {/* Bouton Accepter et Signer */}
                       <button
                         onClick={() => setIsSigning(true)}
-                        className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-4 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-bold text-lg flex items-center justify-center shadow-xl border-2 border-green-500"
+                        className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-bold text-base flex items-center justify-center shadow-xl border-2 border-green-500"
                       >
-                        <Check className="mr-2" size={24} />
+                        <Check className="mr-2" size={20} />
                         Accepter et Signer
                       </button>
                     </div>
                   </div>
-                  
-                  {/* Espacement en bas pour éviter que le contenu soit caché par la barre fixe */}
-                  <div className="h-24"></div>
-                </>
-              ) : (
+                </div>
+                
+                {/* Espacement en bas pour éviter que le contenu soit caché par la barre fixe */}
+                <div className="h-32"></div>
+              </>
+            ) : (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
                   <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
                     {/* Header du modal */}
