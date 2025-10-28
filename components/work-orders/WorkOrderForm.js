@@ -64,7 +64,8 @@ export default function WorkOrderForm({
     time_entries: [], 
     work_description: '',
     additional_notes: '',
-    status: 'draft'
+    status: 'draft',
+    is_prix_jobe: false
   });
 
   const [selectedEmails, setSelectedEmails] = useState({
@@ -1240,6 +1241,34 @@ export default function WorkOrderForm({
               </div>
             </div>
           )}
+
+            {/* ✅ NOUVEAU - Checkbox Prix Jobé */}
+            {selectedClient && (
+              <div className="mt-4 bg-amber-50 border-2 border-amber-300 rounded-lg p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_prix_jobe || false}
+                    onChange={(e) => {
+                      setFormData({ ...formData, is_prix_jobe: e.target.checked });
+                      if (onFormChange) onFormChange();
+                    }}
+                    className="mt-1 w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-amber-900 flex items-center gap-2">
+                      💰 Prix Jobé
+                    </div>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Le client recevra un BT simplifié (sans heures ni matériels).
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      Le bureau recevra les 2 versions: simplifiée + complète
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
