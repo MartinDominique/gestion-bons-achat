@@ -579,37 +579,50 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
           {workOrder.status === 'ready_for_signature' && (
             <>
               {!isSigning ? (
-                <div className="border-2 border-orange-200 rounded-lg p-6 mb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold text-orange-700">
-                      Signature du Client - Acceptation des Travaux
+                <>
+                  {/* Message d'info au-dessus du contenu */}
+                  <div className="bg-gradient-to-r from-orange-100 to-yellow-100 border-2 border-orange-300 rounded-lg p-4 mb-6">
+                    <h2 className="text-lg font-bold text-orange-800 mb-2 flex items-center">
+                      <FileText className="mr-2" size={24} />
+                      Bon de Travail - Prêt pour Signature
                     </h2>
-                    <button
-                      onClick={() => {
-                        window.close();
-                        setTimeout(() => {
-                          window.location.href = `/bons-travail`;
-                        }, 100);
-                      }}
-                      className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center"
-                    >
-                      ← Fermer
-                    </button>
+                    <p className="text-orange-700 text-base">
+                      Veuillez vérifier tous les détails du bon de travail ci-dessus. 
+                      Une fois vérifié, utilisez les boutons en bas de l'écran pour accepter et signer.
+                    </p>
+                  </div>
+          
+                  {/* 🎯 BARRE DE BOUTONS FIXÉE EN BAS - TOUJOURS VISIBLE */}
+                  <div className="fixed bottom-0 left-0 right-0 bg-white border-t-4 border-orange-400 shadow-2xl z-40 p-4">
+                    <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-3">
+                      {/* Bouton Fermer */}
+                      <button
+                        onClick={() => {
+                          window.close();
+                          setTimeout(() => {
+                            window.location.href = `/bons-travail`;
+                          }, 100);
+                        }}
+                        className="flex-1 bg-gray-500 text-white px-6 py-4 rounded-lg hover:bg-gray-600 transition-all font-bold text-lg flex items-center justify-center shadow-lg"
+                      >
+                        <X className="mr-2" size={24} />
+                        Fermer
+                      </button>
+                      
+                      {/* Bouton Accepter et Signer */}
+                      <button
+                        onClick={() => setIsSigning(true)}
+                        className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-4 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-bold text-lg flex items-center justify-center shadow-xl border-2 border-green-500"
+                      >
+                        <Check className="mr-2" size={24} />
+                        Accepter et Signer
+                      </button>
+                    </div>
                   </div>
                   
-                  <div className="text-center">
-                    <p className="text-gray-600 mb-6 text-lg">
-                      En signant ci-dessous, vous confirmez que les travaux ont été réalisés à votre satisfaction.
-                    </p>
-                    <button
-                      onClick={() => setIsSigning(true)}
-                      className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 text-xl font-semibold"
-                    >
-                      <Check className="inline mr-2" size={24} />
-                      Accepter et Signer
-                    </button>
-                  </div>
-                </div>
+                  {/* Espacement en bas pour éviter que le contenu soit caché par la barre fixe */}
+                  <div className="h-24"></div>
+                </>
               ) : (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
                   <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
