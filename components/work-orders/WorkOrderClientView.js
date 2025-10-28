@@ -575,196 +575,213 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
           </div>
         )}
 
-        {/* Zone de signature */}
-        {workOrder.status === 'ready_for_signature' && (
-          <div className="border-2 border-orange-200 rounded-lg p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-orange-700">
-                Signature du Client - Acceptation des Travaux
-              </h2>
-              <button
-                onClick={() => {
-                  // Fermer cet onglet et retourner au formulaire principal
-                  window.close();
-                  // Si ça ne ferme pas (popup bloqué), rediriger
-                  setTimeout(() => {
-                    window.location.href = `/bons-travail`;
-                  }, 100);
-                }}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center"
-              >
-                ← Fermer
-              </button>
-            </div>
-            
-            {!isSigning ? (
-              <div className="text-center">
-                <p className="text-gray-600 mb-6 text-lg">
-                  En signant ci-dessous, vous confirmez que les travaux ont été réalisés à votre satisfaction.
-                </p>
-                <button
-                  onClick={() => setIsSigning(true)}
-                  className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 text-xl font-semibold"
-                >
-                  <Check className="inline mr-2" size={24} />
-                  Accepter et Signer
-                </button>
-              </div>
-            ) : (
-              <div>
-                {/* ✅ NOUVEAU - Sélection du signataire */}
-                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <label className="block text-xs font-semibold text-blue-800 mb-2">
-                    Qui signe ce formulaire? *
-                  </label>
-                  
-                  {/* Checkboxes pour les signataires */}
-                  {(() => {
-                    const signatories = getClientSignatories();
-                    
-                    if (signatories.length === 0) {
-                      // Aucun signataire configuré - afficher seulement le champ texte
-                      return (
-                        <div className="bg-white border border-gray-300 rounded p-2">
-                          <label className="flex items-center cursor-pointer">
-                            <input
-                              type="radio"
-                              name="signatory"
-                              checked={true}
-                              onChange={() => {}}
-                              className="mr-2 w-4 h-4"
-                            />
-                            <div className="flex-1">
-                              <span className="text-xs font-medium text-gray-700 mr-2">Entrer le nom:</span>
-                              <input
-                                type="text"
-                                value={customSignerName}
-                                onChange={(e) => {
-                                  setCustomSignerName(e.target.value);
-                                  setSelectedSignatoryMode('custom');
-                                }}
-                                placeholder="Ex: Jean Tremblay"
-                                className="w-full mt-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                                maxLength={50}
-                              />
-                            </div>
-                          </label>
-                        </div>
-                      );
-                    }
-                    
-                    // Signataires disponibles - afficher en ligne compacte
-                    return (
-                      <div className="space-y-2">
-                        {/* Signataires en ligne */}
-                        <div className="flex flex-wrap gap-2">
-                          {signatories.map((signatory) => (
-                            <label key={signatory.index} className="inline-flex items-center bg-white border border-gray-300 rounded px-2 py-1 hover:border-blue-400 cursor-pointer">
-                              <input
-                                type="radio"
-                                name="signatory"
-                                checked={selectedSignatoryMode === 'checkbox' && selectedSignatoryIndex === signatory.index}
-                                onChange={() => handleSignatorySelect(signatory.index)}
-                                className="mr-1.5 w-4 h-4 cursor-pointer"
-                              />
-                              <span className="text-sm text-gray-800">{signatory.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                        
-                        {/* Option "Autre" sur ligne séparée */}
-                        <div className="bg-white border border-gray-300 rounded p-2">
-                          <label className="flex items-start cursor-pointer">
-                            <input
-                              type="radio"
-                              name="signatory"
-                              checked={selectedSignatoryMode === 'custom'}
-                              onChange={handleCustomSelect}
-                              className="mt-0.5 mr-2 w-4 h-4 cursor-pointer flex-shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <span className="text-xs font-medium text-gray-700 block mb-1">Autre:</span>
-                              <input
-                                type="text"
-                                value={customSignerName}
-                                onChange={(e) => {
-                                  setCustomSignerName(e.target.value);
-                                  handleCustomSelect();
-                                }}
-                                onFocus={handleCustomSelect}
-                                placeholder="Ex: Jean Tremblay"
-                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                                maxLength={50}
-                              />
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  
-                  {/* Aperçu du nom sélectionné */}
-                  {signerName && (
-                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
-                      <p className="text-xs text-green-800">
-                        <span className="font-semibold">Signataire:</span> {signerName}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                <p className="text-sm text-gray-600 mb-2">
-                  Veuillez signer dans l'espace ci-dessous avec votre doigt ou stylet:
-                </p>
-                <div className="border-2 border-gray-300 rounded-lg bg-white mb-4">
-                  <canvas
-                    ref={canvasRef}
-                    width={800}
-                    height={200}
-                    className="w-full h-48 cursor-crosshair touch-none"
-                    onMouseDown={startDrawing}
-                    onMouseMove={draw}
-                    onMouseUp={stopDrawing}
-                    onTouchStart={startDrawing}
-                    onTouchMove={draw}
-                    onTouchEnd={stopDrawing}
-                  />
-                </div>
-                
-                <div className="flex justify-between">
-                  <button
-                    onClick={clearSignature}
-                    className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-                  >
-                    <X className="inline mr-1" size={16} />
-                    Effacer
-                  </button>
-                  
-                  <div className="space-x-2">
+        {/* Zone de signature - MODAL */}
+          {workOrder.status === 'ready_for_signature' && (
+            <>
+              {!isSigning ? (
+                <div className="border-2 border-orange-200 rounded-lg p-6 mb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold text-orange-700">
+                      Signature du Client - Acceptation des Travaux
+                    </h2>
                     <button
-                      onClick={() => setIsSigning(false)}
-                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                      onClick={() => {
+                        window.close();
+                        setTimeout(() => {
+                          window.location.href = `/bons-travail`;
+                        }, 100);
+                      }}
+                      className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 flex items-center"
                     >
-                      Annuler
+                      ← Fermer
                     </button>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-gray-600 mb-6 text-lg">
+                      En signant ci-dessous, vous confirmez que les travaux ont été réalisés à votre satisfaction.
+                    </p>
                     <button
-                      onClick={handleAcceptWork}
-                      disabled={!signature || !signerName}
-                      className={`px-6 py-2 rounded-lg font-semibold ${
-                        signature && signerName
-                          ? 'bg-green-600 text-white hover:bg-green-700' 
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
+                      onClick={() => setIsSigning(true)}
+                      className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 text-xl font-semibold"
                     >
-                      <Check className="inline mr-2" size={16} />
-                      Confirmer Signature
+                      <Check className="inline mr-2" size={24} />
+                      Accepter et Signer
                     </button>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              ) : (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+                  <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
+                    {/* Header du modal */}
+                    <div className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-6 py-4 rounded-t-xl">
+                      <h3 className="text-xl font-bold">Signature du Client - Acceptation des Travaux</h3>
+                      <p className="text-green-50 text-sm mt-1">Veuillez signer ci-dessous pour accepter les travaux</p>
+                    </div>
+          
+                    {/* Contenu du modal */}
+                    <div className="p-6 space-y-6">
+                      {/* Sélection du signataire */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Qui signe ce formulaire? *
+                        </label>
+                        
+                        {(() => {
+                          const signatories = getClientSignatories();
+                          
+                          if (signatories.length === 0) {
+                            return (
+                              <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4">
+                                <label className="flex items-center cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="signatory"
+                                    checked={true}
+                                    onChange={() => {}}
+                                    className="mr-3 w-5 h-5"
+                                  />
+                                  <div className="flex-1">
+                                    <span className="text-sm font-medium text-gray-700 block mb-2">Entrer le nom:</span>
+                                    <input
+                                      type="text"
+                                      value={customSignerName}
+                                      onChange={(e) => {
+                                        setCustomSignerName(e.target.value);
+                                        setSelectedSignatoryMode('custom');
+                                      }}
+                                      placeholder="Ex: Jean Tremblay"
+                                      className="w-full px-3 py-2 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      maxLength={50}
+                                    />
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {signatories.map((signatory) => (
+                                  <label 
+                                    key={signatory.index} 
+                                    className={`flex items-center bg-white border-2 rounded-lg px-4 py-3 hover:border-blue-400 cursor-pointer transition-all ${
+                                      selectedSignatoryMode === 'checkbox' && selectedSignatoryIndex === signatory.index 
+                                        ? 'border-blue-500 bg-blue-50' 
+                                        : 'border-gray-300'
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="signatory"
+                                      checked={selectedSignatoryMode === 'checkbox' && selectedSignatoryIndex === signatory.index}
+                                      onChange={() => handleSignatorySelect(signatory.index)}
+                                      className="mr-2 w-5 h-5 cursor-pointer"
+                                    />
+                                    <span className="text-sm font-medium text-gray-800">{signatory.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                              
+                              <div className={`bg-white border-2 rounded-lg p-4 ${
+                                selectedSignatoryMode === 'custom' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                              }`}>
+                                <label className="flex items-start cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="signatory"
+                                    checked={selectedSignatoryMode === 'custom'}
+                                    onChange={handleCustomSelect}
+                                    className="mt-1 mr-3 w-5 h-5 cursor-pointer flex-shrink-0"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-sm font-medium text-gray-700 block mb-2">Autre:</span>
+                                    <input
+                                      type="text"
+                                      value={customSignerName}
+                                      onChange={(e) => {
+                                        setCustomSignerName(e.target.value);
+                                        handleCustomSelect();
+                                      }}
+                                      onFocus={handleCustomSelect}
+                                      placeholder="Ex: Jean Tremblay"
+                                      className="w-full px-3 py-2 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                      maxLength={50}
+                                    />
+                                  </div>
+                                </label>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        
+                        {signerName && (
+                          <div className="mt-3 p-3 bg-green-50 border-2 border-green-300 rounded-lg">
+                            <p className="text-sm text-green-800">
+                              <span className="font-semibold">✓ Signataire:</span> {signerName}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Zone de signature */}
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700 mb-2">
+                          Signature avec votre doigt ou stylet:
+                        </p>
+                        <div className="border-4 border-gray-400 rounded-xl bg-white overflow-hidden shadow-inner">
+                          <canvas
+                            ref={canvasRef}
+                            width={800}
+                            height={250}
+                            className="w-full h-64 cursor-crosshair touch-none"
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                            onTouchStart={startDrawing}
+                            onTouchMove={draw}
+                            onTouchEnd={stopDrawing}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Boutons */}
+                      <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-gray-200">
+                        <button
+                          onClick={clearSignature}
+                          className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors font-semibold text-base flex items-center justify-center"
+                        >
+                          <X className="mr-2" size={20} />
+                          Effacer
+                        </button>
+                        
+                        <button
+                          onClick={() => setIsSigning(false)}
+                          className="flex-1 bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors font-semibold text-base"
+                        >
+                          Annuler
+                        </button>
+                        
+                        <button
+                          onClick={handleAcceptWork}
+                          disabled={!signature || !signerName}
+                          className={`flex-1 px-6 py-3 rounded-lg font-semibold text-base flex items-center justify-center transition-colors ${
+                            signature && signerName
+                              ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg' 
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          <Check className="mr-2" size={20} />
+                          Confirmer Signature
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
         {/* Travaux signés - bouton d'envoi */}
         {workOrder.status === 'signed' && (
