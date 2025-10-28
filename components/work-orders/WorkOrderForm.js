@@ -95,6 +95,7 @@ export default function WorkOrderForm({
   const [selectedItemsForImport, setSelectedItemsForImport] = useState([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [isLoadingSupplierPurchases, setIsLoadingSupplierPurchases] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
   const [selectedSubmissionItems, setSelectedSubmissionItems] = useState([]);
@@ -939,7 +940,15 @@ export default function WorkOrderForm({
   // ========================================
 
   const handleSubmit = async (status = 'draft') => {
+    // ✅ PROTECTION: Empêcher double soumission
+    if (isSubmitting) {
+      console.log('⏸️ Soumission déjà en cours, ignorée');
+      return;
+    }
+    
     if (!validateForm()) return;
+  
+    setIsSubmitting(true); // 🔒 Bloquer immédiatement
 
     let payload = { ...formData };
     if (payload.start_time && payload.end_time) {
@@ -1031,9 +1040,11 @@ export default function WorkOrderForm({
           window.open(`/bons-travail/${workOrderId}/client`, '_blank');
         }
       }
-    } catch (error) {
+   } catch (error) {
       console.error('❌ Erreur sauvegarde:', error);
       setErrors({ general: 'Erreur lors de la sauvegarde' });
+    } finally {
+      setIsSubmitting(false); // 🔓 Débloquer après
     }
   };
 
@@ -1062,21 +1073,21 @@ export default function WorkOrderForm({
               <button
                 type="button"
                 onClick={() => handleSubmit('draft')}
-                disabled={saving}
+                disabled={saving || isSubmitting}
                 className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
               >
                 <Save className="mr-2" size={16} />
-                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+                {(saving || isSubmitting) ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
         
               <button
                 type="button"
                 onClick={() => handleSubmit('ready_for_signature')}
-                disabled={saving}
+                disabled={saving || isSubmitting}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
               >
                 <FileText className="mr-2" size={16} />
-                {saving ? 'Préparation...' : 'Présenter'}
+                {(saving || isSubmitting) ? 'Préparation...' : 'Présenter'}
               </button>
         
               <button
