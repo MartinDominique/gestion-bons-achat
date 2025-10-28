@@ -22,7 +22,7 @@ export async function POST(request, { params }) {
     const { id } = params;
     const body = await request.json();
     
-    console.log('📝 Signature + envoi auto pour BT:', id);
+    console.log('🔏 Signature + envoi auto pour BT:', id);
 
     // Validation
     if (!id || isNaN(parseInt(id))) {
@@ -156,20 +156,16 @@ export async function POST(request, { params }) {
       });
     }
 
-    // 4. ✅ CORRIGÉ : Récupérer les emails + TOUJOURS AJOUTER EMAIL BUREAU
+    // 4. ✅ CORRIGÉ : Récupérer les emails cochés + TOUJOURS ajouter email bureau
     let recipientEmails = [];
     
-    // Prioriser recipient_emails (qui contient emails client + CC bureau)
+    // Utiliser UNIQUEMENT les emails explicitement cochés dans le formulaire
     if (workOrder.recipient_emails && Array.isArray(workOrder.recipient_emails) && workOrder.recipient_emails.length > 0) {
       recipientEmails = [...workOrder.recipient_emails];
-      console.log('📧 Emails trouvés dans recipient_emails:', recipientEmails);
-    } else if (workOrder.client?.email) {
-      // Fallback sur email principal du client
-      recipientEmails = [workOrder.client.email];
-      console.log('📧 Utilisation email principal client:', recipientEmails);
+      console.log('📧 Emails cochés dans le formulaire:', recipientEmails);
     }
     
-    // ⭐ NOUVEAU: TOUJOURS ajouter l'email du bureau si configuré
+    // ⭐ TOUJOURS ajouter l'email du bureau si configuré
     if (process.env.COMPANY_EMAIL) {
       if (!recipientEmails.includes(process.env.COMPANY_EMAIL)) {
         recipientEmails.push(process.env.COMPANY_EMAIL);
@@ -297,7 +293,7 @@ export async function POST(request, { params }) {
 // ============================================
 
 function checkCanAutoSend(workOrder) {
-  // 1. ✅ CORRIGÉ : Vérifier qu'il y a AU MOINS UN email (client OU CC bureau OU COMPANY_EMAIL)
+  // 1. ✅ CORRIGÉ : Vérifier qu'il y a AU MOINS UN email (client OU bureau)
   const hasClientEmails = (workOrder.recipient_emails && workOrder.recipient_emails.length > 0);
   const hasBureauEmail = !!process.env.COMPANY_EMAIL;
   
