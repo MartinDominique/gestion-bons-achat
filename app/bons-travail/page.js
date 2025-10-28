@@ -13,6 +13,7 @@ export default function BonsTravailPage() {
   const [actionLoading, setActionLoading] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('client'); // 'client', 'bt_number', 'date'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'draft', 'ready_for_signature', 'signed', 'pending_send', 'sent'
   const router = useRouter();
 
   // Fonction pour formater les heures en h:min
@@ -72,36 +73,45 @@ export default function BonsTravailPage() {
     fetchWorkOrders();
   }, []);
 
-  // Filtrer les bons de travail selon la recherche
-  const filteredWorkOrders = useMemo(() => {
-    if (!searchTerm.trim()) return workOrders;
-
-    const searchLower = searchTerm.toLowerCase().trim();
-
-    return workOrders.filter(wo => {
-      switch (searchType) {
-        case 'client':
-          return wo.client?.name?.toLowerCase().includes(searchLower);
-        
-        case 'bt_number':
-          return wo.bt_number?.toLowerCase().includes(searchLower);
-        
-        case 'date':
-          // Recherche par date (format YYYY-MM-DD ou DD/MM/YYYY ou MM/DD/YYYY)
-          const workDate = wo.work_date ? new Date(wo.work_date).toLocaleDateString('fr-CA') : '';
-          const workDateFr = wo.work_date ? new Date(wo.work_date).toLocaleDateString('fr-FR') : '';
-          const workDateUs = wo.work_date ? new Date(wo.work_date).toLocaleDateString('en-US') : '';
-          
-          return workDate.includes(searchLower) || 
-                 workDateFr.includes(searchLower) || 
-                 workDateUs.includes(searchLower) ||
-                 wo.work_date?.includes(searchLower);
-        
-        default:
-          return true;
+  // Filtrer les bons de travail selon la recherche ET le statut
+    const filteredWorkOrders = useMemo(() => {
+      let filtered = workOrders;
+      
+      // 1. Filtrer par statut d'abord
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(wo => wo.status === statusFilter);
       }
-    });
-  }, [workOrders, searchTerm, searchType]);
+      
+      // 2. Puis filtrer par recherche
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase().trim();
+        
+        filtered = filtered.filter(wo => {
+          switch (searchType) {
+            case 'client':
+              return wo.client?.name?.toLowerCase().includes(searchLower);
+            
+            case 'bt_number':
+              return wo.bt_number?.toLowerCase().includes(searchLower);
+            
+            case 'date':
+              const workDate = wo.work_date ? new Date(wo.work_date).toLocaleDateString('fr-CA') : '';
+              const workDateFr = wo.work_date ? new Date(wo.work_date).toLocaleDateString('fr-FR') : '';
+              const workDateUs = wo.work_date ? new Date(wo.work_date).toLocaleDateString('en-US') : '';
+              
+              return workDate.includes(searchLower) || 
+                     workDateFr.includes(searchLower) || 
+                     workDateUs.includes(searchLower) ||
+                     wo.work_date?.includes(searchLower);
+            
+            default:
+              return true;
+          }
+        });
+      }
+      
+      return filtered;
+    }, [workOrders, searchTerm, searchType, statusFilter]);
 
   // Supprimer un bon de travail
   const handleDelete = async (workOrder) => {
@@ -323,6 +333,93 @@ export default function BonsTravailPage() {
             </div>
           </div>
         </div>
+
+        {/* Filtres par statut - NOUVEAUX BOUTONS */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg p-4 mb-4 border border-white/50">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Filtrer par statut:</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  statusFilter === 'all'
+                    ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                📋 Tous ({workOrders.length})
+              </button>
+              
+              <button
+                onClick={() => setStatusFilter('draft')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  statusFilter === 'draft'
+                    ? 'bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                ✏️ Brouillon ({workOrders.filter(wo => wo.status === 'draft').length})
+              </button>
+              
+              <button
+                onClick={() => setStatusFilter('ready_for_signature')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  statusFilter === 'ready_for_signature'
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                ✍️ À signer ({workOrders.filter(wo => wo.status === 'ready_for_signature').length})
+              </button>
+              
+              <button
+                onClick={() => setStatusFilter('signed')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  statusFilter === 'signed'
+                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                ✅ Signé ({workOrders.filter(wo => wo.status === 'signed').length})
+              </button>
+              
+              <button
+                onClick={() => setStatusFilter('pending_send')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  statusFilter === 'pending_send'
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                ⏳ En attente ({workOrders.filter(wo => wo.status === 'pending_send').length})
+              </button>
+              
+              <button
+                onClick={() => setStatusFilter('sent')}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  statusFilter === 'sent'
+                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                📧 Envoyé ({workOrders.filter(wo => wo.status === 'sent').length})
+              </button>
+            </div>
+            
+            {/* Indicateur du filtre actif */}
+            {statusFilter !== 'all' && (
+              <div className="mt-3 text-sm text-blue-700 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 flex items-center justify-between">
+                <span>
+                  <span className="font-semibold">{filteredWorkOrders.length}</span> résultat(s) avec le statut sélectionné
+                </span>
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  className="text-blue-600 hover:text-blue-800 font-medium underline"
+                >
+                  Réinitialiser
+                </button>
+              </div>
+            )}
+          </div>
 
         {/* Barre de recherche */}
         <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6 border border-white/50">
