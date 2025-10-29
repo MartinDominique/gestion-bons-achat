@@ -263,7 +263,8 @@ export async function PUT(request, { params }) {
       additional_notes: updateData.additional_notes || null,
       status: updateData.status || 'draft',
       recipient_emails: updateData.recipient_emails || [],
-      include_travel_time: include_travel_time
+      include_travel_time: include_travel_time,
+      is_prix_jobe: updateData.is_prix_jobe || false
     })
     .eq('id', workOrderId)
     .select()
