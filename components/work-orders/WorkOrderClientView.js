@@ -161,13 +161,11 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
       setIsSigning(false);
       
        if (result.autoSendResult.success) {
-        // ✅ Envoi automatique réussi - PAS d'alert, juste fermer
+        // ✅ Envoi automatique réussi - Fermer IMMÉDIATEMENT
+        console.log('✅ SUCCESS - Fermeture immédiate');
+        window.close();
+        // Si window.close() échoue (popup bloqué), mettre à jour le statut
         onStatusUpdate?.('sent');
-        
-        // Fermer la fenêtre après 1 seconde
-       // setTimeout(() => {
-       //   window.close();
-       // }, 1000);
         
       } else if (result.autoSendResult.needsManualSend) {
         // Signature OK mais envoi automatique impossible
