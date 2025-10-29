@@ -157,7 +157,8 @@ if (linked_po_id) {
       additional_notes: additional_notes || null,
       status: status || 'draft',
       recipient_emails: recipient_emails || [],
-      include_travel_time: include_travel_time
+      include_travel_time: include_travel_time,
+      is_prix_jobe: body.is_prix_jobe || false
     };
 
     const { data: workOrder, error: workOrderError } = await client
