@@ -2801,7 +2801,8 @@ const cleanupFilesForSubmission = async (files) => {
                             amount: submission.amount,
                             status: submission.status,
                             items: submission.items || [],
-                            submission_number: submission.submission_number || ''
+                            submission_number: submission.submission_number || '',
+                            files: submission.files || []
                           });
                           setSelectedItems(submission.items || []);
                           const existingCostTotal = (submission.items || []).reduce((sum, item) => 
@@ -2851,7 +2852,8 @@ const cleanupFilesForSubmission = async (files) => {
                     amount: submission.amount,
                     status: submission.status,
                     items: submission.items || [],
-                    submission_number: submission.submission_number || ''
+                    submission_number: submission.submission_number || '',
+                    files: submission.files || []
                   });
                   setSelectedItems(submission.items || []);
                   const existingCostTotal = (submission.items || []).reduce((sum, item) => 
