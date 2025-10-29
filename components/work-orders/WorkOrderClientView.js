@@ -144,28 +144,28 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   }
 
   try {
-    // Utiliser le nouveau service client (sans Resend côté client)
     const result = await handleSignatureWithAutoSend(
       workOrder.id, 
       signature, 
       signerName.trim()
     );
-
+    
     console.log('🔍 RÉSULTAT SIGNATURE:', result);
-    console.log('🔍 result.success:', result.success);
-    console.log('🔍 result.signatureSaved:', result.signatureSaved);
-    console.log('🔍 result.autoSendResult:', result.autoSendResult);
-    console.log('🔍 result.autoSendResult?.success:', result.autoSendResult?.success);
     
     if (result.success && result.signatureSaved) {
       setIsSigning(false);
       
-       if (result.autoSendResult.success) {
-        // ✅ Envoi automatique réussi - Fermer IMMÉDIATEMENT
-        console.log('✅ SUCCESS - Fermeture immédiate');
-        window.close();
-        // Si window.close() échoue (popup bloqué), mettre à jour le statut
+      // ✅ CORRIGÉ: Vérifier le statut retourné par l'API, pas le workOrder local
+      if (result.autoSendResult?.success && result.workOrderStatus === 'sent') {
+        console.log('✅ Email envoyé et statut confirmé à "sent" - Fermeture');
+        
+        // Mettre à jour le parent AVANT de fermer
         onStatusUpdate?.('sent');
+        
+        // Fermer après un petit délai pour laisser le temps au parent de se mettre à jour
+        setTimeout(() => {
+          window.close();
+        }, 500);
         
       } else if (result.autoSendResult.needsManualSend) {
         // Signature OK mais envoi automatique impossible
