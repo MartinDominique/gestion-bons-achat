@@ -165,9 +165,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
         onStatusUpdate?.('sent');
         
         // Fermer la fenêtre après 1 seconde
-        setTimeout(() => {
-          window.close();
-        }, 1000);
+       // setTimeout(() => {
+       //   window.close();
+       // }, 1000);
         
       } else if (result.autoSendResult.needsManualSend) {
         // Signature OK mais envoi automatique impossible
