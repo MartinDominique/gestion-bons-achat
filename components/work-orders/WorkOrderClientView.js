@@ -369,6 +369,7 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
           </div>
         
           {/* ⭐ Sessions de travail - Séparées et bien visibles */}
+          {!workOrder.is_prix_jobe && (
           <div>
             <h3 className="text-lg font-semibold text-black mb-2">Sessions de travail:</h3>
             {workOrder.time_entries && workOrder.time_entries.length > 0 ? (
@@ -402,6 +403,7 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
               <p className="text-sm text-gray-500">Aucune session enregistrée</p>
             )}
           </div>
+          )}
         </div>
          {/* Emails destinataires - NOUVEAU */}
           {workOrder.recipient_emails && workOrder.recipient_emails.length > 0 && (
@@ -438,7 +440,7 @@ console.log('  - some(show_price === true):', workOrder.materials?.some(m => m.s
         </div>
 
         {/* Matériaux utilisés - Format carte sur mobile */}
-        {workOrder.materials && workOrder.materials.length > 0 && (
+        {!workOrder.is_prix_jobe && workOrder.materials && workOrder.materials.length > 0 && (
           <div className="mb-4 sm:mb-6">
             <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4">Matériaux Utilisés</h2>
             
