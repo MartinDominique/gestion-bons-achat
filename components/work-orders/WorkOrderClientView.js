@@ -150,6 +150,12 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
       signature, 
       signerName.trim()
     );
+
+    console.log('🔍 RÉSULTAT SIGNATURE:', result);
+    console.log('🔍 result.success:', result.success);
+    console.log('🔍 result.signatureSaved:', result.signatureSaved);
+    console.log('🔍 result.autoSendResult:', result.autoSendResult);
+    console.log('🔍 result.autoSendResult?.success:', result.autoSendResult?.success);
     
     if (result.success && result.signatureSaved) {
       setIsSigning(false);
