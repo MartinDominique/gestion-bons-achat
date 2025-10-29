@@ -1013,7 +1013,7 @@ export default function WorkOrderForm({
     normalizedMaterials.forEach((m, i) => {
       console.log(`  ${i}: product_id=${m.product_id} (type: ${typeof m.product_id}), code="${m.code}"`);
     });
-
+    
     const dataToSave = {
       ...payload,
       client_id: parseInt(payload.client_id),
@@ -1022,18 +1022,22 @@ export default function WorkOrderForm({
       selected_client_emails: selectedEmails,
       recipient_emails: getSelectedEmailAddresses()
     };
-
+    
     if (mode === 'edit' && workOrder) {
       dataToSave.id = workOrder.id;
     }
-
-    if (status === 'ready_for_signature' && savedWorkOrder) {
-      const workOrderId = savedWorkOrder.id || workOrder?.id;
-      if (workOrderId) {
-        console.log('🚀 OUVERTURE fenêtre client, ID:', workOrderId);
-        window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+    
+    try {
+      const savedWorkOrder = await onSave(dataToSave, status);
+      
+      if (status === 'ready_for_signature' && savedWorkOrder) {
+        const workOrderId = savedWorkOrder.id || workOrder?.id;
+        if (workOrderId) {
+          console.log('🚀 OUVERTURE fenêtre client, ID:', workOrderId);
+          window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+        }
       }
-    }
+    } catch (error) {
       console.error('❌ Erreur sauvegarde:', error);
       setErrors({ general: 'Erreur lors de la sauvegarde' });
     } finally {
