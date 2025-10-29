@@ -1027,29 +1027,13 @@ export default function WorkOrderForm({
       dataToSave.id = workOrder.id;
     }
 
-    try {
-      const savedWorkOrder = await onSave(dataToSave, status);
-      if (savedWorkOrder?.id) {
-        setCurrentWorkOrderId(savedWorkOrder.id);
+    if (status === 'ready_for_signature' && savedWorkOrder) {
+      const workOrderId = savedWorkOrder.id || workOrder?.id;
+      if (workOrderId) {
+        console.log('🚀 OUVERTURE fenêtre client, ID:', workOrderId);
+        window.open(`/bons-travail/${workOrderId}/client`, '_blank');
       }
-      
-      console.log('📧 Emails sauvegardés:', savedWorkOrder.recipient_emails);
-
-      if (status === 'ready_for_signature' && savedWorkOrder) {
-        const workOrderId = savedWorkOrder.id || workOrder?.id;
-        if (workOrderId) {
-          if (status === 'ready_for_signature' && savedWorkOrder) {
-            const workOrderId = savedWorkOrder.id || workOrder?.id;
-            if (workOrderId) {
-              console.log('🚀 OUVERTURE fenêtre client, ID:', workOrderId);
-              console.log('🔒 isSubmitting devrait être TRUE');
-              window.open(`/bons-travail/${workOrderId}/client`, '_blank');
-            }
-          }
-           window.open(`/bons-travail/${workOrderId}/client`, '_blank');
-        }
-      }
-   } catch (error) {
+    }
       console.error('❌ Erreur sauvegarde:', error);
       setErrors({ general: 'Erreur lors de la sauvegarde' });
     } finally {
