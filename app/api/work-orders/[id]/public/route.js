@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
     console.log('Longueur du status:', data.status?.length);
 
     // Vérifier que le BT est dans un état présentable
-    const allowedStatuses = ['ready_for_signature', 'signed', 'completed'];
+    const allowedStatuses = ['ready_for_signature', 'signed', 'completed', 'sent'];
     if (!allowedStatuses.includes(data.status)) {
       console.error('Status refusé:', data.status, '- Attendu:', allowedStatuses);
       return NextResponse.json({ 
