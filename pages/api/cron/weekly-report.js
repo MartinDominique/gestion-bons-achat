@@ -58,7 +58,7 @@ export default async function handler(req, res) {
 
     // Envoyer l'email
     await resend.emails.send({
-      from: 'Services TMT <noreply@servicestmt.com>', // Ajuste selon ton domaine
+      from: 'Services TMT <noreply@servicestmt.ca>', // Ajuste selon ton domaine
       to: process.env.WEEKLY_REPORT_EMAIL,
       subject: `📋 Rapport Hebdomadaire - ${draftWorkOrders.length} BT en Brouillon`,
       html: emailHtml
