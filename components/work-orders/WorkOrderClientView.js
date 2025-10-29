@@ -241,7 +241,10 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 console.log('🔍 DEBUG PRIX CLIENT:');
 console.log('  - workOrder.materials:', workOrder.materials);
 console.log('  - show_price values:', workOrder.materials?.map(m => ({
-    code: m.product_code,
+console.log('🔍 DEBUG PRIX JOBÉ:');
+console.log('  - workOrder.is_prix_jobe:', workOrder.is_prix_jobe);
+console.log('  - workOrder complet:', workOrder);
+  code: m.product_code,
     show_price: m.show_price,
     type: typeof m.show_price
   })));
