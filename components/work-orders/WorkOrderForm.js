@@ -1038,7 +1038,15 @@ export default function WorkOrderForm({
       if (status === 'ready_for_signature' && savedWorkOrder) {
         const workOrderId = savedWorkOrder.id || workOrder?.id;
         if (workOrderId) {
-          window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+          if (status === 'ready_for_signature' && savedWorkOrder) {
+            const workOrderId = savedWorkOrder.id || workOrder?.id;
+            if (workOrderId) {
+              console.log('🚀 OUVERTURE fenêtre client, ID:', workOrderId);
+              console.log('🔒 isSubmitting devrait être TRUE');
+              window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+            }
+          }
+           window.open(`/bons-travail/${workOrderId}/client`, '_blank');
         }
       }
    } catch (error) {
