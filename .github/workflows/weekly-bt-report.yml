@@ -1,0 +1,39 @@
+name: 📋 Rapport Hebdomadaire BT Brouillon
+
+on:
+  schedule:
+    # Tous les lundis à 13h UTC = 9h Québec (heure normale)
+    # Ajuste à 12h UTC si heure d'été
+    - cron: '0 13 * * 1'
+  
+  # Permet de déclencher manuellement pour tester
+  workflow_dispatch:
+
+jobs:
+  send-weekly-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📧 Envoyer le rapport hebdomadaire
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.VERCEL_URL }}/api/cron/weekly-report")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "📊 Statut HTTP: $http_code"
+          echo "📄 Réponse: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Erreur lors de l'envoi du rapport"
+            exit 1
+          fi
+          
+          echo "✅ Rapport envoyé avec succès!"
+      
+      - name: 📝 Log du résultat
+        if: always()
+        run: echo "Job terminé - Vérifiez les logs ci-dessus"
