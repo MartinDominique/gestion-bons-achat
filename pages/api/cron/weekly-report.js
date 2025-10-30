@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 
     // Envoyer l'email
     await resend.emails.send({
-      from: 'Services TMT <noreply@servicestmt.ca>', // Ajuste selon ton domaine
+      from: 'Services TMT <noreply@servicestmt.ca>',
       to: process.env.WEEKLY_REPORT_EMAIL,
       subject: `📋 Rapport Hebdomadaire - ${draftWorkOrders.length} BT en Brouillon`,
       html: emailHtml
@@ -201,12 +201,12 @@ function generateEmailHtml(workOrders) {
         <table style="width: 100%; border-collapse: collapse; background: white;">
           <thead>
             <tr style="background: #667eea; color: white;">
-              <th style="padding: 15px; text-align: left; border: 1px solid #5568d3; font-weight: 600;">BT #</th>
-              <th style="padding: 15px; text-align: left; border: 1px solid #5568d3; font-weight: 600;">Date Création</th>
-              <th style="padding: 15px; text-align: left; border: 1px solid #5568d3; font-weight: 600;">Client</th>
-              <th style="padding: 15px; text-align: left; border: 1px solid #5568d3; font-weight: 600;">Description</th>
-              <th style="padding: 15px; text-align: center; border: 1px solid #5568d3; font-weight: 600;">Heures</th>
-              <th style="padding: 15px; text-align: center; border: 1px solid #5568d3; font-weight: 600;">Âge</th>
+              <th style="padding: 15px; text-align: left; border: 1px solid #5568d3; font-weight: 600; min-width: 120px;">BT #</th>
+              <th style="padding: 15px; text-align: left; border: 1px solid #5568d3; font-weight: 600; min-width: 110px;">Date Création</th>
+              <th style="padding: 15px; text-align: left; border: 1px solid #5568d3; font-weight: 600; min-width: 150px;">Client</th>
+              <th style="padding: 15px; text-align: left; border: 1px solid #5568d3; font-weight: 600; min-width: 300px;">Description</th>
+              <th style="padding: 15px; text-align: center; border: 1px solid #5568d3; font-weight: 600; min-width: 80px;">Heures</th>
+              <th style="padding: 15px; text-align: center; border: 1px solid #5568d3; font-weight: 600; min-width: 90px;">Âge</th>
             </tr>
           </thead>
           <tbody>
