@@ -15,6 +15,15 @@ export async function POST(req) {
     header: false,
     skipEmptyLines: true
   });
+  // Fonction pour parser les nombres avec virgule OU point
+const parsePrice = (value) => {
+  if (!value) return 0;
+  const str = value.toString().trim();
+  // Remplacer virgule par point pour parseFloat
+  const normalized = str.replace(',', '.');
+  const num = parseFloat(normalized);
+  return isNaN(num) ? 0 : num;
+};
   if (errors.length) {
     return Response.json({ error: errors[0].message }, { status: 400 });
   }
@@ -25,9 +34,9 @@ export async function POST(req) {
     product_id:     c[1]?.trim(),             // ← clé unique
     description:    c[2]?.trim(),
     unit:           c[3]?.trim(),             // ← retire si ta table n’a pas 'unit'
-    selling_price:  parseFloat(c[4]) || 0,
-    cost_price:     parseFloat(c[5]) || 0,
-    stock_qty:      parseFloat(c[6]) || 0     // ← retire si ta table n’a pas 'stock_qty'
+    selling_price:  parsePrice(c[4]),
+    cost_price:     parsePrice(c[5]),
+    stock_qty:      parsePrice(c[6])     // ← retire si ta table n’a pas 'stock_qty'
   }));
   
 /* ---- dé‑duplication par product_id ---- */
