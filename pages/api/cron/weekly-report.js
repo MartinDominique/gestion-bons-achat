@@ -16,10 +16,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Récupérer tous les BT avec statut brouillon
+    // Récupérer tous les BT avec statut brouillon avec JOIN sur clients
     const { data: draftWorkOrders, error } = await supabase
       .from('work_orders')
-      .select('*')
+      .select(`
+        *,
+        client:clients(name)
+      `)
       .eq('status', 'draft')
       .order('created_at', { ascending: false });
 
@@ -58,7 +61,7 @@ export default async function handler(req, res) {
 
     // Envoyer l'email
     await resend.emails.send({
-      from: 'Services TMT <noreply@servicestmt.ca>', // Ajuste selon ton domaine
+      from: 'Services TMT <noreply@servicestmt.com>', // Ajuste selon ton domaine
       to: process.env.WEEKLY_REPORT_EMAIL,
       subject: `📋 Rapport Hebdomadaire - ${draftWorkOrders.length} BT en Brouillon`,
       html: emailHtml
@@ -107,16 +110,16 @@ function generateEmailHtml(workOrders) {
     return `
       <tr style="background-color: ${bgColor}; color: ${textColor};">
         <td style="padding: 12px; border: 1px solid #E5E7EB; font-weight: bold;">
-          ${bt.work_order_number || 'N/A'}
+          ${bt.bt_number || 'N/A'}
         </td>
         <td style="padding: 12px; border: 1px solid #E5E7EB;">
           ${formatDate(bt.created_at)}
         </td>
         <td style="padding: 12px; border: 1px solid #E5E7EB;">
-          ${bt.client_name || 'N/A'}
+          ${bt.client?.name || 'N/A'}
         </td>
         <td style="padding: 12px; border: 1px solid #E5E7EB;">
-          ${bt.description || 'Aucune description'}
+          ${bt.work_description || 'Aucune description'}
         </td>
         <td style="padding: 12px; border: 1px solid #E5E7EB; text-align: center; font-weight: bold;">
           ${bt.total_hours || '0'} h
