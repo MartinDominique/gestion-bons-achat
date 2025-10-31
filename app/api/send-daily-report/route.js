@@ -55,6 +55,7 @@ function formatAmount(amount) {
 // Fonction pour traduire le statut
 function translateStatus(status) {
   const statusMap = {
+    'draft': 'Brouillon',
     'in_order': 'En commande',
     'ordered': 'Commandé'
   };
@@ -80,7 +81,7 @@ async function sendDailyReport() {
         total_amount,
         status
       `)
-      .in('status', ['in_order', 'ordered'])
+      .in('status', ['draft', 'in_order', 'ordered'])
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -299,7 +300,7 @@ async function sendDailyReport() {
           📦 <strong>${purchases?.length || 0}</strong> achat(s) en cours
         </p>
         <p style="margin: 5px 0; color: #6b7280;">
-          🔄 Statuts inclus : En commande, Commandé
+          📄 Statuts inclus : Brouillon, En commande, Commandé
         </p>
       </div>
 
