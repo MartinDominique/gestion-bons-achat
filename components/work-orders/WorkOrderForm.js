@@ -197,7 +197,8 @@ export default function WorkOrderForm({
         time_entries: workOrder.time_entries || [],
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
-        status: workOrder.status || 'draft'
+        status: workOrder.status || 'draft',
+        is_prix_jobe: workOrder.is_prix_jobe || false
       });
       
       if (workOrder.work_description) {
