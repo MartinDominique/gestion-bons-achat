@@ -19,16 +19,17 @@ export async function POST(request) {
     console.log('Données reçues pour achat:', body.purchase?.purchase_number);
 
     const isApproved = body.purchase.status === 'ordered' || body.purchase.status === 'approved';
+    const isDraft = body.purchase.status === 'draft' || body.purchase.status === 'brouillon';
 
     const emailData = {
       from: 'noreply@servicestmt.ca',
       to: ['info.servicestmt@gmail.com'],
-      subject: `🛒 ${isApproved ? 'Achat Fournisseur Approuvé' : 'Nouvel Achat Fournisseur'} - #${body.purchase.purchase_number}`,
+      subject: `🛒 ${isApproved ? 'Achat Fournisseur Approuvé' : isDraft ? 'Brouillon Achat Fournisseur' : 'Nouvel Achat Fournisseur'} - #${body.purchase.purchase_number}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
             <h1 style="margin: 0; font-size: 24px;">
-              ${isApproved ? '✅ Achat Approuvé' : '📋 Nouvel Achat Créé'}
+              ${isApproved ? '✅ Achat Approuvé' : isDraft ? '📝 Brouillon' : '📋 Nouvel Achat Créé'}
             </h1>
             <p style="margin: 10px 0 0 0; opacity: 0.9;">
               Achat Fournisseur #${body.purchase.purchase_number}
@@ -62,9 +63,17 @@ export async function POST(request) {
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Statut:</strong></td>
                 <td style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                  <span style="background: ${isApproved ? '#d4edda' : '#fff3cd'}; 
-                               color: ${isApproved ? '#155724' : '#856404'}; 
-                               padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                  <span style="background: ${
+                    isApproved ? '#d4edda' : 
+                    isDraft ? '#f0f0f0' : 
+                    '#fff3cd'
+                  }; 
+                    color: ${
+                      isApproved ? '#155724' : 
+                      isDraft ? '#666666' : 
+                      '#856404'
+                    }; 
+                    padding: 4px 8px; border-radius: 4px; font-size: 12px;">
                     ${body.purchase.status.toUpperCase()}
                   </span>
                 </td>
