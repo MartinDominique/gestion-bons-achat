@@ -242,7 +242,7 @@ const formatDuration = (hours) => {
   }
     const now = new Date();
     const newSession = {
-      date: workDate || now.toISOString().split('T')[0],
+      date: now.toISOString().split('T')[0],  // ✅ Toujours la date du jour
       start_time: now.toTimeString().substring(0, 5),
       end_time: null,
       pause_minutes: 0,
@@ -318,7 +318,7 @@ const formatDuration = (hours) => {
     return;
   }
     setEditingIndex(null);
-    setManualDate(workDate || new Date().toISOString().split('T')[0]);
+    setManualDate(new Date().toISOString().split('T')[0]);  // ✅ Toujours la date du jour
     setManualStart('');
     setManualEnd('');
     setManualPause(0);
