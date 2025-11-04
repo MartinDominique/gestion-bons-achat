@@ -84,11 +84,13 @@ export async function POST(request) {
   // Gérer la création automatique de purchase_order si nécessaire
 let finalLinkedPoId = null;
 
-if (linked_po_id) {
-  // Vérifier si c'est un ID numérique existant ou un nouveau numéro
-  const isStringPO = typeof linked_po_id === 'string' && linked_po_id.trim() && isNaN(linked_po_id);
-  
-  if (isStringPO) {
+    if (linked_po_id) {
+      const { is_manual_po } = body; // ✅ Récupérer le flag
+      
+      // Si saisie manuelle OU si c'est une string non-numérique → créer un nouveau BA
+      const shouldCreatePO = is_manual_po || (typeof linked_po_id === 'string' && linked_po_id.trim() && isNaN(linked_po_id));
+      
+      if (shouldCreatePO) {
     // C'est un nouveau numéro de BA/Job client
     console.log('🔍 Création automatique purchase_order pour:', linked_po_id);
     
@@ -139,11 +141,11 @@ if (linked_po_id) {
         console.log('✅ Purchase order créé:', newPO.po_number, 'ID:', newPO.id);
       }
     }
-  } else if (!isNaN(linked_po_id)) {
-    // C'est un ID existant
-    finalLinkedPoId = parseInt(linked_po_id);
-    console.log('✅ Utilisation ID purchase_order existant:', finalLinkedPoId);
-  }
+  } else {
+  // Mode sélection dropdown - c'est un ID existant
+  finalLinkedPoId = parseInt(linked_po_id);
+  console.log('✅ Utilisation ID purchase_order existant:', finalLinkedPoId);
+}
 }
 
     // 1. Créer le work_order principal
