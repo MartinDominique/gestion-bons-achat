@@ -1018,7 +1018,8 @@ export default function WorkOrderForm({
     const dataToSave = {
       ...payload,
       client_id: parseInt(payload.client_id),
-      linked_po_id: payload.linked_po_id && !useManualPO ? parseInt(payload.linked_po_id) : payload.linked_po_id || null,
+      linked_po_id: payload.linked_po_id || null,
+      is_manual_po: useManualPO, // ✅ NOUVEAU FLAG
       status,
       materials: normalizedMaterials,
       selected_client_emails: selectedEmails,
