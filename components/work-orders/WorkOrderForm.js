@@ -1109,65 +1109,62 @@ export default function WorkOrderForm({
               Client *
             </label>
             
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex gap-2">
               <select
-                className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                className={`flex-1 min-w-0 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
                   errors.client_id ? 'border-red-500' : 'border-gray-300'
                 }`}
+                style={{ maxWidth: 'calc(100vw - 240px)' }}
                 value={formData.client_id}
                 onChange={(e) => handleClientSelect(e.target.value)}
               >
                 <option value="">Sélectionner un client</option>
                 {clients.map(client => (
                   <option key={client.id} value={client.id}>
-                    {client.name}
+                    {client.name.length > 40 ? client.name.substring(0, 40) + '...' : client.name}
                   </option>
                 ))}
               </select>
               
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('🔄 Rafraîchissement manuel de la liste clients');
-                    loadClients();
-                    toast.success('Liste des clients actualisée');
-                  }}
-                  className="flex-1 sm:flex-none p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
-                  title="🔄 Actualiser la liste des clients"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="23 4 23 10 17 10"></polyline>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                  </svg>
-                  <span className="sm:hidden">Actualiser</span>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={handleEditClient}
-                  disabled={!selectedClient}
-                  className={`flex-1 sm:flex-none p-3 rounded-lg flex items-center justify-center gap-2 ${
-                    selectedClient
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                  title={selectedClient ? '✏️ Modifier le client sélectionné' : 'Sélectionnez un client d\'abord'}
-                >
-                  <PenTool size={20} />
-                  <span className="sm:hidden">Modifier</span>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={handleNewClient}
-                  className="flex-1 sm:flex-none p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                  title="➕ Créer un nouveau client"
-                >
-                  <Plus size={20} />
-                  <span className="sm:hidden">Nouveau</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  console.log('🔄 Rafraîchissement manuel de la liste clients');
+                  loadClients();
+                  toast.success('Liste des clients actualisée');
+                }}
+                className="flex-shrink-0 w-12 h-12 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center"
+                title="🔄 Actualiser la liste des clients"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleEditClient}
+                disabled={!selectedClient}
+                className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
+                  selectedClient
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                title={selectedClient ? '✏️ Modifier le client sélectionné' : 'Sélectionnez un client d\'abord'}
+              >
+                <PenTool size={20} />
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleNewClient}
+                className="flex-shrink-0 w-12 h-12 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center"
+                title="➕ Créer un nouveau client"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
             </div>
             
             {errors.client_id && (
