@@ -1125,7 +1125,7 @@ export default function WorkOrderForm({
                 ))}
               </select>
               
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -1133,20 +1133,21 @@ export default function WorkOrderForm({
                     loadClients();
                     toast.success('Liste des clients actualisée');
                   }}
-                  className="p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center"
+                  className="flex-1 sm:flex-none p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
                   title="🔄 Actualiser la liste des clients"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                   </svg>
+                  <span className="sm:hidden">Actualiser</span>
                 </button>
                 
                 <button
                   type="button"
                   onClick={handleEditClient}
                   disabled={!selectedClient}
-                  className={`p-3 rounded-lg flex items-center justify-center ${
+                  className={`flex-1 sm:flex-none p-3 rounded-lg flex items-center justify-center gap-2 ${
                     selectedClient
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -1154,15 +1155,17 @@ export default function WorkOrderForm({
                   title={selectedClient ? '✏️ Modifier le client sélectionné' : 'Sélectionnez un client d\'abord'}
                 >
                   <PenTool size={20} />
+                  <span className="sm:hidden">Modifier</span>
                 </button>
                 
                 <button
                   type="button"
                   onClick={handleNewClient}
-                  className="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center"
+                  className="flex-1 sm:flex-none p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                   title="➕ Créer un nouveau client"
                 >
                   <Plus size={20} />
+                  <span className="sm:hidden">Nouveau</span>
                 </button>
               </div>
             </div>
