@@ -5,6 +5,87 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase'; 
 
+// Composant clavier numérique personnalisé
+function NumericKeypad({ value, onChange, onEnter }) {
+  const handleClick = (digit) => {
+    onChange(value + digit);
+  };
+
+  const handleBackspace = () => {
+    onChange(value.slice(0, -1));
+  };
+
+  const handleClear = () => {
+    onChange('');
+  };
+
+  const handleDecimal = () => {
+    if (!value.includes('.')) {
+      onChange(value + '.');
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-3 gap-3 p-4 bg-gray-100 rounded-lg">
+      {/* Chiffres 1-9 */}
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+        <button
+          key={num}
+          type="button"
+          onClick={() => handleClick(num.toString())}
+          className="bg-white hover:bg-blue-50 active:bg-blue-100 text-2xl font-bold py-4 rounded-lg shadow-sm border border-gray-300 transition-colors"
+        >
+          {num}
+        </button>
+      ))}
+      
+      {/* Ligne du bas: Point, 0, Effacer */}
+      <button
+        type="button"
+        onClick={handleDecimal}
+        className="bg-white hover:bg-blue-50 active:bg-blue-100 text-2xl font-bold py-4 rounded-lg shadow-sm border border-gray-300"
+      >
+        .
+      </button>
+      
+      <button
+        type="button"
+        onClick={() => handleClick('0')}
+        className="bg-white hover:bg-blue-50 active:bg-blue-100 text-2xl font-bold py-4 rounded-lg shadow-sm border border-gray-300"
+      >
+        0
+      </button>
+      
+      <button
+        type="button"
+        onClick={handleBackspace}
+        className="bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-lg font-bold py-4 rounded-lg shadow-sm"
+      >
+        ⌫
+      </button>
+      
+      {/* Boutons pleine largeur */}
+      <button
+        type="button"
+        onClick={handleClear}
+        className="col-span-2 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold py-3 rounded-lg shadow-sm"
+      >
+        Effacer tout
+      </button>
+      
+      {onEnter && (
+        <button
+          type="button"
+          onClick={onEnter}
+          className="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3 rounded-lg shadow-sm"
+        >
+          ✓ OK
+        </button>
+      )}
+    </div>
+  );
+}
+
 // NOUVEAU: Plus de paramètre showPrices global - géré par ligne
 export default function MaterialSelector({ 
   materials = [], 
@@ -679,27 +760,28 @@ const deleteMaterialFromModal = () => {
                   <div className="p-6 space-y-6">
                     {/* Quantité */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-center text-sm font-medium text-gray-700 mb-3">
                         Quantité
                       </label>
                       <input
                         ref={editQuantityInputRef}
-                        type="number"
-                        step="0.5"
-                        min="0.1"
+                        type="text"
+                        inputMode="none"
                         value={editForm.quantity}
                         onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            saveEditMaterial();
-                          }
-                        }}
-                        className="w-full text-center text-4xl font-bold border-2 border-blue-500 rounded-lg py-4 px-4 focus:ring-4 focus:ring-blue-300"
-                        inputMode="decimal"
+                        className="w-full text-center text-4xl font-bold border-2 border-blue-500 rounded-lg py-4 px-4 focus:ring-4 focus:ring-blue-300 bg-white"
+                        readOnly
                       />
-                      <p className="text-center text-xs text-gray-500 mt-2">
+                      <p className="text-center text-xs text-gray-500 mt-2 mb-4">
                         Unité: {material.product?.unit || 'UN'}
                       </p>
+                      
+                      {/* Clavier numérique */}
+                      <NumericKeypad
+                        value={editForm.quantity}
+                        onChange={(qty) => setEditForm({...editForm, quantity: qty})}
+                        onEnter={saveEditMaterial}
+                      />
                     </div>
                     
                     {/* Notes */}
@@ -821,32 +903,30 @@ const deleteMaterialFromModal = () => {
               </div>
               
               {/* Input quantité */}
-              <div className="p-8">
+              <div className="p-6">
                 <label className="block text-center text-sm font-medium text-gray-700 mb-4">
-                  Entrez la quantité puis appuyez sur Enter
+                  Quantité
                 </label>
                 
                 <input
                   ref={quantityInputRef}
-                  type="number"
-                  step="0.5"
-                  min="0.1"
+                  type="text"
+                  inputMode="none"
                   value={pendingQuantity}
                   onChange={(e) => setPendingQuantity(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      confirmAddMaterial();
-                    }
-                  }}
-                  className="w-full text-center text-5xl font-bold border-4 border-blue-500 rounded-lg py-6 px-4 focus:ring-4 focus:ring-blue-300 focus:border-blue-600"
-                  inputMode="decimal"
-                  autoFocus
+                  className="w-full text-center text-5xl font-bold border-4 border-blue-500 rounded-lg py-6 px-4 focus:ring-4 focus:ring-blue-300 focus:border-blue-600 bg-white"
                   placeholder="0"
+                  readOnly
                 />
                 
-                <p className="text-center text-sm text-gray-500 mt-3">
-                  Ex: 10.5 ou 12 puis Enter ⏎
-                </p>
+                {/* Clavier numérique */}
+                <div className="mt-4">
+                  <NumericKeypad
+                    value={pendingQuantity}
+                    onChange={setPendingQuantity}
+                    onEnter={confirmAddMaterial}
+                  />
+                </div>
               </div>
 
               {/* Toggle prix - NOUVEAU */}
