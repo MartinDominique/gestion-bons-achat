@@ -192,7 +192,7 @@ export default function WorkOrderForm({
     if (workOrder && mode === 'edit') {
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
-        linked_po_id: workOrder.linked_po?.po_number || workOrder.linked_po_id || '',
+        linked_po_id: workOrder.linked_po_id?.toString() || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
         time_entries: workOrder.time_entries || [],
         work_description: workOrder.work_description || '',
@@ -1305,11 +1305,18 @@ export default function WorkOrderForm({
                 // Mode sélection
                 <>
                   <select
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    value={formData.linked_po_id}
-                    onChange={(e) => handleChange('linked_po_id', e.target.value)}
-                    disabled={!selectedClient}
-                  >
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.linked_po_id}
+                      onChange={(e) => {
+                        const poId = e.target.value;
+                        handleChange('linked_po_id', poId);
+                        const selectedPO = clientPurchaseOrders.find(po => po.id.toString() === poId);
+                        if (selectedPO) {
+                          console.log('✅ BA sélectionné:', selectedPO.po_number);
+                        }
+                      }}
+                      disabled={!selectedClient}
+                    >
                     <option value="">
                       {selectedClient 
                         ? clientPurchaseOrders.length > 0 
@@ -1318,7 +1325,7 @@ export default function WorkOrderForm({
                         : 'Sélectionnez d\'abord un client'}
                     </option>
                     {clientPurchaseOrders.map(po => (
-                      <option key={po.id} value={po.po_number}>
+                      <option key={po.id} value={po.id}>
                         {po.po_number} - {po.description ? po.description.substring(0, 50) : 'Sans description'} - {new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(po.amount || 0)} ({new Date(po.date).toLocaleDateString('fr-CA')})
                       </option>
                     ))}
