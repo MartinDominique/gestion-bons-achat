@@ -1165,7 +1165,6 @@ export default function WorkOrderForm({
                 <Plus size={20} />
               </button>
             </div>
-            </div>
             
             {errors.client_id && (
               <p className="text-red-500 text-sm mt-1">{errors.client_id}</p>
