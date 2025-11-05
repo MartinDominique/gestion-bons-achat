@@ -192,7 +192,7 @@ export default function WorkOrderForm({
     if (workOrder && mode === 'edit') {
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
-        linked_po_id: workOrder.linked_po_id?.toString() || '',
+        linked_po_id: workOrder.linked_po_id?.toString() || workOrder.linked_po?.po_number || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
         time_entries: workOrder.time_entries || [],
         work_description: workOrder.work_description || '',
@@ -204,6 +204,16 @@ export default function WorkOrderForm({
       if (workOrder.work_description) {
         const paragraphs = workOrder.work_description.split('\n\n').filter(p => p.trim());
         setDescriptions(paragraphs.length > 0 ? paragraphs : ['']);
+      }
+
+      // Déterminer si c'est un BA sélectionné ou manuel
+      if (workOrder.linked_po_id) {
+        // Si c'est un nombre, c'est un BA sélectionné
+        const isNumeric = !isNaN(workOrder.linked_po_id);
+        setUseManualPO(!isNumeric);
+        if (!isNumeric && workOrder.linked_po?.po_number) {
+          setManualPOValue(workOrder.linked_po.po_number);
+        }
       }
       
       if (workOrder.client) {
