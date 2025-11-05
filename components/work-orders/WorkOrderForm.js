@@ -1029,6 +1029,9 @@ export default function WorkOrderForm({
     if (mode === 'edit' && workOrder) {
       dataToSave.id = workOrder.id;
     }
+
+    console.log('🔍 AVANT onSave - status passé:', status);
+    console.log('🔍 AVANT onSave - dataToSave.status:', dataToSave.status);
     
     try {
       const savedWorkOrder = await onSave(dataToSave, status);
