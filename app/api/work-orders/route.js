@@ -123,7 +123,7 @@ let finalLinkedPoId = null;
           status: 'active',
           date: work_date,
           po_date: work_date,
-          description: 'Créé automatiquement depuis BT',
+          description: work_description || 'Créé automatiquement depuis BT',
           created_by: null,
           amount: 0,
           client_name: clientName,
