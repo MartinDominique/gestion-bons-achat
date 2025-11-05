@@ -173,7 +173,13 @@ export async function POST(request, { params }) {
       .eq('id', workOrderId);
 
       // 7. Ajouter le PDF au bon d'achat si lié
-        if (workOrder.linked_po_id && result.pdfBase64) {
+      console.log('🔍 DEBUG PDF:', {
+        linked_po_id: workOrder.linked_po_id,
+        hasPdfBase64: !!result.pdfBase64,
+        pdfLength: result.pdfBase64?.length
+      });
+      
+      if (workOrder.linked_po_id && result.pdfBase64) {
           try {
             // Récupérer les fichiers existants du BA
             const { data: purchaseOrder } = await supabaseAdmin
