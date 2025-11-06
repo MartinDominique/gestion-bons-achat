@@ -13,7 +13,13 @@ export default function BonsTravailPage() {
   const [actionLoading, setActionLoading] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('client'); // 'client', 'bt_number', 'date'
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'draft', 'ready_for_signature', 'signed', 'pending_send', 'sent'
+  const [statusFilter, setStatusFilter] = useState(() => {
+  // Charger le filtre sauvegardé depuis localStorage
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('bt-status-filter') || 'all';
+  }
+  return 'all';
+});
   const router = useRouter();
 
   // Fonction pour formater les heures en h:min
@@ -68,6 +74,13 @@ export default function BonsTravailPage() {
       setLoading(false);
     }
   };
+
+  // Sauvegarder le filtre dans localStorage quand il change
+    useEffect(() => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bt-status-filter', statusFilter);
+      }
+    }, [statusFilter]);
 
   useEffect(() => {
     fetchWorkOrders();
