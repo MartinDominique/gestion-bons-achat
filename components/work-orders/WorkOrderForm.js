@@ -206,6 +206,22 @@ export default function WorkOrderForm({
         setDescriptions(paragraphs.length > 0 ? paragraphs : ['']);
       }
 
+      // Initialiser le mode BA (sélection vs manuel)
+      if (workOrder.linked_po_id || workOrder.linked_po) {
+        const linkedPo = workOrder.linked_po;
+        
+        if (linkedPo?.id) {
+          // Vérifier si c'est un ID numérique = BA sélectionné
+          setUseManualPO(false);
+          console.log('✅ BA sélectionné:', linkedPo.po_number, 'ID:', linkedPo.id);
+        } else if (linkedPo?.po_number) {
+          // C'est une saisie manuelle (pas d'ID, juste un numéro)
+          setUseManualPO(true);
+          setManualPOValue(linkedPo.po_number);
+          console.log('✏️ BA manuel:', linkedPo.po_number);
+        }
+      }
+
       // Déterminer si c'est un BA sélectionné ou manuel
       if (workOrder.linked_po_id) {
         // Si c'est un nombre, c'est un BA sélectionné
