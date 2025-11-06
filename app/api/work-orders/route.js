@@ -468,42 +468,7 @@ export async function PUT(request) {
             console.log('✅ Utilisation ID purchase_order existant:', finalLinkedPoId);
           }
         }
-        
-        // 1️⃣ Récupérer le nom du client
-        const { data: clientData } = await client
-          .from('clients')
-          .select('name')
-          .eq('id', client_id)
-          .single();
-        
-        const clientName = clientData?.name || 'Client inconnu';
-        
-        // 2️⃣ Créer le purchase_order
-        const { data: newPO, error: poError } = await client
-          .from('purchase_orders')
-          .insert({
-            po_number: linked_po_id.trim(),
-            client_id: parseInt(client_id),
-            status: 'active',
-            date: work_date,
-            po_date: work_date,
-            description: 'Créé automatiquement depuis BT',
-            created_by: null,
-            amount: 0,
-            client_name: clientName,
-            notes: `PO créé automatiquement lors de la création d'un BT. Date: ${work_date}`
-          })
-          .select()
-          .single();
-
-        if (poError) {
-          console.error('Erreur création purchase_order:', poError);
-        } else {
-          finalLinkedPoId = newPO.id;
-          console.log('Purchase order créé lors mise à jour:', newPO.po_number, 'ID:', newPO.id);
-        }
-       }
-
+       
     // 1. Mettre à jour le work_order principal
     const workOrderData = {
       client_id: parseInt(client_id),
