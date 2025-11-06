@@ -422,13 +422,34 @@ export default function WorkOrderForm({
   };
 
   // Charger les BAs quand le client change
+    useEffect(() => {
+      if (selectedClient?.name) {
+        loadClientPurchaseOrders(selectedClient.name);
+      } else {
+        setClientPurchaseOrders([]);
+      }
+    }, [selectedClient]);
+  
+    // Synchroniser le BA sélectionné quand la liste est chargée (mode edit)
   useEffect(() => {
-    if (selectedClient?.name) {
-      loadClientPurchaseOrders(selectedClient.name);
-    } else {
-      setClientPurchaseOrders([]);
+    if (mode === 'edit' && workOrder?.linked_po_id && clientPurchaseOrders.length > 0) {
+      const matchingPO = clientPurchaseOrders.find(po => po.id === workOrder.linked_po_id);
+      
+      if (matchingPO) {
+        console.log('🔄 Synchronisation BA en mode edit:', matchingPO.po_number);
+        setFormData(prev => ({
+          ...prev,
+          linked_po_id: matchingPO.id.toString()
+        }));
+        setUseManualPO(false);
+      } else if (workOrder.linked_po?.po_number) {
+        // C'est un BA manuel (pas dans la liste)
+        console.log('✏️ BA manuel détecté:', workOrder.linked_po.po_number);
+        setUseManualPO(true);
+        setManualPOValue(workOrder.linked_po.po_number);
+      }
     }
-  }, [selectedClient]);
+  }, [clientPurchaseOrders, mode, workOrder?.linked_po_id]);
 
   useEffect(() => {
     const combinedDescription = descriptions
