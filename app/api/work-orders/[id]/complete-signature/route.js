@@ -222,11 +222,56 @@ export async function POST(request, { params }) {
         .eq('id', workOrderId);
     
       if (updateError) {
-        console.error('❌ ERREUR mise à jour statut "sent":', updateError);
+      console.error('❌ ERREUR mise à jour statut "sent":', updateError);
       } else {
         console.log('✅ Statut mis à jour vers "sent" avec succès');
       }
-    
+      
+      // 7. Ajouter le PDF au bon d'achat si lié
+      console.log('🔍 DEBUG result:', {
+        hasResult: !!result,
+        hasPdfBase64: !!result.pdfBase64,
+        pdfLength: result.pdfBase64?.length || 0,
+        linkedPoId: workOrder.linked_po_id
+      });
+      
+      if (workOrder.linked_po_id && result.pdfBase64) {
+        try {
+          console.log('📎 Ajout du PDF au BA:', workOrder.linked_po_id);
+          
+          // Récupérer les fichiers existants du BA
+          const { data: purchaseOrder } = await supabaseAdmin
+            .from('purchase_orders')
+            .select('files')
+            .eq('id', workOrder.linked_po_id)
+            .single();
+      
+          // Préparer le nouveau fichier
+          const newFile = {
+            id: Date.now(),
+            name: `BT-${workOrder.bt_number}.pdf`,
+            data: result.pdfBase64
+          };
+      
+          // Combiner avec fichiers existants
+          const existingFiles = purchaseOrder?.files || [];
+          const updatedFiles = [...existingFiles, newFile];
+      
+          // Mettre à jour le BA
+          await supabaseAdmin
+            .from('purchase_orders')
+            .update({ files: updatedFiles })
+            .eq('id', workOrder.linked_po_id);
+      
+          console.log('✅ PDF du BT ajouté au BA:', workOrder.linked_po_id);
+        } catch (error) {
+          console.error('⚠️ Erreur ajout PDF au BA:', error);
+          // Non bloquant - l'email est déjà envoyé
+        }
+      } else {
+        console.log('ℹ️ Pas de BA lié ou pas de PDF à ajouter');
+      }
+      
       console.log('✅ Envoi automatique réussi vers:', recipientEmails.join(', '));
       
       return NextResponse.json({
@@ -234,7 +279,7 @@ export async function POST(request, { params }) {
         autoSendResult: { 
           success: true, 
           messageId: result.messageId,
-          sentTo: recipientEmails.join(', ') // ✅ Retourner tous les emails
+          sentTo: recipientEmails.join(', ')
         },
         status: 'sent'
       });
