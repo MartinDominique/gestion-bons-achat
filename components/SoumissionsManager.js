@@ -831,7 +831,7 @@ export default function SoumissionsManager() {
               }
             }
           }
-        }, 3000);
+        }, 1000);
     
       } catch (error) {
         alert(`❌ Erreur: ${error.message}`);
