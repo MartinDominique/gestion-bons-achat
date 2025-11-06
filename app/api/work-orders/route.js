@@ -502,11 +502,7 @@ export async function PUT(request) {
           finalLinkedPoId = newPO.id;
           console.log('Purchase order créé lors mise à jour:', newPO.po_number, 'ID:', newPO.id);
         }
-      } else if (!isNaN(linked_po_id)) {
-        // C'est un ID existant
-        finalLinkedPoId = parseInt(linked_po_id);
-      }
-    }
+       }
 
     // 1. Mettre à jour le work_order principal
     const workOrderData = {
