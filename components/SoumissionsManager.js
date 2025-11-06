@@ -696,22 +696,34 @@ export default function SoumissionsManager() {
   }, 100);
 };
 
-const handlePrintClient = () => {
-  // Sauvegarder le titre original
-  const originalTitle = document.title;
-  // Changer le titre pour l'impression
-  document.title = `Soumission ${submissionForm.submission_number}`;
+  const handlePrintClient = async () => {
+    // 🆕 VÉRIFICATION AVANT IMPRESSION
+    const confirmation = confirm(
+      '⚠️ AVANT D\'IMPRIMER:\n\n' +
+      'Avez-vous mis à jour la soumission avec les dernières modifications?\n\n' +
+      '✅ Cliquez OK pour continuer l\'impression\n' +
+      '❌ Cliquez Annuler pour revenir et modifier'
+    );
   
-  // Ajouter classe temporaire pour impression client
-  document.body.classList.add('print-client');
-  window.print();
+    if (!confirmation) {
+      return; // L'utilisateur veut modifier avant d'imprimer
+    }
   
-  // Retirer la classe et restaurer le titre après impression
-  setTimeout(() => {
-    document.body.classList.remove('print-client');
-    document.title = originalTitle;
-  }, 100);
-};
+    // Sauvegarder le titre original
+    const originalTitle = document.title;
+    // Changer le titre pour l'impression
+    document.title = `Soumission ${submissionForm.submission_number}`;
+    
+    // Ajouter classe temporaire pour impression client
+    document.body.classList.add('print-client');
+    window.print();
+    
+    // Retirer la classe et restaurer le titre après impression
+    setTimeout(() => {
+      document.body.classList.remove('print-client');
+      document.title = originalTitle;
+    }, 100);
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {
@@ -720,89 +732,111 @@ const handlePrintClient = () => {
     }).format(amount || 0);
   };
 
-   const imprimerEtProposerEmail = async () => {
-  if (!submissionForm.client_name) {
-    alert('⚠️ Veuillez sélectionner un client avant d\'imprimer');
-    return;
-  }
-
-  if (selectedItems.length === 0) {
-    alert('⚠️ Veuillez ajouter au moins un produit avant d\'imprimer');
-    return;
-  }
-
-  const client = clients.find(c => c.name === submissionForm.client_name);
-  if (!client || !client.email) {
-    alert('⚠️ Aucun email trouvé pour ce client.');
-    return;
-  }
-
-  try {
-    // Changer le titre pour le nom du fichier PDF
-    const originalTitle = document.title;
-    document.title = `SOU-${submissionForm.submission_number}`;
+     const imprimerEtProposerEmail = async () => {
+      if (!submissionForm.client_name) {
+        alert('⚠️ Veuillez sélectionner un client avant d\'imprimer');
+        return;
+      }
     
-    document.body.classList.add('print-client');
-    window.print();
+      if (selectedItems.length === 0) {
+        alert('⚠️ Veuillez ajouter au moins un produit avant d\'imprimer');
+        return;
+      }
     
-    setTimeout(() => {
-      document.body.classList.remove('print-client');
-      document.title = originalTitle;
-    }, 1000);
-
-    setTimeout(() => {
-      const confirmation = confirm(
-        `✅ PDF sauvegardé : Soumission_${submissionForm.submission_number}.pdf\n\n` +
-        `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${client.email} ?`
-      );
-
-      if (confirmation) {
-        // RÉSUMÉ COMPLET RESTAURÉ
-        const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
+      const client = clients.find(c => c.name === submissionForm.client_name);
+      if (!client || !client.email) {
+        alert('⚠️ Aucun email trouvé pour ce client.');
+        return;
+      }
+    
+      try {
+        // Changer le titre pour le nom du fichier PDF
+        const originalTitle = document.title;
+        document.title = `SOU-${submissionForm.submission_number}`;
         
-        const sousTotal = submissionForm.amount;
-        const tps = sousTotal * 0.05;
-        const tvq = sousTotal * 0.09975;
-        const total = sousTotal + tps + tvq;
-        
-        const corpsEmail = `Bonjour,
-
-Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
-
-RÉSUMÉ:
-• Sous-total: ${formatCurrency(sousTotal)}
-• TPS (5%): ${formatCurrency(tps)}
-• TVQ (9.975%): ${formatCurrency(tvq)}
-• TOTAL: ${formatCurrency(total)}
-
-Détails:
-• Nombre d'articles: ${selectedItems.length}
-• Validité: 30 jours
-• Paiement: Net 30 jours
-
-N'hésitez pas à nous contacter pour toute question.`;
-
-        const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
-        
-        // Iframe invisible pour éviter la navigation
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = mailtoLink;
-        document.body.appendChild(iframe);
+        document.body.classList.add('print-client');
+        window.print();
         
         setTimeout(() => {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
+          document.body.classList.remove('print-client');
+          document.title = originalTitle;
         }, 1000);
+    
+        setTimeout(async () => {
+          const confirmation = confirm(
+            `✅ PDF sauvegardé : Soumission_${submissionForm.submission_number}.pdf\n\n` +
+            `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${client.email} ?`
+          );
+    
+          if (confirmation) {
+            // RÉSUMÉ COMPLET RESTAURÉ
+            const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
+            
+            const sousTotal = submissionForm.amount;
+            const tps = sousTotal * 0.05;
+            const tvq = sousTotal * 0.09975;
+            const total = sousTotal + tps + tvq;
+            
+            const corpsEmail = `Bonjour,
+    
+    Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
+    
+    RÉSUMÉ:
+    - Sous-total: ${formatCurrency(sousTotal)}
+    - TPS (5%): ${formatCurrency(tps)}
+    - TVQ (9.975%): ${formatCurrency(tvq)}
+    - TOTAL: ${formatCurrency(total)}
+    
+    Détails:
+    - Nombre d'articles: ${selectedItems.length}
+    - Validité: 30 jours
+    - Paiement: Net 30 jours
+    
+    N'hésitez pas à nous contacter pour toute question.`;
+    
+            const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+            
+            // Iframe invisible pour éviter la navigation
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = mailtoLink;
+            document.body.appendChild(iframe);
+            
+            setTimeout(() => {
+              if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+              }
+            }, 1000);
+    
+            // 🆕 CHANGEMENT DE STATUT À "ENVOYÉE"
+            if (editingSubmission && submissionForm.status !== 'sent') {
+              try {
+                const { error } = await supabase
+                  .from('submissions')
+                  .update({ status: 'sent' })
+                  .eq('id', editingSubmission.id);
+                
+                if (error) throw error;
+                
+                // Mettre à jour l'état local
+                setSubmissionForm(prev => ({ ...prev, status: 'sent' }));
+                
+                // Rafraîchir la liste
+                await fetchSoumissions();
+                
+                alert('✅ Statut changé à "Envoyée"');
+              } catch (error) {
+                console.error('Erreur mise à jour statut:', error);
+                alert('⚠️ Email ouvert mais erreur lors du changement de statut');
+              }
+            }
+          }
+        }, 3000);
+    
+      } catch (error) {
+        alert(`❌ Erreur: ${error.message}`);
       }
-    }, 3000);
-
-  } catch (error) {
-    alert(`❌ Erreur: ${error.message}`);
-  }
-};
-  
+    };
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-CA');
   };
