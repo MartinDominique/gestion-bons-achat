@@ -190,6 +190,9 @@ export default function WorkOrderForm({
 
   useEffect(() => {
     if (workOrder && mode === 'edit') {
+      console.log('🔍 DEBUG INIT - workOrder complet:', workOrder);
+      console.log('🔍 DEBUG INIT - linked_po_id:', workOrder.linked_po_id);
+      console.log('🔍 DEBUG INIT - linked_po objet:', workOrder.linked_po);
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
         linked_po_id: workOrder.linked_po_id?.toString() || workOrder.linked_po?.po_number || '',
@@ -200,6 +203,8 @@ export default function WorkOrderForm({
         status: workOrder.status || 'draft',
         is_prix_jobe: workOrder.is_prix_jobe || false
       });
+
+      console.log('🔍 DEBUG INIT - formData.linked_po_id après init:', workOrder.linked_po_id?.toString() || '');
       
       if (workOrder.work_description) {
         const paragraphs = workOrder.work_description.split('\n\n').filter(p => p.trim());
