@@ -250,7 +250,10 @@ export async function POST(request, { params }) {
           const newFile = {
             id: Date.now(),
             name: `BT-${workOrder.bt_number}.pdf`,
-            data: result.pdfBase64
+            data: result.pdfBase64,
+            type: 'application/pdf',
+            size: result.pdfBase64.length,
+            uploadDate: new Date().toISOString()
           };
       
           // Combiner avec fichiers existants
