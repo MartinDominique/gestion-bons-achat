@@ -6,22 +6,44 @@ import {
 import { supabase } from '../../lib/supabase'; 
 
 // Composant clavier numérique personnalisé
-function NumericKeypad({ value, onChange, onEnter }) {
+function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
+  const [hasBeenModified, setHasBeenModified] = React.useState(false);
+
+  // Reset quand la valeur change de l'extérieur
+  React.useEffect(() => {
+    setHasBeenModified(false);
+  }, [shouldReplace]);
+
   const handleClick = (digit) => {
-    onChange(value + digit);
+    // Si c'est le premier clic et shouldReplace est true, on remplace
+    if (!hasBeenModified && shouldReplace) {
+      onChange(digit);
+      setHasBeenModified(true);
+    } else {
+      onChange(value + digit);
+      setHasBeenModified(true);
+    }
   };
 
   const handleBackspace = () => {
     onChange(value.slice(0, -1));
+    setHasBeenModified(true);
   };
 
   const handleClear = () => {
     onChange('');
+    setHasBeenModified(true);
   };
 
   const handleDecimal = () => {
     if (!value.includes('.')) {
-      onChange(value + '.');
+      if (!hasBeenModified && shouldReplace) {
+        onChange('0.');
+        setHasBeenModified(true);
+      } else {
+        onChange(value + '.');
+        setHasBeenModified(true);
+      }
     }
   };
 
@@ -777,11 +799,12 @@ const deleteMaterialFromModal = () => {
                       </p>
                       
                       {/* Clavier numérique */}
-                      <NumericKeypad
-                        value={editForm.quantity}
-                        onChange={(qty) => setEditForm({...editForm, quantity: qty})}
-                        onEnter={saveEditMaterial}
-                      />
+                     <NumericKeypad
+                      value={editForm.quantity}
+                      onChange={(qty) => setEditForm({...editForm, quantity: qty})}
+                      onEnter={saveEditMaterial}
+                      shouldReplace={true}
+                    />
                     </div>
                     
                     {/* Notes */}
@@ -925,6 +948,7 @@ const deleteMaterialFromModal = () => {
                     value={pendingQuantity}
                     onChange={setPendingQuantity}
                     onEnter={confirmAddMaterial}
+                    shouldReplace={true}
                   />
                 </div>
               </div>
