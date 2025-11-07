@@ -1,4 +1,7 @@
-// CORRIGÉ: Chemin avec un niveau de plus
+// ============================================
+// app/api/work-orders/[id]/signature/route.js
+//=============================================
+
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
 
 export async function POST(request, { params }) {
