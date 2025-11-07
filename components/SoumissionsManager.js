@@ -615,7 +615,8 @@ export default function SoumissionsManager() {
 
   const updateItemQuantity = (productId, quantity) => {
     const floatQuantity = parseFloat(quantity);
-    if (floatQuantity <= 0 || isNaN(floatQuantity)) {
+    // Permettre quantité zéro, supprimer seulement si vide ou négatif
+    if (quantity === '' || floatQuantity < 0 || isNaN(floatQuantity)) {
       setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
     } else {
       setSelectedItems(selectedItems.map(item =>
