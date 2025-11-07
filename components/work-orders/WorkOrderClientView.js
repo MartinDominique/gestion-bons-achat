@@ -12,6 +12,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   const [isOnline, setIsOnline] = useState(true);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // ✅ NOUVEAU - États pour les signataires
   const [selectedSignatoryMode, setSelectedSignatoryMode] = useState('checkbox'); // 'checkbox' ou 'custom'
@@ -132,60 +133,65 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
     setSignature('');
   };
 
- const handleAcceptWork = async () => {
-  if (!signature) {
-    alert('Signature requise pour accepter les travaux');
-    return;
-  }
-  
-  if (!signerName || signerName.trim().length < 2) {
-    alert('Veuillez sélectionner un signataire ou entrer un nom (minimum 2 caractères)');
-    return;
-  }
-
-  try {
-    const result = await handleSignatureWithAutoSend(
-      workOrder.id, 
-      signature, 
-      signerName.trim()
-    );
-    
-    console.log('🔍 RÉSULTAT SIGNATURE:', result);
-    
-    if (result.success && result.signatureSaved) {
-      setIsSigning(false);
-      
-      // ✅ CORRIGÉ: Vérifier le statut retourné par l'API, pas le workOrder local
-      if (result.autoSendResult?.success && result.workOrderStatus === 'sent') {
-        console.log('✅ Email envoyé et statut confirmé à "sent" - Fermeture');
-        
-        // Mettre à jour le parent AVANT de fermer
-        onStatusUpdate?.('sent');
-        
-        // Fermer après un petit délai pour laisser le temps au parent de se mettre à jour
-        setTimeout(() => {
-          window.close();
-        }, 500);
-        
-      } else if (result.autoSendResult.needsManualSend) {
-        // Signature OK mais envoi automatique impossible
-        onStatusUpdate?.(result.workOrderStatus || 'pending_send');
-        alert(`Travail signé avec succès. ${result.autoSendResult.reason}`);
-        
-      } else {
-        // Erreur envoi automatique
-        onStatusUpdate?.(result.workOrderStatus || 'pending_send');
-        alert('Travail signé. Email sera envoyé manuellement depuis le bureau.');
+   const handleAcceptWork = async () => {
+      // 🆕 Empêcher les clics multiples
+      if (isSubmitting) {
+        return;
       }
-    } else {
-      throw new Error(result.error || 'Erreur lors de la signature');
-    }
     
-  } catch (error) {
-    console.error('Erreur signature:', error);
-    alert(`Erreur lors de la signature: ${error.message}`);
-  }
-};
+      if (!signature) {
+        alert('Signature requise pour accepter les travaux');
+        return;
+      }
+      
+      if (!signerName || signerName.trim().length < 2) {
+        alert('Veuillez sélectionner un signataire ou entrer un nom (minimum 2 caractères)');
+        return;
+      }
+    
+      try {
+        setIsSubmitting(true); // 🆕 Désactiver le bouton
+        
+        const result = await handleSignatureWithAutoSend(
+          workOrder.id, 
+          signature, 
+          signerName.trim()
+        );
+        
+        console.log('🔍 RÉSULTAT SIGNATURE:', result);
+        
+        if (result.success && result.signatureSaved) {
+          setIsSigning(false);
+          
+          if (result.autoSendResult?.success && result.workOrderStatus === 'sent') {
+            console.log('✅ Email envoyé et statut confirmé à "sent" - Fermeture');
+            
+            onStatusUpdate?.('sent');
+            
+            setTimeout(() => {
+              window.close();
+            }, 500);
+            
+          } else if (result.autoSendResult.needsManualSend) {
+            onStatusUpdate?.(result.workOrderStatus || 'pending_send');
+            alert(`Travail signé avec succès. ${result.autoSendResult.reason}`);
+            setIsSubmitting(false); // 🆕 Réactiver si on ne ferme pas
+            
+          } else {
+            onStatusUpdate?.(result.workOrderStatus || 'pending_send');
+            alert('Travail signé. Email sera envoyé manuellement depuis le bureau.');
+            setIsSubmitting(false); // 🆕 Réactiver si on ne ferme pas
+          }
+        } else {
+          throw new Error(result.error || 'Erreur lors de la signature');
+        }
+        
+      } catch (error) {
+        console.error('Erreur signature:', error);
+        alert(`Erreur lors de la signature: ${error.message}`);
+        setIsSubmitting(false); // 🆕 Réactiver en cas d'erreur
+      }
+    };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('fr-CA', {
@@ -781,15 +787,24 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                         
                         <button
                           onClick={handleAcceptWork}
-                          disabled={!signature || !signerName}
+                          disabled={!signature || !signerName || isSubmitting}
                           className={`flex-1 px-6 py-3 rounded-lg font-semibold text-base flex items-center justify-center transition-colors ${
-                            signature && signerName
+                            signature && signerName && !isSubmitting
                               ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg' 
                               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           }`}
                         >
-                          <Check className="mr-2" size={20} />
-                          Confirmer Signature
+                          {isSubmitting ? (
+                            <>
+                              <span className="animate-spin mr-2">⏳</span>
+                              Envoi en cours...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="mr-2" size={20} />
+                              Confirmer Signature
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>
