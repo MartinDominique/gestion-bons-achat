@@ -186,10 +186,17 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
           throw new Error(result.error || 'Erreur lors de la signature');
         }
         
-      } catch (error) {
+       } catch (error) {
         console.error('Erreur signature:', error);
-        alert(`Erreur lors de la signature: ${error.message}`);
-        setIsSubmitting(false); // 🆕 Réactiver en cas d'erreur
+        
+        // 🆕 Message plus clair pour problème de connexion
+        if (error.message === 'Failed to fetch' || !navigator.onLine) {
+          alert('❌ Erreur de connexion\n\nVérifiez votre connexion internet et réessayez.');
+        } else {
+          alert(`Erreur lors de la signature: ${error.message}`);
+        }
+        
+        setIsSubmitting(false);
       }
     };
 
