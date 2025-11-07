@@ -901,7 +901,7 @@ export default function WorkOrderForm({
 
   const handleDescriptionChange = (index, value) => {
     const newDescriptions = [...descriptions];
-    newDescriptions[index] = value;
+    newDescriptions[index] = value.toUpperCase();
     setDescriptions(newDescriptions);
     if (onFormChange && !isInitializing) {
       onFormChange();
@@ -1502,7 +1502,7 @@ export default function WorkOrderForm({
                   }`}
                   placeholder={index === 0 ? "DESCRIPTION PRINCIPALE DES TRAVAUX EFFECTUÉS..." : "DESCRIPTION ADDITIONNELLE..."}
                   value={description}
-                  onChange={(e) => handleDescriptionChange(index, e.target.value.toUpperCase())}
+                  onChange={(e) => handleDescriptionChange(index, e.target.value)}
                   style={{ textTransform: 'uppercase' }}
                 />
               </div>
