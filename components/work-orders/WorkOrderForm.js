@@ -900,9 +900,21 @@ export default function WorkOrderForm({
   // ========================================
 
   const handleDescriptionChange = (index, value) => {
+    // Capturer la position du curseur AVANT la mise à jour
+    const textarea = document.activeElement;
+    const cursorPosition = textarea?.selectionStart;
+    
     const newDescriptions = [...descriptions];
     newDescriptions[index] = value.toUpperCase();
     setDescriptions(newDescriptions);
+    
+    // Restaurer la position du curseur APRÈS le re-render
+    requestAnimationFrame(() => {
+      if (textarea && cursorPosition !== undefined) {
+        textarea.setSelectionRange(cursorPosition, cursorPosition);
+      }
+    });
+    
     if (onFormChange && !isInitializing) {
       onFormChange();
     }
