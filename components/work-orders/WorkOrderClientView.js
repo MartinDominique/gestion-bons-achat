@@ -90,34 +90,48 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   };
 
   // Fonctions signature tactile
-  const startDrawing = (e) => {
-    e.preventDefault();
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
+    const startDrawing = (e) => {
+      e.preventDefault();
+      setIsDrawing(true);
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const ctx = canvas.getContext('2d');
+      
+      // 🆕 Calculer le ratio entre taille réelle et taille affichée
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
+      const x = (clientX - rect.left) * scaleX;
+      const y = (clientY - rect.top) * scaleY;
+      
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    };
     
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-    
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-    
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-    
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
+    const draw = (e) => {
+      e.preventDefault();
+      if (!isDrawing) return;
+      
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const ctx = canvas.getContext('2d');
+      
+      // 🆕 Calculer le ratio entre taille réelle et taille affichée
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
+      const x = (clientX - rect.left) * scaleX;
+      const y = (clientY - rect.top) * scaleY;
+      
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    };
 
   const stopDrawing = () => {
     setIsDrawing(false);
