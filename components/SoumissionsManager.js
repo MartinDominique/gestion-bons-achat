@@ -824,14 +824,63 @@ export default function SoumissionsManager() {
                 // Rafraîchir la liste
                 await fetchSoumissions();
                 
-                alert('✅ Statut changé à "Envoyée"');
+                // Notification temporaire auto-disparaissante
+                const notification = document.createElement('div');
+                notification.innerHTML = '✅ Statut changé à "Envoyée"';
+                notification.style.cssText = `
+                  position: fixed;
+                  top: 20px;
+                  right: 20px;
+                  background: #10b981;
+                  color: white;
+                  padding: 16px 24px;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                  z-index: 9999;
+                  animation: slideIn 0.3s ease-out;
+                `;
+                document.body.appendChild(notification);
+                
+                // Retirer après 3 secondes
+                setTimeout(() => {
+                  notification.style.animation = 'slideOut 0.3s ease-out';
+                  setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                      document.body.removeChild(notification);
+                    }
+                  }, 300);
+                }, 2000);
+                
               } catch (error) {
                 console.error('Erreur mise à jour statut:', error);
-                alert('⚠️ Email ouvert mais erreur lors du changement de statut');
+                
+                // Notification d'erreur temporaire
+                const errorNotif = document.createElement('div');
+                errorNotif.innerHTML = '⚠️ Erreur lors du changement de statut';
+                errorNotif.style.cssText = `
+                  position: fixed;
+                  top: 20px;
+                  right: 20px;
+                  background: #ef4444;
+                  color: white;
+                  padding: 16px 24px;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                  z-index: 9999;
+                `;
+                document.body.appendChild(errorNotif);
+                
+                setTimeout(() => {
+                  if (document.body.contains(errorNotif)) {
+                    document.body.removeChild(errorNotif);
+                  }
+                }, 3000);
               }
             }
           }
-        }, 1000);
+        }, 3000);
     
       } catch (error) {
         alert(`❌ Erreur: ${error.message}`);
