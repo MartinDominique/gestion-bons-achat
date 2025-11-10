@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 
 export default function RestorePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -10,7 +10,10 @@ export default function RestorePage() {
   const [confirmText, setConfirmText] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const supabase = createClientComponentClient();
+  const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = e.target.files?.[0];
