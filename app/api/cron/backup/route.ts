@@ -27,7 +27,6 @@ export async function GET(request: Request) {
       'delivery_slip_items',
       'delivery_slips',
       'non_inventory_items',
-      'products',
       'purchase_order_files',
       'purchase_orders',
       'quote_items',
