@@ -1,0 +1,38 @@
+name: 💾 Backup Hebdomadaire Supabase
+
+on:
+  schedule:
+    # Tous les dimanches à 20h UTC = 16h Québec (heure normale)
+    - cron: '0 20 * * 0'
+  
+  # Permet de déclencher manuellement pour tester
+  workflow_dispatch:
+
+jobs:
+  backup-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 💾 Faire le backup de la base de données
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.VERCEL_URL }}/api/cron/backup")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "📊 Statut HTTP: $http_code"
+          echo "📄 Réponse: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Erreur lors du backup"
+            exit 1
+          fi
+          
+          echo "✅ Backup envoyé avec succès!"
+      
+      - name: 📝 Log du résultat
+        if: always()
+        run: echo "Job terminé - Vérifiez les logs ci-dessus"
