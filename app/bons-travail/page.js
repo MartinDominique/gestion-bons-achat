@@ -44,7 +44,7 @@ export default function BonsTravailPage() {
 
   const fetchWorkOrders = async () => {
     try {
-      const response = await fetch('/api/work-orders');
+      const response = await fetch('/api/work-orders?limit=10000');
       if (response.ok) {
         const data = await response.json();
         
