@@ -278,7 +278,7 @@ export async function GET(request) {
         linked_po:purchase_orders(*),
         materials:work_order_materials(*)
       `, { count: 'exact' }) // Retirer la jointure avec products
-      .order('created_at', { ascending: false });
+      .order('work_date', { ascending: false });
 
     // Appliquer les filtres
     if (status && status !== 'all') {
