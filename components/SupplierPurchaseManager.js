@@ -232,8 +232,6 @@ export default function SupplierPurchaseManager() {
           // Reset forms
           resetSupplierForm={resetSupplierForm}
           resetAddressForm={resetAddressForm}
-
-          resetAddressForm={resetAddressForm}
           
           // États modal non-inventaire
           showNonInventoryModal={hookData.showNonInventoryModal}
