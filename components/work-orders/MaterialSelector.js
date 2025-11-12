@@ -164,7 +164,7 @@ export default function MaterialSelector({
       const now = Date.now();
       const fiveMinutesAgo = now - (5 * 60 * 1000);
       
-      // Cache intelligent - Même pattern que votre InventoryManager
+      // Cache intelligent
       if (!forceReload && cachedProducts && cachedProducts.length > 0 && lastFetchTime && lastFetchTime > fiveMinutesAgo) {
         console.log("✅ Cache produits utilisé - Chargement instantané");
         setProducts(cachedProducts);
@@ -174,37 +174,51 @@ export default function MaterialSelector({
       console.log("🔄 Chargement produits depuis Supabase");
       setLoading(true);
       
-      // Charger tous les produits par pagination (comme InventoryManager)
-      const allProducts = [];
+      // ========================================
+      // 1. CHARGER PRODUITS INVENTAIRE (paginé)
+      // ========================================
+      const inventoryProducts = [];
       let page = 0;
       const pageSize = 1000;
       
       while (true) {
-        const response = await fetch(`/api/products?page=${page}&limit=${pageSize}`);
+        const response = await fetch(`/api/products?page=${page}&limit=${pageSize}&inventory_only=true`);
         if (!response.ok) throw new Error('Erreur chargement produits');
         
         const responseData = await response.json();
-        console.log(`Lot ${page + 1} - Réponse API produits:`, responseData);
+        console.log(`Lot ${page + 1} - Réponse API produits inventaire:`, responseData);
         
-        // Gérer différents formats de réponse
         let batch;
         if (Array.isArray(responseData)) {
           batch = responseData;
         } else if (responseData.data && Array.isArray(responseData.data)) {
           batch = responseData.data;
         } else {
-          console.error('Format de réponse produits inattendu:', responseData);
           batch = [];
         }
         
         if (!batch || batch.length === 0) break;
         
-        allProducts.push(...batch);
-        console.log(`Lot ${page + 1}: ${batch.length} produits (Total: ${allProducts.length})`);
+        inventoryProducts.push(...batch);
+        console.log(`Lot ${page + 1}: ${batch.length} produits (Total inventaire: ${inventoryProducts.length})`);
         
         if (batch.length < pageSize) break;
         page++;
       }
+      
+      // ========================================
+      // 2. CHARGER PRODUITS NON-INVENTAIRE (un seul appel)
+      // ========================================
+      const nonInvResponse = await fetch(`/api/products?non_inventory_only=true`);
+      const nonInvData = await nonInvResponse.json();
+      const nonInventoryProducts = Array.isArray(nonInvData) ? nonInvData : [];
+      console.log(`✅ ${nonInventoryProducts.length} produits non-inventaire chargés`);
+      
+      // ========================================
+      // 3. FUSIONNER
+      // ========================================
+      const allProducts = [...inventoryProducts, ...nonInventoryProducts];
+      console.log(`✅ TOTAL: ${allProducts.length} produits (${inventoryProducts.length} inventaire + ${nonInventoryProducts.length} non-inventaire)`);
       
       // Sauvegarder en cache
       setCachedProducts(allProducts);
