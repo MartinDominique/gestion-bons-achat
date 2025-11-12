@@ -367,8 +367,8 @@ const saveEditMaterial = () => {
   if (!editingMaterial) return;
   
   const quantity = parseFloat(editForm.quantity);
-  if (isNaN(quantity) || quantity <= 0) {
-    alert('Veuillez entrer une quantité valide');
+  if (isNaN(quantity) || quantity === 0) {
+    alert('Veuillez entrer une quantité valide (ne peut pas être zéro)');
     return;
   }
   
