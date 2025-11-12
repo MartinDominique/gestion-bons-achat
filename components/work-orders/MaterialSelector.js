@@ -140,6 +140,7 @@ export default function MaterialSelector({
   const [pendingQuantity, setPendingQuantity] = useState('1');
   const quantityInputRef = useRef(null);
   const [pendingShowPrice, setPendingShowPrice] = useState(false);
+  const [isNegativeQuantity, setIsNegativeQuantity] = useState(false);
 
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [quickAddForm, setQuickAddForm] = useState({
@@ -274,6 +275,7 @@ export default function MaterialSelector({
     setPendingProduct(product);
     setPendingQuantity('1');
     setPendingShowPrice(false);
+    setIsNegativeQuantity(false);
     
     // Focus sur input après ouverture du modal
     setTimeout(() => {
@@ -286,10 +288,15 @@ export default function MaterialSelector({
   const confirmAddMaterial = () => {
     if (!pendingProduct) return;
     
-    const quantity = parseFloat(pendingQuantity);
-    if (isNaN(quantity) || quantity <= 0) {
+    let quantity = parseFloat(pendingQuantity);
+    if (isNaN(quantity) || quantity === 0) {
       alert('Veuillez entrer une quantité valide');
       return;
+    }
+    
+    // Appliquer le signe négatif si mode crédit
+    if (isNegativeQuantity) {
+      quantity = Math.abs(quantity) * -1;
     }
     
     const safeMaterials = materials || [];
@@ -927,9 +934,22 @@ const deleteMaterialFromModal = () => {
               
               {/* Input quantité */}
               <div className="p-6">
-                <label className="block text-center text-sm font-medium text-gray-700 mb-4">
-                  Quantité
-                </label>
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <label className="text-sm font-medium text-gray-700">
+                    Quantité
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsNegativeQuantity(!isNegativeQuantity)}
+                    className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
+                      isNegativeQuantity 
+                        ? 'bg-red-600 text-white hover:bg-red-700' 
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                  >
+                    {isNegativeQuantity ? '− CRÉDIT' : '+ NORMAL'}
+                  </button>
+                </div>
                 
                 <input
                   ref={quantityInputRef}
@@ -937,7 +957,11 @@ const deleteMaterialFromModal = () => {
                   inputMode="none"
                   value={pendingQuantity}
                   onChange={(e) => setPendingQuantity(e.target.value)}
-                  className="w-full text-center text-5xl font-bold border-4 border-blue-500 rounded-lg py-6 px-4 focus:ring-4 focus:ring-blue-300 focus:border-blue-600 bg-white"
+                  className={`w-full text-center text-5xl font-bold border-4 rounded-lg py-6 px-4 focus:ring-4 ${
+                    isNegativeQuantity
+                      ? 'border-red-500 focus:ring-red-300 focus:border-red-600 text-red-600 bg-red-50'
+                      : 'border-blue-500 focus:ring-blue-300 focus:border-blue-600 bg-white'
+                  }`}
                   placeholder="0"
                   readOnly
                 />
