@@ -7,7 +7,51 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '0');
     const limit = parseInt(searchParams.get('limit') || '1000');
     const search = searchParams.get('search') || '';
+    const inventoryOnly = searchParams.get('inventory_only') === 'true';
+    const nonInventoryOnly = searchParams.get('non_inventory_only') === 'true';
 
+    // ========================================
+    // MODE 1: SEULEMENT NON-INVENTAIRE
+    // ========================================
+    if (nonInventoryOnly) {
+      let queryNonInventory = supabase
+        .from('non_inventory_items')
+        .select(`product_id, description, unit`);
+
+      if (search) {
+        queryNonInventory = queryNonInventory.or(`description.ilike.%${search}%,product_id.ilike.%${search}%`);
+      }
+
+      queryNonInventory = queryNonInventory.order('description', { ascending: true });
+
+      const { data, error } = await queryNonInventory;
+
+      if (error) {
+        console.error('Erreur non_inventory_items:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      const formatted = data?.map(item => ({
+        id: item.product_id,
+        product_id: item.product_id,
+        name: item.description,
+        description: item.description,
+        category: 'Non-Inventaire',
+        product_group: 'Non-Inventaire',
+        unit: item.unit || 'unité',
+        price: 0,
+        cost_price: 0,
+        selling_price: 0,
+        stock_qty: 0,
+        is_inventory: false
+      })) || [];
+
+      return NextResponse.json(formatted);
+    }
+
+    // ========================================
+    // MODE 2: SEULEMENT INVENTAIRE (avec pagination)
+    // ========================================
     let queryProducts = supabase
       .from('products')
       .select(`
@@ -20,44 +64,27 @@ export async function GET(request) {
         product_group
       `);
 
-    // Recherche par description, product_id et product_group (comme SoumissionsManager)
     if (search) {
       queryProducts = queryProducts.or(`description.ilike.%${search}%,product_id.ilike.%${search}%,product_group.ilike.%${search}%`);
     }
 
-    // Tri par description
     queryProducts = queryProducts.order('description', { ascending: true });
-
-    // Charger aussi les produits NON-INVENTAIRE
-    let queryNonInventory = supabase
-      .from('non_inventory_items')
-      .select(`
-        product_id,
-        description,
-        unit
-      `);
-
-    if (search) {
-      queryNonInventory = queryNonInventory.or(`description.ilike.%${search}%,product_id.ilike.%${search}%`);
+    
+    // Pagination
+    if (page > 0 || limit < 1000) {
+      const from = page * limit;
+      const to = from + limit - 1;
+      queryProducts = queryProducts.range(from, to);
     }
 
-    queryNonInventory = queryNonInventory.order('description', { ascending: true });
-
-    // Exécuter les deux requêtes en parallèle
-    const [productsResult, nonInventoryResult] = await Promise.all([
-      queryProducts,
-      queryNonInventory
-    ]);
-
-    const { data, error } = productsResult;
+    const { data, error } = await queryProducts;
 
     if (error) {
-      console.error('Erreur Supabase:', error);
+      console.error('Erreur products:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Format produits INVENTAIRE
-    const inventoryProducts = data?.map(product => ({
+    const formatted = data?.map(product => ({
       id: product.product_id,
       product_id: product.product_id,
       name: product.description,
@@ -72,35 +99,7 @@ export async function GET(request) {
       is_inventory: true
     })) || [];
 
-    // Format produits NON-INVENTAIRE
-    const nonInventoryProducts = nonInventoryResult.data?.map(item => ({
-      id: item.product_id,
-      product_id: item.product_id,
-      name: item.description,
-      description: item.description,
-      category: 'Non-Inventaire',
-      product_group: 'Non-Inventaire',
-      unit: item.unit || 'unité',
-      price: 0,
-      cost_price: 0,
-      selling_price: 0,
-      stock_qty: 0,
-      is_inventory: false
-    })) || [];
-
-    // FUSIONNER et trier
-    const allProducts = [...inventoryProducts, ...nonInventoryProducts]
-      .sort((a, b) => a.description.localeCompare(b.description));
-
-    // Pagination sur l'ensemble
-    let finalData = allProducts;
-    if (page > 0 || limit < 1000) {
-      const from = page * limit;
-      const to = from + limit;
-      finalData = allProducts.slice(from, to);
-    }
-
-    return NextResponse.json(finalData);
+    return NextResponse.json(formatted);
 
   } catch (error) {
     console.error('Erreur API products:', error);
