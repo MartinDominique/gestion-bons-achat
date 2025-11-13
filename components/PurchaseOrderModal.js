@@ -275,6 +275,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   // Charger les données si édition
   useEffect(() => {
     if (isOpen && editingPO) {
+      loadClients();
       loadPOData(editingPO.id);
       checkExistingSubmission(editingPO.id);
       loadSupplierPurchases(editingPO.id);
