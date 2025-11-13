@@ -114,6 +114,20 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       alert('Le nom est requis');
       return;
     }
+
+    async function save() {
+      if (!form.name?.trim()) {
+        alert('Le nom est requis');
+        return;
+      }
+      
+      // AJOUTER CETTE VALIDATION
+      if (!form.email_admin?.trim()) {
+        alert('Le courriel admin est requis');
+        return;
+      }
+      
+      setSaving(true);
     
     setSaving(true);
 
@@ -430,12 +444,15 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       />
                     </div>
 
+                    
+
                     <div>
                       <label className="block text-sm font-medium text-purple-800 mb-1">
-                        📧 Courriel Admin
+                        📧 Courriel Admin <span className="text-red-600">*</span>
                       </label>
                       <input
                         type="email"
+                        required
                         className="w-full px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 text-sm"
                         value={form.email_admin}
                         onChange={onChange('email_admin')}
