@@ -10,6 +10,14 @@ import PurchaseOrderModal from '../PurchaseOrderModal';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
+// Helper pour obtenir la date locale en format YYYY-MM-DD
+const getLocalDateString = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  const localDate = new Date(now.getTime() - offset);
+  return localDate.toISOString().split('T')[0];
+};
+
 // Arrondir au quart d'heure supérieur à partir de "HH:MM"
 const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
   const parseHHMM = (t) => {
@@ -60,7 +68,7 @@ export default function WorkOrderForm({
   const [formData, setFormData] = useState({
     client_id: '',
     linked_po_id: '',
-    work_date: new Date().toISOString().split('T')[0],
+    work_date: getLocalDateString(),
     time_entries: [], 
     work_description: '',
     additional_notes: '',
