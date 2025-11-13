@@ -26,9 +26,13 @@ export const metadata = {
   // 👆 AJOUT PWA - Fin
 };
 
-// ✅ NOUVEAU: viewport séparé pour themeColor
+// ✅ NOUVEAU: viewport avec paramètres de zoom
 export const viewport = {
-  themeColor: '#1e40af'
+  themeColor: '#1e40af',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false
 };
 
 export default function RootLayout({ children }) {
