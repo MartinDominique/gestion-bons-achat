@@ -114,12 +114,6 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       alert('Le nom est requis');
       return;
     }
-
-    async function save() {
-      if (!form.name?.trim()) {
-        alert('Le nom est requis');
-        return;
-      }
       
       // AJOUTER CETTE VALIDATION
       if (!form.email_admin?.trim()) {
