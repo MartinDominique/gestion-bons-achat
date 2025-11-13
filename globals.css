@@ -31,3 +31,18 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* ======================================
+   EMPÊCHER LE ZOOM SUR LES INPUTS
+   ====================================== */
+
+/* Empêcher le zoom automatique sur iPhone quand on focus un input */
+input, select, textarea, button {
+  font-size: 16px !important;
+}
+
+/* Exceptions pour les très petits éléments si nécessaire */
+input[type="checkbox"],
+input[type="radio"] {
+  font-size: inherit !important;
+}
