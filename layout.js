@@ -4,7 +4,13 @@ import Navigation from '../components/Navigation';
 
 export const metadata = {
   title: 'Gestion Bons d\'Achat',
-  description: 'Application de gestion des bons d\'achat et soumissions'
+  description: 'Application de gestion des bons d\'achat et soumissions',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false
+  }
 };
 
 export default function RootLayout({ children }) {
