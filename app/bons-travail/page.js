@@ -108,9 +108,14 @@ export default function BonsTravailPage() {
               return wo.bt_number?.toLowerCase().includes(searchLower);
             
             case 'date':
-              const workDate = wo.work_date ? new Date(wo.work_date).toLocaleDateString('fr-CA') : '';
-              const workDateFr = wo.work_date ? new Date(wo.work_date).toLocaleDateString('fr-FR') : '';
-              const workDateUs = wo.work_date ? new Date(wo.work_date).toLocaleDateString('en-US') : '';
+              let workDate = '', workDateFr = '', workDateUs = '';
+              if (wo.work_date) {
+                const [year, month, day] = wo.work_date.split('-');
+                const date = new Date(year, month - 1, day);
+                workDate = date.toLocaleDateString('fr-CA');
+                workDateFr = date.toLocaleDateString('fr-FR');
+                workDateUs = date.toLocaleDateString('en-US');
+              }
               
               return workDate.includes(searchLower) || 
                      workDateFr.includes(searchLower) || 
@@ -203,7 +208,11 @@ export default function BonsTravailPage() {
   };
 
   const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('fr-CA');
+    if (!dateStr) return '-';
+    // Parser comme date locale, pas UTC
+    const [year, month, day] = dateStr.split('-');
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('fr-CA');
   };
 
   const formatTime = (time) => {
