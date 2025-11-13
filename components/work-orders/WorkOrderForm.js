@@ -331,9 +331,33 @@ export default function WorkOrderForm({
   useEffect(() => {
     loadClients();
     
-    const handleFocus = () => {
+    const handleFocus = async () => {
       console.log('🔄 Rechargement clients (retour focus)');
       loadClients();
+      
+      // ✅ Vérifier si le BT a été signé (pour mode création uniquement)
+      if (currentWorkOrderId && mode === 'create') {
+        try {
+          const { data: updatedWO } = await supabase
+            .from('work_orders')
+            .select('status')
+            .eq('id', currentWorkOrderId)
+            .single();
+          
+          console.log('🔍 Statut BT après retour focus:', updatedWO?.status);
+          
+          // Si le statut n'est plus 'draft' ou 'ready_for_signature', c'est qu'il a été signé
+          if (updatedWO && ['signed', 'pending_send', 'sent'].includes(updatedWO.status)) {
+            console.log('✅ BT signé/traité détecté - Fermeture automatique du formulaire');
+            toast.success('✅ Bon de travail traité avec succès!', { duration: 3000 });
+            setTimeout(() => {
+              router.push('/bons-travail');
+            }, 1000);
+          }
+        } catch (error) {
+          console.error('Erreur vérification statut:', error);
+        }
+      }
     };
     
     window.addEventListener('focus', handleFocus);
@@ -341,7 +365,7 @@ export default function WorkOrderForm({
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [workOrder, mode]);
+  }, [workOrder, mode, currentWorkOrderId, router]);
 
   const handleClientSaved = async (savedClient) => {
     console.log('✅ Client sauvegardé:', savedClient);
