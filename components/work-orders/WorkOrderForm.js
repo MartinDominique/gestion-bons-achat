@@ -994,6 +994,11 @@ export default function WorkOrderForm({
       toast.error('⚠️ Description requise! Ajoutez au moins 10 caractères.', {
         duration: 4000,
         icon: '📝'
+        style: {
+        background: '#FEE2E2',
+        color: '#991B1B',
+        border: '1px solid #FECACA'
+      }
       });
     }
   
