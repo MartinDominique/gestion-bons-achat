@@ -984,15 +984,19 @@ export default function WorkOrderForm({
 
   const validateForm = () => {
     const newErrors = {};
-
+  
     if (!formData.client_id) newErrors.client_id = 'Client requis';
     if (!formData.work_date) newErrors.work_date = 'Date requise';
     
     const hasValidDescription = descriptions.some(desc => desc.trim().length >= 10);
     if (!hasValidDescription) {
       newErrors.work_description = 'Au moins une description de 10 caractères minimum requise';
+      toast.error('⚠️ Description requise! Ajoutez au moins 10 caractères.', {
+        duration: 4000,
+        icon: '📝'
+      });
     }
-
+  
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
