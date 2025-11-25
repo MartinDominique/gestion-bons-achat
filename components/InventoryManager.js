@@ -35,6 +35,7 @@ export default function InventoryManager() {
     stock_qty: ''
   });
   const [saving, setSaving] = useState(false);
+  const [marginPercent, setMarginPercent] = useState('');
   
   // États pour l'upload d'inventaire
   const [showInventoryUpload, setShowInventoryUpload] = useState(false);
@@ -299,6 +300,22 @@ export default function InventoryManager() {
         updates.stock_qty = parseInt(editForm.stock_qty) || 0;
       }
       
+      // Détecter les changements pour l'email
+      const changes = [];
+      const oldCost = parseFloat(editingItem.cost_price) || 0;
+      const oldSelling = parseFloat(editingItem.selling_price) || 0;
+      const oldQty = parseInt(editingItem.stock_qty) || 0;
+      
+      if (updates.cost_price !== oldCost) {
+        changes.push(`Prix coûtant: ${oldCost.toFixed(2)}$ → ${updates.cost_price.toFixed(2)}$`);
+      }
+      if (updates.selling_price !== oldSelling) {
+        changes.push(`Prix vendant: ${oldSelling.toFixed(2)}$ → ${updates.selling_price.toFixed(2)}$`);
+      }
+      if (activeTab === 'products' && updates.stock_qty !== oldQty) {
+        changes.push(`Quantité: ${oldQty} → ${updates.stock_qty}`);
+      }
+      
       const tableName = activeTab === 'products' ? 'products' : 'non_inventory_items';
       
       const { data, error } = await supabase
@@ -308,6 +325,25 @@ export default function InventoryManager() {
         .select();
       
       if (error) throw error;
+      
+      // Envoyer email si des changements ont été faits
+      if (changes.length > 0) {
+        try {
+          await fetch('/api/send-inventory-change', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              productId: editingItem.product_id,
+              description: editingItem.description,
+              changes: changes,
+              type: activeTab === 'products' ? 'Inventaire' : 'Non-Inventaire'
+            })
+          });
+          console.log('📧 Email de notification envoyé');
+        } catch (emailError) {
+          console.error('Erreur envoi email:', emailError);
+        }
+      }
       
       // Mettre à jour localement au lieu de tout recharger
       if (data && data.length > 0) {
@@ -319,7 +355,6 @@ export default function InventoryManager() {
               product.product_id === updatedItem.product_id ? updatedItem : product
             )
           );
-          // Mettre à jour le cache aussi
           setCachedProducts(prevCache => 
             prevCache ? prevCache.map(product => 
               product.product_id === updatedItem.product_id ? updatedItem : product
@@ -331,7 +366,6 @@ export default function InventoryManager() {
               item.product_id === updatedItem.product_id ? updatedItem : item
             )
           );
-          // Mettre à jour le cache aussi
           setCachedNonInventoryItems(prevCache => 
             prevCache ? prevCache.map(item => 
               item.product_id === updatedItem.product_id ? updatedItem : item
@@ -340,8 +374,6 @@ export default function InventoryManager() {
         }
         
         console.log('✅ Produit mis à jour localement et en cache');
-        
-        // 🧹 Nettoyer le cache de filtres car les données ont changé
         setFilteredCache({});
         setLastFilterParams('');
         
@@ -610,7 +642,7 @@ export default function InventoryManager() {
                 {editingItem.description}
               </p>
             </div>
-
+      
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -626,7 +658,45 @@ export default function InventoryManager() {
                   placeholder="0.00"
                 />
               </div>
-
+      
+              {/* Calcul automatique de marge */}
+              {editForm.cost_price && parseFloat(editForm.cost_price) > 0 && (
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <label className="block text-sm font-medium text-green-800 mb-2">
+                    Calcul automatique par marge %
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={marginPercent}
+                      onChange={(e) => setMarginPercent(e.target.value)}
+                      className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2"
+                      placeholder="Ex: 25"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cost = parseFloat(editForm.cost_price) || 0;
+                        const margin = parseFloat(marginPercent) || 0;
+                        if (cost > 0 && margin > 0) {
+                          const newSellingPrice = cost * (1 + margin / 100);
+                          setEditForm({...editForm, selling_price: newSellingPrice.toFixed(2)});
+                        }
+                      }}
+                      disabled={!marginPercent || parseFloat(marginPercent) <= 0}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      OK
+                    </button>
+                  </div>
+                  <p className="text-xs text-green-600 mt-1">
+                    Entrez le % de marge désiré et cliquez OK
+                  </p>
+                </div>
+              )}
+      
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Prix de vente *
@@ -642,7 +712,7 @@ export default function InventoryManager() {
                   required
                 />
               </div>
-
+      
               {activeTab === 'products' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -658,7 +728,7 @@ export default function InventoryManager() {
                   />
                 </div>
               )}
-
+      
               {/* Aperçu de la marge */}
               {editForm.cost_price && editForm.selling_price && (
                 <div className="bg-gray-50 p-3 rounded-lg">
@@ -669,17 +739,23 @@ export default function InventoryManager() {
                 </div>
               )}
             </div>
-
+      
             <div className="bg-gray-50 px-6 py-4 flex gap-3">
               <button
-                onClick={closeEditModal}
+                onClick={() => {
+                  closeEditModal();
+                  setMarginPercent('');
+                }}
                 disabled={saving}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
               >
                 Annuler
               </button>
               <button
-                onClick={saveChanges}
+                onClick={() => {
+                  saveChanges();
+                  setMarginPercent('');
+                }}
                 disabled={saving || !editForm.selling_price}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
