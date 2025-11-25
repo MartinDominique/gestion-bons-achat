@@ -10,7 +10,7 @@ export async function POST(request) {
 
     await resend.emails.send({
       from: 'Services TMT <noreply@servicestmt.ca>',
-      to: ['info.servicestmt@gmail.com']
+      to: ['info.servicestmt@gmail.com'],
       subject: `📦 Modification inventaire - ${productId}`,
       html: `
         <h2>Modification d'inventaire</h2>
