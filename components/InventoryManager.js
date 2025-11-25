@@ -6,8 +6,6 @@ import {
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
   Eye, Plus, Trash2, RotateCcw, Upload
 } from 'lucide-react';
-const EditModal = React.memo(({ editingItem, editForm, setEditForm, marginPercent, setMarginPercent, saving, closeEditModal, saveChanges, activeTab, getMarginColor, getMarginPercentage }) => {
-  if (!editingItem) return null;
 
 export default function InventoryManager() {
   // États principaux
