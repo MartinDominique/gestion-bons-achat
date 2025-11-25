@@ -993,7 +993,7 @@ export default function WorkOrderForm({
       newErrors.work_description = 'Au moins une description de 10 caractères minimum requise';
       toast.error('⚠️ Description requise! Ajoutez au moins 10 caractères.', {
         duration: 4000,
-        icon: '📝'
+        icon: '📝',
         style: {
         background: '#FEE2E2',
         color: '#991B1B',
