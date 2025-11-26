@@ -17,7 +17,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     special_instructions: '',
     submission_no: '',
     amount: 0,
-    status: 'draft',
+    status: 'in_progress',
     files: []
   });
 
@@ -466,7 +466,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       special_instructions: '',
       submission_no: '',
       amount: 0,
-      status: 'draft',
+      status: 'in_progress',
       files: []
     });
     setItems([]);
@@ -1097,7 +1097,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             payment_terms: formData.payment_terms || null,
             special_instructions: formData.special_instructions || null,
             submission_no: formData.submission_no || null,
-            status: 'draft',
+            status: 'in_progress',
             amount: formData.amount || 0,
             files: attachedFiles
           })
@@ -1788,10 +1788,9 @@ setTimeout(() => {
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="draft">En attente</option>
-                      <option value="approved">Approuvé</option>
-                      <option value="rejected">Rejeté</option>
-                      <option value="completed">Complété</option>
+                      <option value="in_progress">🔵 En cours</option>
+                      <option value="partial">🚚 Partiellement livré</option>
+                      <option value="completed">✅ Complété</option>
                     </select>
                   </div>
                 </div>
