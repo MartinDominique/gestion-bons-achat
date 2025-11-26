@@ -179,28 +179,18 @@ const PurchaseOrderManager = () => {
   // Statistiques avec toutes les catégories
   const stats = {
     total: filteredPOs.length,
-    draft: filteredPOs.filter(po => po.status === 'draft').length,
-    pending: filteredPOs.filter(po => po.status === 'pending').length,
-    approved: filteredPOs.filter(po => po.status === 'approved').length,
-    partial: filteredPOs.filter(po => po.status === 'partially_delivered').length,
-    delivered: filteredPOs.filter(po => po.status === 'delivered').length,
+    inProgress: filteredPOs.filter(po => po.status === 'in_progress').length,
+    partial: filteredPOs.filter(po => po.status === 'partial').length,
     completed: filteredPOs.filter(po => po.status === 'completed').length,
-    rejected: filteredPOs.filter(po => po.status === 'rejected').length,
-    cancelled: filteredPOs.filter(po => po.status === 'cancelled').length,
     totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.amount) || 0), 0)
   };
 
   // Formater statut
   const formatStatus = (status) => {
     const statusLabels = {
-      draft: 'Brouillon',
-      pending: 'En attente',
-      approved: 'Approuvé',
-      partially_delivered: 'Partiellement livré',
-      delivered: 'Livré',
-      cancelled: 'Annulé',
-      completed: 'Complété',
-      rejected: 'Rejeté'
+      in_progress: 'En cours',
+      partial: 'Partiellement livré',
+      completed: 'Complété'
     };
     return statusLabels[status] || status;
   };
@@ -208,28 +198,18 @@ const PurchaseOrderManager = () => {
   // Couleur statut
   const getStatusColor = (status) => {
     const statusColors = {
-      draft: 'bg-gray-100 text-gray-800',
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-green-100 text-green-800',
-      partially_delivered: 'bg-blue-100 text-blue-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
-      completed: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
+      in_progress: 'bg-blue-100 text-blue-800',
+      partial: 'bg-yellow-100 text-yellow-800',
+      completed: 'bg-green-100 text-green-800'
     };
-    return statusColors[status] || 'bg-gray-100 text-gray-800';
+    return statusColors[status] || 'bg-blue-100 text-blue-800';
   };
 
   // Options de statut pour le select
   const statusOptions = [
-    { value: 'draft', label: 'Brouillon', emoji: '📝' },
-    { value: 'pending', label: 'En attente', emoji: '⏳' },
-    { value: 'approved', label: 'Approuvé', emoji: '✅' },
-    { value: 'partially_delivered', label: 'Partiellement livré', emoji: '🚛' },
-    { value: 'delivered', label: 'Livré', emoji: '📦' },
-    { value: 'completed', label: 'Complété', emoji: '🎉' },
-    { value: 'rejected', label: 'Rejeté', emoji: '❌' },
-    { value: 'cancelled', label: 'Annulé', emoji: '🚫' }
+    { value: 'in_progress', label: 'En cours', emoji: '🔵' },
+    { value: 'partial', label: 'Partiellement livré', emoji: '🚚' },
+    { value: 'completed', label: 'Complété', emoji: '✅' }
   ];
 
   if (isLoading) {
@@ -263,7 +243,7 @@ const PurchaseOrderManager = () => {
         </div>
 
         {/* Statistiques Compactes */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
           {/* Total */}
           <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
             <div className="flex items-center justify-between mb-1">
@@ -273,52 +253,41 @@ const PurchaseOrderManager = () => {
             <p className="text-white/80 font-medium text-[10px] sm:text-xs">Total</p>
           </div>
 
-          {/* En attente */}
+          {/* En cours */}
           <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
             <div className="flex items-center justify-between mb-1">
-              <div className="w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-[10px]">⏳</span>
+              <div className="w-4 h-4 bg-blue-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-[10px]">🔵</span>
               </div>
-              <span className="text-base sm:text-xl font-bold text-yellow-200">{stats.pending}</span>
+              <span className="text-base sm:text-xl font-bold text-blue-200">{stats.inProgress}</span>
             </div>
-            <p className="text-yellow-100 font-medium text-[10px] sm:text-xs">Attente</p>
-          </div>
-
-          {/* Approuvés */}
-          <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
-            <div className="flex items-center justify-between mb-1">
-              <div className="w-4 h-4 bg-green-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-[10px]">✅</span>
-              </div>
-              <span className="text-base sm:text-xl font-bold text-green-200">{stats.approved}</span>
-            </div>
-            <p className="text-green-100 font-medium text-[10px] sm:text-xs">Approuvés</p>
+            <p className="text-blue-100 font-medium text-[10px] sm:text-xs">En cours</p>
           </div>
 
           {/* Partiellement Livrés */}
           <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
             <div className="flex items-center justify-between mb-1">
-              <div className="w-4 h-4 bg-blue-400 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-[10px]">🚛</span>
+              <div className="w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-[10px]">🚚</span>
               </div>
-              <span className="text-base sm:text-xl font-bold text-blue-200">{stats.partial}</span>
+              <span className="text-base sm:text-xl font-bold text-yellow-200">{stats.partial}</span>
             </div>
-            <p className="text-blue-100 font-medium text-[10px] sm:text-xs">Partiels</p>
+            <p className="text-yellow-100 font-medium text-[10px] sm:text-xs">Partiels</p>
           </div>
 
-          {/* Livrés */}
+          {/* Complétés */}
           <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
             <div className="flex items-center justify-between mb-1">
-              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-[10px]">📦</span>
+              <div className="w-4 h-4 bg-green-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-[10px]">✅</span>
               </div>
-              <span className="text-base sm:text-xl font-bold text-green-200">{stats.delivered}</span>
+              <span className="text-base sm:text-xl font-bold text-green-200">{stats.completed}</span>
             </div>
-            <p className="text-green-100 font-medium text-[10px] sm:text-xs">Livrés</p>
+            <p className="text-green-100 font-medium text-[10px] sm:text-xs">Complétés</p>
           </div>
 
           {/* Montant Total */}
-          <div className="col-span-2 sm:col-span-1 bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg p-2 border border-white/20">
             <div className="flex items-center justify-between mb-1">
               <DollarSign className="w-4 h-4 text-pink-200" />
               <span className="text-base sm:text-lg font-bold text-pink-200">{formatCurrency(stats.totalValue)}</span>
@@ -364,11 +333,9 @@ const PurchaseOrderManager = () => {
               className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white min-w-[160px] sm:min-w-[200px] transition-all duration-200 text-sm"
             >
               <option value="all">Tous les statuts</option>
-              <option value="draft">Brouillons</option>
-              <option value="pending">En attente</option>
-              <option value="approved">Approuvés</option>
-              <option value="partially_delivered">Partiellement livrés</option>
-              <option value="delivered">Livrés</option>
+              <option value="in_progress">🔵 En cours</option>
+              <option value="partial">🚚 Partiellement livré</option>
+              <option value="completed">✅ Complété</option>
             </select>
           </div>
         </div>
