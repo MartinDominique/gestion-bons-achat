@@ -293,18 +293,19 @@ export default function ClientPOManager() {
 
   // Calculer le statut de livraison
   const getDeliveryStatus = (po) => {
-    if (!po.items || po.items.length === 0) return { status: 'empty', percentage: 0 };
-    
-    const totalItems = po.items.length;
-    const deliveredItems = po.items.filter(item => item.delivered_quantity >= item.quantity).length;
-    const partialItems = po.items.filter(item => item.delivered_quantity > 0 && item.delivered_quantity < item.quantity).length;
-    
-    const percentage = Math.round((deliveredItems / totalItems) * 100);
-    
-    if (deliveredItems === totalItems) return { status: 'complete', percentage: 100 };
-    if (partialItems > 0 || deliveredItems > 0) return { status: 'partial', percentage };
-    return { status: 'pending', percentage: 0 };
-  };
+  // Si manuellement complété
+  if (po.status === 'completed') return { status: 'completed', percentage: 100 };
+  
+  if (!po.items || po.items.length === 0) return { status: 'in_progress', percentage: 0 };
+  
+  const totalItems = po.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const deliveredItems = po.items.reduce((sum, item) => sum + (item.delivered_qty || 0), 0);
+  const percentage = totalItems > 0 ? Math.round((deliveredItems / totalItems) * 100) : 0;
+  
+  if (percentage >= 100) return { status: 'completed', percentage: 100 };
+  if (percentage > 0) return { status: 'partial', percentage };
+  return { status: 'in_progress', percentage: 0 };
+};
 
   // Interface de livraison
   const openDeliveryForm = (po) => {
@@ -348,12 +349,11 @@ export default function ClientPOManager() {
 
   const getDeliveryStatusBadge = (status) => {
     const badges = {
-      pending: 'bg-red-100 text-red-800',
+      in_progress: 'bg-blue-100 text-blue-800',
       partial: 'bg-yellow-100 text-yellow-800', 
-      complete: 'bg-green-100 text-green-800',
-      empty: 'bg-gray-100 text-gray-800'
+      completed: 'bg-green-100 text-green-800'
     };
-    return badges[status] || badges.empty;
+    return badges[status] || badges.in_progress;
   };
 
   // Filtrage
@@ -365,7 +365,7 @@ export default function ClientPOManager() {
       po.description?.toLowerCase().includes(searchText) ||
       po.submission_number?.toLowerCase().includes(searchText);
     
-    const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || getDeliveryStatus(po).status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -688,7 +688,7 @@ export default function ClientPOManager() {
               <div>
                 <p className="text-xs sm:text-sm font-medium text-white/90">Complétés</p>
                 <p className="text-xl sm:text-2xl font-bold text-white">
-                  {clientPOs.filter(po => getDeliveryStatus(po).status === 'complete').length}
+                  {clientPOs.filter(po => getDeliveryStatus(po).status === 'completed').length}
                 </p>
               </div>
             </div>
@@ -730,9 +730,8 @@ export default function ClientPOManager() {
               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
             >
               <option value="all">Tous les statuts</option>
-              <option value="draft">📝 Brouillon</option>
-              <option value="confirmed">✅ Confirmé</option>
-              <option value="partial">🚚 Livraison partielle</option>
+              <option value="in_progress">🔵 En cours</option>
+              <option value="partial">🚚 Partiellement livré</option>
               <option value="completed">✅ Complété</option>
             </select>
           </div>
@@ -850,10 +849,9 @@ export default function ClientPOManager() {
                       <td className="px-3 py-4 whitespace-nowrap text-center">
                         <div className="space-y-1">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDeliveryStatusBadge(deliveryStatus.status)}`}>
-                            {deliveryStatus.status === 'pending' && '⏳ En attente'}
+                            {deliveryStatus.status === 'in_progress' && '🔵 En cours'}
                             {deliveryStatus.status === 'partial' && `🚚 ${deliveryStatus.percentage}%`}
-                            {deliveryStatus.status === 'complete' && '✅ Complété'}
-                            {deliveryStatus.status === 'empty' && '📋 Vide'}
+                            {deliveryStatus.status === 'completed' && '✅ Complété'}
                           </span>
                           {deliveryStatus.status === 'partial' && (
                             <div className="w-16 bg-gray-200 rounded-full h-1.5 mx-auto">
@@ -870,7 +868,7 @@ export default function ClientPOManager() {
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-center">
                         <div className="flex justify-center space-x-1">
-                          {deliveryStatus.status !== 'complete' && po.items && po.items.length > 0 && (
+                          {deliveryStatus.status !== 'completed' && po.items && po.items.length > 0 && (
                             <button
                               onClick={() => openDeliveryForm(po)}
                               className="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg transition-colors"
@@ -935,10 +933,9 @@ export default function ClientPOManager() {
                     <div className="text-right">
                       <p className="text-sm font-medium text-green-600">{formatCurrency(po.total_amount)}</p>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDeliveryStatusBadge(deliveryStatus.status)}`}>
-                        {deliveryStatus.status === 'pending' && '⏳ En attente'}
+                        {deliveryStatus.status === 'in_progress' && '🔵 En cours'}
                         {deliveryStatus.status === 'partial' && `🚚 ${deliveryStatus.percentage}%`}
-                        {deliveryStatus.status === 'complete' && '✅ Complété'}
-                        {deliveryStatus.status === 'empty' && '📋 Vide'}
+                        {deliveryStatus.status === 'completed' && '✅ Complété'}
                       </span>
                     </div>
                   </div>
@@ -971,7 +968,7 @@ export default function ClientPOManager() {
                   )}
 
                   <div className="flex gap-2">
-                    {deliveryStatus.status !== 'complete' && po.items && po.items.length > 0 && (
+                    {deliveryStatus.status !== 'completed' && po.items && po.items.length > 0 && (
                       <button
                         onClick={() => openDeliveryForm(po)}
                         className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700"
