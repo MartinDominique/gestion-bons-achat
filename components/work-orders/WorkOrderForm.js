@@ -1145,7 +1145,7 @@ export default function WorkOrderForm({
         const workOrderId = savedWorkOrder.id || workOrder?.id;
         if (workOrderId) {
           console.log('🚀 OUVERTURE fenêtre client, ID:', workOrderId);
-          window.open(`/bons-travail/${workOrderId}/client`, '_blank');
+          router.push(`/bons-travail/${workOrderId}/client`);
         }
       }
     } catch (error) {
