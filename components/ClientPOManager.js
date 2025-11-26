@@ -163,7 +163,7 @@ export default function ClientPOManager() {
       const { data, error } = await supabase
         .from('submissions')
         .select('id, submission_number, client_name, description, items, amount, status')
-        .eq('status', 'accepted')
+        .in('status', ['sent', 'accepted'])
         .order('submission_number', { ascending: false });
 
       if (error) {
@@ -185,7 +185,7 @@ export default function ClientPOManager() {
       submission_number: submission.submission_number,
       description: submission.description,
       total_amount: submission.amount || 0,
-      status: 'draft',
+      status: 'in_progress',
       delivery_address: {
         street: '',
         city: '',
@@ -197,6 +197,22 @@ export default function ClientPOManager() {
       },
       items: submission.items || []
     });
+    
+    // Si la soumission est "Envoyée", la passer à "Acceptée" automatiquement
+    if (submission.status === 'sent') {
+      try {
+        supabase
+          .from('submissions')
+          .update({ status: 'accepted' })
+          .eq('id', submission.id)
+          .then(() => {
+            console.log('✅ Soumission ' + submission.submission_number + ' passée à Acceptée');
+          });
+      } catch (err) {
+        console.error('Erreur changement statut soumission:', err);
+      }
+    }
+    
     setShowForm(true);
   };
 
