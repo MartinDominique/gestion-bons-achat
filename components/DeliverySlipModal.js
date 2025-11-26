@@ -531,7 +531,7 @@ setTimeout(() => {
       await supabase
         .from('purchase_orders')
         .update({ 
-          status: newStatus,
+          status: 'partial',
           updated_at: new Date().toISOString()
         })
         .eq('id', purchaseOrder.id);
