@@ -526,8 +526,7 @@ setTimeout(() => {
         return item.delivered_quantity >= item.quantity;
       });
 
-      const newStatus = allItemsDelivered ? 'delivered' : 'partially_delivered';
-      
+      // Mettre à jour le statut à "partial" (le statut "completed" sera mis manuellement)
       await supabase
         .from('purchase_orders')
         .update({ 
