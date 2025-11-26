@@ -508,10 +508,17 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     try {
       console.log('Chargement des soumissions...');
       
-      const { data: allSubmissions, error } = await supabase
+      let query = supabase
         .from('submissions')
         .select('*')
-        .in('status', ['sent', 'accepted'])
+        .in('status', ['sent', 'accepted']);
+      
+      // Filtrer par client si un client est sélectionné
+      if (formData.client_name) {
+        query = query.eq('client_name', formData.client_name);
+      }
+      
+      const { data: allSubmissions, error } = await query
         .order('created_at', { ascending: false })
         .limit(50);
       
