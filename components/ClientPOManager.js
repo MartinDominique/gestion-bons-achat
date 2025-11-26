@@ -23,7 +23,7 @@ export default function ClientPOManager() {
     submission_number: '',
     description: '',
     total_amount: '',
-    status: 'draft',
+    status: 'in_progress',
     delivery_address: {
       street: '',
       city: '',
@@ -277,7 +277,7 @@ export default function ClientPOManager() {
       submission_number: '',
       description: '',
       total_amount: '',
-      status: 'draft',
+      status: 'in_progress',
       delivery_address: {
         street: '',
         city: '',
@@ -291,22 +291,24 @@ export default function ClientPOManager() {
     });
   };
 
-  // Calculer le statut de livraison
-  const getDeliveryStatus = (po) => {
-  // Si manuellement complété
-  if (po.status === 'completed') return { status: 'completed', percentage: 100 };
-  
-  if (!po.items || po.items.length === 0) return { status: 'in_progress', percentage: 0 };
-  
-  const totalItems = po.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const deliveredItems = po.items.reduce((sum, item) => sum + (item.delivered_qty || 0), 0);
-  const percentage = totalItems > 0 ? Math.round((deliveredItems / totalItems) * 100) : 0;
-  
-  if (percentage >= 100) return { status: 'completed', percentage: 100 };
-  if (percentage > 0) return { status: 'partial', percentage };
-  return { status: 'in_progress', percentage: 0 };
-};
-
+  // Badge de statut
+    const getStatusBadgeStyle = (status) => {
+      const badges = {
+        in_progress: 'bg-blue-100 text-blue-800',
+        partial: 'bg-yellow-100 text-yellow-800',
+        completed: 'bg-green-100 text-green-800'
+      };
+      return badges[status] || badges.in_progress;
+    };
+    
+    const getStatusLabel = (status) => {
+      const labels = {
+        in_progress: '🔵 En cours',
+        partial: '🚚 Partiellement livré',
+        completed: '✅ Complété'
+      };
+      return labels[status] || labels.in_progress;
+    };
   // Interface de livraison
   const openDeliveryForm = (po) => {
     setSelectedPOForDelivery(po);
@@ -337,25 +339,6 @@ export default function ClientPOManager() {
     return new Date(dateString).toLocaleDateString('fr-CA');
   };
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      draft: 'bg-gray-100 text-gray-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      partial: 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-green-100 text-green-800'
-    };
-    return badges[status] || badges.draft;
-  };
-
-  const getDeliveryStatusBadge = (status) => {
-    const badges = {
-      in_progress: 'bg-blue-100 text-blue-800',
-      partial: 'bg-yellow-100 text-yellow-800', 
-      completed: 'bg-green-100 text-green-800'
-    };
-    return badges[status] || badges.in_progress;
-  };
-
   // Filtrage
   const filteredPOs = clientPOs.filter(po => {
     const searchText = searchTerm.toLowerCase();
@@ -365,7 +348,7 @@ export default function ClientPOManager() {
       po.description?.toLowerCase().includes(searchText) ||
       po.submission_number?.toLowerCase().includes(searchText);
     
-    const matchesStatus = statusFilter === 'all' || getDeliveryStatus(po).status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || po.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -669,38 +652,38 @@ export default function ClientPOManager() {
               </div>
             </div>
           </div>
-
+        
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">🚚</span>
+              <span className="text-2xl sm:text-3xl mr-3">🔵</span>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">En Livraison</p>
+                <p className="text-xs sm:text-sm font-medium text-white/90">En cours</p>
                 <p className="text-xl sm:text-2xl font-bold text-white">
-                  {clientPOs.filter(po => getDeliveryStatus(po).status === 'partial').length}
+                  {clientPOs.filter(po => po.status === 'in_progress').length}
                 </p>
               </div>
             </div>
           </div>
-
+        
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
+            <div className="flex items-center">
+              <span className="text-2xl sm:text-3xl mr-3">🚚</span>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-white/90">Partiellement livré</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">
+                  {clientPOs.filter(po => po.status === 'partial').length}
+                </p>
+              </div>
+            </div>
+          </div>
+        
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
             <div className="flex items-center">
               <span className="text-2xl sm:text-3xl mr-3">✅</span>
               <div>
                 <p className="text-xs sm:text-sm font-medium text-white/90">Complétés</p>
                 <p className="text-xl sm:text-2xl font-bold text-white">
-                  {clientPOs.filter(po => getDeliveryStatus(po).status === 'completed').length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-lg border border-white/30">
-            <div className="flex items-center">
-              <span className="text-2xl sm:text-3xl mr-3">💰</span>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-white/90">Valeur Totale</p>
-                <p className="text-lg sm:text-2xl font-bold text-white">
-                  {formatCurrency(clientPOs.reduce((sum, po) => sum + (po.total_amount || 0), 0))}
+                  {clientPOs.filter(po => po.status === 'completed').length}
                 </p>
               </div>
             </div>
@@ -818,7 +801,6 @@ export default function ClientPOManager() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredPOs.map((po) => {
-                  const deliveryStatus = getDeliveryStatus(po);
                   return (
                     <tr key={po.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-3 py-4 whitespace-nowrap">
@@ -847,21 +829,9 @@ export default function ClientPOManager() {
                         </div>
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-center">
-                        <div className="space-y-1">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDeliveryStatusBadge(deliveryStatus.status)}`}>
-                            {deliveryStatus.status === 'in_progress' && '🔵 En cours'}
-                            {deliveryStatus.status === 'partial' && `🚚 ${deliveryStatus.percentage}%`}
-                            {deliveryStatus.status === 'completed' && '✅ Complété'}
-                          </span>
-                          {deliveryStatus.status === 'partial' && (
-                            <div className="w-16 bg-gray-200 rounded-full h-1.5 mx-auto">
-                              <div 
-                                className="bg-yellow-600 h-1.5 rounded-full" 
-                                style={{width: `${deliveryStatus.percentage}%`}}
-                              ></div>
-                            </div>
-                          )}
-                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeStyle(po.status)}`}>
+                          {getStatusLabel(po.status)}
+                        </span>
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
                         {formatDate(po.created_at)}
@@ -919,7 +889,6 @@ export default function ClientPOManager() {
         {/* Vue mobile */}
         <div className="lg:hidden space-y-4 p-4">
           {filteredPOs.map((po) => {
-            const deliveryStatus = getDeliveryStatus(po);
             return (
               <div key={po.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
