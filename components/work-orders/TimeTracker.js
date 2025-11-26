@@ -75,6 +75,13 @@ const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
   return Math.round((totalMinutes / 60) * 100) / 100;
 };
 
+  // Arrondir un nombre d'heures au quart d'heure supérieur
+  const roundToQuarterHour = (hours) => {
+    const totalMinutes = hours * 60;
+    const roundedMinutes = Math.ceil(totalMinutes / 15) * 15;
+    return roundedMinutes / 60;
+  };
+
 const getAllSessions = () => {
   if (!currentSession) {
     return timeEntries;
@@ -518,10 +525,11 @@ const formatDuration = (hours) => {
                             entry.pause_minutes
                           );
                           const travelHours = e.target.checked ? (selectedClient.travel_minutes / 60) : 0;
+                          const totalBeforeRounding = sessionHours + travelHours;
                           newEntries[index] = {
                             ...entry,
                             include_travel: e.target.checked,
-                            total_hours: sessionHours + travelHours
+                            total_hours: roundToQuarterHour(totalBeforeRounding)
                           };
                           setTimeEntries(newEntries);
                         }}
