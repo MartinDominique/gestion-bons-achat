@@ -114,6 +114,129 @@ export const PurchaseForm = ({
     }, 1000);
   };
 
+  // Fonction pour imprimer et envoyer au fournisseur par email
+  const imprimerEtEnvoyerFournisseur = async () => {
+    if (!selectedSupplier) {
+      alert('⚠️ Veuillez sélectionner un fournisseur avant d\'envoyer');
+      return;
+    }
+
+    if (!selectedSupplier.email) {
+      alert('⚠️ Aucun email trouvé pour ce fournisseur.\nAjoutez un email dans la fiche fournisseur.');
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer');
+      return;
+    }
+
+    try {
+      // Changer le titre pour le nom du fichier PDF
+      const originalTitle = document.title;
+      document.title = `PO-${purchaseForm.purchase_number}`;
+      
+      window.print();
+      
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
+
+      setTimeout(async () => {
+        const confirmation = confirm(
+          `✅ PDF sauvegardé : PO-${purchaseForm.purchase_number}.pdf\n\n` +
+          `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${selectedSupplier.email} ?`
+        );
+
+        if (confirmation) {
+          const isBilingual = shouldShowBilingual();
+          
+          const sujet = isBilingual 
+            ? `Purchase Order ${purchaseForm.purchase_number} - Services TMT Inc.`
+            : `Bon de Commande ${purchaseForm.purchase_number} - Services TMT Inc.`;
+          
+          const corpsEmail = isBilingual 
+            ? `Hello,
+
+Please find attached our purchase order for your reference.
+
+ORDER SUMMARY:
+- PO Number: ${purchaseForm.purchase_number}
+- Subtotal: ${formatCurrency(purchaseForm.subtotal)}
+- TOTAL: ${formatCurrency(purchaseForm.total_amount)}
+
+Details:
+- Number of items: ${selectedItems.length}
+${purchaseForm.delivery_date ? `- Expected delivery: ${formatDate(purchaseForm.delivery_date)}` : ''}
+
+Please confirm receipt and expected shipping date.
+
+Thank you,
+Services TMT Inc.
+Tel: (418) 225-3875`
+            : `Bonjour,
+
+Veuillez trouver ci-joint notre bon de commande.
+
+RÉSUMÉ:
+- N° Commande: ${purchaseForm.purchase_number}
+- Sous-total: ${formatCurrency(purchaseForm.subtotal)}
+- TOTAL: ${formatCurrency(purchaseForm.total_amount)}
+
+Détails:
+- Nombre d'articles: ${selectedItems.length}
+${purchaseForm.delivery_date ? `- Livraison prévue: ${formatDate(purchaseForm.delivery_date)}` : ''}
+
+Veuillez confirmer la réception et la date d'expédition prévue.
+
+Merci,
+Services TMT Inc.
+Tél: (418) 225-3875`;
+
+          const mailtoLink = `mailto:${selectedSupplier.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+          
+          // Iframe invisible pour éviter la navigation
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = mailtoLink;
+          document.body.appendChild(iframe);
+          
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 1000);
+
+          // Notification temporaire
+          const notification = document.createElement('div');
+          notification.innerHTML = '✅ Email préparé - Attachez le PDF dans eM Client';
+          notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 9999;
+          `;
+          document.body.appendChild(notification);
+          
+          setTimeout(() => {
+            if (document.body.contains(notification)) {
+              document.body.removeChild(notification);
+            }
+          }, 3000);
+        }
+      }, 3000);
+
+    } catch (error) {
+      alert(`❌ Erreur: ${error.message}`);
+    }
+  };
+
   return (
     <>
       {/* STYLES D'IMPRESSION */}
@@ -395,7 +518,14 @@ export const PurchaseForm = ({
                 onClick={handlePrint}
                 className="w-full sm:w-auto px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 text-sm font-medium"
               >
-                Imprimer
+                🖨️ Imprimer
+              </button>
+              <button
+                type="button"
+                onClick={imprimerEtEnvoyerFournisseur}
+                className="w-full sm:w-auto px-4 py-2 bg-green-500 rounded-lg hover:bg-green-600 text-sm font-medium"
+              >
+                📧 Envoyer au Fournisseur
               </button>
               <button
                 type="button"
