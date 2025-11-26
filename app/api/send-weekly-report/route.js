@@ -68,15 +68,14 @@ export async function GET() {
 
     // =============== CALCULER LES STATISTIQUES - CORRIGÉ ===============
     
-    // Stats bons d'achat avec les VRAIS statuts
-    const poStats = {
-      total: finalPurchaseOrders.length,
-      enAttente: finalPurchaseOrders.filter(o => o.status === 'en_attente').length,
-      approuve: finalPurchaseOrders.filter(o => o.status === 'approved').length, // ✅ CORRIGÉ
-      refuse: finalPurchaseOrders.filter(o => o.status === 'rejected').length,   // ✅ CORRIGÉ
-      delivered: finalPurchaseOrders.filter(o => o.status === 'delivered').length, // ➕ AJOUTÉ
-      montantTotal: finalPurchaseOrders.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0)
-    };
+    // Stats bons d'achat avec les 3 statuts
+      const poStats = {
+        total: finalPurchaseOrders.length,
+        inProgress: finalPurchaseOrders.filter(o => o.status === 'in_progress').length,
+        partial: finalPurchaseOrders.filter(o => o.status === 'partial').length,
+        completed: finalPurchaseOrders.filter(o => o.status === 'completed').length,
+        montantTotal: finalPurchaseOrders.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0)
+      };
 
     // Stats soumissions avec montant accepté séparé
     const submissionStats = {
@@ -103,12 +102,11 @@ export async function GET() {
             <div>
               <p><strong>📊 Résumé:</strong></p>
               <ul style="list-style: none; padding: 0;">
-                <li>⏳ En attente: ${poStats.enAttente}</li>
-                <li>✅ Approuvés: ${poStats.approuve}</li>
-                <li>❌ Refusés: ${poStats.refuse}</li>
-                <li>🚚 Livrés: ${poStats.delivered}</li>
-                <li>💰 Montant total: ${poStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
-              </ul>
+              <li>🔵 En cours: ${poStats.inProgress}</li>
+              <li>🚚 Partiellement livré: ${poStats.partial}</li>
+              <li>✅ Complété: ${poStats.completed}</li>
+              <li>💰 Montant total: ${poStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
+            </ul>
             </div>
             <div>
               <p><strong>📋 Détails:</strong></p>
@@ -126,9 +124,8 @@ export async function GET() {
                       <td style="padding: 4px; border: 1px solid #d1d5db;">${po.client_name || 'N/A'}</td>
                       <td style="padding: 4px; border: 1px solid #d1d5db;">${parseFloat(po.amount || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</td>
                       <td style="padding: 4px; border: 1px solid #d1d5db;">
-                        ${po.status === 'approved' ? '✅' : 
-                          po.status === 'rejected' ? '❌' : 
-                          po.status === 'delivered' ? '🚚' : '⏳'}
+                        ${po.status === 'completed' ? '✅' : 
+                          po.status === 'partial' ? '🚚' : '🔵'}
                       </td>
                     </tr>
                   `).join('')}
