@@ -511,7 +511,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       const { data: allSubmissions, error } = await supabase
         .from('submissions')
         .select('*')
-        .eq('status', 'accepted')
+        .in('status', ['sent', 'accepted'])
         .order('created_at', { ascending: false })
         .limit(50);
       
@@ -578,6 +578,19 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setFormData(prev => ({ ...prev, amount: Math.max(totalAmount, parseFloat(submission.amount) || 0) }));
       setShowSubmissionModal(false);
       setActiveTab('articles');
+      
+      // Si la soumission est "Envoyée", la passer à "Acceptée" automatiquement
+      if (submission.status === 'sent') {
+        try {
+          await supabase
+            .from('submissions')
+            .update({ status: 'accepted' })
+            .eq('id', submission.id);
+          console.log('✅ Soumission ' + submission.submission_number + ' passée à Acceptée');
+        } catch (err) {
+          console.error('Erreur changement statut soumission:', err);
+        }
+      }
       
       console.log('Soumission ' + submission.submission_number + ' importée avec ' + importedItems.length + ' articles');
       
