@@ -25,6 +25,10 @@ export default function Navigation() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showClientManager, setShowClientManager] = useState(false);
 
+  // Routes où la navigation ne doit PAS être fixe (mode plein écran)
+  const hideFixedNavRoutes = ['/bons-travail/nouveau', '/client'];
+  const shouldBeFixed = !hideFixedNavRoutes.some(route => pathname.includes(route));
+
   // Sauvegarder la dernière page visitée
   useEffect(() => {
     const currentPage = pages.find(page => pathname.startsWith('/' + page.id));
@@ -118,7 +122,7 @@ export default function Navigation() {
   return (
     <>
       {/* Navigation principale */}
-      <nav className="bg-white shadow-md mb-6 print:shadow-none">
+      <nav className={`bg-white shadow-md print:shadow-none ${shouldBeFixed ? 'sticky top-0 z-40 mb-6' : 'mb-6'}`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16 md:h-20">
             
