@@ -134,7 +134,7 @@ export const PurchaseForm = ({
     try {
       // Changer le titre pour le nom du fichier PDF
       const originalTitle = document.title;
-      document.title = `PO-${purchaseForm.purchase_number}`;
+      document.title = purchaseForm.purchase_number;
       
       window.print();
       
@@ -144,7 +144,7 @@ export const PurchaseForm = ({
 
       setTimeout(async () => {
         const confirmation = confirm(
-          `✅ PDF sauvegardé : PO-${purchaseForm.purchase_number}.pdf\n\n` +
+          `✅ PDF sauvegardé : ${purchaseForm.purchase_number}.pdf\n\n` +
           `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${selectedSupplier.email} ?`
         );
 
@@ -163,7 +163,6 @@ Please find attached our purchase order for your reference.
 ORDER SUMMARY:
 - PO Number: ${purchaseForm.purchase_number}
 - Subtotal: ${formatCurrency(purchaseForm.subtotal)}
-- TOTAL: ${formatCurrency(purchaseForm.total_amount)}
 
 Details:
 - Number of items: ${selectedItems.length}
@@ -171,9 +170,7 @@ ${purchaseForm.delivery_date ? `- Expected delivery: ${formatDate(purchaseForm.d
 
 Please confirm receipt and expected shipping date.
 
-Thank you,
-Services TMT Inc.
-Tel: (418) 225-3875`
+Thank you!`
             : `Bonjour,
 
 Veuillez trouver ci-joint notre bon de commande.
@@ -181,7 +178,6 @@ Veuillez trouver ci-joint notre bon de commande.
 RÉSUMÉ:
 - N° Commande: ${purchaseForm.purchase_number}
 - Sous-total: ${formatCurrency(purchaseForm.subtotal)}
-- TOTAL: ${formatCurrency(purchaseForm.total_amount)}
 
 Détails:
 - Nombre d'articles: ${selectedItems.length}
@@ -189,9 +185,7 @@ ${purchaseForm.delivery_date ? `- Livraison prévue: ${formatDate(purchaseForm.d
 
 Veuillez confirmer la réception et la date d'expédition prévue.
 
-Merci,
-Services TMT Inc.
-Tél: (418) 225-3875`;
+Merci!`;
 
           const mailtoLink = `mailto:${selectedSupplier.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
           
