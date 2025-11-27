@@ -73,8 +73,7 @@ export default function WorkOrderForm({
     work_description: '',
     additional_notes: '',
     status: 'draft',
-    is_prix_jobe: false,
-    include_transport_fee: true 
+    is_prix_jobe: false
   });
 
   const [selectedEmails, setSelectedEmails] = useState({
@@ -210,8 +209,7 @@ export default function WorkOrderForm({
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft',
-        is_prix_jobe: workOrder.is_prix_jobe || false,
-        include_transport_fee: workOrder.include_transport_fee ?? true
+        is_prix_jobe: workOrder.is_prix_jobe || false
       });
 
       console.log('🔍 DEBUG INIT - formData.linked_po_id après init:', workOrder.linked_po_id?.toString() || '');
