@@ -289,6 +289,7 @@ const formatDuration = (hours) => {
         pause_minutes: currentSession.pause_minutes,
         total_hours: totalHours,
         include_travel: includeTravel,
+        include_transport_fee: true,
         in_progress: false
       };
       
@@ -354,7 +355,8 @@ const formatDuration = (hours) => {
       end_time: manualEnd || null,
       pause_minutes: parseInt(manualPause) || 0,
       total_hours: totalHours,
-      include_travel: includeTravel
+      include_travel: includeTravel,
+      include_transport_fee: true,
     };
 
     if (editingIndex !== null) {
@@ -542,6 +544,32 @@ const formatDuration = (hours) => {
                   )}
                 </div>
               </div>
+
+                {/* Colonne: Frais transport */}
+                <div>
+                  <div className="text-xs text-gray-500">Transport</div>
+                  {!entry.in_progress ? (
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={entry.include_transport_fee ?? true}
+                        onChange={(e) => {
+                          const newEntries = [...timeEntries];
+                          newEntries[index] = {
+                            ...entry,
+                            include_transport_fee: e.target.checked
+                          };
+                          setTimeEntries(newEntries);
+                        }}
+                        className="mr-1 h-4 w-4 text-green-600"
+                      />
+                      <span className="text-xs text-green-600">🚗</span>
+                    </label>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
+                </div>
+                    
               <div className="flex gap-2 ml-3">
                 <button
                   type="button"
