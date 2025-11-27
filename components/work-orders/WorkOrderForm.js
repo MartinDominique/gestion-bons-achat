@@ -1531,23 +1531,6 @@ export default function WorkOrderForm({
           selectedClient={selectedClient}
         />
 
-        {/* Checkbox Frais de transport */}
-          {selectedClient && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-4">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.include_transport_fee ?? true}
-                  onChange={(e) => handleChange('include_transport_fee', e.target.checked)}
-                  className="mr-3 h-5 w-5 text-orange-600 rounded"
-                />
-                <span className="text-sm font-medium text-orange-800">
-                  🚗 Frais de transport (facturation)
-                </span>
-              </label>
-            </div>
-          )}
-
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex items-center justify-between mb-3">
             <label className="block text-sm font-medium text-gray-700">
