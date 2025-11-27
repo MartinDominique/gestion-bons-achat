@@ -73,7 +73,8 @@ export default function WorkOrderForm({
     work_description: '',
     additional_notes: '',
     status: 'draft',
-    is_prix_jobe: false
+    is_prix_jobe: false,
+    include_transport_fee: true 
   });
 
   const [selectedEmails, setSelectedEmails] = useState({
@@ -209,7 +210,8 @@ export default function WorkOrderForm({
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft',
-        is_prix_jobe: workOrder.is_prix_jobe || false
+        is_prix_jobe: workOrder.is_prix_jobe || false,
+        include_transport_fee: workOrder.include_transport_fee ?? true
       });
 
       console.log('🔍 DEBUG INIT - formData.linked_po_id après init:', workOrder.linked_po_id?.toString() || '');
@@ -1528,6 +1530,23 @@ export default function WorkOrderForm({
           status={formData.status}
           selectedClient={selectedClient}
         />
+
+        {/* Checkbox Frais de transport */}
+          {selectedClient && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-4">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.include_transport_fee ?? true}
+                  onChange={(e) => handleChange('include_transport_fee', e.target.checked)}
+                  className="mr-3 h-5 w-5 text-orange-600 rounded"
+                />
+                <span className="text-sm font-medium text-orange-800">
+                  🚗 Frais de transport (facturation)
+                </span>
+              </label>
+            </div>
+          )}
 
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex items-center justify-between mb-3">
