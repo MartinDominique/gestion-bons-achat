@@ -280,7 +280,7 @@ const formatDuration = (hours) => {
       // Par défaut, inclure le voyage si le client a travel_minutes
       const includeTravel = selectedClient?.travel_minutes > 0;
       const travelHours = includeTravel ? (selectedClient.travel_minutes / 60) : 0;
-      const totalHours = sessionHours + travelHours;
+      const totalHours = roundToQuarterHour(sessionHours + travelHours);
       
       const completedSession = {
         date: currentSession.date,
@@ -346,7 +346,7 @@ const formatDuration = (hours) => {
     // Par défaut, inclure le voyage si le client a travel_minutes
     const includeTravel = selectedClient?.travel_minutes > 0;
     const travelHours = includeTravel ? (selectedClient.travel_minutes / 60) : 0;
-    const totalHours = sessionHours + travelHours;
+    const totalHours = roundToQuarterHour(sessionHours + travelHours);
 
     const session = {
       date: manualDate,
