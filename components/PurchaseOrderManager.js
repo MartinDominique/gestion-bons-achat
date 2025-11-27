@@ -142,6 +142,12 @@ const PurchaseOrderManager = () => {
 
   // Filtrer les BAs
   useEffect(() => {
+     // DEBUG - À enlever après
+  console.log('📊 Tous les statuts des BA:', purchaseOrders.map(po => ({ 
+    po_number: po.po_number, 
+    status: po.status,
+    status_type: typeof po.status 
+  })));
     let filtered = purchaseOrders;
 
     if (searchTerm) {
