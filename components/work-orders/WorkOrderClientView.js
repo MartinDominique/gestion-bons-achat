@@ -419,11 +419,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                     </span>
                     {entry.end_time && entry.include_travel && workOrder.client?.travel_minutes > 0 && (
                       <span className="text-orange-600 ml-2">(Retour: {workOrder.client.travel_minutes}min)</span>
-                     {entry.end_time && entry.include_travel && workOrder.client?.travel_minutes > 0 && (
-                        <span className="text-orange-600 ml-2">(Retour: {workOrder.client.travel_minutes}min)</span>
-                      )}
-                      {workOrder.include_transport_fee && (
-                        <span className="text-green-600 ml-2">🚗 Transport</span>
+                    )}
+                    {workOrder.include_transport_fee && (
+                      <span className="text-green-600 ml-2">🚗 Transport</span>
                     )}
                   </div>
                 ))}
