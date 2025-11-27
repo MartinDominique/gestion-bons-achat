@@ -142,13 +142,7 @@ const PurchaseOrderManager = () => {
 
   // Filtrer les BAs
   useEffect(() => {
-     // DEBUG - À enlever après
-  console.log('📊 Tous les statuts des BA:', purchaseOrders.map(po => ({ 
-    po_number: po.po_number, 
-    status: po.status,
-    status_type: typeof po.status 
-  })));
-    let filtered = purchaseOrders;
+     let filtered = purchaseOrders;
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -160,7 +154,22 @@ const PurchaseOrderManager = () => {
     }
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(po => po.status === statusFilter);
+      if (statusFilter === 'in_progress') {
+        // "En cours" inclut draft, pending, approved
+        filtered = filtered.filter(po => 
+          po.status === 'draft' || 
+          po.status === 'pending' || 
+          po.status === 'approved'
+        );
+      } else if (statusFilter === 'partial') {
+        // "Partiel" inclut partial et partially_delivered
+        filtered = filtered.filter(po => 
+          po.status === 'partial' || 
+          po.status === 'partially_delivered'
+        );
+      } else {
+        filtered = filtered.filter(po => po.status === statusFilter);
+      }
     }
 
     setFilteredPOs(filtered);
@@ -185,8 +194,12 @@ const PurchaseOrderManager = () => {
   // Statistiques avec toutes les catégories
   const stats = {
     total: filteredPOs.length,
-    inProgress: filteredPOs.filter(po => po.status === 'in_progress').length,
-    partial: filteredPOs.filter(po => po.status === 'partial').length,
+    inProgress: filteredPOs.filter(po => 
+      po.status === 'draft' || po.status === 'pending' || po.status === 'approved'
+    ).length,
+    partial: filteredPOs.filter(po => 
+      po.status === 'partial' || po.status === 'partially_delivered'
+    ).length,
     completed: filteredPOs.filter(po => po.status === 'completed').length,
     totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.amount) || 0), 0)
   };
