@@ -31,7 +31,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showSupplierPurchaseModal, setShowSupplierPurchaseModal] = useState(false);
   const [selectedSupplierPurchase, setSelectedSupplierPurchase] = useState(null);
-  const [viewingFile, setViewingFile] = useState(null);
   
   // Nouveaux états pour l'import depuis achats fournisseurs
   const [showSupplierImportModal, setShowSupplierImportModal] = useState(false);
@@ -338,9 +337,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
+
     setIsUploadingFiles(true);
     setUploadProgress(0);
-    
+
     try {
       const uploadedFiles = [];
       
@@ -368,21 +368,15 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           throw new Error('Fichier trop volumineux: ' + file.name + ' (max 10MB)');
         }
         
-        // Upload vers Supabase Storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = fileName;
+        // Upload vers Supabase Storage (si configuré) ou stocker en base64
+        const fileName = Date.now() + '_' + file.name;
         
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('purchase-orders-pdfs')
-          .upload(filePath, file);
-        
-        if (uploadError) throw new Error('Erreur upload: ' + uploadError.message);
-        
-        // Obtenir l'URL publique
-        const { data: urlData } = supabase.storage
-          .from('purchase-orders-pdfs')
-          .getPublicUrl(filePath);
+        // Option 2: Stockage en base64 (pour cette demo)
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
         
         uploadedFiles.push({
           id: Date.now() + i,
@@ -390,8 +384,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           size: file.size,
           type: file.type,
           uploadDate: new Date().toISOString(),
-          path: filePath,
-          url: urlData.publicUrl
+          data: base64 // En production, utiliser l'URL du storage
         });
         
         setUploadProgress(((i + 1) / files.length) * 100);
@@ -401,7 +394,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setAttachedFiles(newFiles);
       setFormData(prev => ({ ...prev, files: newFiles }));
       
-      console.log(uploadedFiles.length + ' fichier(s) uploadé(s) vers Storage');
+      console.log(uploadedFiles.length + ' fichier(s) ajouté(s)');
       
     } catch (error) {
       console.error('Erreur upload fichiers:', error);
@@ -409,9 +402,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     } finally {
       setIsUploadingFiles(false);
       setUploadProgress(0);
-      event.target.value = '';
+      event.target.value = ''; // Reset input
     }
   };
+
   const deleteFile = (fileId) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) return;
     
@@ -421,32 +415,77 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   };
 
   const downloadFile = (file) => {
-    if (file.url) {
-      const link = document.createElement('a');
-      link.href = file.url;
-      link.download = file.name;
-      link.click();
-    } else if (file.data && file.data.startsWith('data:')) {
+    if (file.data && file.data.startsWith('data:')) {
+      // Télécharger depuis base64
       const link = document.createElement('a');
       link.href = file.data;
       link.download = file.name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    } else if (file.url) {
+      // Télécharger depuis URL
+      window.open(file.url, '_blank');
     }
   };
 
   const viewFile = (file) => {
-  if (file.url) {
-    // Sur mobile, ouvrir directement; sur PC, utiliser le modal
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
+    if (file.data && file.data.startsWith('data:')) {
+      try {
+        // Extraire le type MIME et les données base64
+        const [header, base64Data] = file.data.split(',');
+        const mimeMatch = header.match(/data:([^;]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+        
+        // Convertir base64 en array de bytes
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        
+        // Créer le Blob et l'URL
+        const blob = new Blob([byteArray], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Ouvrir dans une nouvelle fenêtre avec iframe
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>${file.name || 'Document'}</title>
+              <style>
+                * { margin: 0; padding: 0; }
+                html, body { height: 100%; overflow: hidden; }
+                iframe, img { width: 100%; height: 100%; border: none; }
+              </style>
+            </head>
+            <body>
+              ${mimeType.includes('pdf') 
+                ? `<iframe src="${blobUrl}#toolbar=1&navpanes=1"></iframe>`
+                : mimeType.includes('image')
+                  ? `<img src="${blobUrl}" style="object-fit: contain;">`
+                  : `<iframe src="${blobUrl}"></iframe>`
+              }
+            </body>
+            </html>
+          `);
+          newWindow.document.close();
+          
+          // Nettoyer l'URL quand la fenêtre se ferme
+          newWindow.onbeforeunload = () => URL.revokeObjectURL(blobUrl);
+        }
+      } catch (error) {
+        console.error('Erreur affichage fichier:', error);
+        downloadFile(file);
+      }
+    } else if (file.url) {
       window.open(file.url, '_blank');
-    } else {
-      setViewingFile(file);
     }
-  }
-};
+  };
 
   // Fonction pour voir les détails d'un achat fournisseur
   const visualizeSupplierPurchase = (purchase) => {
@@ -2958,94 +2997,8 @@ setTimeout(() => {
           </div>
         </div>
       )}
-
-        {/* Modal visualisation fichier */}
-        {viewingFile && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-            <div className="bg-white rounded-lg w-full h-full max-w-5xl max-h-[95vh] m-4 flex flex-col">
-              <div className="flex justify-between items-center p-3 border-b bg-gray-100 rounded-t-lg">
-                <span className="font-medium truncate">{viewingFile.name}</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => downloadFile(viewingFile)}
-                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-                  >
-                    Télécharger
-                  </button>
-                  <button
-                    onClick={() => setViewingFile(null)}
-                    className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
-                  >
-                    Fermer
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <FileViewer file={viewingFile} />
-              </div>
-            </div>
-          </div>
-        )}
     </>
   );
-};
-
-// Composant pour afficher fichier depuis URL
-const FileViewer = ({ file }) => {
-  const [blobUrl, setBlobUrl] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-
-  React.useEffect(() => {
-    if (!file?.url) return;
-
-    const loadFile = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(file.url);
-        if (!response.ok) throw new Error('Erreur chargement fichier');
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        setBlobUrl(url);
-      } catch (err) {
-        console.error('Erreur:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadFile();
-
-    return () => {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-    };
-  }, [file]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Chargement du document...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-600">
-        Erreur: {error}
-      </div>
-    );
-  }
-
-  if (file.type?.includes('image')) {
-    return <img src={blobUrl} alt={file.name} className="w-full h-full object-contain" />;
-  }
-
-  return <iframe src={blobUrl} className="w-full h-full border-0" title={file.name} />;
 };
 
 export default PurchaseOrderModal;
