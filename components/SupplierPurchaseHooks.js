@@ -323,16 +323,16 @@ const [exchangeRateError, setExchangeRateError] = useState('');
   };
 
   // ===== GESTION SOUMISSIONS =====
- const handleFetchAvailableSubmissions = async () => {
+  const handleFetchAvailableSubmissions = async () => {
     setLoadingSubmissions(true);
     try {
-      let clientId = null;
+      let clientName = null;
       if (purchaseForm.linked_po_id) {
         const selectedPO = purchaseOrders.find(po => po.id === purchaseForm.linked_po_id);
-        clientId = selectedPO?.client_id || null;
+        clientName = selectedPO?.client_name || null;
       }
       
-      const data = await fetchAvailableSubmissions(clientId);
+      const data = await fetchAvailableSubmissions(clientName);
       setAvailableSubmissions(data);
     } catch (error) {
       console.error('Erreur chargement soumissions:', error);
