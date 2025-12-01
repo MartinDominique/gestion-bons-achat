@@ -1213,6 +1213,7 @@ const [exchangeRateError, setExchangeRateError] = useState('');
     isCanadianSupplier,
     handleFixExistingPurchases,
     handleTestEmail,
+    loadSupplierPurchases,
     
     // Données filtrées
     filteredPurchases,
