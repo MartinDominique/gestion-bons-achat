@@ -324,23 +324,29 @@ const [exchangeRateError, setExchangeRateError] = useState('');
 
   // ===== GESTION SOUMISSIONS =====
   const handleFetchAvailableSubmissions = async () => {
-    setLoadingSubmissions(true);
-    try {
-      let clientName = null;
-      if (purchaseForm.linked_po_id) {
-        const selectedPO = purchaseOrders.find(po => po.id === purchaseForm.linked_po_id);
-        clientName = selectedPO?.client_name || null;
-      }
-      
-      const data = await fetchAvailableSubmissions(clientName);
-      setAvailableSubmissions(data);
-    } catch (error) {
-      console.error('Erreur chargement soumissions:', error);
-      alert('Erreur lors du chargement des soumissions');
-    } finally {
-      setLoadingSubmissions(false);
+  setLoadingSubmissions(true);
+  try {
+    let clientName = null;
+    if (purchaseForm.linked_po_id) {
+      const selectedPO = purchaseOrders.find(po => po.id === purchaseForm.linked_po_id);
+      clientName = selectedPO?.client_name || null;
+      console.log('BA sélectionné:', purchaseForm.linked_po_id);
+      console.log('PO trouvé:', selectedPO);
+      console.log('Client name:', clientName);
+    } else {
+      console.log('Aucun BA sélectionné');
     }
-  };
+    
+    const data = await fetchAvailableSubmissions(clientName);
+    console.log('Soumissions trouvées:', data.length);
+    setAvailableSubmissions(data);
+  } catch (error) {
+    console.error('Erreur chargement soumissions:', error);
+    alert('Erreur lors du chargement des soumissions');
+  } finally {
+    setLoadingSubmissions(false);
+  }
+};
 
   const handleSubmissionSelect = (submission) => {
     setSelectedSubmissionForImport(submission);
