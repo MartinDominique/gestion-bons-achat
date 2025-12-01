@@ -2679,7 +2679,12 @@ setTimeout(() => {
                             return (
                               <tr key={index}>
                                 <td className="border border-gray-300 px-2 sm:px-3 py-2 text-xs sm:text-sm">{item.product_id || item.code || item.sku || '-'}</td>
-                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-xs sm:text-sm">{item.description || item.name || item.product_name || '-'}</td>
+                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-xs sm:text-sm">
+                                  <div>{item.description || item.name || item.product_name || '-'}</div>
+                                  {item.notes && (
+                                    <div className="text-xs text-blue-600 italic mt-1">📝 {item.notes}</div>
+                                  )}
+                                </td>
                                 <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm">{quantity}</td>
                                 <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">{item.unit || item.unity || 'UN'}</td>
                                 <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm">${unitPrice.toFixed(2)}</td>
