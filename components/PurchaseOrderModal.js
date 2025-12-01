@@ -431,13 +431,32 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
   const viewFile = (file) => {
     if (file.data && file.data.startsWith('data:')) {
-      // Ouvrir en base64
-      const newWindow = window.open();
-      if (file.type.includes('pdf')) {
-        newWindow.document.write('<iframe src="' + file.data + '" width="100%" height="100%"></iframe>');
-      } else if (file.type.includes('image')) {
-        newWindow.document.write('<img src="' + file.data + '" style="max-width: 100%; height: auto;">');
-      } else {
+      // Convertir base64 en Blob pour un meilleur support navigateur
+      try {
+        // Extraire le type MIME et les données base64
+        const [header, base64Data] = file.data.split(',');
+        const mimeMatch = header.match(/data:([^;]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+        
+        // Convertir base64 en array de bytes
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        
+        // Créer le Blob et l'URL
+        const blob = new Blob([byteArray], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Ouvrir dans un nouvel onglet
+        window.open(blobUrl, '_blank');
+        
+        // Nettoyer l'URL après un délai
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      } catch (error) {
+        console.error('Erreur affichage fichier:', error);
         downloadFile(file);
       }
     } else if (file.url) {
