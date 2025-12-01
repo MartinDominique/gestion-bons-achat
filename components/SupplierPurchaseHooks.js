@@ -323,10 +323,9 @@ const [exchangeRateError, setExchangeRateError] = useState('');
   };
 
   // ===== GESTION SOUMISSIONS =====
-  const handleFetchAvailableSubmissions = async () => {
+ const handleFetchAvailableSubmissions = async () => {
     setLoadingSubmissions(true);
     try {
-      // Si un BA est sélectionné, récupérer son client_id
       let clientId = null;
       if (purchaseForm.linked_po_id) {
         const selectedPO = purchaseOrders.find(po => po.id === purchaseForm.linked_po_id);
