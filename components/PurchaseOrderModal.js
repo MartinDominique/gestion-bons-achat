@@ -338,10 +338,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
-
     setIsUploadingFiles(true);
     setUploadProgress(0);
-
+    
     try {
       const uploadedFiles = [];
       
@@ -369,15 +368,21 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           throw new Error('Fichier trop volumineux: ' + file.name + ' (max 10MB)');
         }
         
-        // Upload vers Supabase Storage (si configuré) ou stocker en base64
-        const fileName = Date.now() + '_' + file.name;
+        // Upload vers Supabase Storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = fileName;
         
-        // Option 2: Stockage en base64 (pour cette demo)
-        const base64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(file);
-        });
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('purchase-orders-pdfs')
+          .upload(filePath, file);
+        
+        if (uploadError) throw new Error('Erreur upload: ' + uploadError.message);
+        
+        // Obtenir l'URL publique
+        const { data: urlData } = supabase.storage
+          .from('purchase-orders-pdfs')
+          .getPublicUrl(filePath);
         
         uploadedFiles.push({
           id: Date.now() + i,
@@ -385,7 +390,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
           size: file.size,
           type: file.type,
           uploadDate: new Date().toISOString(),
-          data: base64 // En production, utiliser l'URL du storage
+          path: filePath,
+          url: urlData.publicUrl
         });
         
         setUploadProgress(((i + 1) / files.length) * 100);
@@ -395,7 +401,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       setAttachedFiles(newFiles);
       setFormData(prev => ({ ...prev, files: newFiles }));
       
-      console.log(uploadedFiles.length + ' fichier(s) ajouté(s)');
+      console.log(uploadedFiles.length + ' fichier(s) uploadé(s) vers Storage');
       
     } catch (error) {
       console.error('Erreur upload fichiers:', error);
@@ -403,10 +409,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     } finally {
       setIsUploadingFiles(false);
       setUploadProgress(0);
-      event.target.value = ''; // Reset input
+      event.target.value = '';
     }
   };
-
   const deleteFile = (fileId) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) return;
     
@@ -416,22 +421,28 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   };
 
   const downloadFile = (file) => {
-    if (file.data && file.data.startsWith('data:')) {
-      // Télécharger depuis base64
+    if (file.url) {
+      const link = document.createElement('a');
+      link.href = file.url;
+      link.download = file.name;
+      link.click();
+    } else if (file.data && file.data.startsWith('data:')) {
       const link = document.createElement('a');
       link.href = file.data;
       link.download = file.name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } else if (file.url) {
-      // Télécharger depuis URL
-      window.open(file.url, '_blank');
     }
   };
 
   const viewFile = (file) => {
-  setViewingFile(file);
+  if (file.url) {
+    window.open(file.url, '_blank');
+  } else if (file.data && file.data.startsWith('data:')) {
+    // Fallback pour anciens fichiers en base64
+    setViewingFile(file);
+  }
 };
 
   // Fonction pour voir les détails d'un achat fournisseur
