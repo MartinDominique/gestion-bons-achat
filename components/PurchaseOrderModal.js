@@ -2981,25 +2981,71 @@ setTimeout(() => {
                 </div>
               </div>
               <div className="flex-1 overflow-hidden">
-                {viewingFile.type?.includes('image') ? (
-                  <img 
-                    src={viewingFile.url} 
-                    alt={viewingFile.name}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <iframe
-                    src={viewingFile.url}
-                    className="w-full h-full border-0"
-                    title={viewingFile.name}
-                  />
-                )}
+                <FileViewer file={viewingFile} />
               </div>
             </div>
           </div>
         )}
     </>
   );
+};
+
+// Composant pour afficher fichier depuis URL
+const FileViewer = ({ file }) => {
+  const [blobUrl, setBlobUrl] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!file?.url) return;
+
+    const loadFile = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(file.url);
+        if (!response.ok) throw new Error('Erreur chargement fichier');
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+      } catch (err) {
+        console.error('Erreur:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFile();
+
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [file]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Chargement du document...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-600">
+        Erreur: {error}
+      </div>
+    );
+  }
+
+  if (file.type?.includes('image')) {
+    return <img src={blobUrl} alt={file.name} className="w-full h-full object-contain" />;
+  }
+
+  return <iframe src={blobUrl} className="w-full h-full border-0" title={file.name} />;
 };
 
 export default PurchaseOrderModal;
