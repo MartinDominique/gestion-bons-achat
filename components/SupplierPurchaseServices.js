@@ -521,16 +521,15 @@ export const searchProducts = async (searchTerm) => {
 // ===== API SUPABASE - SOUMISSIONS =====
 
 // Récupérer les soumissions acceptées
-export const fetchAvailableSubmissions = async (clientId = null) => {
+export const fetchAvailableSubmissions = async (clientName = null) => {
   try {
     let query = supabase
       .from('submissions')
       .select('*')
       .eq('status', 'accepted');
     
-    // Si un client_id est fourni, filtrer par ce client
-    if (clientId) {
-      query = query.eq('client_id', clientId);
+    if (clientName) {
+      query = query.eq('client_name', clientName);
     }
     
     const { data, error } = await query.order('created_at', { ascending: false });
