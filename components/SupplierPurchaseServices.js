@@ -26,6 +26,7 @@ export const PURCHASE_STATUSES = {
   draft: 'Brouillon',
   in_order: 'En commande', // NOUVEAU STATUT
   ordered: 'Commandé',
+  partial: 'Réception partielle',
   received: 'Reçu',
   cancelled: 'Annulé'
 };
