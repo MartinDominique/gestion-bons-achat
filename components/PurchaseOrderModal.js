@@ -431,7 +431,6 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
   const viewFile = (file) => {
     if (file.data && file.data.startsWith('data:')) {
-      // Convertir base64 en Blob pour un meilleur support navigateur
       try {
         // Extraire le type MIME et les données base64
         const [header, base64Data] = file.data.split(',');
@@ -450,11 +449,35 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         const blob = new Blob([byteArray], { type: mimeType });
         const blobUrl = URL.createObjectURL(blob);
         
-        // Ouvrir dans un nouvel onglet
-        window.open(blobUrl, '_blank');
-        
-        // Nettoyer l'URL après un délai
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        // Ouvrir dans une nouvelle fenêtre avec iframe
+        const newWindow = window.open('', '_blank');
+        if (newWindow) {
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>${file.name || 'Document'}</title>
+              <style>
+                * { margin: 0; padding: 0; }
+                html, body { height: 100%; overflow: hidden; }
+                iframe, img { width: 100%; height: 100%; border: none; }
+              </style>
+            </head>
+            <body>
+              ${mimeType.includes('pdf') 
+                ? `<iframe src="${blobUrl}#toolbar=1&navpanes=1"></iframe>`
+                : mimeType.includes('image')
+                  ? `<img src="${blobUrl}" style="object-fit: contain;">`
+                  : `<iframe src="${blobUrl}"></iframe>`
+              }
+            </body>
+            </html>
+          `);
+          newWindow.document.close();
+          
+          // Nettoyer l'URL quand la fenêtre se ferme
+          newWindow.onbeforeunload = () => URL.revokeObjectURL(blobUrl);
+        }
       } catch (error) {
         console.error('Erreur affichage fichier:', error);
         downloadFile(file);
