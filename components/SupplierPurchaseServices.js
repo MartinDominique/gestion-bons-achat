@@ -371,7 +371,7 @@ export const fetchPurchaseOrders = async () => {
     const { data, error } = await supabase
       .from('purchase_orders')
       .select('id, po_number, client_name, client_id, amount, status')
-      .in('status', ['pending', 'partially_delivered'])
+      .in('status', ['in_progress', 'partially_delivered'])
       .order('created_at', { ascending: false });
 
     if (error) throw error;
