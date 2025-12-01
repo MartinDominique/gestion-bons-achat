@@ -520,13 +520,13 @@ export const searchProducts = async (searchTerm) => {
 
 // ===== API SUPABASE - SOUMISSIONS =====
 
-// Récupérer les soumissions acceptées
+// Récupérer les soumissions envoyées et acceptées
 export const fetchAvailableSubmissions = async (clientName = null) => {
   try {
     let query = supabase
       .from('submissions')
       .select('*')
-      .eq('status', 'accepted');
+      .in('status', ['sent', 'accepted']);
     
     if (clientName) {
       query = query.eq('client_name', clientName);
