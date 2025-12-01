@@ -326,7 +326,14 @@ const [exchangeRateError, setExchangeRateError] = useState('');
   const handleFetchAvailableSubmissions = async () => {
     setLoadingSubmissions(true);
     try {
-      const data = await fetchAvailableSubmissions();
+      // Si un BA est sélectionné, récupérer son client_id
+      let clientId = null;
+      if (purchaseForm.linked_po_id) {
+        const selectedPO = purchaseOrders.find(po => po.id === purchaseForm.linked_po_id);
+        clientId = selectedPO?.client_id || null;
+      }
+      
+      const data = await fetchAvailableSubmissions(clientId);
       setAvailableSubmissions(data);
     } catch (error) {
       console.error('Erreur chargement soumissions:', error);
