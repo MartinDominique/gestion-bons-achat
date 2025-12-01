@@ -2168,7 +2168,7 @@ setTimeout(() => {
 
                   {/* Types de fichiers acceptés */}
                   <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                    <strong>Types acceptés:</strong> PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG (Max: 10MB par fichier)
+                    <strong>Types acceptés:</strong> PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG (Max: 10MB par fichier)           ''Voir = Tablette, Télécharger = Ordinateur''
                   </div>
 
                   {/* Liste des documents */}
