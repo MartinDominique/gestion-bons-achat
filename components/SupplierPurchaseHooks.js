@@ -328,7 +328,7 @@ const [exchangeRateError, setExchangeRateError] = useState('');
   try {
     let clientName = null;
     if (purchaseForm.linked_po_id) {
-      const selectedPO = purchaseOrders.find(po => po.id === purchaseForm.linked_po_id);
+      const selectedPO = purchaseOrders.find(po => String(po.id) === String(purchaseForm.linked_po_id));
       clientName = selectedPO?.client_name || null;
       console.log('BA sélectionné:', purchaseForm.linked_po_id);
       console.log('PO trouvé:', selectedPO);
