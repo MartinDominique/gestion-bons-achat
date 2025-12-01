@@ -414,7 +414,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     setFormData(prev => ({ ...prev, files: newFiles }));
   };
 
-  const downloadFile = (file) => {
+  const downloadFile = async (file) => {
     if (file.data && file.data.startsWith('data:')) {
       // Télécharger depuis base64
       const link = document.createElement('a');
@@ -424,8 +424,22 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       link.click();
       document.body.removeChild(link);
     } else if (file.url) {
-      // Télécharger depuis URL
-      window.open(file.url, '_blank');
+      // Télécharger depuis URL avec le bon nom
+      try {
+        const response = await fetch(file.url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = file.name || 'document.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error('Erreur téléchargement:', error);
+        window.open(file.url, '_blank');
+      }
     }
   };
 
