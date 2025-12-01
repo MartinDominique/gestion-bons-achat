@@ -432,24 +432,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const viewFile = (file) => {
     if (file.data && file.data.startsWith('data:')) {
       try {
-        // Extraire le type MIME et les données base64
-        const [header, base64Data] = file.data.split(',');
-        const mimeMatch = header.match(/data:([^;]+)/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+        const mimeType = file.type || 'application/pdf';
         
-        // Convertir base64 en array de bytes
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        
-        // Créer le Blob et l'URL
-        const blob = new Blob([byteArray], { type: mimeType });
-        const blobUrl = URL.createObjectURL(blob);
-        
-        // Ouvrir dans une nouvelle fenêtre avec iframe
+        // Ouvrir dans une nouvelle fenêtre avec iframe utilisant le data URL directement
         const newWindow = window.open('', '_blank');
         if (newWindow) {
           newWindow.document.write(`
@@ -460,23 +445,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
               <style>
                 * { margin: 0; padding: 0; }
                 html, body { height: 100%; overflow: hidden; }
-                iframe, img { width: 100%; height: 100%; border: none; }
+                iframe, img, embed, object { width: 100%; height: 100%; border: none; }
               </style>
             </head>
             <body>
-              ${mimeType.includes('pdf') 
-                ? `<iframe src="${blobUrl}#toolbar=1&navpanes=1"></iframe>`
-                : mimeType.includes('image')
-                  ? `<img src="${blobUrl}" style="object-fit: contain;">`
-                  : `<iframe src="${blobUrl}"></iframe>`
+              ${mimeType.includes('image')
+                ? `<img src="${file.data}" style="object-fit: contain;">`
+                : `<embed src="${file.data}" type="${mimeType}">`
               }
             </body>
             </html>
           `);
           newWindow.document.close();
-          
-          // Nettoyer l'URL quand la fenêtre se ferme
-          newWindow.onbeforeunload = () => URL.revokeObjectURL(blobUrl);
         }
       } catch (error) {
         console.error('Erreur affichage fichier:', error);
