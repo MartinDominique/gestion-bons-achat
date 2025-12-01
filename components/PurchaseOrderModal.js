@@ -31,6 +31,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showSupplierPurchaseModal, setShowSupplierPurchaseModal] = useState(false);
   const [selectedSupplierPurchase, setSelectedSupplierPurchase] = useState(null);
+  const [viewingFile, setViewingFile] = useState(null);
   
   // Nouveaux états pour l'import depuis achats fournisseurs
   const [showSupplierImportModal, setShowSupplierImportModal] = useState(false);
@@ -437,10 +438,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
   const viewFile = (file) => {
   if (file.url) {
-    window.open(file.url, '_blank');
-  } else if (file.data && file.data.startsWith('data:')) {
-    // Fallback pour anciens fichiers en base64
-    setViewingFile(file);
+    // Sur mobile, ouvrir directement; sur PC, utiliser le modal
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.open(file.url, '_blank');
+    } else {
+      setViewingFile(file);
+    }
   }
 };
 
@@ -2954,6 +2958,46 @@ setTimeout(() => {
           </div>
         </div>
       )}
+
+        {/* Modal visualisation fichier */}
+        {viewingFile && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
+            <div className="bg-white rounded-lg w-full h-full max-w-5xl max-h-[95vh] m-4 flex flex-col">
+              <div className="flex justify-between items-center p-3 border-b bg-gray-100 rounded-t-lg">
+                <span className="font-medium truncate">{viewingFile.name}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => downloadFile(viewingFile)}
+                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                  >
+                    Télécharger
+                  </button>
+                  <button
+                    onClick={() => setViewingFile(null)}
+                    className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {viewingFile.type?.includes('image') ? (
+                  <img 
+                    src={viewingFile.url} 
+                    alt={viewingFile.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <iframe
+                    src={viewingFile.url}
+                    className="w-full h-full border-0"
+                    title={viewingFile.name}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
     </>
   );
 };
