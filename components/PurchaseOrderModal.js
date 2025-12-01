@@ -430,42 +430,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   };
 
   const viewFile = (file) => {
-    if (file.data && file.data.startsWith('data:')) {
-      try {
-        const mimeType = file.type || 'application/pdf';
-        
-        // Ouvrir dans une nouvelle fenêtre avec iframe utilisant le data URL directement
-        const newWindow = window.open('', '_blank');
-        if (newWindow) {
-          newWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>${file.name || 'Document'}</title>
-              <style>
-                * { margin: 0; padding: 0; }
-                html, body { height: 100%; overflow: hidden; }
-                iframe, img, embed, object { width: 100%; height: 100%; border: none; }
-              </style>
-            </head>
-            <body>
-              ${mimeType.includes('image')
-                ? `<img src="${file.data}" style="object-fit: contain;">`
-                : `<embed src="${file.data}" type="${mimeType}">`
-              }
-            </body>
-            </html>
-          `);
-          newWindow.document.close();
-        }
-      } catch (error) {
-        console.error('Erreur affichage fichier:', error);
-        downloadFile(file);
-      }
-    } else if (file.url) {
-      window.open(file.url, '_blank');
-    }
-  };
+  if (file.data && file.data.startsWith('data:')) {
+    window.open(file.data, '_blank');
+  } else if (file.url) {
+    window.open(file.url, '_blank');
+  }
+};
 
   // Fonction pour voir les détails d'un achat fournisseur
   const visualizeSupplierPurchase = (purchase) => {
