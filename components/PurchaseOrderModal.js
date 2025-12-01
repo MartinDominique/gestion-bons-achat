@@ -2944,46 +2944,82 @@ setTimeout(() => {
           </div>
         </div>
       )}
+        
         {/* Modal visualisation fichier */}
-{viewingFile && (
-  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-    <div className="bg-white rounded-lg w-full h-full max-w-5xl max-h-[95vh] m-4 flex flex-col">
-      <div className="flex justify-between items-center p-3 border-b bg-gray-100 rounded-t-lg">
-        <span className="font-medium truncate">{viewingFile.name}</span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => downloadFile(viewingFile)}
-            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
-          >
-            Télécharger
-          </button>
-          <button
-            onClick={() => setViewingFile(null)}
-            className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
-          >
-            Fermer
-          </button>
-        </div>
-      </div>
-      <div className="flex-1 overflow-hidden">
-        {viewingFile.type?.includes('image') ? (
-          <img 
-            src={viewingFile.data} 
-            alt={viewingFile.name}
-            className="w-full h-full object-contain"
-          />
-        ) : (
-          <iframe
-            src={viewingFile.data}
-            className="w-full h-full border-0"
-            title={viewingFile.name}
-          />
+        {viewingFile && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
+            <div className="bg-white rounded-lg w-full h-full max-w-5xl max-h-[95vh] m-4 flex flex-col">
+              <div className="flex justify-between items-center p-3 border-b bg-gray-100 rounded-t-lg">
+                <span className="font-medium truncate">{viewingFile.name}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => downloadFile(viewingFile)}
+                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                  >
+                    Télécharger
+                  </button>
+                  <button
+                    onClick={() => setViewingFile(null)}
+                    className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {viewingFile.type?.includes('image') ? (
+                  <img 
+                    src={viewingFile.data} 
+                    alt={viewingFile.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <PdfViewer file={viewingFile} />
+                )}
+              </div>
+            </div>
+          </div>
         )}
-      </div>
-    </div>
-  </div>
-)}
     </>
+  );
+};
+
+// Composant pour afficher PDF avec conversion Blob
+const PdfViewer = ({ file }) => {
+  const [blobUrl, setBlobUrl] = React.useState(null);
+
+  React.useEffect(() => {
+    if (file?.data) {
+      try {
+        const [header, base64Data] = file.data.split(',');
+        const mimeMatch = header.match(/data:([^;]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'application/pdf';
+        
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        setBlobUrl(url);
+
+        return () => URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Erreur création blob:', error);
+      }
+    }
+  }, [file]);
+
+  if (!blobUrl) return <div className="flex items-center justify-center h-full">Chargement...</div>;
+
+  return (
+    <iframe
+      src={blobUrl}
+      className="w-full h-full border-0"
+      title={file.name}
+    />
   );
 };
 
