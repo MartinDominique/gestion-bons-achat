@@ -1,6 +1,7 @@
 import React from 'react';
+import SupplierReceiptModal from './SupplierReceiptModal';
 import { 
-  MoreVertical, Edit, Trash2, Search, Plus, ShoppingCart, Building2, Wrench, Calendar
+  MoreVertical, Edit, Trash2, Search, Plus, ShoppingCart, Building2, Wrench, Calendar, Truck
 } from 'lucide-react';
 
 // Imports des autres fichiers
@@ -137,6 +138,16 @@ export default function SupplierPurchaseManager() {
     isCanadianSupplier,
     handleFixExistingPurchases,
     handleTestEmail,
+
+    // États pour le modal de réception
+const [showReceiptModal, setShowReceiptModal] = useState(false);
+const [selectedPurchaseForReceipt, setSelectedPurchaseForReceipt] = useState(null);
+
+// Handler pour ouvrir le modal de réception
+const openReceiptModal = (purchase) => {
+  setSelectedPurchaseForReceipt(purchase);
+  setShowReceiptModal(true);
+};
     
     // Données filtrées
     filteredPurchases
@@ -257,6 +268,21 @@ export default function SupplierPurchaseManager() {
           useConvertedAmountSelling={hookData.useConvertedAmountSelling}
           addNonInventoryProduct={hookData.addNonInventoryProduct}
         />
+
+
+          {/* Modal de Réception */}
+          <SupplierReceiptModal
+            isOpen={showReceiptModal}
+            onClose={() => {
+              setShowReceiptModal(false);
+              setSelectedPurchaseForReceipt(null);
+            }}
+            purchase={selectedPurchaseForReceipt}
+            onReceiptComplete={() => {
+              // Recharger les achats après réception
+              loadSupplierPurchases();
+            }}
+          />
 
           {/* MODAL IMPORT SOUMISSION */}
         <ImportSubmissionModal 
@@ -688,6 +714,15 @@ export default function SupplierPurchaseManager() {
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
+                        {(purchase.status === 'ordered' || purchase.status === 'partial') && (
+                        <button
+                          onClick={() => openReceiptModal(purchase)}
+                          className="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg"
+                          title="Réception"
+                        >
+                          <Truck className="w-4 h-4" />
+                        </button>
+                      )}
                       </div>
                     </td>
                   </tr>
