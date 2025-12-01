@@ -370,7 +370,8 @@ export const fetchPurchaseOrders = async () => {
   try {
     const { data, error } = await supabase
       .from('purchase_orders')
-      .select('id, po_number, client_name, amount, status')
+      .select('id, po_number, client_name, client_id, amount, status')
+      .in('status', ['En cours', 'Partiellement Livré'])
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -520,13 +521,19 @@ export const searchProducts = async (searchTerm) => {
 // ===== API SUPABASE - SOUMISSIONS =====
 
 // Récupérer les soumissions acceptées
-export const fetchAvailableSubmissions = async () => {
+export const fetchAvailableSubmissions = async (clientId = null) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('submissions')
       .select('*')
-      .eq('status', 'accepted')
-      .order('created_at', { ascending: false });
+      .eq('status', 'accepted');
+    
+    // Si un client_id est fourni, filtrer par ce client
+    if (clientId) {
+      query = query.eq('client_id', clientId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
     return data || [];
