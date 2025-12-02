@@ -150,8 +150,18 @@ const openReceiptModal = (purchase) => {
 };
     
     // Données filtrées
-    filteredPurchases
+    filteredPurchases,
+    loadSupplierPurchases
   } = hookData;
+
+  // États pour le modal de réception
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedPurchaseForReceipt, setSelectedPurchaseForReceipt] = useState(null);
+
+  const openReceiptModal = (purchase) => {
+    setSelectedPurchaseForReceipt(purchase);
+    setShowReceiptModal(true);
+  };
 
   // Fonction pour tester l'email quotidien
   const testDailyEmail = async () => {
