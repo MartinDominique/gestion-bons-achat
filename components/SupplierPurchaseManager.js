@@ -131,38 +131,24 @@ export default function SupplierPurchaseManager() {
     handleImportSelectedItems,
     
      // Fonctions utilitaires
-      resetForm,
-      resetSupplierForm,
-      resetAddressForm,
-      shouldShowBilingual,
-      isCanadianSupplier,
-      handleFixExistingPurchases,
-      handleTestEmail,
-      loadSupplierPurchases,
-      
-      // Données filtrées
-      filteredPurchases
-    } = hookData;
-  
-    // États pour le modal de réception
-    const [showReceiptModal, setShowReceiptModal] = useState(false);
-    const [selectedPurchaseForReceipt, setSelectedPurchaseForReceipt] = useState(null);
-  
-    // Handler pour ouvrir le modal de réception
-    const openReceiptModal = (purchase) => {
-      setSelectedPurchaseForReceipt(purchase);
-      setShowReceiptModal(true);
-    };
+    resetForm,
+    resetSupplierForm,
+    resetAddressForm,
+    shouldShowBilingual,
+    isCanadianSupplier,
+    handleFixExistingPurchases,
+    handleTestEmail,
+    loadSupplierPurchases,
     
     // Données filtrées
-    filteredPurchases,
-    loadSupplierPurchases
+    filteredPurchases
   } = hookData;
 
   // États pour le modal de réception
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedPurchaseForReceipt, setSelectedPurchaseForReceipt] = useState(null);
 
+  // Handler pour ouvrir le modal de réception
   const openReceiptModal = (purchase) => {
     setSelectedPurchaseForReceipt(purchase);
     setShowReceiptModal(true);
