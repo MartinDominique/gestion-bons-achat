@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import SupplierReceiptModal from './SupplierReceiptModal';
 import { 
   MoreVertical, Edit, Trash2, Search, Plus, ShoppingCart, Building2, Wrench, Calendar, Truck
