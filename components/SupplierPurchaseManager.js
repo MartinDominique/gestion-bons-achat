@@ -271,21 +271,6 @@ export default function SupplierPurchaseManager() {
           addNonInventoryProduct={hookData.addNonInventoryProduct}
         />
 
-
-          {/* Modal de Réception */}
-          <SupplierReceiptModal
-            isOpen={showReceiptModal}
-            onClose={() => {
-              setShowReceiptModal(false);
-              setSelectedPurchaseForReceipt(null);
-            }}
-            purchase={selectedPurchaseForReceipt}
-            onReceiptComplete={() => {
-              // Recharger les achats après réception
-              loadSupplierPurchases();
-            }}
-          />
-
           {/* MODAL IMPORT SOUMISSION */}
         <ImportSubmissionModal 
           showModal={showImportSubmissionModal}
@@ -843,6 +828,18 @@ export default function SupplierPurchaseManager() {
         handleSupplierSubmit={handleSupplierSubmit}
         handleDeleteSupplier={handleDeleteSupplier}
         resetSupplierForm={resetSupplierForm}
+      />
+      {/* Modal de Réception */}
+      <SupplierReceiptModal
+        isOpen={showReceiptModal}
+        onClose={() => {
+          setShowReceiptModal(false);
+          setSelectedPurchaseForReceipt(null);
+        }}
+        purchase={selectedPurchaseForReceipt}
+        onReceiptComplete={() => {
+          loadSupplierPurchases();
+        }}
       />
     </div>
   );
