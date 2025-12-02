@@ -150,9 +150,10 @@ export default function SupplierPurchaseManager() {
 
   // Handler pour ouvrir le modal de réception
   const openReceiptModal = (purchase) => {
-    setSelectedPurchaseForReceipt(purchase);
-    setShowReceiptModal(true);
-  };
+  console.log('openReceiptModal appelé avec:', purchase);
+  setSelectedPurchaseForReceipt(purchase);
+  setShowReceiptModal(true);
+};
 
   // Fonction pour tester l'email quotidien
   const testDailyEmail = async () => {
