@@ -79,10 +79,28 @@ export default function SupplierReceiptModal({
         });
       });
       
+      // Charger le stock actuel de tous les produits concernés
+      const productIds = (purchase.items || []).map(item => item.product_id);
+      const { data: productsStock, error: stockError } = await supabase
+        .from('products')
+        .select('product_id, stock_qty')
+        .in('product_id', productIds);
+      
+      if (stockError) {
+        console.error('Erreur chargement stock:', stockError);
+      }
+      
+      // Créer un map du stock actuel
+      const stockByProduct = {};
+      (productsStock || []).forEach(p => {
+        stockByProduct[p.product_id] = parseFloat(p.stock_qty) || 0;
+      });
+      
       // Préparer les items pour la réception
       const items = (purchase.items || []).map((item, index) => {
         const alreadyReceived = receivedByProduct[item.product_id] || 0;
         const remaining = (item.quantity || 0) - alreadyReceived;
+        const currentStock = stockByProduct[item.product_id] || 0;
         
         return {
           index,
@@ -95,7 +113,8 @@ export default function SupplierReceiptModal({
           quantity_to_receive: 0, // À remplir par l'utilisateur
           selected: false,
           cost_price: item.cost_price || 0,
-          product_group: item.product_group || ''
+          product_group: item.product_group || '',
+          current_stock: currentStock // Stock actuel
         };
       });
       
@@ -438,7 +457,7 @@ export default function SupplierReceiptModal({
                       </div>
                       
                       {/* Quantités */}
-                      <div className="text-right text-sm space-y-1">
+                      <div className="text-right text-sm space-y-1 min-w-[140px]">
                         <div className="text-gray-500">
                           Commandé: <span className="font-medium text-gray-900">{item.quantity_ordered}</span> {item.unit}
                         </div>
@@ -448,6 +467,18 @@ export default function SupplierReceiptModal({
                         <div className="text-orange-600">
                           Reste: <span className="font-medium">{item.quantity_remaining}</span>
                         </div>
+                      </div>
+                      
+                      {/* Stock actuel et nouveau */}
+                      <div className="text-right text-sm space-y-1 min-w-[120px] border-l pl-3">
+                        <div className="text-blue-600">
+                          Stock actuel: <span className="font-bold">{item.current_stock}</span>
+                        </div>
+                        {item.quantity_to_receive > 0 && (
+                          <div className="text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                            Nouveau: <span className="font-bold">{item.current_stock + item.quantity_to_receive}</span>
+                          </div>
+                        )}
                       </div>
                       
                       {/* Input quantité */}
