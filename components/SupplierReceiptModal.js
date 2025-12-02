@@ -79,22 +79,43 @@ export default function SupplierReceiptModal({
         });
       });
       
-      // Charger le stock actuel de tous les produits concernés
-      const productIds = (purchase.items || []).map(item => item.product_id);
-      const { data: productsStock, error: stockError } = await supabase
-        .from('products')
-        .select('product_id, stock_qty')
-        .in('product_id', productIds);
+      // Charger le stock actuel de tous les produits concernés (products)
+      const productIds = (purchase.items || []).filter(item => !item.is_non_inventory).map(item => item.product_id);
+      const nonInventoryIds = (purchase.items || []).filter(item => item.is_non_inventory).map(item => item.product_id);
       
-      if (stockError) {
-        console.error('Erreur chargement stock:', stockError);
+      let stockByProduct = {};
+      
+      // Charger stock des products
+      if (productIds.length > 0) {
+        const { data: productsStock, error: stockError } = await supabase
+          .from('products')
+          .select('product_id, stock_qty')
+          .in('product_id', productIds);
+        
+        if (stockError) {
+          console.error('Erreur chargement stock products:', stockError);
+        }
+        
+        (productsStock || []).forEach(p => {
+          stockByProduct[p.product_id] = parseFloat(p.stock_qty) || 0;
+        });
       }
       
-      // Créer un map du stock actuel
-      const stockByProduct = {};
-      (productsStock || []).forEach(p => {
-        stockByProduct[p.product_id] = parseFloat(p.stock_qty) || 0;
-      });
+      // Charger stock des non_inventory_items
+      if (nonInventoryIds.length > 0) {
+        const { data: nonInventoryStock, error: nonInvError } = await supabase
+          .from('non_inventory_items')
+          .select('product_id, stock_qty')
+          .in('product_id', nonInventoryIds);
+        
+        if (nonInvError) {
+          console.error('Erreur chargement stock non_inventory:', nonInvError);
+        }
+        
+        (nonInventoryStock || []).forEach(p => {
+          stockByProduct[p.product_id] = parseFloat(p.stock_qty) || 0;
+        });
+      }
       
       // Préparer les items pour la réception
       const items = (purchase.items || []).map((item, index) => {
@@ -114,7 +135,8 @@ export default function SupplierReceiptModal({
           selected: false,
           cost_price: item.cost_price || 0,
           product_group: item.product_group || '',
-          current_stock: currentStock // Stock actuel
+          current_stock: currentStock, // Stock actuel
+          is_non_inventory: item.is_non_inventory || false // Type d'item
         };
       });
       
@@ -202,7 +224,8 @@ export default function SupplierReceiptModal({
           description: item.description,
           quantity_received: item.quantity_to_receive,
           unit: item.unit,
-          cost_price: item.cost_price
+          cost_price: item.cost_price,
+          is_non_inventory: item.is_non_inventory
         })),
         notes: receiptNotes,
         received_at: new Date().toISOString()
@@ -242,11 +265,13 @@ export default function SupplierReceiptModal({
         // Continuer quand même, les mouvements peuvent échouer si le produit n'existe pas
       }
       
-      // 3. Mettre à jour le stock dans la table products
+      // 3. Mettre à jour le stock dans la bonne table (products ou non_inventory_items)
       for (const item of itemsToReceive) {
+        const tableName = item.is_non_inventory ? 'non_inventory_items' : 'products';
+        
         // D'abord récupérer le stock actuel
         const { data: product, error: productError } = await supabase
-          .from('products')
+          .from(tableName)
           .select('stock_qty')
           .eq('product_id', item.product_id)
           .single();
@@ -256,9 +281,11 @@ export default function SupplierReceiptModal({
           const newStock = currentStock + item.quantity_to_receive;
           
           await supabase
-            .from('products')
+            .from(tableName)
             .update({ stock_qty: newStock.toString() })
             .eq('product_id', item.product_id);
+          
+          console.log(`Stock mis à jour: ${item.product_id} (${tableName}): ${currentStock} → ${newStock}`);
         }
       }
       
@@ -441,10 +468,15 @@ export default function SupplierReceiptModal({
                       
                       {/* Info produit */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-sm bg-gray-100 px-2 py-0.5 rounded">
                             {item.product_id}
                           </span>
+                          {item.is_non_inventory && (
+                            <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full">
+                              Non-inv.
+                            </span>
+                          )}
                           {item.quantity_remaining === 0 && (
                             <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
                               Complet
