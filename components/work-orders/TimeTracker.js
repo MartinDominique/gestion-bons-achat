@@ -469,14 +469,114 @@ const formatDuration = (hours) => {
         <div className="space-y-2">
           <h4 className="font-medium text-gray-700">Sessions enregistrées:</h4>
           {timeEntries.map((entry, index) => (
-            <div 
-              key={index} 
-              className={`border rounded-lg p-3 flex items-center justify-between ${
-                entry.in_progress 
-                  ? 'bg-green-50 border-green-500 border-2' 
-                  : 'bg-white border-gray-300'
-              }`}
-            >
+          <div 
+            key={index} 
+            className={`border rounded-lg p-3 ${
+              entry.in_progress 
+                ? 'bg-green-50 border-green-500 border-2' 
+                : 'bg-white border-gray-300'
+            }`}
+          >
+            {/* VERSION MOBILE */}
+            <div className="md:hidden space-y-2">
+              {/* Ligne 1: Date + Badge en cours */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center font-semibold">
+                  <Calendar size={14} className="mr-1 text-blue-600" />
+                  {entry.date}
+                </div>
+                {entry.in_progress && (
+                  <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
+                    EN COURS
+                  </span>
+                )}
+              </div>
+              
+              {/* Ligne 2: Début - Fin - Pause */}
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono font-bold text-green-700">{entry.start_time}</span>
+                  <span className="text-gray-400">→</span>
+                  <span className="font-mono font-bold text-red-700">
+                    {entry.end_time || (entry.in_progress ? '⏱️' : '--:--')}
+                  </span>
+                </div>
+                <span className="text-orange-700 text-xs">Pause: {entry.pause_minutes || 0}min</span>
+              </div>
+              
+              {/* Ligne 3: Total + Checkboxes + Actions */}
+              <div className="flex items-center justify-between">
+                <div className={`font-bold ${entry.in_progress ? 'text-green-700' : 'text-blue-700'}`}>
+                  {formatDuration(entry.total_hours || 0)}
+                  {entry.in_progress && ' ⏱️'}
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  {/* Checkbox Retour */}
+                  {!entry.in_progress && selectedClient?.travel_minutes > 0 && (
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={entry.include_travel || false}
+                        onChange={(e) => {
+                          const newEntries = [...timeEntries];
+                          const sessionHours = toQuarterHourUp(entry.start_time, entry.end_time, entry.pause_minutes);
+                          const travelHours = e.target.checked ? (selectedClient.travel_minutes / 60) : 0;
+                          newEntries[index] = {
+                            ...entry,
+                            include_travel: e.target.checked,
+                            total_hours: roundToQuarterHour(sessionHours + travelHours)
+                          };
+                          setTimeEntries(newEntries);
+                        }}
+                        className="mr-1 h-4 w-4 text-orange-600"
+                      />
+                      <span className="text-xs text-orange-600">{selectedClient.travel_minutes}m</span>
+                    </label>
+                  )}
+                  
+                  {/* Checkbox Transport */}
+                  {!entry.in_progress && (
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={entry.include_transport_fee ?? true}
+                        onChange={(e) => {
+                          const newEntries = [...timeEntries];
+                          newEntries[index] = { ...entry, include_transport_fee: e.target.checked };
+                          setTimeEntries(newEntries);
+                        }}
+                        className="mr-1 h-4 w-4 text-green-600"
+                      />
+                      <span className="text-xs">🚗</span>
+                    </label>
+                  )}
+                  
+                  {/* Actions */}
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleEditSession(index)}
+                      disabled={entry.in_progress}
+                      className={`p-1 ${entry.in_progress ? 'text-gray-400 opacity-50' : 'text-blue-600'}`}
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSession(index)}
+                      disabled={entry.in_progress}
+                      className={`p-1 ${entry.in_progress ? 'text-gray-400 opacity-50' : 'text-red-600'}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        
+            {/* VERSION DESKTOP */}
+            <div className="hidden md:flex items-center justify-between">
               <div className="flex-1 grid grid-cols-6 gap-2 text-sm">
                 <div>
                   <div className="text-xs text-gray-500">Date</div>
@@ -511,7 +611,6 @@ const formatDuration = (hours) => {
                     {entry.in_progress && ' ⏱️'}
                   </div>
                 </div>
-                {/* Nouvelle colonne: Checkbox voyage */}
                 <div>
                   <div className="text-xs text-gray-500">Retour</div>
                   {!entry.in_progress && selectedClient?.travel_minutes > 0 ? (
@@ -521,17 +620,12 @@ const formatDuration = (hours) => {
                         checked={entry.include_travel || false}
                         onChange={(e) => {
                           const newEntries = [...timeEntries];
-                          const sessionHours = toQuarterHourUp(
-                            entry.start_time,
-                            entry.end_time,
-                            entry.pause_minutes
-                          );
+                          const sessionHours = toQuarterHourUp(entry.start_time, entry.end_time, entry.pause_minutes);
                           const travelHours = e.target.checked ? (selectedClient.travel_minutes / 60) : 0;
-                          const totalBeforeRounding = sessionHours + travelHours;
                           newEntries[index] = {
                             ...entry,
                             include_travel: e.target.checked,
-                            total_hours: roundToQuarterHour(totalBeforeRounding)
+                            total_hours: roundToQuarterHour(sessionHours + travelHours)
                           };
                           setTimeEntries(newEntries);
                         }}
@@ -544,42 +638,35 @@ const formatDuration = (hours) => {
                   )}
                 </div>
               </div>
-
-                {/* Colonne: Frais transport */}
-                <div>
-                  <div className="text-xs text-gray-500">Transport</div>
-                  {!entry.in_progress ? (
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={entry.include_transport_fee ?? true}
-                        onChange={(e) => {
-                          const newEntries = [...timeEntries];
-                          newEntries[index] = {
-                            ...entry,
-                            include_transport_fee: e.target.checked
-                          };
-                          setTimeEntries(newEntries);
-                        }}
-                        className="mr-1 h-4 w-4 text-green-600"
-                      />
-                      <span className="text-xs text-green-600">🚗</span>
-                    </label>
-                  ) : (
-                    <span className="text-xs text-gray-400">-</span>
-                  )}
-                </div>
-                    
+        
+              {/* Colonne: Frais transport */}
+              <div className="ml-2">
+                <div className="text-xs text-gray-500">Transport</div>
+                {!entry.in_progress ? (
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={entry.include_transport_fee ?? true}
+                      onChange={(e) => {
+                        const newEntries = [...timeEntries];
+                        newEntries[index] = { ...entry, include_transport_fee: e.target.checked };
+                        setTimeEntries(newEntries);
+                      }}
+                      className="mr-1 h-4 w-4 text-green-600"
+                    />
+                    <span className="text-xs text-green-600">🚗</span>
+                  </label>
+                ) : (
+                  <span className="text-xs text-gray-400">-</span>
+                )}
+              </div>
+                  
               <div className="flex gap-2 ml-3">
                 <button
                   type="button"
                   onClick={() => handleEditSession(index)}
                   disabled={entry.in_progress}
-                  className={`p-1 ${
-                    entry.in_progress 
-                      ? 'text-gray-400 cursor-not-allowed opacity-50' 
-                      : 'text-blue-600 hover:text-blue-800'
-                  }`}
+                  className={`p-1 ${entry.in_progress ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-blue-600 hover:text-blue-800'}`}
                   title={entry.in_progress ? 'Session en cours - terminez d\'abord' : 'Modifier'}
                 >
                   <Edit size={16} />
@@ -588,18 +675,15 @@ const formatDuration = (hours) => {
                   type="button"
                   onClick={() => handleDeleteSession(index)}
                   disabled={entry.in_progress}
-                  className={`p-1 ${
-                    entry.in_progress 
-                      ? 'text-gray-400 cursor-not-allowed opacity-50' 
-                      : 'text-red-600 hover:text-red-800'
-                  }`}
+                  className={`p-1 ${entry.in_progress ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-red-600 hover:text-red-800'}`}
                   title={entry.in_progress ? 'Session en cours - terminez d\'abord' : 'Supprimer'}
                 >
                   <Trash2 size={16} />
                 </button>
               </div>
             </div>
-          ))}
+          </div>
+        ))}
         </div>
       )}
 
