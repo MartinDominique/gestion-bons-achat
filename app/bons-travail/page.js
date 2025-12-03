@@ -545,14 +545,20 @@ export default function BonsTravailPage() {
                   >
                     {/* Ligne 1: BT# + Statut */}
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-sm font-bold bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent">
+                      <span className="font-mono text-sm font-bold bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent flex items-center gap-1.5">
                         {wo.bt_number}
+                        {wo.has_active_session && (
+                          <span className="relative flex h-2.5 w-2.5" title="Session en cours">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
+                          </span>
+                        )}
                       </span>
                       <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(wo.status)}`}>
                         {getStatusLabel(wo.status)}
                       </span>
                     </div>
-                    
+                                        
                     {/* Ligne 2: Client */}
                     <div className="flex items-center text-sm text-gray-700 mb-1">
                       <User className="mr-1 flex-shrink-0" size={14} />
@@ -599,8 +605,14 @@ export default function BonsTravailPage() {
                     {filteredWorkOrders.map((wo, index) => (
                       <tr key={wo.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${index % 2 === 0 ? 'bg-white/50' : 'bg-gray-50/50'}`}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="font-mono text-sm bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent font-bold">
+                          <span className="font-mono text-sm bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent font-bold flex items-center gap-2">
                             {wo.bt_number}
+                            {wo.has_active_session && (
+                              <span className="relative flex h-3 w-3" title="Session en cours">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                              </span>
+                            )}
                           </span>
                         </td>
                         <td className="px-6 py-4">
