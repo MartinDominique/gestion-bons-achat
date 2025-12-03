@@ -311,49 +311,58 @@ export async function GET(request) {
       );
     }
 
-    // Enrichir les matériaux avec les infos produit si disponibles
-    if (data && data.length > 0) {
-      for (let workOrder of data) {
-        if (workOrder.materials && workOrder.materials.length > 0) {
-          for (let material of workOrder.materials) {
-            // Si product_id existe et n'est pas null
-            if (material.product_id) {
-              // Essayer de récupérer le produit
-              const { data: product } = await supabase
-                .from('products')
-                .select('*')
-                .eq('product_id', material.product_id)
-                .single();
-              
-              if (product) {
-                material.product = product;
-              } else {
-                // Si pas dans products, essayer non_inventory_items
-                const { data: nonInvProduct } = await supabase
-                  .from('non_inventory_items')
-                  .select('*')
-                  .eq('product_id', material.product_id)
-                  .single();
+    // Enrichir les données des work orders
+        if (data && data.length > 0) {
+          for (let workOrder of data) {
+            // === Vérifier session active ===
+            workOrder.has_active_session = false;
+            if (workOrder.time_entries && Array.isArray(workOrder.time_entries)) {
+              workOrder.has_active_session = workOrder.time_entries.some(
+                entry => entry.start_time && !entry.end_time
+              );
+            }
+        
+            // === Enrichir matériaux ===
+            if (workOrder.materials && workOrder.materials.length > 0) {
+              for (let material of workOrder.materials) {
+                // Si product_id existe et n'est pas null
+                if (material.product_id) {
+                  // Essayer de récupérer le produit
+                  const { data: product } = await supabase
+                    .from('products')
+                    .select('*')
+                    .eq('product_id', material.product_id)
+                    .single();
+                  
+                  if (product) {
+                    material.product = product;
+                  } else {
+                    // Si pas dans products, essayer non_inventory_items
+                    const { data: nonInvProduct } = await supabase
+                      .from('non_inventory_items')
+                      .select('*')
+                      .eq('product_id', material.product_id)
+                      .single();
+                    
+                    if (nonInvProduct) {
+                      material.product = nonInvProduct;
+                    }
+                  }
+                }
                 
-                if (nonInvProduct) {
-                  material.product = nonInvProduct;
+                // Si toujours pas de product, créer un objet virtuel avec les infos stockées
+                if (!material.product && (material.product_code || material.description)) {
+                  material.product = {
+                    product_id: material.product_code || material.product_id,
+                    description: material.description,
+                    unit: material.unit,
+                    selling_price: material.unit_price
+                  };
                 }
               }
             }
-            
-            // Si toujours pas de product, créer un objet virtuel avec les infos stockées
-            if (!material.product && (material.product_code || material.description)) {
-              material.product = {
-                product_id: material.product_code || material.product_id,
-                description: material.description,
-                unit: material.unit,
-                selling_price: material.unit_price
-              };
-            }
           }
         }
-      }
-    }
 
     return Response.json({
       success: true,
