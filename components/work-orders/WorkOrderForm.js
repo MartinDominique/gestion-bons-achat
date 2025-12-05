@@ -982,42 +982,6 @@ export default function WorkOrderForm({
     }
   };
 
-  // Auto-save après punch-out (sauvegarde silencieuse sans fermer le formulaire)
-  const handlePunchOut = async (updatedTimeEntries) => {
-    console.log('🕐 Punch-out détecté - Auto-sauvegarde silencieuse...');
-    
-    if (!currentWorkOrderId) {
-      console.log('⚠️ Pas de BT existant, sauvegarde ignorée');
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/work-orders/${currentWorkOrderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          time_entries: updatedTimeEntries,
-          total_hours: updatedTimeEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0)
-        })
-      });
-
-      if (response.ok) {
-        toast.success('Session sauvegardée');
-        // Mettre à jour le formData local
-        setFormData(prev => ({
-          ...prev,
-          time_entries: updatedTimeEntries,
-          total_hours: updatedTimeEntries.reduce((sum, e) => sum + (e.total_hours || 0), 0)
-        }));
-      } else {
-        toast.error('Erreur lors de la sauvegarde');
-      }
-    } catch (error) {
-      console.error('Erreur auto-save:', error);
-      toast.error('Erreur lors de la sauvegarde');
-    }
-  };
-
   const validateForm = () => {
     const newErrors = {};
   
@@ -1559,7 +1523,6 @@ export default function WorkOrderForm({
 
         <TimeTracker
           onTimeChange={handleTimeChange}
-          onPunchOut={handlePunchOut}
           initialTimeEntries={formData.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
