@@ -243,12 +243,28 @@ const formatDuration = (hours) => {
   // ========================================
 
   // Commencer une nouvelle session
-  const handlePunchIn = () => {
-     if (status === 'sent' || status === 'signed') {
-    alert('❌ Impossible d\'ajouter une session.\nCe bon de travail a déjà été envoyé au client.');
-    return;
-  }
+  const handlePunchIn = async () => {
+    if (status === 'sent' || status === 'signed') {
+      alert('❌ Impossible d\'ajouter une session.\nCe bon de travail a déjà été envoyé au client.');
+      return;
+    }
+
+    // Vérifier s'il y a déjà une session en cours ailleurs
+    try {
+      const response = await fetch('/api/check-active-session');
+      const { hasActiveSession, activeSession } = await response.json();
+      
+      if (hasActiveSession) {
+        alert(`❌ Impossible de commencer une nouvelle session.\n\nUne session est déjà en cours:\n• Client: ${activeSession.client_name}\n• BT: ${activeSession.bt_number}\n• Début: ${activeSession.start_time}\n\nTerminez cette session avant d'en commencer une nouvelle.`);
+        return;
+      }
+    } catch (error) {
+      console.error('Erreur vérification session active:', error);
+      // En cas d'erreur, on laisse continuer pour ne pas bloquer
+    }
+
     const now = new Date();
+    
     const newSession = {
       date: now.toISOString().split('T')[0],  // ✅ Toujours la date du jour
       start_time: now.toTimeString().substring(0, 5),
