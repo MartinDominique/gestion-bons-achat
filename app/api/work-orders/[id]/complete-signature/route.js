@@ -59,7 +59,13 @@ export async function POST(request, { params }) {
       
       if (hasActiveSession) {
         const now = new Date();
-        const endTime = now.toTimeString().substring(0, 5); // "HH:MM"
+        // Convertir en heure locale Québec
+        const endTime = now.toLocaleTimeString('fr-CA', { 
+          timeZone: 'America/Toronto', 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        });
         
         const updatedEntries = currentBT.time_entries.map(entry => {
           if (entry.in_progress === true) {
