@@ -47,6 +47,49 @@ export async function POST(request, { params }) {
       );
     }
 
+    // 0. Terminer automatiquement la session en cours s'il y en a une
+    const { data: currentBT } = await supabaseAdmin
+      .from('work_orders')
+      .select('time_entries')
+      .eq('id', workOrderId)
+      .single();
+
+    if (currentBT?.time_entries && Array.isArray(currentBT.time_entries)) {
+      const hasActiveSession = currentBT.time_entries.some(e => e.in_progress === true);
+      
+      if (hasActiveSession) {
+        const now = new Date();
+        const endTime = now.toTimeString().substring(0, 5); // "HH:MM"
+        
+        const updatedEntries = currentBT.time_entries.map(entry => {
+          if (entry.in_progress === true) {
+            // Calculer les heures
+            const [startH, startM] = entry.start_time.split(':').map(Number);
+            const [endH, endM] = endTime.split(':').map(Number);
+            const startMinutes = startH * 60 + startM;
+            const endMinutes = endH * 60 + endM;
+            const netMinutes = Math.max(0, endMinutes - startMinutes - (entry.pause_minutes || 0));
+            const totalHours = Math.ceil(netMinutes / 15) * 0.25; // Arrondi au quart d'heure
+            
+            return {
+              ...entry,
+              end_time: endTime,
+              in_progress: false,
+              total_hours: Math.max(1, totalHours) // Minimum 1h
+            };
+          }
+          return entry;
+        });
+
+        await supabaseAdmin
+          .from('work_orders')
+          .update({ time_entries: updatedEntries })
+          .eq('id', workOrderId);
+
+        console.log('⏱️ Session auto-terminée à', endTime);
+      }
+    }
+
     // 1. Sauvegarder la signature
     const { error: signatureError } = await supabaseAdmin
       .from('work_orders')
