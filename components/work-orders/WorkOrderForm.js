@@ -982,6 +982,19 @@ export default function WorkOrderForm({
     }
   };
 
+  // Auto-save après punch-out
+  const handlePunchOut = async () => {
+    console.log('🕐 Punch-out détecté - Auto-sauvegarde...');
+    setTimeout(async () => {
+      try {
+        await handleSubmit('draft');
+        toast.success('Session sauvegardée');
+      } catch (error) {
+        console.error('Erreur auto-save:', error);
+      }
+    }, 100);
+  };
+
   const validateForm = () => {
     const newErrors = {};
   
@@ -1523,6 +1536,7 @@ export default function WorkOrderForm({
 
         <TimeTracker
           onTimeChange={handleTimeChange}
+          onPunchOut={handlePunchOut}
           initialTimeEntries={formData.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
