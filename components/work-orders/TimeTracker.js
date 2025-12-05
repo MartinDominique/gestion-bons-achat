@@ -3,7 +3,6 @@ import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-
 
 export default function TimeTracker({ 
   onTimeChange, 
-  onPunchOut,
   initialTimeEntries = [],
   workDate = null,
   status = 'draft',
@@ -315,13 +314,7 @@ const formatDuration = (hours) => {
       setIsWorking(false);
       
      console.log('✅ Session terminée:', completedSession);
-      
-      // Auto-save après punch-out - passer les données à jour
-      if (onPunchOut) {
-        const updatedEntries = [...timeEntries, completedSession];
-        onPunchOut(updatedEntries);
-      }
-    };
+    };  
 
   // Supprimer une session
   const handleDeleteSession = (index) => {
