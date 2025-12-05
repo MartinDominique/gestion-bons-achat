@@ -10,10 +10,9 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function GET(request) {
-  // Vérifier que c'est bien Vercel Cron qui appelle
+  // Vérifier l'autorisation
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // En dev, on laisse passer pour tester
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,7 +22,7 @@ export async function GET(request) {
     // Chercher tous les BTs avec time_entries
     const { data, error } = await supabase
       .from('work_orders')
-      .select('id, bt_number, client_id, time_entries, clients(name)')
+      .select('id, bt_number, time_entries, clients(name)')
       .not('time_entries', 'is', null);
 
     if (error) throw error;
@@ -38,31 +37,30 @@ export async function GET(request) {
       if (inProgress) {
         // Calculer la durée
         const sessionDate = inProgress.date || now.toISOString().split('T')[0];
-        const [hours, minutes] = inProgress.start_time.split(':').map(Number);
         const startDateTime = new Date(`${sessionDate}T${inProgress.start_time}:00`);
         
         const durationMs = now - startDateTime;
         const durationHours = durationMs / (1000 * 60 * 60);
 
         if (durationHours >= 8) {
-          // Envoyer alerte email
           const durationFormatted = `${Math.floor(durationHours)}h ${Math.round((durationHours % 1) * 60)}min`;
           
+          // Envoyer alerte email
           await resend.emails.send({
             from: 'noreply@servicestmt.ca',
             to: 'servicestmt@gmail.com',
-            subject: `⚠️ Alerte: Session de travail > 8h - ${wo.clients?.name || 'Client'}`,
+            subject: `⚠️ Session > 8h - ${wo.clients?.name || 'Client'} - ${wo.bt_number}`,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #dc2626;">⚠️ Alerte: Session de travail prolongée</h2>
                 <p>Une session de travail est en cours depuis plus de 8 heures.</p>
                 
                 <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <p><strong>Client:</strong> ${wo.clients?.name || 'Non spécifié'}</p>
-                  <p><strong>Bon de travail:</strong> ${wo.bt_number}</p>
-                  <p><strong>Date:</strong> ${sessionDate}</p>
-                  <p><strong>Punch-in:</strong> ${inProgress.start_time}</p>
-                  <p><strong>Durée actuelle:</strong> ${durationFormatted}</p>
+                  <p style="margin: 8px 0;"><strong>Client:</strong> ${wo.clients?.name || 'Non spécifié'}</p>
+                  <p style="margin: 8px 0;"><strong>Bon de travail:</strong> ${wo.bt_number}</p>
+                  <p style="margin: 8px 0;"><strong>Date:</strong> ${sessionDate}</p>
+                  <p style="margin: 8px 0;"><strong>Punch-in:</strong> ${inProgress.start_time}</p>
+                  <p style="margin: 8px 0;"><strong>Durée actuelle:</strong> <span style="color: #dc2626; font-weight: bold;">${durationFormatted}</span></p>
                 </div>
                 
                 <p style="color: #6b7280;">Veuillez vérifier si cette session doit être terminée.</p>
@@ -81,6 +79,7 @@ export async function GET(request) {
 
     return NextResponse.json({ 
       success: true, 
+      sessionsChecked: data?.length || 0,
       alertsSent,
       checkedAt: now.toISOString()
     });
