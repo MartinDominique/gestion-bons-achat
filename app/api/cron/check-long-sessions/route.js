@@ -42,7 +42,8 @@ export async function GET(request) {
         const durationMs = now - startDateTime;
         const durationHours = durationMs / (1000 * 60 * 60);
 
-        if (durationHours >= 8) {
+        // Alerte pour toute session encore en cours à 17h15
+        if (inProgress) {
           const durationFormatted = `${Math.floor(durationHours)}h ${Math.round((durationHours % 1) * 60)}min`;
           
           // Envoyer alerte email
