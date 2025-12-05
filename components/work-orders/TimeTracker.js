@@ -316,11 +316,12 @@ const formatDuration = (hours) => {
       
      console.log('✅ Session terminée:', completedSession);
       
-        // Auto-save après punch-out
-        if (onPunchOut) {
-          onPunchOut();
-        }
-      };
+      // Auto-save après punch-out - passer les données à jour
+      if (onPunchOut) {
+        const updatedEntries = [...timeEntries, completedSession];
+        onPunchOut(updatedEntries);
+      }
+    };
 
   // Supprimer une session
   const handleDeleteSession = (index) => {
