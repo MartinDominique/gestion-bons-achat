@@ -658,7 +658,13 @@ export default function SupplierPurchaseManager() {
                     <td className="px-3 py-4">
                       <div className="text-sm font-medium text-gray-900">{purchase.supplier_name}</div>
                     </td>
-                    <td className="px-3 py-4 text-center text-sm text-gray-500">
+                    <td className={`px-3 py-4 text-center text-sm ${
+                      purchase.delivery_date && 
+                      new Date(purchase.delivery_date) < new Date().setHours(0,0,0,0) &&
+                      purchase.status !== 'received'
+                        ? 'bg-red-100 text-red-700 font-semibold'
+                        : 'text-gray-500'
+                    }`}>
                       {formatDate(purchase.delivery_date)}
                     </td>
                     <td className="px-3 py-4 text-center">
@@ -757,10 +763,15 @@ export default function SupplierPurchaseManager() {
                     </div>
 
                     {/* Date livraison */}
-                    <div className="text-xs font-medium text-blue-600 flex-shrink-0">
+                    <div className={`text-xs font-medium flex-shrink-0 px-1 rounded ${
+                      purchase.delivery_date && 
+                      new Date(purchase.delivery_date) < new Date().setHours(0,0,0,0) &&
+                      purchase.status !== 'received'
+                        ? 'bg-red-100 text-red-700'
+                        : 'text-blue-600'
+                    }`}>
                       📅 {formatDate(purchase.delivery_date)}
                     </div>
-
                     {/* Montant */}
                     <div className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
                       {formatCurrency(purchase.total_amount)}
