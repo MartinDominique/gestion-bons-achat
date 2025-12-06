@@ -1,9 +1,9 @@
-name: 💾 Backup Hebdomadaire Supabase
+name: 💾 Backup Quotidien Supabase
 
 on:
   schedule:
-    # Tous les dimanches à 20h UTC = 16h Québec (heure normale)
-    - cron: '0 20 * * 0'
+    # Tous les jours à 22h UTC = 18h Québec (heure normale)
+    - cron: '0 20 * * *'
   
   # Permet de déclencher manuellement pour tester
   workflow_dispatch:
