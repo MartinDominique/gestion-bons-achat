@@ -55,8 +55,8 @@ export async function POST(request) {
       status,
       materials = [],
       recipient_emails = [],
-      include_travel_time = false,
-      recipient_emails = []
+      include_travel_time = false
+      
     } = body;
 
     //const pause_minutes = body.pause_minutes != null
