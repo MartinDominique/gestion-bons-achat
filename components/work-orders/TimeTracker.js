@@ -113,7 +113,7 @@ useEffect(() => {
   if (!onTimeChange) return;
   
   // ⭐ Attendre que l'initialisation soit au moins tentée
-  if (!isInitialized && initialTimeEntries && initialTimeEntries.length > 0) {
+  if (!isInitialized) {
     console.log('⏸️ Attente initialisation avant notification');
     return;
   }
