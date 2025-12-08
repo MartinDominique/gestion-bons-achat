@@ -162,9 +162,8 @@ useEffect(() => {
   });
   
   // ⭐ CRITIQUE : Ne traiter que si les données ont VRAIMENT changé
-  // ET qu'on n'est pas déjà initialisé
-  if (isInitialized || processedEntriesRef.current === entriesSignature) {
-    console.log('⏭️ Déjà initialisé ou mêmes données, skip');
+  if (processedEntriesRef.current === entriesSignature) {
+    console.log('⏭️ Mêmes données déjà traitées, skip');
     return;
   }
   
