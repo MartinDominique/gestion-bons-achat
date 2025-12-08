@@ -92,6 +92,7 @@ export default function WorkOrderForm({
   const [showClientModal, setShowClientModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const initializedWorkOrderId = useRef(null);
   
   const [cachedProducts, setCachedProducts] = useState([]);
   const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState([]);
@@ -197,7 +198,8 @@ export default function WorkOrderForm({
   // ========================================
 
   useEffect(() => {
-    if (workOrder && mode === 'edit') {
+  // ⭐ PROTECTION: Ne pas ré-initialiser si déjà fait pour ce BT
+  if (workOrder && mode === 'edit' && initializedWorkOrderId.current !== workOrder.id) {
       console.log('🔍 DEBUG INIT - workOrder complet:', workOrder);
       console.log('🔍 DEBUG INIT - linked_po_id:', workOrder.linked_po_id);
       console.log('🔍 DEBUG INIT - linked_po objet:', workOrder.linked_po);
@@ -292,7 +294,9 @@ export default function WorkOrderForm({
         };
         checkPOExists();
       }
-    }
+      // ⭐ Marquer ce BT comme initialisé
+    initializedWorkOrderId.current = workOrder.id;
+   }
   }, [workOrder, mode]);
 
   useEffect(() => {
