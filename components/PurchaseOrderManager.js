@@ -153,14 +153,8 @@ const PurchaseOrderManager = () => {
       );
     }
 
-    if (statusFilter !== 'all') {
       if (statusFilter === 'in_progress') {
-        // "En cours" inclut draft, pending, approved
-        filtered = filtered.filter(po => 
-          po.status === 'draft' || 
-          po.status === 'pending' || 
-          po.status === 'approved'
-        );
+        filtered = filtered.filter(po => po.status === 'in_progress');
       } else if (statusFilter === 'partial') {
         // "Partiel" inclut partial et partially_delivered
         filtered = filtered.filter(po => 
@@ -193,15 +187,13 @@ const PurchaseOrderManager = () => {
 
   // Statistiques avec toutes les catégories
   const stats = {
-    total: filteredPOs.length,
-    inProgress: filteredPOs.filter(po => 
-      po.status === 'draft' || po.status === 'pending' || po.status === 'approved'
-    ).length,
-    partial: filteredPOs.filter(po => 
+    total: purchaseOrders.length,
+    inProgress: purchaseOrders.filter(po => po.status === 'in_progress').length,
+    partial: purchaseOrders.filter(po => 
       po.status === 'partial' || po.status === 'partially_delivered'
     ).length,
-    completed: filteredPOs.filter(po => po.status === 'completed').length,
-    totalValue: filteredPOs.reduce((sum, po) => sum + (parseFloat(po.amount) || 0), 0)
+    completed: purchaseOrders.filter(po => po.status === 'completed').length,
+    totalValue: purchaseOrders.reduce((sum, po) => sum + (parseFloat(po.amount) || 0), 0)
   };
 
   // Formater statut
