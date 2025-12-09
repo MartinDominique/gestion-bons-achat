@@ -886,65 +886,45 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     return (
       <tr className="hover:bg-gray-50">
         <td className="px-2 py-2">
-          <div className="font-medium text-gray-900">{item.product_id}</div>
+          <div className="font-medium text-gray-900 text-xs">{item.product_id}</div>
         </td>
-        <td className="px-2 py-2">
-          <div className="text-sm text-gray-900">{item.description}</div>
-          {item.from_manual && (
-            <div className="text-xs text-blue-600">Article ajouté manuellement</div>
-          )}
-          {item.from_supplier_purchase && (
-            <div className="text-xs text-purple-600">
-              Importé depuis achat fournisseur #{item.supplier_purchase_number}
-            </div>
-          )}
+        <td className="px-2 py-2 max-w-[120px]">
+          <div className="text-xs text-gray-900 truncate">{item.description}</div>
         </td>
         <td className="px-2 py-2 text-center">
-          <div className="font-medium">{item.quantity}</div>
+          <div className="font-medium text-xs">{item.quantity}</div>
         </td>
         <td className="px-2 py-2 text-center">
-          <div className="text-sm">{item.unit}</div>
+          <div className="text-xs">{item.unit}</div>
         </td>
-        <td className="px-2 py-2 text-center">
+        <td className="px-2 py-2 text-center text-xs">
           ${parseFloat(item.selling_price || 0).toFixed(2)}
         </td>
         <td className="px-2 py-2 text-center">
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-sm font-medium">{deliveredQty}</span>
-            {deliveryPercentage > 0 && (
-              <div className="w-16 bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${
-                    deliveryPercentage === 100 ? 'bg-green-500' : 'bg-blue-500'
-                  }`}
-                  style={{ width: `${Math.min(deliveryPercentage, 100)}%` }}
-                ></div>
-              </div>
-            )}
-          </div>
+          <span className="text-xs font-medium">{deliveredQty}/{totalQty}</span>
         </td>
-        <td className="px-4 py-3 text-right font-medium">
+        <td className="px-2 py-2 text-right font-medium text-xs">
           ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
         </td>
-        <td className="px-4 py-3">
-          <div className="flex gap-1">
+        <td className="px-2 py-2">
+          <div className="flex gap-0.5 justify-center">
             <button
               onClick={() => {
                 setSearchTerm(item.product_id);
                 setEditMode(true);
               }}
-              className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1"
+              className="text-blue-600 hover:text-blue-800 p-1"
               title="Modifier"
             >
               ✏️
             </button>
             <button
               onClick={() => {
-                if (window.confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) {
+                if (window.confirm('Supprimer cet article ?')) {
                   onDelete();
                 }
               }}
-              className="text-red-600 hover:text-red-800 text-sm px-2 py-1"
+              className="text-red-600 hover:text-red-800 p-1"
               title="Supprimer"
             >
               🗑️
@@ -1995,11 +1975,11 @@ setTimeout(() => {
                             <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                             <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                             <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qté</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Unité</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">UM</th>
                             <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Prix</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Livré</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
                             <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Act.</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase w-16">Act.</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
