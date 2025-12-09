@@ -644,7 +644,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
         delivered_quantity: 0,
         from_manual: true
       };
-      setItems([...items, newItem]);
+      setItems([newItem, ...items]);
       setActiveTab('articles');
     }
   };
@@ -885,10 +885,10 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
 
     return (
       <tr className="hover:bg-gray-50">
-        <td className="px-4 py-3">
+        <td className="px-2 py-2">
           <div className="font-medium text-gray-900">{item.product_id}</div>
         </td>
-        <td className="px-4 py-3">
+        <td className="px-2 py-2">
           <div className="text-sm text-gray-900">{item.description}</div>
           {item.from_manual && (
             <div className="text-xs text-blue-600">Article ajouté manuellement</div>
@@ -899,16 +899,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
             </div>
           )}
         </td>
-        <td className="px-4 py-3 text-center">
+        <td className="px-2 py-2 text-center">
           <div className="font-medium">{item.quantity}</div>
         </td>
-        <td className="px-4 py-3 text-center">
+        <td className="px-2 py-2 text-center">
           <div className="text-sm">{item.unit}</div>
         </td>
-        <td className="px-4 py-3 text-center">
+        <td className="px-2 py-2 text-center">
           ${parseFloat(item.selling_price || 0).toFixed(2)}
         </td>
-        <td className="px-4 py-3 text-center">
+        <td className="px-2 py-2 text-center">
           <div className="flex flex-col items-center gap-1">
             <span className="text-sm font-medium">{deliveredQty}</span>
             {deliveryPercentage > 0 && (
@@ -1541,7 +1541,7 @@ setTimeout(() => {
       updateItem(editingItemIndex, editingItemData);
     } else {
       // Nouvel article
-      setItems([...items, editingItemData]);
+      setItems([editingItemData, ...items]);
       // Recalculer le montant total
       const totalAmount = [...items, editingItemData].reduce((sum, item) => 
         sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0
@@ -1992,14 +1992,14 @@ setTimeout(() => {
                       <table className="w-full hidden sm:table">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code Produit</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantité</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Unité</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix Unit.</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sous-Total</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qté</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Unité</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Prix</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Livré</th>
+                            <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Act.</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
