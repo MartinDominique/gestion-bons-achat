@@ -233,7 +233,7 @@ export async function POST(request, { params }) {
                 total_cost: totalCost,
                 reference_type: 'work_order',
                 reference_id: workOrder.id.toString(),
-                reference_number: workOrder.bt_number,
+                name: `${workOrder.bt_number}.pdf`,
                 notes: `BT ${workOrder.bt_number}${isCredit ? ' (CRÉDIT)' : ''} - ${workOrder.client?.company_name || workOrder.client?.name || 'Client'}`,
                 created_at: new Date().toISOString()
               });
@@ -287,40 +287,6 @@ export async function POST(request, { params }) {
     if (updateError) {
       console.error('⚠️ Erreur mise à jour statut:', updateError);
       // L'email est envoyé mais le statut pas mis à jour - pas critique
-    }
-    
-    // 7. Ajouter le PDF au bon d'achat si lié
-    if (workOrder.linked_po_id && result.pdfBase64) {
-      try {
-        // Récupérer les fichiers existants du BA
-        const { data: purchaseOrder } = await supabaseAdmin
-          .from('purchase_orders')
-          .select('files')
-          .eq('id', workOrder.linked_po_id)
-          .single();
-    
-        // Préparer le nouveau fichier
-        const newFile = {
-          id: Date.now(),
-          name: `BT-${workOrder.bt_number}.pdf`,
-          data: result.pdfBase64
-        };
-    
-        // Combiner avec fichiers existants
-        const existingFiles = purchaseOrder?.files || [];
-        const updatedFiles = [...existingFiles, newFile];
-    
-        // Mettre à jour le BA
-        await supabaseAdmin
-          .from('purchase_orders')
-          .update({ files: updatedFiles })
-          .eq('id', workOrder.linked_po_id);
-    
-        console.log('✅ PDF du BT ajouté au BA:', workOrder.linked_po_id);
-      } catch (error) {
-        console.error('⚠️ Erreur ajout PDF au BA:', error);
-        // Non bloquant - l'email est déjà envoyé
-      }
     }
     
     // 8. Réponse de succès
