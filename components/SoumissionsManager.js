@@ -2026,8 +2026,8 @@ const cleanupFilesForSubmission = async (files) => {
                                   <input
                                     id="quantity-input"
                                      type="number"
-                                      step="0.1"
-                                      min="0.1"
+                                      step="0.001"
+                                      min="0"
                                       value={tempQuantity}
                                       onChange={(e) => {
                                     const value = e.target.value;
@@ -2434,7 +2434,7 @@ const cleanupFilesForSubmission = async (files) => {
                                 <td className="p-2 text-right">
                                   <input
                                     type="number"
-                                    step="0.01"
+                                    step="any"
                                     min="0"
                                     value={item.cost_price}
                                     onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
