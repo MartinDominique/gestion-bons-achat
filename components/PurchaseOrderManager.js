@@ -140,9 +140,9 @@ const PurchaseOrderManager = () => {
     }
   };
 
-  // Filtrer les BAs
+// Filtrer les BAs
   useEffect(() => {
-     let filtered = purchaseOrders;
+    let filtered = purchaseOrders;
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -153,10 +153,10 @@ const PurchaseOrderManager = () => {
       );
     }
 
+    if (statusFilter !== 'all') {
       if (statusFilter === 'in_progress') {
         filtered = filtered.filter(po => po.status === 'in_progress');
       } else if (statusFilter === 'partial') {
-        // "Partiel" inclut partial et partially_delivered
         filtered = filtered.filter(po => 
           po.status === 'partial' || 
           po.status === 'partially_delivered'
