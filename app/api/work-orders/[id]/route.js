@@ -225,7 +225,7 @@ export async function PUT(request, { params }) {
                 status: 'active',
                 date: updateData.work_date,
                 po_date: updateData.work_date,
-                description: 'Créé automatiquement depuis BT',
+                description: updateData.work_description || '',
                 created_by: null,
                 amount: 0,
                 client_name: clientName,
