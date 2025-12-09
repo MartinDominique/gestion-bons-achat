@@ -2410,7 +2410,7 @@ const cleanupFilesForSubmission = async (files) => {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    min="0.1"
+                                    min="0"
                                     value={item.quantity}
                                     onChange={(e) => {
                                       const value = e.target.value;
