@@ -1,6 +1,11 @@
-// app/api/send-weekly-report/route.js - VERSION CORRIGÉE
+// app/api/send-weekly-report/route.js - VERSION AVEC RAPPORT INVENTAIRE
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export async function GET() {
   try {
@@ -16,11 +21,6 @@ export async function GET() {
       console.error('❌ Variables Supabase manquantes !');
       return Response.json({ error: 'Configuration Supabase manquante' }, { status: 500 });
     }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
 
     // Période personnalisable
     const periodInDays = 365;
@@ -65,28 +65,29 @@ export async function GET() {
     }
 
     console.log(`📊 ${submissions?.length || 0} soumissions trouvées`);
+    const finalSubmissions = submissions || [];
 
-    // =============== CALCULER LES STATISTIQUES - CORRIGÉ ===============
+    // =============== CALCULER LES STATISTIQUES ===============
     
     // Stats bons d'achat avec les 3 statuts
-      const poStats = {
-        total: finalPurchaseOrders.length,
-        inProgress: finalPurchaseOrders.filter(o => o.status === 'in_progress').length,
-        partial: finalPurchaseOrders.filter(o => o.status === 'partial').length,
-        completed: finalPurchaseOrders.filter(o => o.status === 'completed').length,
-        montantTotal: finalPurchaseOrders.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0)
-      };
+    const poStats = {
+      total: finalPurchaseOrders.length,
+      inProgress: finalPurchaseOrders.filter(o => o.status === 'in_progress').length,
+      partial: finalPurchaseOrders.filter(o => o.status === 'partial').length,
+      completed: finalPurchaseOrders.filter(o => o.status === 'completed').length,
+      montantTotal: finalPurchaseOrders.reduce((sum, o) => sum + parseFloat(o.amount || 0), 0)
+    };
 
     // Stats soumissions avec montant accepté séparé
     const submissionStats = {
-      total: submissions.length,
-      draft: submissions.filter(s => s.status === 'draft').length,
-      sent: submissions.filter(s => s.status === 'sent').length,
-      accepted: submissions.filter(s => s.status === 'accepted').length,
-      montantTotal: submissions.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
-      montantAccepted: submissions
+      total: finalSubmissions.length,
+      draft: finalSubmissions.filter(s => s.status === 'draft').length,
+      sent: finalSubmissions.filter(s => s.status === 'sent').length,
+      accepted: finalSubmissions.filter(s => s.status === 'accepted').length,
+      montantTotal: finalSubmissions.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
+      montantAccepted: finalSubmissions
         .filter(s => s.status === 'accepted')
-        .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0) // ➕ NOUVEAU
+        .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
     };
 
     // =============== CRÉER LE CONTENU EMAIL ===============
@@ -102,11 +103,11 @@ export async function GET() {
             <div>
               <p><strong>📊 Résumé:</strong></p>
               <ul style="list-style: none; padding: 0;">
-              <li>🔵 En cours: ${poStats.inProgress}</li>
-              <li>🚚 Partiellement livré: ${poStats.partial}</li>
-              <li>✅ Complété: ${poStats.completed}</li>
-              <li>💰 Montant total: ${poStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
-            </ul>
+                <li>🔵 En cours: ${poStats.inProgress}</li>
+                <li>🚚 Partiellement livré: ${poStats.partial}</li>
+                <li>✅ Complété: ${poStats.completed}</li>
+                <li>💰 Montant total: ${poStats.montantTotal.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</li>
+              </ul>
             </div>
             <div>
               <p><strong>📋 Détails:</strong></p>
@@ -152,21 +153,21 @@ export async function GET() {
             </div>
             <div>
               <p><strong>📋 Détails:</strong></p>
-              ${submissions.length > 0 ? `
+              ${finalSubmissions.length > 0 ? `
                 <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
                   <tr style="background: #dbeafe;">
                     <th style="padding: 4px; border: 1px solid #93c5fd;">N° Soumission</th>
                     <th style="padding: 4px; border: 1px solid #93c5fd;">Client</th>
                     <th style="padding: 4px; border: 1px solid #93c5fd;">Total</th>
                   </tr>
-                  ${submissions.slice(0, 5).map(submission => `
+                  ${finalSubmissions.slice(0, 5).map(submission => `
                     <tr>
                       <td style="padding: 4px; border: 1px solid #93c5fd;">${submission.submission_number || submission.id}</td>
                       <td style="padding: 4px; border: 1px solid #93c5fd;">${submission.client_name || 'N/A'}</td>
                       <td style="padding: 4px; border: 1px solid #93c5fd;">${parseFloat(submission.amount || 0).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })}</td>
                     </tr>
                   `).join('')}
-                  ${submissions.length > 5 ? `<tr><td colspan="3" style="padding: 4px; text-align: center; font-style: italic;">... et ${submissions.length - 5} autres</td></tr>` : ''}
+                  ${finalSubmissions.length > 5 ? `<tr><td colspan="3" style="padding: 4px; text-align: center; font-style: italic;">... et ${finalSubmissions.length - 5} autres</td></tr>` : ''}
                 </table>
               ` : '<p style="color: #6b7280; font-style: italic;">Aucune soumission cette semaine</p>'}
             </div>
@@ -189,9 +190,9 @@ export async function GET() {
             <div>
               <p><strong>Chiffres clés:</strong></p>
               <ul style="list-style: none; padding: 0;">
-                <li>✅ Bons approuvés: ${poStats.approuve}</li>
+                <li>✅ Bons complétés: ${poStats.completed}</li>
                 <li>📤 Soumissions envoyées: ${submissionStats.sent}</li>
-                <li>💡 Conversion: ${submissionStats.total > 0 ? Math.round((poStats.approuve / submissionStats.total) * 100) : 0}%</li>
+                <li>🎯 Taux acceptation: ${submissionStats.sent > 0 ? Math.round((submissionStats.accepted / submissionStats.sent) * 100) : 0}%</li>
               </ul>
             </div>
           </div>
@@ -207,10 +208,10 @@ export async function GET() {
     // =============== ENVOYER L'EMAIL ===============
     const resend = new Resend(process.env.RESEND_API_KEY);
     
-    const emailTo = process.env.WEEKLY_REPORT_EMAIL || 'servicestmt@gmail.com';
+    const emailTo = process.env.WEEKLY_REPORT_EMAIL || process.env.COMPANY_EMAIL || 'servicestmt@gmail.com';
     
     const result = await resend.emails.send({
-      from: 'noreply@servicestmt.ca',
+      from: 'Services TMT <noreply@servicestmt.ca>',
       to: emailTo,
       subject: `📊 Rapport Hebdomadaire Services TMT - ${poStats.total + submissionStats.total} documents (${(poStats.montantTotal + submissionStats.montantTotal).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })})`,
       html: htmlContent
@@ -221,17 +222,105 @@ export async function GET() {
       return Response.json({ error: result.error }, { status: 400 });
     }
 
-    console.log(`✅ Rapport envoyé avec succès ! ID: ${result.data?.id}`);
+    console.log(`✅ Rapport hebdo envoyé avec succès ! ID: ${result.data?.id}`);
 
+    // =============== RAPPORT D'INVENTAIRE HEBDOMADAIRE ===============
+    console.log('📦 Génération du rapport d\'inventaire hebdomadaire...');
+    
+    let inventoryResult = { sent: false, message: 'Non exécuté' };
+    
+    try {
+      // Période: 7 derniers jours
+      const endDate = new Date();
+      const startDateInv = new Date();
+      startDateInv.setDate(startDateInv.getDate() - 7);
+      
+      const startOfWeek = startDateInv.toISOString();
+      const endOfWeek = endDate.toISOString();
+      
+      const startDateStr = startDateInv.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      console.log(`📅 Période inventaire: ${startDateStr} au ${endDateStr}`);
+
+      // Récupérer les mouvements de la semaine
+      const { data: movements, error: movError } = await supabase
+        .from('inventory_movements')
+        .select('*')
+        .gte('created_at', startOfWeek)
+        .lte('created_at', endOfWeek)
+        .order('created_at', { ascending: true });
+
+      if (movError) {
+        console.error('❌ Erreur récupération mouvements:', movError);
+        throw movError;
+      }
+
+      // Si aucun mouvement, ne pas envoyer d'email
+      if (!movements || movements.length === 0) {
+        console.log('📭 Aucun mouvement d\'inventaire cette semaine');
+        inventoryResult = { sent: false, message: 'Aucun mouvement cette semaine' };
+      } else {
+        // Séparer entrées et sorties
+        const entries = movements.filter(m => m.movement_type === 'IN');
+        const exits = movements.filter(m => m.movement_type === 'OUT');
+        const adjustments = movements.filter(m => m.movement_type === 'ADJUST');
+
+        // Calculer les totaux
+        const totalIn = entries.reduce((sum, e) => sum + (parseFloat(e.total_cost) || 0), 0);
+        const totalOut = exits.reduce((sum, e) => sum + (parseFloat(e.total_cost) || 0), 0);
+
+        // Générer le HTML du rapport inventaire
+        const inventoryHtml = generateInventoryReportHTML(startDateStr, endDateStr, entries, exits, adjustments, totalIn, totalOut);
+
+        // Email destinataire
+        const companyEmail = process.env.COMPANY_EMAIL || 'info.servicestmt@gmail.com';
+
+        // Envoyer l'email d'inventaire
+        const { error: emailError } = await resend.emails.send({
+          from: 'Services TMT <noreply@servicestmt.ca>',
+          to: [companyEmail],
+          subject: `📦 Rapport Inventaire Hebdo - ${startDateStr} au ${endDateStr} (${movements.length} mouvements)`,
+          html: inventoryHtml
+        });
+
+        if (emailError) {
+          console.error('❌ Erreur envoi email inventaire:', emailError);
+          throw emailError;
+        }
+
+        console.log(`✅ Rapport inventaire hebdo envoyé à ${companyEmail}`);
+        console.log(`   - Entrées: ${entries.length} (${totalIn.toFixed(2)}$)`);
+        console.log(`   - Sorties: ${exits.length} (${totalOut.toFixed(2)}$)`);
+        console.log(`   - Ajustements: ${adjustments.length}`);
+
+        inventoryResult = {
+          sent: true,
+          period: `${startDateStr} au ${endDateStr}`,
+          movementsCount: movements.length,
+          entries: entries.length,
+          exits: exits.length,
+          adjustments: adjustments.length,
+          totalIn: totalIn.toFixed(2),
+          totalOut: totalOut.toFixed(2)
+        };
+      }
+    } catch (inventoryError) {
+      console.error('⚠️ Erreur rapport inventaire (non bloquant):', inventoryError.message);
+      inventoryResult = { sent: false, error: inventoryError.message };
+    }
+
+    // =============== RETOUR FINAL ===============
     return Response.json({ 
       success: true, 
       purchaseOrdersCount: poStats.total,
       submissionsCount: submissionStats.total,
       totalAmount: poStats.montantTotal + submissionStats.montantTotal,
       emailId: result.data?.id,
-      poStats, // ✅ Maintenant avec les bons chiffres !
+      poStats,
       submissionStats,
-      message: `Rapport envoyé avec ${poStats.total} bon(s) d'achat (${poStats.approuve} approuvés, ${poStats.refuse} refusés, ${poStats.delivered} livrés) et ${submissionStats.total} soumission(s) dont ${submissionStats.accepted} acceptées (${submissionStats.montantAccepted.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' })})`
+      inventoryReport: inventoryResult,
+      message: `Rapport envoyé avec ${poStats.total} bon(s) d'achat et ${submissionStats.total} soumission(s)`
     });
 
   } catch (error) {
@@ -253,4 +342,184 @@ export async function POST(request) {
       error: error.message 
     }, { status: 500 });
   }
+}
+
+// =============== FONCTION GÉNÉRATION HTML INVENTAIRE ===============
+function generateInventoryReportHTML(startDate, endDate, entries, exits, adjustments, totalIn, totalOut) {
+  const formatMoney = (val) => `$${(parseFloat(val) || 0).toFixed(2)}`;
+  const formatQty = (val) => {
+    const num = parseFloat(val) || 0;
+    return num % 1 === 0 ? num.toString() : num.toFixed(4).replace(/\.?0+$/, '');
+  };
+
+  // Formater les dates en français
+  const startDateObj = new Date(startDate + 'T12:00:00');
+  const endDateObj = new Date(endDate + 'T12:00:00');
+  
+  const options = { weekday: 'short', day: 'numeric', month: 'short' };
+  const startFormatted = startDateObj.toLocaleDateString('fr-CA', options);
+  const endFormatted = endDateObj.toLocaleDateString('fr-CA', options);
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.5; color: #333; }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+    .header { background: #1e40af; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .header p { margin: 5px 0 0; opacity: 0.9; }
+    .summary { background: #f8fafc; padding: 15px 20px; border-left: 4px solid #1e40af; margin: 20px 0; }
+    .summary-grid { display: flex; gap: 30px; flex-wrap: wrap; }
+    .summary-item { }
+    .summary-label { font-size: 12px; color: #666; text-transform: uppercase; }
+    .summary-value { font-size: 24px; font-weight: bold; }
+    .summary-value.green { color: #16a34a; }
+    .summary-value.red { color: #dc2626; }
+    .section { margin: 25px 0; }
+    .section-title { font-size: 16px; font-weight: bold; padding: 10px 15px; border-radius: 4px; margin-bottom: 10px; }
+    .section-title.in { background: #dcfce7; color: #166534; }
+    .section-title.out { background: #fee2e2; color: #991b1b; }
+    .section-title.adjust { background: #fef3c7; color: #92400e; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { background: #f1f5f9; text-align: left; padding: 10px 12px; border: 1px solid #e2e8f0; }
+    td { padding: 10px 12px; border: 1px solid #e2e8f0; }
+    tr:nth-child(even) { background: #f8fafc; }
+    .qty-in { color: #16a34a; font-weight: bold; }
+    .qty-out { color: #dc2626; font-weight: bold; }
+    .money { text-align: right; }
+    .center { text-align: center; }
+    .date-col { font-size: 12px; color: #666; white-space: nowrap; }
+    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #666; }
+    .empty { color: #666; font-style: italic; padding: 15px; background: #f8fafc; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📦 Rapport Hebdomadaire d'Inventaire</h1>
+      <p>Période: ${startFormatted} au ${endFormatted}</p>
+    </div>
+
+    <div class="summary">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-label">Total mouvements</div>
+          <div class="summary-value">${entries.length + exits.length + adjustments.length}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Entrées (réceptions)</div>
+          <div class="summary-value green">+${formatMoney(totalIn)}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Sorties (BT)</div>
+          <div class="summary-value red">-${formatMoney(totalOut)}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Variation nette</div>
+          <div class="summary-value ${totalIn - totalOut >= 0 ? 'green' : 'red'}">
+            ${totalIn - totalOut >= 0 ? '+' : ''}${formatMoney(totalIn - totalOut)}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title in">📥 ENTRÉES (Réceptions fournisseurs) - ${entries.length} items</div>
+      ${entries.length > 0 ? `
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Produit</th>
+              <th>Description</th>
+              <th class="center">Qté</th>
+              <th class="money">Total</th>
+              <th>Référence</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${entries.map(e => `
+              <tr>
+                <td class="date-col">${new Date(e.created_at).toLocaleDateString('fr-CA')}</td>
+                <td><strong>${e.product_id}</strong></td>
+                <td>${e.product_description || '-'}</td>
+                <td class="center qty-in">+${formatQty(e.quantity)} ${e.unit || ''}</td>
+                <td class="money">${formatMoney(e.total_cost)}</td>
+                <td>${e.reference_number || ''} ${e.notes ? `<br><small>${e.notes}</small>` : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<div class="empty">Aucune entrée cette semaine</div>'}
+    </div>
+
+    <div class="section">
+      <div class="section-title out">📤 SORTIES (Bons de Travail) - ${exits.length} items</div>
+      ${exits.length > 0 ? `
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Produit</th>
+              <th>Description</th>
+              <th class="center">Qté</th>
+              <th class="money">Total</th>
+              <th>Référence</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${exits.map(e => `
+              <tr>
+                <td class="date-col">${new Date(e.created_at).toLocaleDateString('fr-CA')}</td>
+                <td><strong>${e.product_id}</strong></td>
+                <td>${e.product_description || '-'}</td>
+                <td class="center qty-out">-${formatQty(e.quantity)} ${e.unit || ''}</td>
+                <td class="money">${formatMoney(e.total_cost)}</td>
+                <td>${e.reference_number || ''} ${e.notes ? `<br><small>${e.notes}</small>` : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<div class="empty">Aucune sortie cette semaine</div>'}
+    </div>
+
+    ${adjustments.length > 0 ? `
+      <div class="section">
+        <div class="section-title adjust">⚙️ AJUSTEMENTS MANUELS - ${adjustments.length} items</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Produit</th>
+              <th>Description</th>
+              <th class="center">Qté</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${adjustments.map(e => `
+              <tr>
+                <td class="date-col">${new Date(e.created_at).toLocaleDateString('fr-CA')}</td>
+                <td><strong>${e.product_id}</strong></td>
+                <td>${e.product_description || '-'}</td>
+                <td class="center">${e.quantity > 0 ? '+' : ''}${formatQty(e.quantity)} ${e.unit || ''}</td>
+                <td>${e.notes || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : ''}
+
+    <div class="footer">
+      <p>📧 Rapport généré automatiquement par Services TMT</p>
+      <p>Généré le: ${new Date().toLocaleString('fr-CA')}</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
 }
