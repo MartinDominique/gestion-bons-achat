@@ -222,7 +222,7 @@ export async function PUT(request, { params }) {
               .insert({
                 po_number: poValue,
                 client_id: parseInt(updateData.client_id),
-                status: 'active',
+                status: 'in_progress',
                 date: updateData.work_date,
                 po_date: updateData.work_date,
                 description: updateData.work_description || '',
