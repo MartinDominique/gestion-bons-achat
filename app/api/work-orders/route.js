@@ -121,7 +121,7 @@ let finalLinkedPoId = null;
         .insert({
           po_number: linked_po_id.trim(),
           client_id: parseInt(client_id),
-          status: 'active',
+          status: 'in_progress',
           date: work_date,
           po_date: work_date,
           description: work_description || '',
@@ -452,7 +452,7 @@ export async function PUT(request) {
                 .insert({
                   po_number: linked_po_id.trim(),
                   client_id: parseInt(client_id),
-                  status: 'active',
+                  status: 'in_progress',
                   date: work_date,
                   po_date: work_date,
                   description: work_description || '',
