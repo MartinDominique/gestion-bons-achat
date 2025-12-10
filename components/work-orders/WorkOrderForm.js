@@ -1227,10 +1227,11 @@ export default function WorkOrderForm({
               <select
                 className={`flex-1 min-w-0 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
                   errors.client_id ? 'border-red-500' : 'border-gray-300'
-                }`}
+                } ${workOrder ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 style={{ maxWidth: 'calc(100vw - 240px)' }}
                 value={formData.client_id}
                 onChange={(e) => handleClientSelect(e.target.value)}
+                disabled={!!workOrder}
               >
                 <option value="">Sélectionner un client</option>
                 {clients.map(client => (
