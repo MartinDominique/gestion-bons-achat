@@ -1855,8 +1855,11 @@ const cleanupFilesForSubmission = async (files) => {
                     <select
                       value={submissionForm.client_name}
                       onChange={(e) => setSubmissionForm({...submissionForm, client_name: e.target.value})}
-                      className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+                      className={`block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 ${
+                        editingSubmission ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                       required
+                      disabled={!!editingSubmission}
                     >
                       <option value="">Sélectionner un client...</option>
                       {clients.map((client) => (
