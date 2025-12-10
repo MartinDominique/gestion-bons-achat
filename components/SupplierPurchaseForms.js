@@ -1036,17 +1036,18 @@ export const QuantityModal = ({
         <h3 className="text-lg font-semibold mb-4">
           Quantité pour: {selectedProductForQuantity.description}
         </h3>
-        <input
-          id="quantity-input"
-          type="number"
-          step="1"
-          min="1"
-          value={tempQuantity}
-          onChange={(e) => setTempQuantity(e.target.value)}
-          onKeyDown={handleQuantityKeyDown}
-          className="block w-full rounded-lg border-gray-300 shadow-sm text-base p-3 mb-4"
-          autoFocus
-        />
+         <input
+            id="quantity-input"
+            type="number"
+            step="1"
+            min="1"
+            value={tempQuantity}
+            onChange={(e) => setTempQuantity(e.target.value)}
+            onKeyDown={handleQuantityKeyDown}
+            onFocus={(e) => e.target.select()}
+            className="block w-full rounded-lg border-gray-300 shadow-sm text-base p-3 mb-4"
+            autoFocus
+          />
         <div className="flex gap-3">
           <button
             type="button"
