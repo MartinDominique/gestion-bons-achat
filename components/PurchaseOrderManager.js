@@ -19,7 +19,12 @@ const PurchaseOrderManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('ba_statusFilter') || 'all';
+  }
+  return 'all';
+});
   const [filteredPOs, setFilteredPOs] = useState([]);
   
   // États pour les modifications de statut rapides
@@ -340,7 +345,10 @@ const PurchaseOrderManager = () => {
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                localStorage.setItem('ba_statusFilter', e.target.value);
+              }}
               className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white min-w-[160px] sm:min-w-[200px] transition-all duration-200 text-sm"
             >
               <option value="all">Tous les statuts</option>
