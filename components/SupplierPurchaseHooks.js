@@ -480,11 +480,11 @@ const [exchangeRateError, setExchangeRateError] = useState('');
           : item
       ));
     } else {
-      setSelectedItems([...selectedItems, {
+      setSelectedItems([{
         ...product,
         quantity: quantity,
         notes: ''
-      }]);
+      }, ...selectedItems]);
     }
   };
 
