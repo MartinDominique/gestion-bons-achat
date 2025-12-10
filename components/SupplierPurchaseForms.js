@@ -574,8 +574,11 @@ Merci!`;
                           supplier_name: supplier?.company_name || ''
                         });
                       }}
-                      className="block flex-1 rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+                      className={`block flex-1 rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 ${
+                        editingPurchase ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                       required
+                      disabled={!!editingPurchase}
                     >
                       <option value="">Sélectionner un fournisseur...</option>
                       {suppliers.map((supplier) => (
