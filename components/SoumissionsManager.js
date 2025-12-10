@@ -15,7 +15,12 @@ export default function SoumissionsManager() {
   const [editingSubmission, setEditingSubmission] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('soumission_statusFilter') || 'all';
+    }
+    return 'all';
+  });
   const [sendingReport, setSendingReport] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState(null);
   
@@ -2791,7 +2796,10 @@ const cleanupFilesForSubmission = async (files) => {
           <div className="w-full sm:w-auto">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                localStorage.setItem('soumission_statusFilter', e.target.value);
+              }}
               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
             >
               <option value="all">Tous les statuts</option>
