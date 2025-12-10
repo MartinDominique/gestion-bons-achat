@@ -632,7 +632,7 @@ Merci!`;
                     <option value="">Aucun (optionnel)</option>
                     {purchaseOrders.map((po) => (
                       <option key={po.id} value={po.id}>
-                        {po.po_number} - {po.client_name} ({formatCurrency(po.amount)})
+                        {po.po_number} - {po.client_name} - {po.description ? (po.description.length > 20 ? po.description.substring(0, 20) + '...' : po.description) : ''}
                       </option>
                     ))}
                   </select>
