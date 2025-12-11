@@ -602,15 +602,15 @@ export default function SupplierPurchaseManager() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date Création</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">BA Acomba</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO Client Lié</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date Livraison</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Montant</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-1 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">N°</th>
+                <th className="px-1 py-2 text-left text-[10px] font-medium text-gray-500 uppercase hidden md:table-cell">Date</th>
+                <th className="px-1 py-2 text-left text-[10px] font-medium text-gray-500 uppercase hidden lg:table-cell">BA</th>
+                <th className="px-1 py-2 text-left text-[10px] font-medium text-gray-500 uppercase hidden lg:table-cell">PO</th>
+                <th className="px-1 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Fournisseur</th>
+                <th className="px-1 py-2 text-center text-[10px] font-medium text-gray-500 uppercase">Livr.</th>
+                <th className="px-1 py-2 text-center text-[10px] font-medium text-gray-500 uppercase">$</th>
+                <th className="px-1 py-2 text-center text-[10px] font-medium text-gray-500 uppercase">Statut</th>
+                <th className="px-1 py-2 text-center text-[10px] font-medium text-gray-500 uppercase">Act.</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -618,47 +618,38 @@ export default function SupplierPurchaseManager() {
                 const poNumber = getPONumber(purchase, purchaseOrders);
                 return (
                   <tr key={purchase.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-4 whitespace-nowrap">
-                      <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
+                    <td className="px-1 py-2 whitespace-nowrap">
+                      <span className="bg-orange-100 text-orange-800 px-1 py-0.5 rounded text-[10px] font-medium">
                         {purchase.purchase_number}
                       </span>
                     </td>
-                    {/* NOUVELLE COLONNE - DATE DE CRÉATION */}
-                    <td className="px-3 py-4 whitespace-nowrap">
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900">
-                          {formatDate(purchase.created_at)}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {purchase.created_at && new Date(purchase.created_at).toLocaleTimeString('fr-FR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </div>
+                    <td className="px-1 py-2 whitespace-nowrap hidden md:table-cell">
+                      <div className="text-[10px] text-gray-900">
+                        {formatDate(purchase.created_at)}
                       </div>
                     </td>
-                    <td className="px-3 py-4 whitespace-nowrap">
+                    <td className="px-1 py-2 whitespace-nowrap hidden lg:table-cell">
                       {purchase.ba_acomba ? (
-                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
+                        <span className="bg-purple-100 text-purple-800 px-1 py-0.5 rounded text-[10px]">
                           {purchase.ba_acomba}
                         </span>
                       ) : (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-gray-400 text-[10px]">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-4 text-center">
+                    <td className="px-1 py-2 hidden lg:table-cell">
                       {poNumber ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                        <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-[10px]">
                           {poNumber}
                         </span>
                       ) : (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-gray-400 text-[10px]">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-4">
-                      <div className="text-sm font-medium text-gray-900">{purchase.supplier_name}</div>
+                    <td className="px-1 py-2">
+                      <div className="text-xs font-medium text-gray-900 truncate max-w-[100px]">{purchase.supplier_name}</div>
                     </td>
-                    <td className={`px-3 py-4 text-center text-sm ${
+                    <td className={`px-1 py-2 text-center text-[10px] ${
                       purchase.delivery_date && 
                       new Date(purchase.delivery_date) < new Date().setHours(0,0,0,0) &&
                       purchase.status !== 'received'
@@ -667,18 +658,17 @@ export default function SupplierPurchaseManager() {
                     }`}>
                       {formatDate(purchase.delivery_date)}
                     </td>
-                    <td className="px-3 py-4 text-center">
-                      <span className="text-sm font-medium text-green-600">
+                    <td className="px-1 py-2 text-center">
+                      <span className="text-[10px] font-medium text-green-600">
                         {formatCurrency(purchase.total_amount)}
                       </span>
                     </td>
-                    {/* SELECT POUR STATUT */}
-                    <td className="px-3 py-4 text-center">
+                    <td className="px-1 py-2 text-center">
                       <select
                         value={purchase.status}
                         onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
                         disabled={isLoadingEmail}
-                        className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${
+                        className={`px-1 py-0.5 rounded text-[10px] font-medium border-0 cursor-pointer ${
                           purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
                           purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
                           purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
@@ -691,31 +681,31 @@ export default function SupplierPurchaseManager() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-4 text-center">
-                      <div className="flex justify-center space-x-1">
+                    <td className="px-1 py-2 text-center">
+                      <div className="flex justify-center gap-0.5">
                         <button
                           onClick={() => handleEditPurchase(purchase)}
-                          className="bg-orange-100 text-orange-700 hover:bg-orange-200 p-2 rounded-lg"
+                          className="bg-orange-100 text-orange-700 hover:bg-orange-200 p-1 rounded"
                           title="Modifier"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => handleDeletePurchase(purchase.id)}
-                          className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg"
+                          className="bg-red-100 text-red-700 hover:bg-red-200 p-1 rounded"
                           title="Supprimer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3" />
                         </button>
                         {(purchase.status === 'ordered' || purchase.status === 'partial') && (
-                        <button
-                          onClick={() => openReceiptModal(purchase)}
-                          className="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg"
-                          title="Réception"
-                        >
-                          <Truck className="w-4 h-4" />
-                        </button>
-                      )}
+                          <button
+                            onClick={() => openReceiptModal(purchase)}
+                            className="bg-green-100 text-green-700 hover:bg-green-200 p-1 rounded"
+                            title="Réception"
+                          >
+                            <Truck className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
