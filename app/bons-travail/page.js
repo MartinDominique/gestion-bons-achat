@@ -541,7 +541,11 @@ export default function BonsTravailPage() {
                   <div 
                     key={wo.id}
                     onClick={() => handleEdit(wo)}
-                    className="p-3 border-b last:border-b-0 hover:bg-blue-50 active:bg-blue-100 cursor-pointer"
+                    className={`p-3 border-b last:border-b-0 hover:bg-blue-50 active:bg-blue-100 cursor-pointer ${
+                      wo.work_date && (new Date() - new Date(wo.work_date)) > (15 * 24 * 60 * 60 * 1000) && wo.status !== 'sent'
+                        ? 'bg-red-50 border-l-4 border-l-red-500'
+                        : ''
+                    }`}
                   >
                     {/* Ligne 1: BT# + Statut */}
                     <div className="flex items-center justify-between mb-2">
@@ -603,7 +607,11 @@ export default function BonsTravailPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {filteredWorkOrders.map((wo, index) => (
-                      <tr key={wo.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${index % 2 === 0 ? 'bg-white/50' : 'bg-gray-50/50'}`}>
+                      <tr key={wo.id} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${
+                        wo.work_date && (new Date() - new Date(wo.work_date)) > (15 * 24 * 60 * 60 * 1000) && wo.status !== 'sent'
+                          ? 'bg-red-100 border-l-4 border-l-red-500'
+                          : index % 2 === 0 ? 'bg-white/50' : 'bg-gray-50/50'
+                      }`}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="font-mono text-sm bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent font-bold flex items-center gap-2">
                             {wo.bt_number}
