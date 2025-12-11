@@ -592,7 +592,7 @@ export default function SupplierPurchaseManager() {
       </div>
 
       {/* Liste des achats - Desktop AVEC DATE DE CRÉATION */}
-      <div className="hidden lg:block bg-white shadow-lg rounded-lg overflow-hidden">
+      <div className="hidden md:block bg-white shadow-lg rounded-lg overflow-hidden">
         {filteredPurchases.length === 0 ? (
           <div className="text-center py-12">
             <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -727,7 +727,7 @@ export default function SupplierPurchaseManager() {
       </div>
 
       {/* Liste mobile - Layout 2 lignes ULTRA-COMPACT */}
-      <div className="lg:hidden">
+      <div className="md:hidden">
         {filteredPurchases.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -798,6 +798,36 @@ export default function SupplierPurchaseManager() {
                           <option key={key} value={key}>{label}</option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* Actions */}
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex gap-1 flex-shrink-0"
+                    >
+                      <button
+                        onClick={() => handleEditPurchase(purchase)}
+                        className="bg-orange-100 text-orange-700 hover:bg-orange-200 p-1.5 rounded"
+                        title="Modifier"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePurchase(purchase.id)}
+                        className="bg-red-100 text-red-700 hover:bg-red-200 p-1.5 rounded"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      {(purchase.status === 'ordered' || purchase.status === 'partial') && (
+                        <button
+                          onClick={() => openReceiptModal(purchase)}
+                          className="bg-green-100 text-green-700 hover:bg-green-200 p-1.5 rounded"
+                          title="Réception"
+                        >
+                          <Truck className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
