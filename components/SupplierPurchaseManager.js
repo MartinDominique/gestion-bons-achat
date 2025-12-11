@@ -592,7 +592,7 @@ export default function SupplierPurchaseManager() {
       </div>
 
       {/* Liste des achats - Desktop AVEC DATE DE CRÉATION */}
-      <div className="hidden md:block bg-white shadow-lg rounded-lg overflow-hidden">
+      <div className="hidden sm:block bg-white shadow-lg rounded-lg overflow-hidden">
         {filteredPurchases.length === 0 ? (
           <div className="text-center py-12">
             <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -727,7 +727,7 @@ export default function SupplierPurchaseManager() {
       </div>
 
       {/* Liste mobile - Layout 2 lignes ULTRA-COMPACT */}
-      <div className="md:hidden">
+      <div className="sm:hidden">
         {filteredPurchases.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
