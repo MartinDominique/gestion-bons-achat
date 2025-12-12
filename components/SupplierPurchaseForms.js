@@ -865,7 +865,7 @@ Merci!`;
                 </label>
                 <textarea
                   value={purchaseForm.notes}
-                  onChange={(e) => setPurchaseForm({...purchaseForm, notes: e.target.value})}
+                  onChange={(e) => setPurchaseForm({...purchaseForm, notes: e.target.value.toUpperCase()})}
                   className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 text-base p-3"
                   rows="3"
                   placeholder="Notes additionnelles..."
