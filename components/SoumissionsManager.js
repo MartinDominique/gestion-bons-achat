@@ -1882,7 +1882,7 @@ const cleanupFilesForSubmission = async (files) => {
                     <input
                       type="text"
                       value={submissionForm.description}
-                      onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value})}
+                      onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value.toUpperCase()})}
                       className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
                       placeholder="Description de la soumission..."
                       required
