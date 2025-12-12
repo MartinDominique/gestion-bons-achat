@@ -319,27 +319,36 @@ export async function GET(request) {
       );
     }
 
-        // Enrichir matériaux
-        if (workOrder.materials && workOrder.materials.length > 0) {
-          for (let material of workOrder.materials) {
-            if (material.product_id) {
-              // Chercher dans le cache
-              material.product = productsMap[material.product_id] || nonInvProductsMap[material.product_id];
-            }
-            
-            // Si toujours pas de product, créer un objet virtuel
-            if (!material.product && (material.product_code || material.description)) {
-              material.product = {
-                product_id: material.product_code || material.product_id,
-                description: material.description,
-                unit: material.unit,
-                selling_price: material.unit_price
-              };
-            }
-          }
+      if (error) {
+      console.error('Erreur récupération work_orders:', error);
+      return Response.json(
+        { error: 'Erreur récupération bons de travail', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    // Vérifier session active pour chaque work order
+    if (data && data.length > 0) {
+      for (let workOrder of data) {
+        workOrder.has_active_session = false;
+        if (workOrder.time_entries && Array.isArray(workOrder.time_entries)) {
+          workOrder.has_active_session = workOrder.time_entries.some(
+            entry => entry.start_time && !entry.end_time
+          );
         }
       }
     }
+
+    return Response.json({
+      success: true,
+      data: data || [],
+      pagination: {
+        page,
+        limit,
+        total: count,
+        hasMore: (count || 0) > (page + 1) * limit
+      }
+    });
 
     return Response.json({
       success: true,
