@@ -38,7 +38,7 @@ const PurchaseOrderManager = () => {
       
       const { data, error: fetchError } = await supabase
         .from('purchase_orders')
-        .select('*')
+        .select('id, po_number, client_name, client_id, description, amount, status, date, created_at, submission_no')
         .order('created_at', { ascending: false });
 
       if (fetchError) {
