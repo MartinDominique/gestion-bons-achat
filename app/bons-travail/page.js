@@ -320,7 +320,7 @@ export default function BonsTravailPage() {
                 <div className="ml-2">
                   <p className="text-blue-100 text-xs font-medium">Brouillons</p>
                   <p className="text-2xl font-bold text-white">
-                    {filteredWorkOrders.filter(wo => wo.status === 'draft').length}
+                    {workOrders.filter(wo => wo.status === 'draft').length}
                   </p>
                 </div>
               </div>
@@ -334,7 +334,7 @@ export default function BonsTravailPage() {
                 <div className="ml-2">
                   <p className="text-blue-100 text-xs font-medium">Terminés</p>
                   <p className="text-2xl font-bold text-white">
-                    {filteredWorkOrders.filter(wo => wo.status === 'completed').length}
+                    {workOrders.filter(wo => wo.status === 'completed').length}
                   </p>
                 </div>
               </div>
@@ -348,7 +348,7 @@ export default function BonsTravailPage() {
                 <div className="ml-2">
                   <p className="text-blue-100 text-xs font-medium">Envoyés</p>
                   <p className="text-2xl font-bold text-white">
-                    {filteredWorkOrders.filter(wo => wo.status === 'sent').length}
+                    {workOrders.filter(wo => wo.status === 'sent').length}
                   </p>
                 </div>
               </div>
