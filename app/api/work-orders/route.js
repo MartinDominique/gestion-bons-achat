@@ -313,57 +313,78 @@ export async function GET(request) {
     }
 
     // Enrichir les données des work orders
-        if (data && data.length > 0) {
-          for (let workOrder of data) {
-            // === Vérifier session active ===
-            workOrder.has_active_session = false;
-            if (workOrder.time_entries && Array.isArray(workOrder.time_entries)) {
-              workOrder.has_active_session = workOrder.time_entries.some(
-                entry => entry.start_time && !entry.end_time
-              );
-            }
-        
-            // === Enrichir matériaux ===
-            if (workOrder.materials && workOrder.materials.length > 0) {
-              for (let material of workOrder.materials) {
-                // Si product_id existe et n'est pas null
-                if (material.product_id) {
-                  // Essayer de récupérer le produit
-                  const { data: product } = await supabase
-                    .from('products')
-                    .select('*')
-                    .eq('product_id', material.product_id)
-                    .single();
-                  
-                  if (product) {
-                    material.product = product;
-                  } else {
-                    // Si pas dans products, essayer non_inventory_items
-                    const { data: nonInvProduct } = await supabase
-                      .from('non_inventory_items')
-                      .select('*')
-                      .eq('product_id', material.product_id)
-                      .single();
-                    
-                    if (nonInvProduct) {
-                      material.product = nonInvProduct;
-                    }
-                  }
-                }
-                
-                // Si toujours pas de product, créer un objet virtuel avec les infos stockées
-                if (!material.product && (material.product_code || material.description)) {
-                  material.product = {
-                    product_id: material.product_code || material.product_id,
-                    description: material.description,
-                    unit: material.unit,
-                    selling_price: material.unit_price
-                  };
-                }
-              }
+    if (data && data.length > 0) {
+      // 1. Collecter tous les product_ids uniques
+      const allProductIds = new Set();
+      for (const workOrder of data) {
+        if (workOrder.materials) {
+          for (const material of workOrder.materials) {
+            if (material.product_id) {
+              allProductIds.add(material.product_id);
             }
           }
         }
+      }
+
+      // 2. Charger tous les produits en UNE seule requête
+      let productsMap = {};
+      let nonInvProductsMap = {};
+      
+      if (allProductIds.size > 0) {
+        const productIdsArray = Array.from(allProductIds);
+        
+        // Requête products
+        const { data: products } = await supabase
+          .from('products')
+          .select('*')
+          .in('product_id', productIdsArray);
+        
+        if (products) {
+          products.forEach(p => productsMap[p.product_id] = p);
+        }
+
+        // Requête non_inventory_items
+        const { data: nonInvProducts } = await supabase
+          .from('non_inventory_items')
+          .select('*')
+          .in('product_id', productIdsArray);
+        
+        if (nonInvProducts) {
+          nonInvProducts.forEach(p => nonInvProductsMap[p.product_id] = p);
+        }
+      }
+
+      // 3. Enrichir chaque work order
+      for (let workOrder of data) {
+        // Vérifier session active
+        workOrder.has_active_session = false;
+        if (workOrder.time_entries && Array.isArray(workOrder.time_entries)) {
+          workOrder.has_active_session = workOrder.time_entries.some(
+            entry => entry.start_time && !entry.end_time
+          );
+        }
+
+        // Enrichir matériaux
+        if (workOrder.materials && workOrder.materials.length > 0) {
+          for (let material of workOrder.materials) {
+            if (material.product_id) {
+              // Chercher dans le cache
+              material.product = productsMap[material.product_id] || nonInvProductsMap[material.product_id];
+            }
+            
+            // Si toujours pas de product, créer un objet virtuel
+            if (!material.product && (material.product_code || material.description)) {
+              material.product = {
+                product_id: material.product_code || material.product_id,
+                description: material.description,
+                unit: material.unit,
+                selling_price: material.unit_price
+              };
+            }
+          }
+        }
+      }
+    }
 
     return Response.json({
       success: true,
