@@ -496,7 +496,7 @@ export default function WorkOrderForm({
   }, [descriptions]);
 
   useEffect(() => {
-    if (mode === 'edit' && formData.status === 'ready_for_signature' && workOrder?.id) {
+     if (formData.status === 'ready_for_signature' && (workOrder?.id || currentWorkOrderId)) {
       console.log('👀 Mode surveillance activé');
       
       let intervalId = null;
