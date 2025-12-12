@@ -307,7 +307,7 @@ export default function BonsTravailPage() {
                 </div>
                 <div className="ml-2">
                   <p className="text-blue-100 text-xs font-medium">Total</p>
-                  <p className="text-2xl font-bold text-white">{filteredWorkOrders.length}</p>
+                  <p className="text-2xl font-bold text-white">{workOrders.length}</p>
                 </div>
               </div>
             </div>
