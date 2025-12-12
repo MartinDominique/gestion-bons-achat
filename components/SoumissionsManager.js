@@ -2595,7 +2595,7 @@ const cleanupFilesForSubmission = async (files) => {
                     <button
                       type="button"
                       onClick={() => openFile(file)}
-                      className="flex-1 sm:flex-none px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors"
+                      className="flex-1 sm:flex-none px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors md:hidden"
                       title="Ouvrir le fichier"
                     >
                       👁️ Voir
