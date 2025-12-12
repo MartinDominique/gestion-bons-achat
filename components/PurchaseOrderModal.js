@@ -1728,7 +1728,7 @@ setTimeout(() => {
                       type="text"
                       name="po_number"
                       value={formData.po_number}
-                      onChange={handleChange}
+                      onChange={(e) => setFormData(prev => ({ ...prev, po_number: e.target.value.toUpperCase() }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Ex: PO-2025-001"
                       required
@@ -1806,7 +1806,7 @@ setTimeout(() => {
                       <textarea
                         name="description"
                         value={formData.description}
-                        onChange={handleChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value.toUpperCase() }))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Description détaillée du bon d'achat..."
                         rows="3"
@@ -1821,7 +1821,7 @@ setTimeout(() => {
                     type="text"
                     name="special_instructions"
                     value={formData.special_instructions}
-                    onChange={handleChange}
+                    onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value.toUpperCase() }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     placeholder="Notes additionnelles, instructions spéciales..."
                   />
