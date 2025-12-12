@@ -274,11 +274,18 @@ export async function GET(request) {
     let query = supabase
       .from('work_orders')
       .select(`
-        *,
-        client:clients(*),
-        linked_po:purchase_orders(*),
-        materials:work_order_materials(*)
-      `, { count: 'exact' }) // Retirer la jointure avec products
+        id,
+        bt_number,
+        client_id,
+        linked_po_id,
+        work_date,
+        total_hours,
+        work_description,
+        status,
+        time_entries,
+        client:clients(id, name),
+        linked_po:purchase_orders(id, po_number)
+      `, { count: 'exact' })
       .order('work_date', { ascending: false });
 
     // Appliquer les filtres
@@ -311,58 +318,6 @@ export async function GET(request) {
         { status: 500 }
       );
     }
-
-    // Enrichir les données des work orders
-    if (data && data.length > 0) {
-      // 1. Collecter tous les product_ids uniques
-      const allProductIds = new Set();
-      for (const workOrder of data) {
-        if (workOrder.materials) {
-          for (const material of workOrder.materials) {
-            if (material.product_id) {
-              allProductIds.add(material.product_id);
-            }
-          }
-        }
-      }
-
-      // 2. Charger tous les produits en UNE seule requête
-      let productsMap = {};
-      let nonInvProductsMap = {};
-      
-      if (allProductIds.size > 0) {
-        const productIdsArray = Array.from(allProductIds);
-        
-        // Requête products
-        const { data: products } = await supabase
-          .from('products')
-          .select('*')
-          .in('product_id', productIdsArray);
-        
-        if (products) {
-          products.forEach(p => productsMap[p.product_id] = p);
-        }
-
-        // Requête non_inventory_items
-        const { data: nonInvProducts } = await supabase
-          .from('non_inventory_items')
-          .select('*')
-          .in('product_id', productIdsArray);
-        
-        if (nonInvProducts) {
-          nonInvProducts.forEach(p => nonInvProductsMap[p.product_id] = p);
-        }
-      }
-
-      // 3. Enrichir chaque work order
-      for (let workOrder of data) {
-        // Vérifier session active
-        workOrder.has_active_session = false;
-        if (workOrder.time_entries && Array.isArray(workOrder.time_entries)) {
-          workOrder.has_active_session = workOrder.time_entries.some(
-            entry => entry.start_time && !entry.end_time
-          );
-        }
 
         // Enrichir matériaux
         if (workOrder.materials && workOrder.materials.length > 0) {
