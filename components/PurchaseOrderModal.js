@@ -2176,7 +2176,7 @@ setTimeout(() => {
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => viewFile(file)}
-                              className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm"
+                              className="text-blue-600 hover:text-blue-800 px-3 py-1 border border-blue-300 rounded text-sm md:hidden"
                               title="Voir"
                             >
                               Voir
