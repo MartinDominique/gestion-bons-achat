@@ -496,14 +496,16 @@ export default function WorkOrderForm({
   }, [descriptions]);
 
   useEffect(() => {
-     if (formData.status === 'ready_for_signature' && (workOrder?.id || currentWorkOrderId)) {
-      console.log('👀 Mode surveillance activé');
+    const workOrderId = currentWorkOrderId || workOrder?.id;
+    
+    if (formData.status === 'ready_for_signature' && workOrderId) {
+      console.log('👀 Mode surveillance activé, ID:', workOrderId);
       
       let intervalId = null;
       
       const checkStatus = async () => {
         try {
-          const response = await fetch(`/api/work-orders/${workOrder.id}`);
+          const response = await fetch(`/api/work-orders/${workOrderId}`);
           if (response.ok) {
             const data = await response.json();
             const currentStatus = data.data?.status;
@@ -538,7 +540,7 @@ export default function WorkOrderForm({
         console.log('🛑 Surveillance arrêtée');
       };
     }
-  }, [mode, formData.status, workOrder?.id, router]);
+  }, [formData.status, currentWorkOrderId, workOrder?.id, router]);
 
   useEffect(() => {
     const workOrderId = currentWorkOrderId || workOrder?.id;
@@ -1148,6 +1150,8 @@ export default function WorkOrderForm({
       if (status === 'ready_for_signature' && savedWorkOrder) {
         const workOrderId = savedWorkOrder.id || workOrder?.id;
         if (workOrderId) {
+          setCurrentWorkOrderId(workOrderId);  // <-- AJOUTE CETTE LIGNE
+          setFormData(prev => ({ ...prev, status: 'ready_for_signature' }));  // <-- ET CETTE LIGNE
           console.log('🚀 OUVERTURE fenêtre client, ID:', workOrderId);
           window.open(`/bons-travail/${workOrderId}/client`, '_blank');
         }
