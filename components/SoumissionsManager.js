@@ -2693,7 +2693,7 @@ const cleanupFilesForSubmission = async (files) => {
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
 
-            href="https://drive.google.com/file/d/1QadQ62JKl8cM0wzpruUgaN0CwE3VlLFh/view?usp=drive_link"
+           <a href="https://drive.google.com/file/d/1QadQ62JKl8cM0wzpruUgaN0CwE3VlLFh/view?usp=drive_link"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-sm font-medium hover:bg-white/20 backdrop-blur-sm text-center"
