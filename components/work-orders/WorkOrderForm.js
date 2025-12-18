@@ -99,6 +99,8 @@ export default function WorkOrderForm({
 
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [showSupplierImportModal, setShowSupplierImportModal] = useState(false);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
+  const [filterByCurrentClient, setFilterByCurrentClient] = useState(false);
   const [submissions, setSubmissions] = useState([]);
   const [clientSupplierPurchases, setClientSupplierPurchases] = useState([]);
   const [selectedPurchaseForImport, setSelectedPurchaseForImport] = useState(null);
@@ -776,59 +778,73 @@ export default function WorkOrderForm({
     }
   };
 
-  // ========================================
-  // FONCTIONS IMPORT ACHATS FOURNISSEURS
-  // ========================================
+ // ========================================
+// FONCTIONS IMPORT ACHATS FOURNISSEURS
+// ========================================
 
-  const loadClientSupplierPurchases = async () => {
-    if (!selectedClient) {
-      toast.error('Veuillez d\'abord sélectionner un client');
+const loadClientSupplierPurchases = async () => {
+  setIsLoadingSupplierPurchases(true);
+  setSupplierSearchTerm(''); // Reset recherche
+  setFilterByCurrentClient(false); // Reset filtre
+  
+  try {
+    // ✅ Charger TOUS les achats fournisseurs
+    const { data, error } = await supabase
+      .from('supplier_purchases')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    const purchasesWithItems = (data || []).filter(p => p.items && p.items.length > 0);
+    
+    if (purchasesWithItems.length === 0) {
+      toast.error('Aucun achat fournisseur trouvé');
+      setIsLoadingSupplierPurchases(false);
       return;
     }
 
-    setIsLoadingSupplierPurchases(true);
-    try {
-      const { data: clientPOs, error: poError } = await supabase
-        .from('purchase_orders')
-        .select('id')
-        .eq('client_name', selectedClient.name);
+    console.log(`✅ ${purchasesWithItems.length} achats fournisseurs chargés`);
+    setClientSupplierPurchases(purchasesWithItems);
+    setShowSupplierImportModal(true);
+  } catch (error) {
+    console.error('Erreur chargement achats fournisseurs:', error);
+    toast.error('Erreur lors du chargement des achats fournisseurs');
+  } finally {
+    setIsLoadingSupplierPurchases(false);
+  }
+};
 
-      if (poError) throw poError;
-
-      const poIds = clientPOs?.map(po => po.id) || [];
-
-      let query = supabase
-        .from('supplier_purchases')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (poIds.length > 0) {
-        query = query.or(`linked_po_id.in.(${poIds.join(',')}),supplier_name.ilike.%${selectedClient.name}%`);
-      } else {
-        query = query.ilike('supplier_name', `%${selectedClient.name}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const purchasesWithItems = (data || []).filter(p => p.items && p.items.length > 0);
-      
-      if (purchasesWithItems.length === 0) {
-        toast.error('Aucun achat fournisseur trouvé pour ce client');
-        setIsLoadingSupplierPurchases(false);
-        return;
-      }
-
-      setClientSupplierPurchases(purchasesWithItems);
-      setShowSupplierImportModal(true);
-    } catch (error) {
-      console.error('Erreur chargement achats fournisseurs:', error);
-      toast.error('Erreur lors du chargement des achats fournisseurs');
-    } finally {
-      setIsLoadingSupplierPurchases(false);
-    }
-  };
+// ✅ NOUVEAU: Fonction pour filtrer les achats affichés
+const getFilteredSupplierPurchases = () => {
+  let filtered = clientSupplierPurchases;
+  
+  // Filtre par client actuel si activé
+  if (filterByCurrentClient && selectedClient) {
+    filtered = filtered.filter(p => 
+      p.linked_po_number?.toLowerCase().includes(selectedClient.name?.toLowerCase()) ||
+      p.supplier_name?.toLowerCase().includes(selectedClient.name?.toLowerCase()) ||
+      p.notes?.toLowerCase().includes(selectedClient.name?.toLowerCase())
+    );
+  }
+  
+  // Filtre par terme de recherche
+  if (supplierSearchTerm.trim()) {
+    const search = supplierSearchTerm.toLowerCase();
+    filtered = filtered.filter(p => 
+      p.purchase_number?.toLowerCase().includes(search) ||
+      p.supplier_name?.toLowerCase().includes(search) ||
+      p.linked_po_number?.toLowerCase().includes(search) ||
+      p.items?.some(item => 
+        item.product_id?.toLowerCase().includes(search) ||
+        item.description?.toLowerCase().includes(search)
+      )
+    );
+  }
+  
+  return filtered;
+};
 
   const selectPurchaseForImport = (purchase) => {
     setSelectedPurchaseForImport(purchase);
@@ -1896,41 +1912,95 @@ export default function WorkOrderForm({
             <div className="flex-1 overflow-y-auto p-6">
               {!selectedPurchaseForImport ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Sélectionnez un achat fournisseur pour voir ses articles
-                  </p>
-                  {clientSupplierPurchases.map((purchase) => (
-                    <div
-                      key={purchase.id}
-                      onClick={() => selectPurchaseForImport(purchase)}
-                      className="p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-semibold text-gray-900">
-                            Achat #{purchase.purchase_number}
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {purchase.supplier_name}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {new Date(purchase.created_at).toLocaleDateString('fr-CA')}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-gray-500">
-                            {purchase.items?.length || 0} articles
+                  {/* ✅ NOUVEAU: Barre de recherche et filtres */}
+                  <div className="sticky top-0 bg-white pb-4 space-y-3">
+                    {/* Recherche */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Rechercher par # achat, fournisseur, produit..."
+                        value={supplierSearchTerm}
+                        onChange={(e) => setSupplierSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                    </div>
+                    
+                    {/* Filtre par client */}
+                    {selectedClient && (
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filterByCurrentClient}
+                          onChange={(e) => setFilterByCurrentClient(e.target.checked)}
+                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                        />
+                        <span className="text-gray-700">
+                          Afficher seulement les achats liés à <strong>{selectedClient.name}</strong>
+                        </span>
+                      </label>
+                    )}
+                    
+                    {/* Compteur résultats */}
+                    <p className="text-sm text-gray-500">
+                      {getFilteredSupplierPurchases().length} achat(s) trouvé(s)
+                      {filterByCurrentClient && ` pour ${selectedClient?.name}`}
+                    </p>
+                  </div>
+            
+                  {/* Liste des achats */}
+                  {getFilteredSupplierPurchases().length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="mx-auto mb-2 text-gray-300" size={48} />
+                      <p>Aucun achat trouvé</p>
+                      {filterByCurrentClient && (
+                        <button
+                          onClick={() => setFilterByCurrentClient(false)}
+                          className="mt-2 text-purple-600 hover:underline text-sm"
+                        >
+                          Voir tous les achats
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    getFilteredSupplierPurchases().map((purchase) => (
+                      <div
+                        key={purchase.id}
+                        onClick={() => selectPurchaseForImport(purchase)}
+                        className="p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">
+                              Achat #{purchase.purchase_number}
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {purchase.supplier_name}
+                            </p>
+                            {purchase.linked_po_number && (
+                              <p className="text-xs text-purple-600 mt-1">
+                                🔗 PO: {purchase.linked_po_number}
+                              </p>
+                            )}
+                            <p className="text-sm text-gray-500">
+                              {new Date(purchase.created_at).toLocaleDateString('fr-CA')}
+                            </p>
                           </div>
-                          <div className="text-lg font-bold text-gray-900 mt-1">
-                            {new Intl.NumberFormat('fr-CA', {
-                              style: 'currency',
-                              currency: purchase.currency || 'CAD'
-                            }).format(purchase.total_cost || 0)}
+                          <div className="text-right">
+                            <div className="text-sm text-gray-500">
+                              {purchase.items?.length || 0} articles
+                            </div>
+                            <div className="text-lg font-bold text-gray-900 mt-1">
+                              {new Intl.NumberFormat('fr-CA', {
+                                style: 'currency',
+                                currency: purchase.currency || 'CAD'
+                              }).format(purchase.total_cost || 0)}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
