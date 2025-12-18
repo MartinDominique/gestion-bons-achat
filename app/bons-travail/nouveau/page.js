@@ -1,4 +1,10 @@
+//==============================
 // app/bons-travail/nouveau/page.js
+//===============================
+// RÔLE: Page de création d'un nouveau bon de travail
+// MODIF: Ajout vérification connexion + timeout + messages d'erreur explicites
+// IMPORTANT: Pas de redirection si la sauvegarde échoue - le BT reste ouvert
+//===============================
 
 'use client';
 
@@ -15,14 +21,14 @@ export default function NouveauBonTravailPage() {
   const [hasChanges, setHasChanges] = useState(false);
 
   const handleSave = async (workOrderData, status) => {
-    // ✅ PROTECTION CRITIQUE: Bloquer si déjà en cours de sauvegarde
+    // ✅ PROTECTION: Bloquer si déjà en cours
     if (saving) {
       console.log('⏸️ Sauvegarde déjà en cours - Requête ignorée');
       toast.error('Sauvegarde déjà en cours...', { duration: 2000 });
       return;
     }
 
-    // ✅ NOUVEAU: Vérifier connexion AVANT de commencer
+    // ✅ Vérifier connexion AVANT de commencer
     if (!navigator.onLine) {
       toast.error('❌ Pas de connexion internet!\n\nImpossible de sauvegarder.\nVérifiez votre connexion et réessayez.', {
         duration: 6000,
@@ -33,18 +39,15 @@ export default function NouveauBonTravailPage() {
           fontWeight: '500',
         },
       });
-      return;
+      return; // ⛔ STOP - ne pas continuer
     }
 
     setSaving(true);
 
-    console.log('📋 CRÉATION - PARENT REÇOIT - workOrderData complet:', workOrderData);
-    console.log('📋 CRÉATION - PARENT REÇOIT - materials:', workOrderData.materials);
-    console.log('📋 CRÉATION - PARENT REÇOIT - materials.length:', workOrderData.materials?.length || 0);
-    console.log('📋 CRÉATION - PARENT REÇOIT - work_description:', workOrderData.work_description);
-    console.log('📋 CRÉATION - status reçu:', status);
+    console.log('📋 CRÉATION - workOrderData:', workOrderData);
+    console.log('📋 CRÉATION - status:', status);
 
-    // ✅ NOUVEAU: Toast de chargement pour feedback immédiat
+    // ✅ Toast de chargement
     const loadingToastId = toast.loading('💾 Sauvegarde en cours...', {
       style: {
         background: '#3b82f6',
@@ -58,15 +61,9 @@ export default function NouveauBonTravailPage() {
         status: status || workOrderData.status || 'draft'
       };
 
-      console.log('📋 CRÉATION - PAYLOAD ENVOYÉ À L\'API:', payload);
-      console.log('📋 CRÉATION - PAYLOAD.materials:', payload.materials);
-      console.log('📋 CRÉATION - PAYLOAD.materials.length:', payload.materials?.length || 0);
-      console.log('📋 CRÉATION - PAYLOAD.work_description:', payload.work_description);
-      console.log('📋 CRÉATION - PAYLOAD.status:', payload.status);
-
-      // ✅ NOUVEAU: Fetch avec timeout de 20 secondes
+      // ✅ Fetch avec timeout de 15 secondes
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch('/api/work-orders', {
         method: 'POST',
@@ -77,32 +74,29 @@ export default function NouveauBonTravailPage() {
 
       clearTimeout(timeoutId);
 
+      // ✅ Fermer le toast de chargement
+      toast.dismiss(loadingToastId);
+
       if (response.ok) {
         const responseData = await response.json();
-        console.log('📋 CRÉATION - RETOUR API COMPLET:', responseData);
-        console.log('📋 CRÉATION - RETOUR API - data.materials:', responseData.data?.materials);
-        console.log('📋 CRÉATION - RETOUR API - data.work_description:', responseData.data?.work_description);
+        console.log('📋 CRÉATION - Réponse API:', responseData);
         
         const savedWorkOrder = responseData.success ? responseData.data : responseData;
-        console.log('📋 CRÉATION - savedWorkOrder extrait:', savedWorkOrder);
         
-        // ✅ Marquer que le BT a été sauvegardé
+        // ✅ Marquer sauvegardé
         setHasSaved(true);
-        // ✅ Réinitialiser les changements après sauvegarde
         setHasChanges(false);
         
-        // ✅ NOUVEAU: Fermer le toast de chargement avec succès
-        toast.dismiss(loadingToastId);
-        
+        // ✅ SUCCÈS CONFIRMÉ - Maintenant on peut afficher succès et rediriger
         if (status !== 'ready_for_signature') {
           const messages = {
-            draft: { text: '💾 Bon de travail sauvegardé en brouillon', duration: 3000 },
-            completed: { text: '✅ Bon de travail créé et finalisé', duration: 3000 },
-            sent: { text: '📧 Bon de travail créé et envoyé au client', duration: 4000 }
+            draft: { text: '💾 Bon de travail sauvegardé!', duration: 3000 },
+            completed: { text: '✅ Bon de travail finalisé!', duration: 3000 },
+            sent: { text: '📧 Bon de travail envoyé!', duration: 4000 }
           };
 
           const finalStatus = status || workOrderData.status || 'draft';
-          const message = messages[finalStatus] || { text: '✅ Bon de travail créé avec succès', duration: 3000 };
+          const message = messages[finalStatus] || { text: '✅ Sauvegardé avec succès!', duration: 3000 };
           
           toast.success(message.text, {
             duration: message.duration,
@@ -110,16 +104,16 @@ export default function NouveauBonTravailPage() {
               background: '#10b981',
               color: '#fff',
               fontSize: '14px',
-              fontWeight: '500',
+              fontWeight: '600',
             },
           });
           
-          // Rediriger après un petit délai pour voir la notification
+          // ✅ Rediriger SEULEMENT après succès confirmé
           setTimeout(() => {
             router.push('/bons-travail');
           }, 500);
         } else {
-          // ✅ Pour ready_for_signature, confirmer aussi
+          // Pour "présenter au client"
           toast.success('✅ Préparation pour signature...', {
             duration: 2000,
             style: {
@@ -132,35 +126,25 @@ export default function NouveauBonTravailPage() {
         return savedWorkOrder;
         
       } else {
-        const errorData = await response.json();
-        console.error('📋 CRÉATION - ERREUR API:', errorData);
-        
-        // ✅ NOUVEAU: Fermer le toast de chargement
-        toast.dismiss(loadingToastId);
-        
-        toast.error('Erreur lors de la création: ' + (errorData.error || 'Erreur inconnue'), {
-          duration: 5000,
-          style: {
-            background: '#ef4444',
-            color: '#fff',
-          },
-        });
-        
-        throw new Error(errorData.error || 'Erreur API');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur serveur (${response.status})`);
       }
-    } catch (error) {
-      console.error('📋 CRÉATION - ERREUR CATCH:', error);
       
-      // ✅ NOUVEAU: Fermer le toast de chargement
+    } catch (error) {
+      console.error('📋 CRÉATION - ERREUR:', error);
+      
+      // ✅ Fermer le toast de chargement
       toast.dismiss(loadingToastId);
       
-      // ✅ NOUVEAU: Messages d'erreur plus explicites selon le type d'erreur
-      let errorMessage = 'Erreur: ' + error.message;
+      // ✅ Messages d'erreur explicites selon le type
+      let errorMessage = '❌ Erreur de sauvegarde\n\n';
       
       if (error.name === 'AbortError') {
-        errorMessage = '❌ Délai dépassé!\n\nLa connexion est trop lente.\nVos données n\'ont peut-être PAS été sauvegardées.\n\nVérifiez et réessayez.';
-      } else if (error.message === 'Failed to fetch') {
-        errorMessage = '❌ Connexion perdue!\n\nVos données n\'ont PAS été sauvegardées.\nVérifiez votre connexion et réessayez.';
+        errorMessage += 'Délai dépassé (15 sec)!\n\nConnexion trop lente.\nVos données n\'ont PAS été sauvegardées.';
+      } else if (error.message === 'Failed to fetch' || !navigator.onLine) {
+        errorMessage += 'Connexion perdue!\n\nVos données n\'ont PAS été sauvegardées.\nVérifiez votre connexion.';
+      } else {
+        errorMessage += error.message;
       }
       
       toast.error(errorMessage, {
@@ -172,25 +156,26 @@ export default function NouveauBonTravailPage() {
         },
       });
       
-      throw error;
+      // ⛔ NE PAS rediriger - le BT reste ouvert
+      // ⛔ NE PAS throw - ça causerait des effets secondaires
+      
+      return null; // Retourner null pour indiquer échec
+      
     } finally {
       setSaving(false);
     }
   };
 
   const handleCancel = () => {
-    // Afficher confirmation SEULEMENT si des changements ont été faits ET jamais sauvegardé
     if (hasChanges && !hasSaved) {
       if (confirm('Annuler la création ? Toutes les données saisies seront perdues.')) {
         router.push('/bons-travail');
       }
     } else {
-      // Pas de changements ou déjà sauvegardé → pas de confirmation
       router.push('/bons-travail');
     }
   };
 
-  // Fonction appelée quand le formulaire change
   const handleFormChange = () => {
     setHasChanges(true);
   };
@@ -201,27 +186,21 @@ export default function NouveauBonTravailPage() {
         position="top-center"
         toastOptions={{
           success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fff',
-            },
+            iconTheme: { primary: '#10b981', secondary: '#fff' },
           },
           error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fff',
-            },
+            iconTheme: { primary: '#ef4444', secondary: '#fff' },
           },
         }}
       />
       
-      {/* Header avec indicateur de connexion */}
+      {/* Header avec indicateur connexion */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold text-gray-900">
             Nouveau Bon de Travail
           </h1>
-          {/* ✅ NOUVEAU: Badge de connexion visible */}
+          {/* Badge de connexion */}
           <ConnectionStatus />
         </div>
         <p className="text-gray-600">
