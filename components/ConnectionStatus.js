@@ -1,4 +1,9 @@
 // components/ConnectionStatus.js
+// ================================
+// RÔLE: Affiche un badge de connexion (🟢 En ligne / 🔴 Hors ligne)
+//       + Bannière d'avertissement rouge quand la connexion tombe
+// USAGE: <ConnectionStatus /> dans n'importe quel header/page
+// ================================
 
 'use client';
 import { useState, useEffect } from 'react';
@@ -9,6 +14,7 @@ export default function ConnectionStatus({ className = '' }) {
   const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
+    // Initialiser avec le statut actuel
     setIsOnline(navigator.onLine);
     
     const handleOnline = () => {
@@ -32,7 +38,7 @@ export default function ConnectionStatus({ className = '' }) {
 
   return (
     <>
-      {/* Badge compact */}
+      {/* Badge compact - toujours visible */}
       <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
         isOnline 
           ? 'bg-green-100 text-green-700' 
@@ -42,16 +48,19 @@ export default function ConnectionStatus({ className = '' }) {
         {isOnline ? 'En ligne' : 'Hors ligne'}
       </div>
 
-      {/* Bannière d'avertissement quand offline */}
+      {/* Bannière d'avertissement quand offline - en haut de l'écran */}
       {showWarning && !isOnline && (
-        <div className="fixed top-0 left-0 right-0 bg-red-600 text-white text-center py-2 text-sm font-medium z-50 animate-pulse">
-          ⚠️ Connexion perdue - Les sauvegardes peuvent échouer
-          <button 
-            onClick={() => setShowWarning(false)}
-            className="ml-4 underline"
-          >
-            Fermer
-          </button>
+        <div className="fixed top-0 left-0 right-0 bg-red-600 text-white text-center py-2 text-sm font-medium z-50 shadow-lg">
+          <div className="flex items-center justify-center gap-2">
+            <WifiOff size={16} />
+            <span>⚠️ Connexion perdue - Les sauvegardes peuvent échouer!</span>
+            <button 
+              onClick={() => setShowWarning(false)}
+              className="ml-4 bg-red-700 hover:bg-red-800 px-2 py-1 rounded text-xs"
+            >
+              Fermer
+            </button>
+          </div>
         </div>
       )}
     </>
