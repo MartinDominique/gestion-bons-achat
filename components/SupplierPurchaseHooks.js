@@ -569,48 +569,84 @@ const [exchangeRateError, setExchangeRateError] = useState('');
       setUsdAmountSelling('');
     };
 
-    const addNonInventoryProduct = () => {
+    const addNonInventoryProduct = async () => {
       if (!nonInventoryForm.product_id || !nonInventoryForm.description || 
           !nonInventoryForm.cost_price || !nonInventoryForm.selling_price) {
         alert('⚠️ Veuillez remplir tous les champs obligatoires');
         return;
       }
     
-      const newItem = {
-        product_id: nonInventoryForm.product_id,
-        description: nonInventoryForm.description,
-        cost_price: parseFloat(nonInventoryForm.cost_price),
-        selling_price: parseFloat(nonInventoryForm.selling_price), // Stocké mais pas affiché
-        unit: nonInventoryForm.unit,
-        product_group: nonInventoryForm.product_group,
-        quantity: 1,
-        notes: '',
-        is_non_inventory: true
-      };
-    
-      const existingItem = selectedItems.find(item => item.product_id === newItem.product_id);
-      
-      if (existingItem) {
+      // Vérifier si le produit existe déjà dans selectedItems
+      const existingInList = selectedItems.find(item => item.product_id === nonInventoryForm.product_id);
+      if (existingInList) {
         alert('⚠️ Ce code produit existe déjà dans la liste');
         return;
       }
     
-      setSelectedItems([...selectedItems, newItem]);
-      
-      // Reset form
-      setNonInventoryForm({
-        product_id: '',
-        description: '',
-        cost_price: '',
-        selling_price: '',
-        unit: 'Un',
-        product_group: 'Non-Inventaire'
-      });
-      setShowNonInventoryModal(false);
-      setShowUsdCalculatorCost(false);
-      setShowUsdCalculatorSelling(false);
-      setUsdAmountCost('');
-      setUsdAmountSelling('');
+      try {
+        // ✅ NOUVEAU: Vérifier si le produit existe déjà dans la BD
+        const { data: existingProduct } = await supabase
+          .from('products')
+          .select('product_id')
+          .eq('product_id', nonInventoryForm.product_id)
+          .single();
+    
+        // Si le produit n'existe pas, le créer dans la BD
+        if (!existingProduct) {
+          const { error: insertError } = await supabase
+            .from('products')
+            .insert({
+              product_id: nonInventoryForm.product_id,
+              description: nonInventoryForm.description,
+              cost_price: parseFloat(nonInventoryForm.cost_price),
+              selling_price: parseFloat(nonInventoryForm.selling_price),
+              unit: nonInventoryForm.unit || 'Un',
+              product_group: nonInventoryForm.product_group || 'Non-Inventaire',
+              is_inventory_item: false  // ← Marqué comme non-inventaire
+            });
+    
+          if (insertError) {
+            console.error('Erreur création produit:', insertError);
+            alert('❌ Erreur lors de la création du produit: ' + insertError.message);
+            return;
+          }
+          console.log('✅ Produit non-inventaire créé dans la BD:', nonInventoryForm.product_id);
+        }
+    
+        // Ajouter au BA en cours
+        const newItem = {
+          product_id: nonInventoryForm.product_id,
+          description: nonInventoryForm.description,
+          cost_price: parseFloat(nonInventoryForm.cost_price),
+          selling_price: parseFloat(nonInventoryForm.selling_price),
+          unit: nonInventoryForm.unit,
+          product_group: nonInventoryForm.product_group,
+          quantity: 1,
+          notes: '',
+          is_non_inventory: true
+        };
+    
+        setSelectedItems([...selectedItems, newItem]);
+        
+        // Reset form
+        setNonInventoryForm({
+          product_id: '',
+          description: '',
+          cost_price: '',
+          selling_price: '',
+          unit: 'Un',
+          product_group: 'Non-Inventaire'
+        });
+        setShowNonInventoryModal(false);
+        setShowUsdCalculatorCost(false);
+        setShowUsdCalculatorSelling(false);
+        setUsdAmountCost('');
+        setUsdAmountSelling('');
+        
+      } catch (error) {
+        console.error('Erreur:', error);
+        alert('❌ Erreur: ' + error.message);
+      }
     };
 
   // ===== GESTION ACHATS FOURNISSEURS =====
