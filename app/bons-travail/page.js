@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye, Search } from 'lucide-react';
+import ConnectionStatus from '../../components/ConnectionStatus';
 
 export default function BonsTravailPage() {
   const [workOrders, setWorkOrders] = useState([]);
@@ -295,6 +296,14 @@ export default function BonsTravailPage() {
                 <Plus className="mr-1 sm:mr-2" size={18} />
                 Nouveau BT
               </Link>
+             <Link 
+                href="/bons-travail/nouveau"
+                className="bg-white text-teal-600 px-4 py-2 rounded-lg..."
+              >
+                <Plus className="mr-1 sm:mr-2" size={18} />
+                Nouveau BT
+              </Link>   
+               <ConnectionStatus className="hidden sm:flex" />   
             </div>
           </div>
 
