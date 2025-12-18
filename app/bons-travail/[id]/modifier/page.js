@@ -1,5 +1,9 @@
 //==============================
-//app/bons-travail/[id]/modifier/page.js
+// app/bons-travail/[id]/modifier/page.js
+//===============================
+// RÔLE: Page d'édition d'un bon de travail existant
+// MODIF: Ajout vérification connexion + timeout + messages d'erreur explicites
+// IMPORTANT: Pas de redirection si la sauvegarde échoue - le BT reste ouvert
 //===============================
 
 'use client';
@@ -50,41 +54,81 @@ export default function ModifierBonTravailPage({ params }) {
     }
   }, [params.id]);
 
-  // Sauvegarder les modifications
+  // =============================================
+  // FONCTION UTILITAIRE: Afficher un toast
+  // =============================================
+  const showToast = (message, type = 'info', duration = 3000) => {
+    // Supprimer tout toast existant
+    const existingToast = document.getElementById('app-toast');
+    if (existingToast) {
+      document.body.removeChild(existingToast);
+    }
+
+    const colors = {
+      loading: { bg: '#3b82f6', text: 'white' },
+      success: { bg: 'linear-gradient(to right, #10b981, #059669)', text: 'white' },
+      error: { bg: '#dc2626', text: 'white' }
+    };
+
+    const color = colors[type] || colors.info;
+
+    const toast = document.createElement('div');
+    toast.id = 'app-toast';
+    toast.innerHTML = message;
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: ${color.bg};
+      color: ${color.text};
+      padding: 16px 32px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      z-index: 9999;
+      font-weight: 600;
+      font-size: 15px;
+      white-space: pre-line;
+      text-align: center;
+      max-width: 90vw;
+    `;
+    document.body.appendChild(toast);
+
+    if (duration > 0) {
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          toast.style.opacity = '0';
+          toast.style.transition = 'opacity 0.3s ease-out';
+          setTimeout(() => {
+            if (document.body.contains(toast)) {
+              document.body.removeChild(toast);
+            }
+          }, 300);
+        }
+      }, duration);
+    }
+
+    return toast;
+  };
+
+  // =============================================
+  // SAUVEGARDER LES MODIFICATIONS
+  // =============================================
   const handleSave = async (workOrderData, status) => {
-    // ✅ NOUVEAU: Vérifier connexion AVANT de commencer
+    // ✅ Vérifier connexion AVANT de commencer
     if (!navigator.onLine) {
-      alert('❌ Pas de connexion internet!\n\nImpossible de sauvegarder.\nVérifiez votre connexion et réessayez.');
-      return;
+      showToast('❌ Pas de connexion internet!\n\nImpossible de sauvegarder.', 'error', 5000);
+      return; // ⛔ STOP - ne pas continuer
     }
 
     setSaving(true);
     setError(null);
 
-    console.log('📝 MODIFICATION - PARENT REÇOIT - workOrderData complet:', workOrderData);
-    console.log('📝 MODIFICATION - PARENT REÇOIT - materials:', workOrderData.materials);
-    console.log('📝 MODIFICATION - PARENT REÇOIT - materials.length:', workOrderData.materials?.length || 0);
-    console.log('📝 MODIFICATION - PARENT REÇOIT - work_description:', workOrderData.work_description);
-    console.log('📝 MODIFICATION - status reçu:', status);
+    console.log('📝 MODIFICATION - workOrderData:', workOrderData);
+    console.log('📝 MODIFICATION - status:', status);
 
-    // ✅ NOUVEAU: Toast de chargement
-    const loadingToast = document.createElement('div');
-    loadingToast.id = 'loading-toast';
-    loadingToast.innerHTML = '💾 Sauvegarde en cours...';
-    loadingToast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #3b82f6;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 9999;
-      font-weight: 500;
-    `;
-    document.body.appendChild(loadingToast);
+    // Afficher toast de chargement (durée 0 = reste affiché)
+    showToast('💾 Sauvegarde en cours...', 'loading', 0);
 
     try {
       const payload = {
@@ -92,15 +136,9 @@ export default function ModifierBonTravailPage({ params }) {
         status: status || workOrderData.status || 'draft'
       };
 
-      console.log('📝 MODIFICATION - PAYLOAD ENVOYÉ À L\'API:', payload);
-      console.log('📝 MODIFICATION - PAYLOAD.materials:', payload.materials);
-      console.log('📝 MODIFICATION - PAYLOAD.materials.length:', payload.materials?.length || 0);
-      console.log('📝 MODIFICATION - PAYLOAD.work_description:', payload.work_description);
-      console.log('📝 MODIFICATION - PAYLOAD.status:', payload.status);
-
-      // ✅ NOUVEAU: Fetch avec timeout de 20 secondes
+      // ✅ Fetch avec timeout de 15 secondes
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch(`/api/work-orders/${params.id}`, {
         method: 'PUT',
@@ -111,130 +149,62 @@ export default function ModifierBonTravailPage({ params }) {
 
       clearTimeout(timeoutId);
 
-      // ✅ NOUVEAU: Retirer le toast de chargement
-      const existingToast = document.getElementById('loading-toast');
-      if (existingToast) {
-        document.body.removeChild(existingToast);
-      }
-
+      // ✅ Vérifier si la réponse est OK
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de la sauvegarde');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur serveur (${response.status})`);
       }
 
       const responseData = await response.json();
-      console.log('📝 MODIFICATION - RETOUR API COMPLET:', responseData);
-      console.log('📝 MODIFICATION - RETOUR API - data.materials:', responseData.data?.materials);
-      console.log('📝 MODIFICATION - RETOUR API - data.work_description:', responseData.data?.work_description);
+      console.log('📝 MODIFICATION - Réponse API:', responseData);
       
       const savedWorkOrder = responseData.success ? responseData.data : responseData;
-      console.log('📝 MODIFICATION - savedWorkOrder extrait:', savedWorkOrder);
-      
-      // Messages selon statut (seulement si pas "présenter client")
+
+      // ✅ SUCCÈS CONFIRMÉ - Maintenant on peut afficher succès et rediriger
       if (status !== 'ready_for_signature') {
         const messages = {
-          completed: 'Bon de travail finalisé avec succès',
-          sent: 'Bon de travail envoyé au client'
+          completed: '✅ Bon de travail finalisé!',
+          sent: '📧 Bon de travail envoyé!'
         };
-
         const finalStatus = status || workOrderData.status || 'draft';
-        const message = messages[finalStatus] || '✅ Bon de travail mis à jour avec succès';
+        const message = messages[finalStatus] || '✅ Sauvegardé avec succès!';
         
-        // Créer le toast de succès
-        const toast = document.createElement('div');
-        toast.textContent = message;
-        toast.style.cssText = `
-          position: fixed;
-          top: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: linear-gradient(to right, #10b981, #059669);
-          color: white;
-          padding: 16px 32px;
-          border-radius: 12px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-          z-index: 9999;
-          font-weight: 600;
-          font-size: 16px;
-          animation: slideDown 0.3s ease-out;
-        `;
+        showToast(message, 'success', 2000);
         
-        const style = document.createElement('style');
-        style.textContent = `
-          @keyframes slideDown {
-            from {
-              opacity: 0;
-              transform: translateX(-50%) translateY(-20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateX(-50%) translateY(0);
-            }
-          }
-        `;
-        document.head.appendChild(style);
-        document.body.appendChild(toast);
-        
+        // ✅ Rediriger SEULEMENT après succès confirmé
         setTimeout(() => {
-          toast.style.opacity = '0';
-          toast.style.transition = 'opacity 0.3s ease-out';
-          setTimeout(() => {
-            document.body.removeChild(toast);
-            document.head.removeChild(style);
-            router.push('/bons-travail');
-          }, 300);
+          router.push('/bons-travail');
         }, 2000);
       } else {
-        // ✅ NOUVEAU: Toast de succès pour ready_for_signature aussi
-        const toast = document.createElement('div');
-        toast.textContent = '✅ Préparation pour signature...';
-        toast.style.cssText = `
-          position: fixed;
-          top: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: #10b981;
-          color: white;
-          padding: 12px 24px;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          z-index: 9999;
-          font-weight: 500;
-        `;
-        document.body.appendChild(toast);
-        setTimeout(() => {
-          if (document.body.contains(toast)) {
-            document.body.removeChild(toast);
-          }
-        }, 2000);
+        // Pour "présenter au client"
+        showToast('✅ Préparation pour signature...', 'success', 2000);
       }
       
-      // Réinitialiser les changements après sauvegarde
       setHasChanges(false);
-      
       return savedWorkOrder;
 
     } catch (err) {
-      console.error('📝 MODIFICATION - Erreur sauvegarde:', err);
+      console.error('📝 MODIFICATION - ERREUR:', err);
       
-      // ✅ NOUVEAU: Retirer le toast de chargement en cas d'erreur
-      const existingToast = document.getElementById('loading-toast');
-      if (existingToast) {
-        document.body.removeChild(existingToast);
-      }
-      
-      // ✅ NOUVEAU: Messages d'erreur plus explicites
-      let errorMessage = err.message;
+      // ✅ Messages d'erreur explicites selon le type
+      let errorMessage = '❌ Erreur de sauvegarde\n\n';
       
       if (err.name === 'AbortError') {
-        errorMessage = '❌ Délai dépassé!\n\nLa connexion est trop lente.\nVos données n\'ont peut-être PAS été sauvegardées.\n\nVérifiez et réessayez.';
-      } else if (err.message === 'Failed to fetch') {
-        errorMessage = '❌ Connexion perdue!\n\nVos données n\'ont PAS été sauvegardées.\nVérifiez votre connexion et réessayez.';
+        errorMessage += 'Délai dépassé (15 sec)!\n\nConnexion trop lente.\nVos données n\'ont PAS été sauvegardées.';
+      } else if (err.message === 'Failed to fetch' || !navigator.onLine) {
+        errorMessage += 'Connexion perdue!\n\nVos données n\'ont PAS été sauvegardées.\nVérifiez votre connexion.';
+      } else {
+        errorMessage += err.message;
       }
       
-      setError(errorMessage);
-      alert(errorMessage);
-      throw err;
+      // ✅ Afficher erreur - le toast reste 8 secondes
+      showToast(errorMessage, 'error', 8000);
+      
+      // ⛔ NE PAS rediriger - le BT reste ouvert
+      // ⛔ NE PAS throw - ça causerait des effets secondaires
+      
+      return null; // Retourner null pour indiquer échec
+      
     } finally {
       setSaving(false);
     }
@@ -268,7 +238,7 @@ export default function ModifierBonTravailPage({ params }) {
     );
   }
 
-  if (error) {
+  if (error && !workOrder) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
@@ -321,7 +291,7 @@ export default function ModifierBonTravailPage({ params }) {
               Modifier {workOrder.bt_number}
             </li>
           </ol>
-          {/* ✅ NOUVEAU: Badge de connexion */}
+          {/* Badge de connexion */}
           <ConnectionStatus />
         </div>
       </nav>
