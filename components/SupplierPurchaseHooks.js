@@ -584,9 +584,9 @@ const [exchangeRateError, setExchangeRateError] = useState('');
       }
     
       try {
-        // ✅ NOUVEAU: Vérifier si le produit existe déjà dans la BD
+        // ✅ Vérifier si le produit existe déjà dans la BD
         const { data: existingProduct } = await supabase
-          .from('products')
+          .from('non_inventory_items')
           .select('product_id')
           .eq('product_id', nonInventoryForm.product_id)
           .single();
@@ -594,7 +594,7 @@ const [exchangeRateError, setExchangeRateError] = useState('');
         // Si le produit n'existe pas, le créer dans la BD
         if (!existingProduct) {
           const { error: insertError } = await supabase
-            .from('products')
+            .from('non_inventory_items')
             .insert({
               product_id: nonInventoryForm.product_id,
               description: nonInventoryForm.description,
@@ -602,7 +602,7 @@ const [exchangeRateError, setExchangeRateError] = useState('');
               selling_price: parseFloat(nonInventoryForm.selling_price),
               unit: nonInventoryForm.unit || 'Un',
               product_group: nonInventoryForm.product_group || 'Non-Inventaire',
-              is_inventory_item: false  // ← Marqué comme non-inventaire
+              is_non_inventory: true
             });
     
           if (insertError) {
@@ -611,6 +611,8 @@ const [exchangeRateError, setExchangeRateError] = useState('');
             return;
           }
           console.log('✅ Produit non-inventaire créé dans la BD:', nonInventoryForm.product_id);
+        } else {
+          console.log('ℹ️ Produit existe déjà dans la BD:', nonInventoryForm.product_id);
         }
     
         // Ajouter au BA en cours
