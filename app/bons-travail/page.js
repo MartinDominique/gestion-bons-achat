@@ -296,13 +296,7 @@ export default function BonsTravailPage() {
                 <Plus className="mr-1 sm:mr-2" size={18} />
                 Nouveau BT
               </Link>
-             <Link 
-                href="/bons-travail/nouveau"
-                className="bg-white text-teal-600 px-4 py-2 rounded-lg..."
-              >
-                <Plus className="mr-1 sm:mr-2" size={18} />
-                Nouveau BT
-              </Link>   
+              
                <ConnectionStatus className="hidden sm:flex" />   
             </div>
           </div>
