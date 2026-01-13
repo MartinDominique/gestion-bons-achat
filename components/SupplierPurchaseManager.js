@@ -130,7 +130,7 @@ export default function SupplierPurchaseManager() {
     updateImportQuantity,
     handleImportSelectedItems,
     
-     // Fonctions utilitaires
+    // Fonctions utilitaires
     resetForm,
     resetSupplierForm,
     resetAddressForm,
@@ -141,7 +141,18 @@ export default function SupplierPurchaseManager() {
     loadSupplierPurchases,
     
     // Données filtrées
-    filteredPurchases
+    filteredPurchases,
+
+    // États modal mise à jour prix
+    showPriceUpdateModal,
+    setShowPriceUpdateModal,
+    priceUpdateItem,
+    priceUpdateForm,
+    setPriceUpdateForm,
+    handlePriceBlur,
+    applyPriceUpdateMargin,
+    updateInventoryPrice,
+    closePriceUpdateModal
   } = hookData;
 
   // États pour le modal de réception
@@ -229,6 +240,16 @@ export default function SupplierPurchaseManager() {
           updateItemPrice={updateItemPrice}
           updateItemNotes={updateItemNotes}
           removeItemFromPurchase={removeItemFromPurchase}
+
+          // Modal mise à jour prix
+          showPriceUpdateModal={showPriceUpdateModal}
+          priceUpdateItem={priceUpdateItem}
+          priceUpdateForm={priceUpdateForm}
+          setPriceUpdateForm={setPriceUpdateForm}
+          handlePriceBlur={handlePriceBlur}
+          applyPriceUpdateMargin={applyPriceUpdateMargin}
+          updateInventoryPrice={updateInventoryPrice}
+          closePriceUpdateModal={closePriceUpdateModal}
           
           // États modals
           setShowSupplierFormModal={setShowSupplierFormModal}
