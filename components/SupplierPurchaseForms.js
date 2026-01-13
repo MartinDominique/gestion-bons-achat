@@ -1462,7 +1462,6 @@ export const SelectedItemsTable = ({
   );
 };
 
-};
 
 // ===== MODAL MISE À JOUR PRIX INVENTAIRE =====
 export const PriceUpdateModal = ({
