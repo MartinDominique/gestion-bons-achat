@@ -1849,7 +1849,16 @@ const cleanupFilesForSubmission = async (files) => {
 
             {/* Suite du formulaire reste inchangée... */}
             <div className="p-4 sm:p-6 no-print">
-              <form id="submission-form" onSubmit={handleSubmissionSubmit} className="space-y-6">
+              <form 
+                id="submission-form" 
+                onSubmit={handleSubmissionSubmit} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+                    e.preventDefault();
+                  }
+                }}
+                className="space-y-6"
+              >
                 
                 {/* Client et Description - Stack sur mobile */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
