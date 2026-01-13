@@ -493,7 +493,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         ...product,
         quantity: quantity,
         notes: '',
-        original_cost_price: product.cost_price // Garder le prix original pour comparaison
+        original_cost_price: product.cost_price
       }, ...selectedItems]);
     }
   };
