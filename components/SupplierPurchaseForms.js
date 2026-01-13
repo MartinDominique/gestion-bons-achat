@@ -1488,6 +1488,8 @@ export const PriceUpdateModal = ({
     if (e.key === 'Escape') {
       onClose();
     } else if (e.key === 'Enter' && form.newSellingPrice) {
+      // Ignorer si on est dans un input (laisser l'input gérer)
+      if (e.target.tagName === 'INPUT') return;
       e.preventDefault();
       onUpdate();
     }
