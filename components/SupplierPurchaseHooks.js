@@ -516,28 +516,41 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
   };
 
   // Vérifier si le prix a changé et ouvrir le modal
-    const handlePriceBlur = (productId, newPrice) => {
-      const item = selectedItems.find(i => i.product_id === productId);
-      if (!item) return;
-      
-      const newPriceFloat = parseFloat(newPrice) || 0;
-      const originalPrice = parseFloat(item.original_cost_price) || 0;
-      
-      // Si le prix a changé, ouvrir le modal
-      if (newPriceFloat !== originalPrice && newPriceFloat > 0) {
-        setPriceUpdateItem({
-          ...item,
-          newCostPrice: newPriceFloat,
-          originalCostPrice: originalPrice
-        });
-        setPriceUpdateForm({
-          newCostPrice: newPriceFloat.toFixed(2),
-          newSellingPrice: '',
-          marginPercent: ''
-        });
-        setShowPriceUpdateModal(true);
-      }
-    };
+  const handlePriceBlur = (productId, newPrice) => {
+    console.log('🔍 handlePriceBlur appelé:', productId, newPrice);
+    
+    const item = selectedItems.find(i => i.product_id === productId);
+    if (!item) {
+      console.log('❌ Item non trouvé');
+      return;
+    }
+    
+    console.log('📦 Item trouvé:', item);
+    console.log('💰 original_cost_price:', item.original_cost_price);
+    
+    const newPriceFloat = parseFloat(newPrice) || 0;
+    const originalPrice = parseFloat(item.original_cost_price) || 0;
+    
+    console.log('Comparaison:', newPriceFloat, 'vs', originalPrice);
+    
+    // Si le prix a changé, ouvrir le modal
+    if (newPriceFloat !== originalPrice && newPriceFloat > 0) {
+      console.log('✅ Prix différent - ouverture modal');
+      setPriceUpdateItem({
+        ...item,
+        newCostPrice: newPriceFloat,
+        originalCostPrice: originalPrice
+      });
+      setPriceUpdateForm({
+        newCostPrice: newPriceFloat.toFixed(2),
+        newSellingPrice: '',
+        marginPercent: ''
+      });
+      setShowPriceUpdateModal(true);
+    } else {
+      console.log('⏭️ Prix identique - pas de modal');
+    }
+  };
     
     // Appliquer la marge pour calculer le prix de vente
     const applyPriceUpdateMargin = (percentage) => {
