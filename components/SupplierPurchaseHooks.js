@@ -1353,7 +1353,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     formatCurrency,
     formatUnitPrice,
     formatDate,
-    getPONumber
+    getPONumber,
 
     // États modal mise à jour prix
     showPriceUpdateModal,
@@ -1366,6 +1366,6 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     handlePriceBlur,
     applyPriceUpdateMargin,
     updateInventoryPrice,
-    closePriceUpdateModal,
+    closePriceUpdateModal
   };
 };
