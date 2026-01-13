@@ -151,6 +151,15 @@ const [usdToCadRate, setUsdToCadRate] = useState(1.35);
 const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
 const [exchangeRateError, setExchangeRateError] = useState('');
 
+  // États pour le modal mise à jour prix inventaire
+const [showPriceUpdateModal, setShowPriceUpdateModal] = useState(false);
+const [priceUpdateItem, setPriceUpdateItem] = useState(null);
+const [priceUpdateForm, setPriceUpdateForm] = useState({
+  newCostPrice: '',
+  newSellingPrice: '',
+  marginPercent: ''
+});
+
   // ===== NOUVELLE FONCTION HELPER POUR STATISTIQUES PAR DATE =====
   const getDateFilterStats = () => {
     const today = new Date();
@@ -483,7 +492,8 @@ const [exchangeRateError, setExchangeRateError] = useState('');
       setSelectedItems([{
         ...product,
         quantity: quantity,
-        notes: ''
+        notes: '',
+        original_cost_price: product.cost_price // Garder le prix original pour comparaison
       }, ...selectedItems]);
     }
   };
@@ -504,6 +514,89 @@ const [exchangeRateError, setExchangeRateError] = useState('');
       item.product_id === productId ? { ...item, cost_price: parseFloat(price) || 0 } : item
     ));
   };
+
+  // Vérifier si le prix a changé et ouvrir le modal
+    const handlePriceBlur = (productId, newPrice) => {
+      const item = selectedItems.find(i => i.product_id === productId);
+      if (!item) return;
+      
+      const newPriceFloat = parseFloat(newPrice) || 0;
+      const originalPrice = parseFloat(item.original_cost_price) || 0;
+      
+      // Si le prix a changé, ouvrir le modal
+      if (newPriceFloat !== originalPrice && newPriceFloat > 0) {
+        setPriceUpdateItem({
+          ...item,
+          newCostPrice: newPriceFloat,
+          originalCostPrice: originalPrice
+        });
+        setPriceUpdateForm({
+          newCostPrice: newPriceFloat.toFixed(2),
+          newSellingPrice: '',
+          marginPercent: ''
+        });
+        setShowPriceUpdateModal(true);
+      }
+    };
+    
+    // Appliquer la marge pour calculer le prix de vente
+    const applyPriceUpdateMargin = (percentage) => {
+      const cost = parseFloat(priceUpdateForm.newCostPrice) || 0;
+      if (cost > 0 && percentage > 0) {
+        const newSelling = cost * (1 + percentage / 100);
+        setPriceUpdateForm(prev => ({
+          ...prev,
+          newSellingPrice: newSelling.toFixed(2),
+          marginPercent: percentage.toString()
+        }));
+      }
+    };
+    
+    // Mettre à jour le prix dans l'inventaire
+    const updateInventoryPrice = async () => {
+      if (!priceUpdateItem || !priceUpdateForm.newSellingPrice) {
+        alert('⚠️ Veuillez entrer un prix de vente');
+        return;
+      }
+    
+      try {
+        const tableName = priceUpdateItem.is_non_inventory ? 'non_inventory_items' : 'products';
+        
+        const { error } = await supabase
+          .from(tableName)
+          .update({
+            cost_price: parseFloat(priceUpdateForm.newCostPrice),
+            selling_price: parseFloat(priceUpdateForm.newSellingPrice)
+          })
+          .eq('product_id', priceUpdateItem.product_id);
+    
+        if (error) throw error;
+    
+        console.log(`✅ Prix mis à jour dans ${tableName}:`, priceUpdateItem.product_id);
+        
+        // Mettre à jour l'item dans selectedItems avec le nouveau original_cost_price
+        setSelectedItems(prev => prev.map(item =>
+          item.product_id === priceUpdateItem.product_id
+            ? { ...item, original_cost_price: parseFloat(priceUpdateForm.newCostPrice), selling_price: parseFloat(priceUpdateForm.newSellingPrice) }
+            : item
+        ));
+    
+        setShowPriceUpdateModal(false);
+        setPriceUpdateItem(null);
+        setPriceUpdateForm({ newCostPrice: '', newSellingPrice: '', marginPercent: '' });
+    
+      } catch (error) {
+        console.error('Erreur mise à jour prix:', error);
+        alert('❌ Erreur: ' + error.message);
+      }
+    };
+    
+    // Fermer le modal sans mettre à jour l'inventaire
+    const closePriceUpdateModal = () => {
+      setShowPriceUpdateModal(false);
+      setPriceUpdateItem(null);
+      setPriceUpdateForm({ newCostPrice: '', newSellingPrice: '', marginPercent: '' });
+    };
 
   const updateItemNotes = (productId, notes) => {
     setSelectedItems(selectedItems.map(item =>
@@ -1261,5 +1354,18 @@ const [exchangeRateError, setExchangeRateError] = useState('');
     formatUnitPrice,
     formatDate,
     getPONumber
+
+    // États modal mise à jour prix
+    showPriceUpdateModal,
+    setShowPriceUpdateModal,
+    priceUpdateItem,
+    priceUpdateForm,
+    setPriceUpdateForm,
+    
+    // Fonctions modal mise à jour prix
+    handlePriceBlur,
+    applyPriceUpdateMargin,
+    updateInventoryPrice,
+    closePriceUpdateModal,
   };
 };
