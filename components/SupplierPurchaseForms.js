@@ -98,7 +98,17 @@ export const PurchaseForm = ({
   
   // Reset forms
   resetSupplierForm,
-  resetAddressForm
+  resetAddressForm,
+
+  // Modal mise à jour prix
+  showPriceUpdateModal,
+  priceUpdateItem,
+  priceUpdateForm,
+  setPriceUpdateForm,
+  handlePriceBlur,
+  applyPriceUpdateMargin,
+  updateInventoryPrice,
+  closePriceUpdateModal
 }) => {
   
   const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
@@ -856,6 +866,18 @@ Merci!`;
                 updateItemNotes={updateItemNotes}
                 removeItemFromPurchase={removeItemFromPurchase}
                 formatCurrency={formatCurrency}
+                handlePriceBlur={handlePriceBlur}
+              />
+
+              {/* Modal mise à jour prix inventaire */}
+              <PriceUpdateModal
+                showModal={showPriceUpdateModal}
+                item={priceUpdateItem}
+                form={priceUpdateForm}
+                setForm={setPriceUpdateForm}
+                applyMargin={applyPriceUpdateMargin}
+                onUpdate={updateInventoryPrice}
+                onClose={closePriceUpdateModal}
               />
 
               {/* Notes */}
@@ -1360,7 +1382,8 @@ export const SelectedItemsTable = ({
   updateItemPrice,
   updateItemNotes,
   removeItemFromPurchase,
-  formatCurrency
+  formatCurrency,
+  handlePriceBlur
 }) => {
   if (selectedItems.length === 0) return null;
 
@@ -1405,6 +1428,7 @@ export const SelectedItemsTable = ({
                     min="0"
                     value={item.cost_price}
                     onChange={(e) => updateItemPrice(item.product_id, e.target.value)}
+                    onBlur={(e) => handlePriceBlur && handlePriceBlur(item.product_id, e.target.value)}
                     className="w-24 text-right rounded border-gray-300"
                   />
                 </td>
@@ -1437,6 +1461,164 @@ export const SelectedItemsTable = ({
     </div>
   );
 };
+
+};
+
+// ===== MODAL MISE À JOUR PRIX INVENTAIRE =====
+export const PriceUpdateModal = ({
+  showModal,
+  item,
+  form,
+  setForm,
+  applyMargin,
+  onUpdate,
+  onClose
+}) => {
+  if (!showModal || !item) return null;
+
+  const priceDiff = item.newCostPrice - item.originalCostPrice;
+  const priceDiffPercent = item.originalCostPrice > 0 
+    ? ((priceDiff / item.originalCostPrice) * 100).toFixed(1)
+    : 0;
+
+  const currentMargin = form.newCostPrice && form.newSellingPrice
+    ? (((parseFloat(form.newSellingPrice) - parseFloat(form.newCostPrice)) / parseFloat(form.newSellingPrice)) * 100).toFixed(1)
+    : null;
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      onClose();
+    } else if (e.key === 'Enter' && form.newSellingPrice) {
+      e.preventDefault();
+      onUpdate();
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      onKeyDown={handleKeyDown}
+    >
+      <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
+        <div className="bg-amber-50 px-6 py-4 border-b">
+          <h3 className="text-lg font-semibold text-amber-900">
+            Mise à jour prix inventaire
+          </h3>
+          <p className="text-sm text-amber-700 mt-1">
+            {item.product_id} - {item.description}
+          </p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Prix inventaire actuel:</span>
+              <span className="font-medium">{item.originalCostPrice?.toFixed(2)} $</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Nouveau prix fournisseur:</span>
+              <span className={`font-bold ${priceDiff > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {item.newCostPrice?.toFixed(2)} $
+                <span className="ml-2 text-sm">
+                  ({priceDiff > 0 ? '↑' : '↓'} {Math.abs(priceDiff).toFixed(2)}$ / {priceDiff > 0 ? '+' : ''}{priceDiffPercent}%)
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-green-50 p-4 rounded-lg">
+            <label className="block text-sm font-medium text-green-800 mb-2">
+              Calcul automatique par marge %
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={form.marginPercent}
+                onChange={(e) => setForm({...form, marginPercent: e.target.value})}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    applyMargin(parseFloat(e.target.value) || 0);
+                  }
+                }}
+                className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2"
+                placeholder="Ex: 25"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => applyMargin(parseFloat(form.marginPercent) || 0)}
+                disabled={!form.marginPercent || parseFloat(form.marginPercent) <= 0}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                OK
+              </button>
+            </div>
+            <div className="flex gap-1">
+              {[15, 20, 25, 30].map(pct => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => applyMargin(pct)}
+                  className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nouveau prix de vente *
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.newSellingPrice}
+              onChange={(e) => setForm({...form, newSellingPrice: e.target.value})}
+              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 p-3"
+              placeholder="0.00"
+            />
+          </div>
+
+          {currentMargin && (
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="text-sm text-gray-600 mb-1">Aperçu marge:</div>
+              <div className={`text-lg font-medium ${
+                parseFloat(currentMargin) >= 20 ? 'text-green-600' : 
+                parseFloat(currentMargin) >= 10 ? 'text-amber-600' : 'text-red-600'
+              }`}>
+                {currentMargin}%
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-gray-50 px-6 py-4 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+          >
+            Ignorer (Esc)
+          </button>
+          <button
+            onClick={onUpdate}
+            disabled={!form.newSellingPrice}
+            className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Mettre à jour (Enter)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 // ===== MODAL GESTION FOURNISSEURS =====
 export const SupplierModal = ({ 
