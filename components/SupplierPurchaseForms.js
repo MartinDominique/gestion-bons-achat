@@ -565,7 +565,16 @@ Merci!`;
           
           {/* Contenu du formulaire */}
           <div className="p-4 sm:p-6">
-            <form id="purchase-form" onSubmit={handlePurchaseSubmit} className="space-y-6">
+            <form 
+              id="purchase-form" 
+              onSubmit={handlePurchaseSubmit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+                  e.preventDefault();
+                }
+              }}
+              className="space-y-6"
+            >
               
               {/* Fournisseur et Bon d'achat lié */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
