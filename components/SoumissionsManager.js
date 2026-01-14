@@ -42,6 +42,16 @@ export default function SoumissionsManager() {
   const [editingCommentItem, setEditingCommentItem] = useState(null);
   const [tempComment, setTempComment] = useState('');
 
+  // États pour le modal d'édition de ligne
+  const [showEditItemModal, setShowEditItemModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [editItemForm, setEditItemForm] = useState({
+    quantity: '',
+    selling_price: '',
+    cost_price: '',
+    comment: ''
+  });
+
   // États pour le calculateur USD
   const [showUsdCalculator, setShowUsdCalculator] = useState(false);
   const [usdAmount, setUsdAmount] = useState('');
@@ -492,6 +502,60 @@ export default function SoumissionsManager() {
     setShowCommentModal(false);
     setEditingCommentItem(null);
     setTempComment('');
+  };
+
+  // Fonctions pour le modal d'édition de ligne
+  const openEditItemModal = (item) => {
+    setEditingItem(item);
+    setEditItemForm({
+      quantity: item.quantity.toString(),
+      selling_price: item.selling_price.toString(),
+      cost_price: item.cost_price.toString(),
+      comment: item.comment || ''
+    });
+    setShowEditItemModal(true);
+  };
+
+  const closeEditItemModal = () => {
+    setShowEditItemModal(false);
+    setEditingItem(null);
+    setEditItemForm({
+      quantity: '',
+      selling_price: '',
+      cost_price: '',
+      comment: ''
+    });
+  };
+
+  const saveEditItemModal = () => {
+    if (!editingItem) return;
+    
+    const qty = parseFloat(editItemForm.quantity);
+    if (isNaN(qty) || qty <= 0) {
+      alert('⚠️ Quantité invalide');
+      return;
+    }
+
+    setSelectedItems(selectedItems.map(item =>
+      item.product_id === editingItem.product_id
+        ? {
+            ...item,
+            quantity: qty,
+            selling_price: parseFloat(editItemForm.selling_price) || 0,
+            cost_price: parseFloat(editItemForm.cost_price) || 0,
+            comment: editItemForm.comment.trim()
+          }
+        : item
+    ));
+    closeEditItemModal();
+  };
+
+  const deleteFromEditModal = () => {
+    if (!editingItem) return;
+    if (confirm(`Supprimer "${editingItem.description}" de la soumission?`)) {
+      removeItemFromSubmission(editingItem.product_id);
+      closeEditItemModal();
+    }
   };
 
   const saveComment = () => {
@@ -2337,6 +2401,162 @@ const cleanupFilesForSubmission = async (files) => {
                   </div>
                 )}
 
+                {/* Modal édition de ligne */}
+                {showEditItemModal && editingItem && (
+                  <div 
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) closeEditItemModal();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') closeEditItemModal();
+                    }}
+                  >
+                    <div className="bg-white rounded-xl w-full max-w-md shadow-2xl">
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-t-xl">
+                        <h3 className="text-lg font-bold">Modifier l'article</h3>
+                        <p className="text-purple-100 text-sm mt-1 truncate">
+                          {editingItem.product_id} - {editingItem.description}
+                        </p>
+                      </div>
+
+                      {/* Formulaire */}
+                      <div className="p-6 space-y-4">
+                        {/* Quantité */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Quantité ({editingItem.unit})
+                          </label>
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            value={editItemForm.quantity}
+                            onChange={(e) => setEditItemForm({...editItemForm, quantity: e.target.value})}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveEditItemModal();
+                              }
+                            }}
+                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3 text-lg"
+                            autoFocus
+                          />
+                        </div>
+
+                        {/* Prix de vente */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Prix de vente ($)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editItemForm.selling_price}
+                            onChange={(e) => setEditItemForm({...editItemForm, selling_price: e.target.value})}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveEditItemModal();
+                              }
+                            }}
+                            className="w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
+                          />
+                        </div>
+
+                        {/* Prix coûtant */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Prix coûtant ($)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editItemForm.cost_price}
+                            onChange={(e) => setEditItemForm({...editItemForm, cost_price: e.target.value})}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveEditItemModal();
+                              }
+                            }}
+                            className="w-full rounded-lg border-orange-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3"
+                          />
+                        </div>
+
+                        {/* Commentaire */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Commentaire (optionnel)
+                          </label>
+                          <textarea
+                            value={editItemForm.comment}
+                            onChange={(e) => setEditItemForm({...editItemForm, comment: e.target.value})}
+                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3"
+                            rows={2}
+                            placeholder="Note pour cet article..."
+                          />
+                        </div>
+
+                        {/* Aperçu totaux */}
+                        <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Total vente:</span>
+                            <span className="font-medium text-green-700">
+                              {formatCurrency((parseFloat(editItemForm.quantity) || 0) * (parseFloat(editItemForm.selling_price) || 0))}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Total coût:</span>
+                            <span className="font-medium text-orange-700">
+                              {formatCurrency((parseFloat(editItemForm.quantity) || 0) * (parseFloat(editItemForm.cost_price) || 0))}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm border-t pt-1 mt-1">
+                            <span className="text-gray-600">Marge:</span>
+                            <span className="font-medium text-blue-700">
+                              {formatCurrency(
+                                ((parseFloat(editItemForm.quantity) || 0) * (parseFloat(editItemForm.selling_price) || 0)) -
+                                ((parseFloat(editItemForm.quantity) || 0) * (parseFloat(editItemForm.cost_price) || 0))
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex justify-between items-center">
+                        <button
+                          type="button"
+                          onClick={deleteFromEditModal}
+                          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-2"
+                        >
+                          🗑️ Supprimer
+                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={closeEditItemModal}
+                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+                          >
+                            Annuler (Esc)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={saveEditItemModal}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                          >
+                            Sauvegarder (Enter)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* MODAL POUR LES COMMENTAIRES */}
                 {showCommentModal && editingCommentItem && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -2410,7 +2630,11 @@ const cleanupFilesForSubmission = async (files) => {
                           {[...selectedItems].reverse().map((item, reverseIndex) => {
                             const originalIndex = selectedItems.length - 1 - reverseIndex;
                             return (
-                              <tr key={item.product_id} className="border-b border-yellow-100 hover:bg-yellow-50">
+                              <tr 
+                                key={item.product_id} 
+                                className="border-b border-yellow-100 hover:bg-yellow-50 cursor-pointer"
+                                onClick={() => openEditItemModal(item)}
+                              >
                                 <td className="p-2 font-mono text-xs">{item.product_id}</td>
                                 <td className="p-2">
                                   <div className="max-w-xs">
@@ -2423,10 +2647,10 @@ const cleanupFilesForSubmission = async (files) => {
                                     )}
                                   </div>
                                 </td>
-                                <td className="p-2 text-center">
+                                <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="number"
-                                    step="0.1"
+                                    step="0.001"
                                     min="0"
                                     value={item.quantity}
                                     onChange={(e) => {
@@ -2438,7 +2662,7 @@ const cleanupFilesForSubmission = async (files) => {
                                     className="w-16 text-center rounded border-gray-300 text-sm"
                                   />
                                 </td>
-                                <td className="p-2 text-right">
+                                <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="number"
                                     step="0.01"
@@ -2448,7 +2672,7 @@ const cleanupFilesForSubmission = async (files) => {
                                     className="w-20 text-right rounded border-green-300 text-sm focus:border-green-500 focus:ring-green-500"
                                   />
                                 </td>
-                                <td className="p-2 text-right">
+                                <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="number"
                                     step="any"
@@ -2464,7 +2688,7 @@ const cleanupFilesForSubmission = async (files) => {
                                 <td className="p-2 text-right font-medium text-orange-700">
                                   {formatCurrency(item.cost_price * item.quantity)}
                                 </td>
-                                <td className="p-2 text-center">
+                                <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     type="button"
                                     onClick={() => openCommentModal(item)}
@@ -2478,7 +2702,7 @@ const cleanupFilesForSubmission = async (files) => {
                                     <MessageSquare className="w-3 h-3" />
                                   </button>
                                 </td>
-                                <td className="p-2 text-center">
+                                <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     type="button"
                                     onClick={() => removeItemFromSubmission(item.product_id)}
@@ -2497,40 +2721,31 @@ const cleanupFilesForSubmission = async (files) => {
 
                     {/* Cards pour mobile - Version tronquée */}
                     <div className="sm:hidden space-y-3">
-                      {[...selectedItems].reverse().slice(0, 3).map((item) => (
-                        <div key={item.product_id} className="bg-white p-3 rounded-lg border border-yellow-200">
+                      {[...selectedItems].reverse().map((item) => (
+                        <div 
+                          key={item.product_id} 
+                          className="bg-white p-3 rounded-lg border border-yellow-200 cursor-pointer active:bg-yellow-50"
+                          onClick={() => openEditItemModal(item)}
+                        >
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1">
                               <h4 className="font-medium text-gray-900 text-sm">{item.product_id}</h4>
                               <p className="text-xs text-gray-600">{item.description}</p>
+                              {item.comment && (
+                                <p className="text-xs text-blue-600 italic mt-1">💬 {item.comment}</p>
+                              )}
                             </div>
-                            <div className="flex gap-1 ml-2">
-                              <button
-                                type="button"
-                                onClick={() => openCommentModal(item)}
-                                className="p-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
-                              >
-                                <MessageSquare className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeItemFromSubmission(item.product_id)}
-                                className="p-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
+                            <div className="text-right">
+                              <div className="text-sm font-medium text-green-700">
+                                {formatCurrency(item.selling_price * item.quantity)}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Qté: {item.quantity} × {formatCurrency(item.selling_price)}
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-sm font-medium text-green-700">
-                            Total: {formatCurrency(item.selling_price * item.quantity)}
                           </div>
                         </div>
                       ))}
-                      {selectedItems.length > 3 && (
-                        <div className="text-center text-sm text-gray-500 bg-gray-50 p-2 rounded">
-                          ... et {selectedItems.length - 3} autres produits
-                        </div>
-                      )}
                     </div>
                     
                     <div className="mt-3 space-y-2">
