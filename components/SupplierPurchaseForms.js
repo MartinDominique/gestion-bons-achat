@@ -126,6 +126,27 @@ export const PurchaseForm = ({
 
   // Fonction pour imprimer et envoyer au fournisseur par email
   const imprimerEtEnvoyerFournisseur = async () => {
+    // Validation des champs obligatoires
+    const missingFields = [];
+    
+    if (!purchaseForm.supplier_id) {
+      missingFields.push('Fournisseur');
+    }
+    if (!purchaseForm.shipping_address_id) {
+      missingFields.push('Adresse de livraison');
+    }
+    if (!purchaseForm.delivery_date) {
+      missingFields.push('Date livraison prévue');
+    }
+    if (selectedItems.length === 0) {
+      missingFields.push('Au moins un produit');
+    }
+    
+    if (missingFields.length > 0) {
+      alert(`⚠️ Champs obligatoires manquants:\n\n• ${missingFields.join('\n• ')}`);
+      return;
+    }
+
     if (!selectedSupplier) {
       alert('⚠️ Veuillez sélectionner un fournisseur avant d\'envoyer');
       return;
@@ -133,11 +154,6 @@ export const PurchaseForm = ({
 
     if (!selectedSupplier.email) {
       alert('⚠️ Aucun email trouvé pour ce fournisseur.\nAjoutez un email dans la fiche fournisseur.');
-      return;
-    }
-
-    if (selectedItems.length === 0) {
-      alert('⚠️ Veuillez ajouter au moins un produit avant d\'envoyer');
       return;
     }
 
@@ -675,7 +691,7 @@ Merci!`;
 
                 <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                   <label className="block text-sm font-semibold text-yellow-800 mb-2">
-                    Soumission *
+                    Soumission
                   </label>
                   <input
                     type="text"
@@ -683,13 +699,12 @@ Merci!`;
                     onChange={(e) => setPurchaseForm({...purchaseForm, supplier_quote_reference: e.target.value})}
                     className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
                     placeholder="Réf. soumission fournisseur"
-                    required
                   />
                 </div>
 
                 <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
                   <label className="block text-sm font-semibold text-indigo-800 mb-2">
-                    Date livraison prévue
+                    Date livraison prévue *
                   </label>
                   <input
                     type="date"
