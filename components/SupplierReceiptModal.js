@@ -43,6 +43,9 @@ export default function SupplierReceiptModal({
   // Notes de réception
   const [receiptNotes, setReceiptNotes] = useState('');
   
+  // Numéro bon de livraison fournisseur
+  const [supplierDeliveryNumber, setSupplierDeliveryNumber] = useState('');
+  
   // Onglet actif
   const [activeTab, setActiveTab] = useState('receive'); // 'receive' ou 'history'
 
@@ -228,6 +231,7 @@ export default function SupplierReceiptModal({
           is_non_inventory: item.is_non_inventory
         })),
         notes: receiptNotes,
+        supplier_delivery_number: supplierDeliveryNumber || null,
         received_at: new Date().toISOString()
       };
       
@@ -308,6 +312,7 @@ export default function SupplierReceiptModal({
       // Recharger les données
       await loadReceiptData();
       setReceiptNotes('');
+      setSupplierDeliveryNumber('');
       
       // Notifier le parent
       if (onReceiptComplete) {
@@ -532,6 +537,20 @@ export default function SupplierReceiptModal({
                 ))}
               </div>
 
+             {/* Numéro bon de livraison fournisseur */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  N° Bon de livraison fournisseur (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={supplierDeliveryNumber}
+                  onChange={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
+                  placeholder="Ex: BL-12345, 987654..."
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
+
               {/* Notes */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -565,6 +584,11 @@ export default function SupplierReceiptModal({
                         <p className="text-xs text-gray-500">
                           {formatDate(receipt.received_at)}
                         </p>
+                        {receipt.supplier_delivery_number && (
+                          <p className="text-xs text-blue-600 font-medium mt-1">
+                            📦 BL: {receipt.supplier_delivery_number}
+                          </p>
+                        )}
                       </div>
                       <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">
                         {receipt.items_received?.length || 0} article(s)
