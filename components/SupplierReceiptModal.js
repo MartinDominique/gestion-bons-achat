@@ -450,7 +450,14 @@ export default function SupplierReceiptModal({
 
               {/* Liste des items */}
               <div className="space-y-2">
-                {receiptItems.map((item, index) => (
+                {receiptItems.filter(item => item.quantity_remaining > 0).length === 0 ? (
+                  <div className="text-center py-8 bg-green-50 rounded-lg border border-green-200">
+                    <Check className="w-12 h-12 mx-auto mb-3 text-green-500" />
+                    <p className="text-green-700 font-medium">Tous les articles ont été reçus!</p>
+                    <p className="text-green-600 text-sm mt-1">Cette commande est complète.</p>
+                  </div>
+                ) : (
+                  receiptItems.filter(item => item.quantity_remaining > 0).map((item, index) => (
                   <div
                     key={index}
                     className={`border rounded-lg p-3 transition-colors ${
@@ -534,7 +541,8 @@ export default function SupplierReceiptModal({
                       </div>
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
 
              {/* Numéro bon de livraison fournisseur */}
@@ -632,23 +640,36 @@ export default function SupplierReceiptModal({
             >
               Fermer
             </button>
-            <button
-              onClick={handleSaveReceipt}
-              disabled={saving || itemsToReceiveCount === 0}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Enregistrement...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  Enregistrer la réception
-                </>
-              )}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveReceipt}
+                disabled={saving || itemsToReceiveCount === 0}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Enregistrer la réception
+                  </>
+                )}
+              </button>
+              <button
+                onClick={async () => {
+                  await handleSaveReceipt();
+                  if (itemsToReceiveCount > 0) onClose();
+                }}
+                disabled={saving || itemsToReceiveCount === 0}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                Enregistrer et Fermer
+              </button>
+            </div>
           </div>
         )}
       </div>
