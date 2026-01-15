@@ -8,5 +8,19 @@
       "path": "/api/send-daily-report", 
       "schedule": "0 12 * * 1-5"
     }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
+      "source": "/bt/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+      ]
+    }
   ]
 }
