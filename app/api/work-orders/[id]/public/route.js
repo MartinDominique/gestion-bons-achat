@@ -34,6 +34,24 @@ export async function GET(request, { params }) {
 
     // Vérifier que le BT est dans un état présentable
     const allowedStatuses = ['ready_for_signature', 'signed', 'completed', 'sent'];
+    
+    // Auto-correction: Si le BT est en draft mais qu'on accède à la page publique,
+    // c'est que le changement de statut a échoué. On le corrige automatiquement.
+    if (data.status === 'draft') {
+      console.log('⚠️ BT en draft accédé via URL publique - Correction automatique vers ready_for_signature');
+      const { error: updateError } = await supabaseAdmin
+        .from('work_orders')
+        .update({ status: 'ready_for_signature' })
+        .eq('id', workOrderId);
+      
+      if (updateError) {
+        console.error('Erreur mise à jour statut:', updateError);
+      } else {
+        data.status = 'ready_for_signature';
+        console.log('✅ Statut corrigé automatiquement');
+      }
+    }
+    
     if (!allowedStatuses.includes(data.status)) {
       console.error('Status refusé:', data.status, '- Attendu:', allowedStatuses);
       return NextResponse.json({ 
