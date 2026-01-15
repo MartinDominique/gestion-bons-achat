@@ -457,9 +457,9 @@ export default function SupplierReceiptModal({
                     <p className="text-green-600 text-sm mt-1">Cette commande est complète.</p>
                   </div>
                 ) : (
-                  receiptItems.filter(item => item.quantity_remaining > 0).map((item, index) => (
+                  receiptItems.filter(item => item.quantity_remaining > 0).map((item) => (
                   <div
-                    key={index}
+                    key={item.index}
                     className={`border rounded-lg p-3 transition-colors ${
                       item.quantity_remaining === 0
                         ? 'bg-green-50 border-green-200'
@@ -473,7 +473,7 @@ export default function SupplierReceiptModal({
                       <input
                         type="checkbox"
                         checked={item.selected}
-                        onChange={() => toggleItemSelection(index)}
+                        onChange={() => toggleItemSelection(item.index)}
                         disabled={item.quantity_remaining === 0}
                         className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
                       />
@@ -533,7 +533,7 @@ export default function SupplierReceiptModal({
                           min="0"
                           max={item.quantity_remaining}
                           value={item.quantity_to_receive || ''}
-                          onChange={(e) => updateQuantityToReceive(index, e.target.value)}
+                          onChange={(e) => updateQuantityToReceive(item.index, e.target.value)}
                           disabled={item.quantity_remaining === 0}
                           className="w-full px-2 py-1 border rounded text-center font-medium disabled:bg-gray-100 disabled:text-gray-400"
                           placeholder="0"
