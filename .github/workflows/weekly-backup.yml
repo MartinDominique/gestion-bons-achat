@@ -2,37 +2,73 @@ name: 💾 Backup Quotidien Supabase
 
 on:
   schedule:
-    # Tous les jours à 22h UTC = 18h Québec (heure normale)
+    # Tous les jours à 20h UTC = 15h Québec (heure normale)
     - cron: '0 20 * * *'
-  
+
   # Permet de déclencher manuellement pour tester
   workflow_dispatch:
 
 jobs:
   backup-database:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
+
     steps:
+      - name: 🔍 Vérifier la configuration
+        run: |
+          echo "🔍 Vérification de la configuration..."
+
+          if [ -z "${{ secrets.VERCEL_URL }}" ]; then
+            echo "❌ ERREUR: Le secret VERCEL_URL n'est pas configuré"
+            echo "👉 Allez dans Settings > Secrets and variables > Actions pour l'ajouter"
+            exit 1
+          fi
+
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ ERREUR: Le secret CRON_SECRET n'est pas configuré"
+            echo "👉 Allez dans Settings > Secrets and variables > Actions pour l'ajouter"
+            exit 1
+          fi
+
+          echo "✅ Configuration OK"
+          echo "📍 URL cible: ${{ secrets.VERCEL_URL }}/api/cron/backup"
+
       - name: 💾 Faire le backup de la base de données
         run: |
+          echo "🚀 Démarrage du backup..."
+
           response=$(curl -s -w "\n%{http_code}" \
+            --max-time 300 \
             -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.VERCEL_URL }}/api/cron/backup")
-          
+
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n-1)
-          
+
           echo "📊 Statut HTTP: $http_code"
           echo "📄 Réponse: $body"
-          
-          if [ "$http_code" != "200" ]; then
-            echo "❌ Erreur lors du backup"
+
+          if [ "$http_code" = "000" ]; then
+            echo "❌ Erreur de connexion - URL inaccessible ou timeout"
             exit 1
           fi
-          
+
+          if [ "$http_code" = "401" ]; then
+            echo "❌ Erreur d'authentification - Vérifiez CRON_SECRET"
+            exit 1
+          fi
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Erreur lors du backup (HTTP $http_code)"
+            exit 1
+          fi
+
           echo "✅ Backup envoyé avec succès!"
-      
+
       - name: 📝 Log du résultat
         if: always()
-        run: echo "Job terminé - Vérifiez les logs ci-dessus"
+        run: |
+          echo "=================================="
+          echo "Job terminé à $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "=================================="
