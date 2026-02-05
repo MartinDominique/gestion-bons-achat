@@ -38,11 +38,11 @@ Document d'analyse technique et recommandations pour l'amelioration de l'applica
 ### 2. Terminologie Confuse (Priorite: Moyenne)
 
 **Probleme:** Le terme "Bon d'Achat" est utilise pour deux concepts differents:
-- BA Client (purchase_orders)
-- AF Fournisseur (supplier_purchases)
+- BA Bons d'achat Clients (purchase_orders)
+- AF  Achats Fournisseurs (supplier_purchases)
 
 **Solution:** Renommer dans l'interface:
-- "Bons d'Achat" → "Commandes Client" ou "BA Client"
+- "Bons d'Achat" → "Commandes Client" ou "BA Client"  //Martin t. : Dans la page principal, il est nommé : Clients. Ne pas le changer dans la page!
 - Page `/achat-materiels` → garder mais clarifier le titre
 
 ### 3. Champs Redondants en BD (Priorite: Basse)
