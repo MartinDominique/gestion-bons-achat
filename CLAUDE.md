@@ -5,9 +5,25 @@ Ce fichier contient les informations essentielles pour comprendre et modifier ce
 ## Contexte Rapide
 
 **Application:** Gestion operationnelle pour Services TMT Inc. (services techniques + panneaux d'automatisation)
-**Utilisateur principal:** Martin Dominique (seul utilisateur actuellement)
+**Utilisateur principal:** Martin Dominique (seul utilisateur actuellement, multi-utilisateurs prevu)
 **Localisation:** Saint-Georges, Quebec, Canada
 **Stack:** Next.js 14 + Supabase + Resend + Vercel
+
+---
+
+## Usage Mobile vs Desktop (IMPORTANT)
+
+| Module | Desktop | Mobile | Appareil Mobile |
+|--------|---------|--------|-----------------|
+| Clients | 20% | **80%** | - |
+| Soumissions | 95% | 5% | - |
+| Inventaire | 95% | 5% | - |
+| Achats (AF) | 95% | 5% | - |
+| **Bons de Travail** | 5% | **95%** | 75% Tablette, 25% Pixel 8 |
+| Gestion Client | 50% | 50% | - |
+
+**CRITIQUE:** Le module Bons de Travail est utilise a 95% sur mobile/tablette.
+Toute modification aux composants BT doit etre testee en responsive.
 
 ---
 
@@ -160,6 +176,8 @@ CRON_SECRET                   # Auth pour cron jobs
 1. **Backup/Restauration** - `/api/admin/restore` jamais teste
 2. **Bon de livraison digital** - Pour tablette, a implementer
 3. **Workflow Prix Jobe** - A simplifier
+4. **Rapport hebdomadaire** - Format a revoir (le rapport Achats est OK)
+5. **Multi-utilisateurs** - Systeme de permissions a preparer
 
 ### Bugs potentiels
 - Code duplique dans `email-service.js` (fonction `formatQuebecDateTime` apparait 2 fois)

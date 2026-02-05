@@ -229,18 +229,63 @@ Pas de tests automatises detectes.
 
 ---
 
-## Questions pour l'Utilisateur
+## Reponses de l'Utilisateur (2026-02-05)
 
-1. **Stockage backups:** Preferez-vous garder les backups par email ou les stocker dans Supabase Storage?
+### 1. Stockage backups
+**Reponse:** Email (garder le systeme actuel)
 
-2. **Multi-utilisateurs:** Prevoyez-vous d'autres utilisateurs a l'avenir? Si oui, faudra penser aux permissions.
+### 2. Multi-utilisateurs
+**Reponse:** Oui, prevu a l'avenir
 
-3. **Mobile:** L'app est-elle principalement utilisee sur tablette/mobile ou desktop?
+**Impact:** Necessitera:
+- Systeme de permissions/roles (admin, technicien, bureau)
+- RLS Supabase par utilisateur
+- Audit trail (qui a modifie quoi)
 
-4. **Rapports:** Les rapports quotidiens/hebdomadaires sont-ils utiles dans leur format actuel?
+### 3. Usage Mobile vs Desktop
 
-5. **Historique:** Combien de temps souhaitez-vous garder l'historique des BT/BA completes?
+| Module | Desktop | Mobile | Details Mobile |
+|--------|---------|--------|----------------|
+| Clients | 20% | 80% | - |
+| Soumissions | 95% | 5% | - |
+| Inventaire | 95% | 5% | - |
+| Achats (AF) | 95% | 5% | - |
+| **Bons de Travail** | **5%** | **95%** | 75% Tablette, 25% Pixel 8 |
+| Gestion Client | 50% | 50% | - |
+
+**Impact:** Le module **Bons de Travail est critique pour mobile/tablette**.
+Priorite a l'optimisation responsive pour:
+- WorkOrderForm.js
+- TimeTracker.js
+- MaterialSelector.js
+- Page signature client
+
+### 4. Rapports
+**Reponse:**
+- Rapport Achats: OK
+- Rapport hebdomadaire: A modifier
+
+**Action:** Revoir le format du rapport hebdomadaire dans une future session.
+
+### 5. Historique
+**Reponse:** Garder tout l'historique si possible
+
+**Impact:**
+- Pas de purge automatique
+- Prevoir archivage si volume important (>10 000 BT)
+- Pagination obligatoire pour les listes
 
 ---
 
-*Document genere le 2026-02-04 par Claude AI*
+## Prochaines Actions Prioritaires
+
+Basees sur les reponses:
+
+1. **Optimisation mobile BT** - Le module Bons de Travail est utilise a 95% sur mobile
+2. **Systeme permissions** - Preparer pour multi-utilisateurs
+3. **Revoir rapport hebdomadaire** - Format actuel pas satisfaisant
+4. **Bon de livraison digital** - Pour usage tablette sur le terrain
+
+---
+
+*Document genere le 2026-02-05 par Claude AI*
