@@ -4,14 +4,14 @@ Ce fichier contient les informations essentielles pour comprendre et modifier ce
 
 ## Contexte Rapide
 
-**Application:** Gestion operationnelle pour Services TMT Inc. (services techniques + panneaux d'automatisation)
-**Utilisateur principal:** Martin Dominique (seul utilisateur actuellement, multi-utilisateurs prevu)
-**Localisation:** Saint-Georges, Quebec, Canada
+**Application:** Gestion opérationnelle pour Services TMT Inc. (services techniques + panneaux d'automatisation)
+**Utilisateur principal:** Martin et/ou (Martin seul utilisateur sur le terrin actuellement, Dominique au bureau seulement sur Desktop, multi-utilisateurs prévu)
+**Localisation:** Saint-Georges, Québec, Canada
 **Stack:** Next.js 14 + Supabase + Resend + Vercel
 
 ---
 
-## Usage Mobile vs Desktop (IMPORTANT)
+## Usage Mobile vs Desktop (CRITIQUE)
 
 | Module | Desktop | Mobile | Appareil Mobile |
 |--------|---------|--------|-----------------|
@@ -22,73 +22,215 @@ Ce fichier contient les informations essentielles pour comprendre et modifier ce
 | **Bons de Travail** | 5% | **95%** | 75% Tablette, 25% Pixel 8 |
 | Gestion Client | 50% | 50% | - |
 
-**CRITIQUE:** Le module Bons de Travail est utilise a 95% sur mobile/tablette.
-Toute modification aux composants BT doit etre testee en responsive.
+**CRITIQUE:** Le module Bons de Travail est utilisé à 95% sur mobile/tablette.
+Toute modification aux composants BT doit être testée en responsive.
 
 ---
 
-## Terminologie Metier IMPORTANTE
+## Terminologie Métier IMPORTANTE
 
-| Abreviation | Terme Complet | Description |
+| Abréviation | Terme Complet | Description |
 |-------------|---------------|-------------|
 | **BT** | Bon de Travail | Document d'intervention chez un client (work order) |
-| **BA** | Bon d'Achat Client | Commande/PO RECU d'un client |
-| **AF** | Achat Fournisseur | Commande PASSEE a un fournisseur |
-| **Prix Jobe** | Prix forfaitaire | Prix fixe incluant materiaux + main d'oeuvre |
+| **BA** | Bon d'Achat Client | Commande/PO REÇU d'un client |
+| **AF** | Achat Fournisseur | Commande PASSÉE à un fournisseur |
+| **Prix Jobe** | Prix forfaitaire | Prix fixe incluant matériaux + main d'œuvre |
 
 **Attention aux confusions:**
-- "Bon d'achat" peut etre CLIENT (BA) ou FOURNISSEUR (AF) - toujours clarifier
+- "Bon d'achat" peut être CLIENT (BA) ou FOURNISSEUR (AF) - toujours clarifier
 - `purchase_orders` dans le code = BA (bons d'achat CLIENT)
 - `supplier_purchases` dans le code = AF (achats FOURNISSEURS)
 
 ---
 
-## Architecture Fichiers Cles
+## Standards de Code OBLIGATOIRES
 
-### Pages Principales
-```
-/bons-travail              → Liste BT (WorkOrderList)
-/bons-travail/nouveau      → Nouveau BT (WorkOrderForm)
-/bons-travail/[id]/modifier → Modifier BT
-/bons-travail/[id]/client  → Vue signature client (public)
+### En-têtes de fichiers
 
-/(protected)/bons-achat    → Gestion BA Client
-/(protected)/achat-materiels → Achats Fournisseurs (AF)
-/(protected)/inventaire    → Gestion inventaire
-/(protected)/soumissions   → Soumissions/devis
-```
+Chaque fichier TypeScript/JavaScript DOIT avoir cet en-tête:
 
-### API Endpoints Critiques
-```
-/api/work-orders           → CRUD BT
-/api/work-orders/[id]/send-email → Envoi email BT
-/api/work-orders/[id]/signature  → Capture signature
-/api/purchase-orders       → CRUD BA Client
-/api/clients               → CRUD clients
-/api/products              → CRUD produits
-/api/cron/backup           → Backup quotidien
+```javascript
+/**
+ * @file [chemin complet depuis src/]
+ * @description [description claire, peut être multi-lignes]
+ *              - Point 1
+ *              - Point 2
+ * @version X.Y.Z
+ * @date YYYY-MM-DD
+ * @changelog
+ *   X.Y.Z - Description du changement
+ *   X.Y.W - Changement précédent
+ *   1.0.0 - Version initiale
+ */
 ```
 
-### Services Importants
-```
-lib/services/email-service.js    → Generation PDF + envoi email (800+ lignes)
-lib/services/client-signature.js → Gestion signatures
-lib/supabase.js                  → Client Supabase (browser)
-lib/supabaseAdmin.js             → Client Supabase (server, bypass RLS)
+**Règles de versionnage:**
+- MAJOR (X): Changement breaking ou refonte majeure
+- MINOR (Y): Nouvelle fonctionnalité
+- PATCH (Z): Fix de bug, correction
+
+**Lors d'une modification:**
+1. Incrémenter la version appropriée
+2. Mettre à jour la date
+3. Ajouter une ligne au changelog (en haut de la liste)
+4. Le changelog garde l'historique complet
+
+### Dates et Heures
+
+| Type | Format | Exemple |
+|------|--------|---------|
+| Affichage utilisateur | JJ MMM YYYY | 05 fév. 2026 |
+| Base de données | YYYY-MM-DD | 2026-02-05 |
+| Timestamp | ISO 8601 | 2026-02-05T14:30:00Z |
+
+- **Fuseau horaire:** America/Toronto (Québec)
+- **Locale:** fr-CA
+- **Fonction existante:** `formatQuebecDateTime()` dans email-service.js
+
+### Supabase - Row Level Security (RLS)
+
+Chaque nouvelle table DOIT avoir:
+
+```sql
+-- 1. Activer RLS
+ALTER TABLE nom_table ENABLE ROW LEVEL SECURITY;
+
+-- 2. Policy SELECT (lecture)
+CREATE POLICY "Users can view own data" ON nom_table
+  FOR SELECT USING (auth.uid() = user_id);
+
+-- 3. Policy INSERT (création)
+CREATE POLICY "Users can insert own data" ON nom_table
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 4. Policy UPDATE (modification)
+CREATE POLICY "Users can update own data" ON nom_table
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- 5. Policy DELETE (suppression)
+CREATE POLICY "Users can delete own data" ON nom_table
+  FOR DELETE USING (auth.uid() = user_id);
 ```
 
-### Composants Principaux
+**Note:** Pour les tables partagées (ex: products), adapter les policies selon le besoin.
+
+### Génération PDF (jsPDF)
+
+Standards visuels pour tous les PDF générés:
+
+```javascript
+// Logo
+doc.addImage(logoBase64, 'PNG', 15, 10, 40, 15);
+
+// Police
+doc.setFont('Helvetica');
+
+// Couleurs
+const TITLE_COLOR = [51, 51, 51];      // RGB gris foncé
+const TEXT_COLOR = [0, 0, 0];          // Noir
+
+// Marges
+const MARGIN = 20; // mm
+
+// Footer avec numéro de page
+doc.setFontSize(10);
+doc.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
 ```
-components/work-orders/WorkOrderForm.js   → Formulaire BT complet
-components/work-orders/TimeTracker.js     → Suivi temps (arrondi quart heure)
-components/work-orders/MaterialSelector.js → Selection materiaux
-components/SupplierPurchaseManager.js     → Gestion AF
-components/ClientManager.js               → Gestion clients
+
+### Mobile / Responsive (CRITIQUE pour BT)
+
+Le module Bons de Travail est utilisé à 95% sur tablette/mobile.
+
+**Règles obligatoires:**
+- Touch targets minimum **44px** (boutons, liens, inputs)
+- Tester sur tablette avant chaque merge
+- Utiliser `inputmode` approprié pour les claviers mobiles:
+  - `inputmode="numeric"` pour les nombres
+  - `inputmode="decimal"` pour les prix
+  - `inputmode="tel"` pour les téléphones
+  - `inputmode="email"` pour les emails
+
+**Composants critiques à tester:**
+- `WorkOrderForm.js`
+- `TimeTracker.js`
+- `MaterialSelector.js`
+- Page signature client
+
+### Gestion d'Erreurs
+
+Pattern standard pour les réponses API:
+
+```javascript
+// Succès
+return NextResponse.json({ success: true, data: result });
+
+// Erreur
+return NextResponse.json(
+  { success: false, error: 'Message explicite pour l\'utilisateur' },
+  { status: 400 }
+);
+```
+
+### Taxes Québec
+
+```javascript
+const TPS = 0.05;      // 5% fédérale
+const TVQ = 0.09975;   // 9.975% provinciale
+
+const subtotal = 100.00;
+const tps = subtotal * TPS;
+const tvq = subtotal * TVQ;
+const total = subtotal + tps + tvq;
 ```
 
 ---
 
-## Base de Donnees - Tables Principales
+## Architecture Fichiers Clés
+
+### Pages Principales
+```
+/bons-travail                → Liste BT (WorkOrderList)
+/bons-travail/nouveau        → Nouveau BT (WorkOrderForm)
+/bons-travail/[id]/modifier  → Modifier BT
+/bons-travail/[id]/client    → Vue signature client (public)
+
+/(protected)/bons-achat      → Gestion BA Client
+/(protected)/achat-materiels → Achats Fournisseurs (AF)
+/(protected)/inventaire      → Gestion inventaire
+/(protected)/soumissions     → Soumissions/devis
+```
+
+### API Endpoints Critiques
+```
+/api/work-orders                    → CRUD BT
+/api/work-orders/[id]/send-email    → Envoi email BT
+/api/work-orders/[id]/signature     → Capture signature
+/api/purchase-orders                → CRUD BA Client
+/api/clients                        → CRUD clients
+/api/products                       → CRUD produits
+/api/cron/backup                    → Backup quotidien
+```
+
+### Services Importants
+```
+lib/services/email-service.js       → Génération PDF + envoi email (800+ lignes)
+lib/services/client-signature.js    → Gestion signatures
+lib/supabase.js                     → Client Supabase (browser)
+lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
+```
+
+### Composants Principaux
+```
+components/work-orders/WorkOrderForm.js    → Formulaire BT complet
+components/work-orders/TimeTracker.js      → Suivi temps (arrondi quart heure)
+components/work-orders/MaterialSelector.js → Sélection matériaux
+components/SupplierPurchaseManager.js      → Gestion AF
+components/ClientManager.js                → Gestion clients
+```
+
+---
+
+## Base de Données - Tables Principales
 
 ### work_orders (BT)
 ```sql
@@ -132,24 +274,27 @@ product_id, description, unit, cost_price, selling_price, stock_qty
 ## Workflow Prix Jobe (Important)
 
 Quand `is_prix_jobe = true` sur un BT:
-1. **Email client:** PDF simplifie (pas d'heures, pas de materiaux)
-2. **Email bureau:** PDF complet (heures + materiaux + mention "PRIX JOBE")
+1. **Email client:** PDF simplifié (pas d'heures, pas de matériaux)
+2. **Email bureau:** PDF complet (heures + matériaux + mention "PRIX JOBE")
 
 Code: `lib/services/email-service.js` lignes 634-730
 
-Le workflow actuel est considere comme "a ameliorer" par l'utilisateur.
+**Note:** Le workflow actuel est considéré comme "à améliorer" - simplification prévue.
 
 ---
 
 ## Calcul du Temps
 
-Arrondi au quart d'heure SUPERIEUR avec regles:
-- < 1h = minimum 1h
-- Minutes <=6 → 0
-- Minutes 7-21 → 15
-- Minutes 22-36 → 30
-- Minutes 37-51 → 45
-- Minutes >51 → heure suivante
+Arrondi au quart d'heure SUPÉRIEUR avec règles:
+
+| Minutes | Arrondi |
+|---------|---------|
+| < 1h total | minimum 1h |
+| ≤6 min | 0 |
+| 7-21 min | 15 |
+| 22-36 min | 30 |
+| 37-51 min | 45 |
+| >51 min | heure suivante |
 
 Code: `lib/services/email-service.js` fonction `toQuarterHourUp()`
 
@@ -157,63 +302,51 @@ Code: `lib/services/email-service.js` fonction `toQuarterHourUp()`
 
 ## Variables d'Environnement
 
-```
+```env
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL      # URL Supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY # Cle publique Supabase
-SUPABASE_SERVICE_ROLE_KEY     # Cle admin (server-side)
+NEXT_PUBLIC_SUPABASE_ANON_KEY # Clé publique Supabase
+SUPABASE_SERVICE_ROLE_KEY     # Clé admin (server-side)
+
+# Email (Resend)
 RESEND_API_KEY                # API Resend pour emails
-RESEND_FROM_EMAIL             # noreply@servicestmt.com
+RESEND_FROM_EMAIL             # noreply@servicestmt.ca
 COMPANY_EMAIL                 # info.servicestmt@gmail.com (CC bureau)
+
+# Vercel
 VERCEL_URL                    # URL production
+
+# Sécurité
 CRON_SECRET                   # Auth pour cron jobs
 ```
 
 ---
 
-## Points d'Attention / Problemes Connus
+## Points d'Attention / Roadmap
 
-### A faire (priorite utilisateur)
-1. **Backup/Restauration** - `/api/admin/restore` jamais teste
-2. **Bon de livraison digital** - Pour tablette, a implementer
-3. **Workflow Prix Jobe** - A simplifier
-4. **Rapport hebdomadaire** - Format a revoir (le rapport Achats est OK)
-5. **Multi-utilisateurs** - Systeme de permissions a preparer
+### À faire (priorité utilisateur)
+1. **Optimisation mobile BT** - 95% usage mobile, priorité #1
+2. **Bon de livraison digital** - Pour tablette terrain
+3. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
+4. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
+5. **Multi-utilisateurs** - Préparer système permissions/RLS
 
-### Bugs potentiels
-- Code duplique dans `email-service.js` (fonction `formatQuebecDateTime` apparait 2 fois)
+### Bugs connus
+- Code dupliqué dans `email-service.js` (fonction `formatQuebecDateTime` apparaît 2 fois)
 - Certaines tables ont des champs redondants (ex: `client_name` + `client_id`)
 
-### Conventions
-- Fuseau horaire: `America/Toronto` (Quebec)
-- Format date: `fr-CA` (YYYY-MM-DD)
-- Arrondi temps: Quart d'heure superieur
-- Taxes: TPS (5%) + TVQ (9.975%)
+### Backup/Restauration
+- `/api/admin/restore` existe mais jamais testé
+- Backup quotidien par email fonctionne
 
 ---
 
-## Commandes Utiles
-
-```bash
-# Dev local
-npm run dev
-
-# Build production
-npm run build
-
-# Verifier TypeScript (partiel)
-npx tsc --noEmit
-
-# Tester backup manuellement
-curl -H "Authorization: Bearer $CRON_SECRET" $VERCEL_URL/api/cron/backup
-```
-
----
-
-## Patterns de Code Frequents
+## Patterns de Code Fréquents
 
 ### Lecture Supabase (client)
 ```javascript
 import { supabase } from '@/lib/supabase';
+
 const { data, error } = await supabase
   .from('table_name')
   .select('*')
@@ -223,6 +356,7 @@ const { data, error } = await supabase
 ### Lecture Supabase (server avec admin)
 ```javascript
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+
 const { data, error } = await supabaseAdmin
   .from('table_name')
   .select('*');
@@ -231,13 +365,14 @@ const { data, error } = await supabaseAdmin
 ### Envoi email avec PDF
 ```javascript
 const { WorkOrderEmailService } = require('@/lib/services/email-service');
+
 const emailService = new WorkOrderEmailService();
 await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
 ```
 
 ---
 
-## Structure d'un BT Complet (pour reference)
+## Structure d'un BT Complet (référence)
 
 ```javascript
 {
@@ -266,7 +401,7 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
     }
   ],
   total_hours: 3.75,
-  work_description: "Description du travail effectue",
+  work_description: "Description du travail effectué",
   materials: [
     {
       product_id: "PROD-001",
@@ -290,9 +425,29 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
 
 ---
 
+## Commandes Utiles
+
+```bash
+# Dev local
+npm run dev
+
+# Build production
+npm run build
+
+# Vérifier TypeScript (partiel)
+npx tsc --noEmit
+
+# Tester backup manuellement
+curl -H "Authorization: Bearer $CRON_SECRET" $VERCEL_URL/api/cron/backup
+```
+
+---
+
 ## Contact
 
-**Utilisateur:** Martin Dominique
+**Utilisateur:** Martin et/ou Dominique
 **Entreprise:** Services TMT Inc.
+**Adresse:** 3195 42e Rue Nord, Saint-Georges, QC, G5Z 0V9
+**Téléphone:** (418) 225-3875
 **Email rapports:** servicestmt@gmail.com
 **Email bureau:** info.servicestmt@gmail.com
