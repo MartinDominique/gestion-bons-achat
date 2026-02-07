@@ -836,8 +836,23 @@ Pas de tests automatises detectes.
 - [x] Corriger bug `COMPANY_EMAIL` dans send-inventory-report
 - [x] Supprimer code duplique dans work-orders GET (double error check + double return)
 - [x] Standardiser `ok: true` → `success: true` dans save-client
+- [x] Optimisation mobile WorkOrderForm.js (voir details ci-dessous)
 - [ ] Tester manuellement `/api/admin/restore`
 - [ ] Documenter les resultats du test restore
+
+#### Optimisation mobile BT (2026-02-07)
+
+**Fichiers modifies:** `WorkOrderForm.js`, `TimeTracker.js`
+
+**Corrections effectuees:**
+1. **Emails debordent sur mobile:** `break-all` + `min-w-0` + label/email empiles au lieu de cote a cote
+2. **Bouton selection client trop petit:** Dropdown pleine largeur, boutons Actualiser/Modifier/Nouveau en dessous avec labels texte sur mobile
+3. **Bouton Sauvegarder:** Agrandi, pleine largeur, couleur verte (`bg-green-600`)
+4. **Boutons Presenter/Annuler:** `grid grid-cols-2` cote a cote, meme taille, Annuler en rouge
+5. **Boutons bas de page:** Meme style que les boutons du haut (suppression duplication visuelle)
+6. **Bouton "Commencer et sauvegarder":** Nouveau bouton bleu sous "Commencer nouvelle session" dans TimeTracker
+7. **Touch targets:** Checkboxes emails agrandies `w-5 h-5`, boutons minimum `py-3`, selecteur client `py-3`
+8. **Info workflow supprimee:** Bloc "Workflow Terrain" retire en bas (prend de la place inutile sur mobile)
 
 ### Phase 2 - Ameliorations Court Terme (1-2 semaines)
 - [ ] Simplifier le workflow Prix Jobe (Option A)
