@@ -36,6 +36,7 @@ Toute modification aux composants BT ou BL doit être testée en responsive.
 | **BL** | Bon de Livraison | Document de livraison de matériels chez un client (delivery note) |
 | **BA** | Bon d'Achat Client | Commande/PO REÇU d'un client |
 | **AF** | Achat Fournisseur | Commande PASSÉE à un fournisseur |
+| **BCC** | Bon de Confirmation de Commande | Confirmation au client que son matériel est en commande |
 | **Prix Jobe** | Prix forfaitaire | Prix fixe incluant matériaux + main d'œuvre |
 
 **Attention aux confusions:**
@@ -218,6 +219,7 @@ const total = subtotal + tps + tvq;
 /api/delivery-notes/[id]/send-email    → Envoi email BL + inventaire OUT
 /api/delivery-notes/[id]/signature     → Capture signature BL
 /api/purchase-orders                   → CRUD BA Client
+/api/purchase-orders/[id]/send-confirmation → Envoi BCC (confirmation commande)
 /api/clients                           → CRUD clients
 /api/products                          → CRUD produits
 /api/cron/backup                       → Backup quotidien
@@ -226,7 +228,9 @@ const total = subtotal + tps + tvq;
 ### Services Importants
 ```
 lib/services/email-service.js       → Génération PDF + envoi email (800+ lignes)
+lib/services/pdf-common.js          → En-tête/footer PDF standardisé (à créer)
 lib/services/client-signature.js    → Gestion signatures
+lib/utils/holidays.js               → Jours fériés Québec (à créer)
 lib/supabase.js                     → Client Supabase (browser)
 lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
 ```
@@ -323,6 +327,21 @@ Arrondi au quart d'heure SUPÉRIEUR avec règles:
 
 Code: `lib/services/email-service.js` fonction `toQuarterHourUp()`
 
+### Tarifs spéciaux (soirs/fins de semaine/fériés) - À implémenter
+
+| Situation | Minimum | Taux | Mention |
+|-----------|---------|------|---------|
+| Normal (lun-ven jour) | 1h | 1x | - |
+| Soir (début après 17h, nouvelle job) | 2h | 1.5x | "Soir" |
+| Samedi | 3h | 1.5x | "Samedi" |
+| Dimanche | 3h | 1.5x | "Dimanche" |
+| Jour férié (Québec) | 3h | 1.5x | "Jour férié" |
+
+**Règle soir:** S'applique UNIQUEMENT si la job débute après 17h (pas une continuité de jour).
+**Checkbox:** Optionnel par BT via `work_orders.apply_surcharge` (boolean).
+**Jours fériés:** Calculés dynamiquement dans `lib/utils/holidays.js`.
+**Détails:** Voir RECOMMANDATIONS.md section 2.
+
 ---
 
 ## Variables d'Environnement
@@ -349,12 +368,16 @@ CRON_SECRET                   # Auth pour cron jobs
 
 ## Points d'Attention / Roadmap
 
-### À faire (priorité utilisateur)
-1. **Bon de Livraison (BL)** - Intégré dans l'app BT (Option A, décidé 2026-02-07)
-2. **Optimisation mobile BT/BL** - 95% usage mobile
-3. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
-4. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
-5. **Multi-utilisateurs** - Préparer système permissions/RLS
+### À faire (priorité utilisateur - décisions 2026-02-07)
+1. **Bon de Livraison (BL)** - Intégré dans l'app BT (Option A)
+2. **TimeTracker surcharges** - Soirs/fins de semaine/jours fériés (checkbox optionnel)
+3. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
+4. **BCC Confirmation commande** - Formulaire confirmation commande client par email
+5. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
+6. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
+7. **Optimisation mobile BT/BL** - 95% usage mobile
+8. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
+9. **Multi-utilisateurs** - Préparer système permissions/RLS
 
 ### Bugs connus
 - Code dupliqué dans `email-service.js` (fonction `formatQuebecDateTime` apparaît 2 fois)
