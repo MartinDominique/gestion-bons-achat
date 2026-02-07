@@ -1,8 +1,9 @@
 import React, { useState, useEffect,useRef } from 'react';
 import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-react';
 
-export default function TimeTracker({ 
-  onTimeChange, 
+export default function TimeTracker({
+  onTimeChange,
+  onSaveAndStart,
   initialTimeEntries = [],
   workDate = null,
   status = 'draft',
@@ -733,19 +734,37 @@ const formatDuration = (hours) => {
               </div>
             )}
             
-            <button
-              type="button"
-              onClick={handlePunchIn}
-              disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
-              className={`px-6 py-3 rounded-lg flex items-center mx-auto font-medium ${
-                status === 'sent' || status === 'signed'
-                  ? 'bg-gray-400 cursor-not-allowed text-gray-700'
-                  : 'bg-green-600 hover:bg-green-700 text-white'
-              }`}
-            >
-              <Play className="mr-2" size={18} />
-              Commencer nouvelle session
-            </button>
+            <div className="flex flex-col gap-2 items-center">
+              <button
+                type="button"
+                onClick={handlePunchIn}
+                disabled={status === 'sent' || status === 'signed'}
+                className={`w-full sm:w-auto px-6 py-3 rounded-lg flex items-center justify-center font-medium ${
+                  status === 'sent' || status === 'signed'
+                    ? 'bg-gray-400 cursor-not-allowed text-gray-700'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
+              >
+                <Play className="mr-2" size={18} />
+                Commencer nouvelle session
+              </button>
+              {onSaveAndStart && !(status === 'sent' || status === 'signed') && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    handlePunchIn();
+                    if (onSaveAndStart) {
+                      setTimeout(() => onSaveAndStart(), 300);
+                    }
+                  }}
+                  className="w-full sm:w-auto px-6 py-3 rounded-lg flex items-center justify-center font-medium bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Play className="mr-1" size={18} />
+                  <Save className="mr-2" size={18} />
+                  Commencer et sauvegarder
+                </button>
+              )}
+            </div>
           </div>
         )}
 
