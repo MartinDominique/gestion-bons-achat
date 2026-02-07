@@ -78,30 +78,263 @@ return NextResponse.json(
 
 ## Fonctionnalites a Developper
 
-### 1. Bon de Livraison Digital (Priorite: Haute - demande utilisateur)
+### 1. Bon de Livraison Digital - BL (Priorite: Haute - demande utilisateur)
 
-**Objectif:** Creer des bons de livraison sur tablette lors de la livraison de materiels.
+**Objectif:** Creer des bons de livraison (BL) sur tablette lors de la livraison de materiels chez le client.
 
-**Proposition d'implementation:**
+**Decision (2026-02-07):** Option A retenue - BL integre dans l'app BT.
+
+**Probleme actuel:**
+- Le modal `DeliverySlipModal.js` dans BA existe mais n'est pas pratique
+- Il ne gere pas bien l'inventaire (+/-)
+- Pas de signature client
+- Pas d'envoi email
+- Martin utilise actuellement un BT pour livrer du materiel, ce qui surcharge le BT
+
+**Analyse des options:**
+
+| Critere | Option A (BL dans BT) | Option B (Dashboard separé) |
+|---------|----------------------|---------------------------|
+| Risque d'oubli | Faible (meme page) | Eleve (page separee) |
+| Usage mobile | Herite du 95% mobile BT | Necessiterait optimisation separee |
+| Infrastructure partagee | Signature, email, PDF reutilises | Duplication necessaire |
+| Complexite dev | Moderee | Elevee |
+| Separation code | Code separe, UI integree | Tout separe |
+
+**Recommandation:** Option A - Le BL est integre dans la page BT pour que Martin ne l'oublie pas.
+Elements utiles de l'Option B (bandeau alertes BA orphelins) incorpores dans la liste.
+
+---
+
+#### 1.1 Architecture BL - Separation des responsabilites
+
+| Aspect | BT (Bon de Travail) | BL (Bon de Livraison) |
+|--------|---------------------|----------------------|
+| **Objectif** | Documenter travail effectue | Documenter livraison materiel |
+| **Time entries** | Oui (TimeTracker) | Non |
+| **Materiaux** | Optionnel (utilises sur site) | Principal (livres au client) |
+| **Signature client** | Oui | Oui |
+| **Email + PDF** | Oui | Oui |
+| **Inventaire OUT** | Oui (a l'envoi email) | Oui (a l'envoi email) |
+| **Lie a BA** | Optionnel | Recommande |
+| **Numerotation** | BT-YYMM-### | BL-YYMM-### |
+| **Usage mobile** | 95% | 95% (meme page) |
+
+#### 1.2 Base de donnees
+
+**Nouvelle table: `delivery_notes`**
+```sql
+CREATE TABLE delivery_notes (
+  id BIGSERIAL PRIMARY KEY,
+  bl_number TEXT UNIQUE NOT NULL,        -- BL-YYMM-### (auto-genere)
+  client_id BIGINT REFERENCES clients(id),
+  client_name TEXT,                       -- Denormalise pour performance
+  linked_po_id BIGINT REFERENCES purchase_orders(id), -- Lien vers BA
+  delivery_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  delivery_description TEXT,              -- Notes generales
+  status TEXT DEFAULT 'draft',            -- draft, ready_for_signature, signed, pending_send, sent
+  is_prix_jobe BOOLEAN DEFAULT FALSE,
+  signature_data TEXT,
+  signature_timestamp TIMESTAMPTZ,
+  client_signature_name TEXT,
+  recipient_emails JSONB DEFAULT '[]',
+  user_id UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS obligatoire
+ALTER TABLE delivery_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own data" ON delivery_notes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own data" ON delivery_notes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own data" ON delivery_notes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own data" ON delivery_notes FOR DELETE USING (auth.uid() = user_id);
+
+-- Index
+CREATE INDEX idx_delivery_notes_client ON delivery_notes(client_id);
+CREATE INDEX idx_delivery_notes_status ON delivery_notes(status);
+CREATE INDEX idx_delivery_notes_date ON delivery_notes(delivery_date);
+CREATE INDEX idx_delivery_notes_po ON delivery_notes(linked_po_id);
+```
+
+**Nouvelle table: `delivery_note_materials`**
+```sql
+CREATE TABLE delivery_note_materials (
+  id BIGSERIAL PRIMARY KEY,
+  delivery_note_id BIGINT REFERENCES delivery_notes(id) ON DELETE CASCADE,
+  product_id TEXT,                        -- Ref vers products ou non_inventory_items
+  description TEXT NOT NULL,
+  quantity NUMERIC NOT NULL DEFAULT 1,
+  unit TEXT DEFAULT 'UN',
+  unit_price NUMERIC DEFAULT 0,
+  show_price BOOLEAN DEFAULT TRUE,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE delivery_note_materials ENABLE ROW LEVEL SECURITY;
+-- Policies via delivery_notes.user_id (join)
+CREATE POLICY "Users can manage via delivery_note" ON delivery_note_materials
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM delivery_notes dn WHERE dn.id = delivery_note_id AND dn.user_id = auth.uid())
+  );
+```
+
+**Tables existantes conservees:**
+- `delivery_slips` et `delivery_slip_items` restent pour l'ancien modal BA (backward compatible)
+- Migration progressive: les nouveaux BL utilisent `delivery_notes`, l'ancien modal reste fonctionnel
+
+#### 1.3 UI - Liste unifiee BT + BL
+
+**Page `/bons-travail` (modifiee):**
+```
+┌──────────────────────────────────────────────────────────┐
+│  [+Nouveau BT]  [+Nouveau BL]                           │
+│                                                           │
+│  ⚠️ 2 BA sans commande AF (bandeau alerte, clicable)     │
+│                                                           │
+│  Filtre type: [Tous] [BT seulement] [BL seulement]      │
+│                                                           │
+│  Tous (87) | ✏️ Brouillon (3) | ✍️ A signer (1)          │
+│  | ✅ Signe (0) | ⏳ En attente (0) | 📧 Envoye (83)    │
+│                                                           │
+│  📋 BT-2602-005 - Client ABC - 07 fev 2026              │
+│  📦 BL-2602-003 - Client XYZ - 06 fev 2026              │
+│  📋 BT-2602-004 - Client DEF - 05 fev 2026              │
+│  ...                                                      │
+└──────────────────────────────────────────────────────────┘
+```
+
+- Icone 📋 pour BT, 📦 pour BL (distinction visuelle rapide)
+- Tri chronologique mixte BT + BL
+- Le filtre type permet de voir seulement BT ou BL
+- Les compteurs de statut comptent BT + BL (ou filtres selon le type selectionne)
+- Bandeau alertes en haut: BA orphelins (sans AF), AF recus sans livraison
+
+#### 1.4 Routes et Pages
 
 ```
-Nouvelle table: delivery_receipts
-- id
-- delivery_slip_id (FK)
-- delivered_at (timestamp)
-- recipient_name
-- signature_data
-- photos (JSONB - array d'URLs)
-- notes
-- gps_location (optionnel)
-
-Nouvelle page: /livraisons/[id]/confirmation
-- Liste des items a livrer
-- Checkbox pour confirmer chaque item
-- Capture signature
-- Option photo
-- Bouton "Confirmer livraison"
+/bons-travail                         → Liste unifiee BT + BL (modifiee)
+/bons-travail/nouveau                 → Nouveau BT (existant, inchange)
+/bons-travail/nouveau-bl              → Nouveau BL (NOUVEAU)
+/bons-travail/[id]/modifier           → Modifier BT (existant, inchange)
+/bons-travail/bl/[id]/modifier        → Modifier BL (NOUVEAU)
+/bons-travail/bl/[id]/client          → Signature client BL (NOUVEAU, page publique)
 ```
+
+#### 1.5 Composants
+
+```
+components/
+├── work-orders/
+│   ├── WorkOrderForm.js              (existant - INCHANGE)
+│   ├── TimeTracker.js                (existant - INCHANGE)
+│   └── MaterialSelector.js           (existant - reutilise par BL)
+├── delivery-notes/                    (NOUVEAU dossier)
+│   ├── DeliveryNoteForm.js           (formulaire BL, plus simple que WorkOrderForm)
+│   │   ├── Selection client (ClientSelect reutilise)
+│   │   ├── Lien BA optionnel
+│   │   ├── Date de livraison
+│   │   ├── Import materiaux depuis BA / soumission
+│   │   ├── Ajout materiaux inventaire / non-inventaire
+│   │   ├── Description/notes
+│   │   └── Pas de TimeTracker (pas de time entries)
+│   └── DeliveryNotePDF.js            (generation PDF specifique BL)
+```
+
+#### 1.6 API Endpoints
+
+```
+/api/delivery-notes                    → GET (liste) + POST (creation)
+/api/delivery-notes/[id]              → GET + PUT + DELETE
+/api/delivery-notes/[id]/signature     → GET + POST (signature client)
+/api/delivery-notes/[id]/send-email    → POST (envoi email + PDF + inventaire OUT)
+/api/delivery-notes/[id]/public        → GET (vue publique pour signature)
+```
+
+#### 1.7 Import materiaux dans BL
+
+Le formulaire BL offre 3 sources de materiaux:
+
+1. **Import depuis BA** (principal)
+   - Charge les `client_po_items` du BA lie
+   - Affiche: quantite commandee, deja livree, restante
+   - L'utilisateur selectionne les items et quantites a livrer
+   - Met a jour `client_po_items.delivered_quantity` a l'envoi
+
+2. **Import depuis Soumission**
+   - Meme mecanisme que dans AF (`fetchAvailableSubmissions`)
+   - Filtre par client
+
+3. **Ajout manuel**
+   - Produit inventaire (recherche dans `products`)
+   - Produit non-inventaire (recherche dans `non_inventory_items`)
+   - Nouveau produit ponctuel
+
+#### 1.8 Flux inventaire BL
+
+```
+BL creation  → Aucun impact inventaire (brouillon)
+BL signature → Aucun impact inventaire
+BL envoi email → Pour chaque materiau:
+  ├── quantity > 0: stock_qty -= quantity (mouvement OUT)
+  ├── quantity < 0: stock_qty += |quantity| (retour, mouvement IN)
+  └── Cree un record dans inventory_movements:
+      {movement_type: 'OUT'/'IN', reference_type: 'delivery_note', reference_id: bl.id}
+```
+
+**Pattern identique au BT** (voir `send-email/route.js` lignes 175-245).
+
+#### 1.9 PDF Bon de Livraison
+
+Format adapte (different du BT):
+- En-tete: Logo + info entreprise + "BON DE LIVRAISON" (titre)
+- Reference: BL-YYMM-### + date + BA lie (si applicable)
+- Info client: nom, adresse
+- Tableau materiaux: Code | Description | Unite | Qte Commandee | Qte Livree
+- Pas de colonne heures/temps
+- Section signature client
+- Footer: 2 copies (client + entreprise)
+
+#### 1.10 Bandeau alertes (mini-dashboard)
+
+En haut de la liste `/bons-travail`, affichage conditionnel:
+
+```javascript
+// Requete: BA sans AF lie
+const orphanBAs = await supabase
+  .from('purchase_orders')
+  .select('id, po_number, client_name')
+  .eq('status', 'in_progress')
+  .is('linked_af_count', null);  // ou requete custom
+
+// Requete: AF recus sans BL
+const receivedWithoutDelivery = await supabase
+  .from('supplier_purchases')
+  .select('id, purchase_number')
+  .eq('status', 'received');
+```
+
+Affichage:
+- "⚠️ X BA en cours sans commande fournisseur" → clic ouvre liste filtree
+- "📦 X commandes recues a livrer" → rappel des AF recus
+- Masquable par l'utilisateur (localStorage)
+- Ne s'affiche que si > 0
+
+#### 1.11 Migration de l'ancien modal DeliverySlipModal
+
+L'ancien `DeliverySlipModal.js` dans BA:
+- **Phase 1**: Garder fonctionnel (backward compatible)
+- **Phase 2**: Ajouter un lien "Creer un BL complet" qui redirige vers `/bons-travail/nouveau-bl?po_id=XXX`
+- **Phase 3**: Deprecier l'ancien modal une fois le BL stabilise
+
+#### 1.12 Considerations techniques
+
+- **Mobile first**: Le BL est utilise a 95% sur tablette comme le BT
+- **Touch targets**: Minimum 44px sur tous les boutons/inputs du BL
+- **Offline**: Considerer un mode offline basique (localStorage draft) pour les chantiers sans connexion
+- **Performance**: Lazy load des materiaux BA/soumission (ne pas charger au mount)
+- **Email**: Meme pattern que BT (client + CC bureau), avec PDF BL attache
 
 ### 2. Simplification Prix Jobe (Priorite: Haute - demande utilisateur)
 
@@ -138,10 +371,18 @@ Nouvelle page: /livraisons/[id]/confirmation
    - Retention: garder 30 jours de backups
    - Verification d'integrite
 
-### 4. Dashboard/Tableau de Bord (Priorite: Basse)
+### 4. Dashboard/Tableau de Bord (Priorite: Moyenne)
 
-**Proposition:** Page d'accueil avec:
-- BT en cours (non signes)
+**Decision (2026-02-07):** Integrer un mini-dashboard (bandeau alertes) dans la page BT/BL plutot qu'une page separee.
+
+**Elements integres dans la liste BT/BL:**
+- BA en cours sans commande AF (orphelins)
+- AF recus sans livraison (materiel en attente)
+- BT/BL en brouillon depuis longtemps
+
+**Dashboard complet (futur, si besoin):**
+- Page d'accueil avec raccourcis: +Nouveau BT, +Nouveau BL, +Nouveau BA
+- BT/BL en cours (non signes)
 - AF en attente de reception
 - Alertes stock bas
 - Statistiques du mois (heures, revenus)
@@ -217,12 +458,27 @@ Pas de tests automatises detectes.
 - [ ] Ajouter validation emails cotes serveur
 - [ ] Clarifier la terminologie BA/AF dans l'interface
 
-### Phase 3 - Nouvelles Fonctionnalites (2-4 semaines)
-- [ ] Bon de livraison digital
-- [ ] Page admin backup/restore
-- [ ] Dashboard tableau de bord
+### Phase 3 - Bon de Livraison (BL) - Fonctionnalite principale
+- [ ] Creer table `delivery_notes` + `delivery_note_materials` (SQL + RLS)
+- [ ] Creer API CRUD `/api/delivery-notes` + `/api/delivery-notes/[id]`
+- [ ] Creer composant `DeliveryNoteForm.js` (formulaire BL)
+- [ ] Integrer import materiaux depuis BA (client_po_items)
+- [ ] Integrer import materiaux depuis soumission
+- [ ] Modifier la page liste `/bons-travail` (bouton +Nouveau BL, filtre type, icones)
+- [ ] Creer pages: `/bons-travail/nouveau-bl`, `/bons-travail/bl/[id]/modifier`
+- [ ] Creer API signature: `/api/delivery-notes/[id]/signature`
+- [ ] Creer page publique signature: `/bons-travail/bl/[id]/client`
+- [ ] Creer API envoi email + PDF + inventaire OUT: `/api/delivery-notes/[id]/send-email`
+- [ ] Generer PDF bon de livraison (format specifique BL)
+- [ ] Ajouter bandeau alertes (BA orphelins, AF recus sans livraison)
+- [ ] Tester sur tablette et mobile (responsive critique)
 
-### Phase 4 - Qualite Long Terme (ongoing)
+### Phase 4 - Ameliorations post-BL
+- [ ] Deprecier l'ancien modal `DeliverySlipModal.js` dans BA
+- [ ] Page admin backup/restore
+- [ ] Dashboard complet (si le bandeau alertes ne suffit pas)
+
+### Phase 5 - Qualite Long Terme (ongoing)
 - [ ] Migration progressive vers TypeScript
 - [ ] Ajout de tests automatises
 - [ ] Documentation API (Swagger/OpenAPI)
@@ -279,13 +535,25 @@ Priorite a l'optimisation responsive pour:
 
 ## Prochaines Actions Prioritaires
 
-Basees sur les reponses:
+Basees sur les reponses et decisions:
 
-1. **Optimisation mobile BT** - Le module Bons de Travail est utilise a 95% sur mobile
-2. **Systeme permissions** - Preparer pour multi-utilisateurs
-3. **Revoir rapport hebdomadaire** - Format actuel pas satisfaisant
-4. **Bon de livraison digital** - Pour usage tablette sur le terrain
+1. **Bon de Livraison (BL) integre dans BT** - Priorite #1 (decision 2026-02-07, Option A)
+2. **Optimisation mobile BT/BL** - Le module est utilise a 95% sur mobile
+3. **Systeme permissions** - Preparer pour multi-utilisateurs
+4. **Revoir rapport hebdomadaire** - Format actuel pas satisfaisant
 
 ---
 
-*Document genere le 2026-02-05 par Claude AI*
+## Decisions Architecturales
+
+### 2026-02-07 - Bon de Livraison (BL)
+- **Decision:** Option A - BL integre dans la page BT
+- **Raison:** Martin oublierait les livraisons si BL est sur une page separee
+- **Architecture:** Nouvelle table `delivery_notes` + composants separes dans `components/delivery-notes/`
+- **UI:** Liste unifiee BT+BL avec filtre type, boutons +Nouveau BT et +Nouveau BL
+- **Mini-dashboard:** Bandeau alertes BA orphelins/AF recus integre dans la liste
+- **Ancien modal:** `DeliverySlipModal.js` garde fonctionnel, deprecie progressivement
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-02-07 par Claude AI*

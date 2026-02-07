@@ -19,11 +19,12 @@ Ce fichier contient les informations essentielles pour comprendre et modifier ce
 | Soumissions | 95% | 5% | - |
 | Inventaire | 95% | 5% | - |
 | Achats (AF) | 95% | 5% | - |
-| **Bons de Travail** | 5% | **95%** | 75% Tablette, 25% Pixel 8 |
+| **Bons de Travail (BT)** | 5% | **95%** | 75% Tablette, 25% Pixel 8 |
+| **Bons de Livraison (BL)** | 5% | **95%** | 75% Tablette, 25% Pixel 8 |
 | Gestion Client | 50% | 50% | - |
 
-**CRITIQUE:** Le module Bons de Travail est utilisé à 95% sur mobile/tablette.
-Toute modification aux composants BT doit être testée en responsive.
+**CRITIQUE:** Les modules BT et BL sont utilisés à 95% sur mobile/tablette.
+Toute modification aux composants BT ou BL doit être testée en responsive.
 
 ---
 
@@ -32,6 +33,7 @@ Toute modification aux composants BT doit être testée en responsive.
 | Abréviation | Terme Complet | Description |
 |-------------|---------------|-------------|
 | **BT** | Bon de Travail | Document d'intervention chez un client (work order) |
+| **BL** | Bon de Livraison | Document de livraison de matériels chez un client (delivery note) |
 | **BA** | Bon d'Achat Client | Commande/PO REÇU d'un client |
 | **AF** | Achat Fournisseur | Commande PASSÉE à un fournisseur |
 | **Prix Jobe** | Prix forfaitaire | Prix fixe incluant matériaux + main d'œuvre |
@@ -40,6 +42,8 @@ Toute modification aux composants BT doit être testée en responsive.
 - "Bon d'achat" peut être CLIENT (BA) ou FOURNISSEUR (AF) - toujours clarifier
 - `purchase_orders` dans le code = BA (bons d'achat CLIENT)
 - `supplier_purchases` dans le code = AF (achats FOURNISSEURS)
+- `delivery_notes` dans le code = BL (bons de livraison)
+- **BT vs BL:** BT = travail effectué (heures + matériaux), BL = livraison matériels uniquement (pas d'heures)
 
 ---
 
@@ -137,9 +141,9 @@ doc.setFontSize(10);
 doc.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
 ```
 
-### Mobile / Responsive (CRITIQUE pour BT)
+### Mobile / Responsive (CRITIQUE pour BT et BL)
 
-Le module Bons de Travail est utilisé à 95% sur tablette/mobile.
+Les modules Bons de Travail et Bons de Livraison sont utilisés à 95% sur tablette/mobile.
 
 **Règles obligatoires:**
 - Touch targets minimum **44px** (boutons, liens, inputs)
@@ -152,9 +156,10 @@ Le module Bons de Travail est utilisé à 95% sur tablette/mobile.
 
 **Composants critiques à tester:**
 - `WorkOrderForm.js`
+- `DeliveryNoteForm.js`
 - `TimeTracker.js`
 - `MaterialSelector.js`
-- Page signature client
+- Pages signature client (BT et BL)
 
 ### Gestion d'Erreurs
 
@@ -189,26 +194,33 @@ const total = subtotal + tps + tvq;
 
 ### Pages Principales
 ```
-/bons-travail                → Liste BT (WorkOrderList)
-/bons-travail/nouveau        → Nouveau BT (WorkOrderForm)
-/bons-travail/[id]/modifier  → Modifier BT
-/bons-travail/[id]/client    → Vue signature client (public)
+/bons-travail                    → Liste unifiée BT + BL
+/bons-travail/nouveau            → Nouveau BT (WorkOrderForm)
+/bons-travail/nouveau-bl         → Nouveau BL (DeliveryNoteForm)
+/bons-travail/[id]/modifier      → Modifier BT
+/bons-travail/bl/[id]/modifier   → Modifier BL
+/bons-travail/[id]/client        → Vue signature client BT (public)
+/bons-travail/bl/[id]/client     → Vue signature client BL (public)
 
-/(protected)/bons-achat      → Gestion BA Client
-/(protected)/achat-materiels → Achats Fournisseurs (AF)
-/(protected)/inventaire      → Gestion inventaire
-/(protected)/soumissions     → Soumissions/devis
+/(protected)/bons-achat          → Gestion BA Client
+/(protected)/achat-materiels     → Achats Fournisseurs (AF)
+/(protected)/inventaire          → Gestion inventaire
+/(protected)/soumissions         → Soumissions/devis
 ```
 
 ### API Endpoints Critiques
 ```
-/api/work-orders                    → CRUD BT
-/api/work-orders/[id]/send-email    → Envoi email BT
-/api/work-orders/[id]/signature     → Capture signature
-/api/purchase-orders                → CRUD BA Client
-/api/clients                        → CRUD clients
-/api/products                       → CRUD produits
-/api/cron/backup                    → Backup quotidien
+/api/work-orders                       → CRUD BT
+/api/work-orders/[id]/send-email       → Envoi email BT
+/api/work-orders/[id]/signature        → Capture signature BT
+/api/delivery-notes                    → CRUD BL
+/api/delivery-notes/[id]              → GET/PUT/DELETE BL
+/api/delivery-notes/[id]/send-email    → Envoi email BL + inventaire OUT
+/api/delivery-notes/[id]/signature     → Capture signature BL
+/api/purchase-orders                   → CRUD BA Client
+/api/clients                           → CRUD clients
+/api/products                          → CRUD produits
+/api/cron/backup                       → Backup quotidien
 ```
 
 ### Services Importants
@@ -221,11 +233,13 @@ lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
 
 ### Composants Principaux
 ```
-components/work-orders/WorkOrderForm.js    → Formulaire BT complet
-components/work-orders/TimeTracker.js      → Suivi temps (arrondi quart heure)
-components/work-orders/MaterialSelector.js → Sélection matériaux
-components/SupplierPurchaseManager.js      → Gestion AF
-components/ClientManager.js                → Gestion clients
+components/work-orders/WorkOrderForm.js       → Formulaire BT complet
+components/work-orders/TimeTracker.js         → Suivi temps (arrondi quart heure)
+components/work-orders/MaterialSelector.js    → Sélection matériaux (partagé BT+BL)
+components/delivery-notes/DeliveryNoteForm.js → Formulaire BL (livraison matériels)
+components/delivery-notes/DeliveryNotePDF.js  → Génération PDF BL
+components/SupplierPurchaseManager.js         → Gestion AF
+components/ClientManager.js                   → Gestion clients
 ```
 
 ---
@@ -263,6 +277,17 @@ id, purchase_number, supplier_id, linked_po_id,
 items (JSONB), subtotal, tps, tvq, total_amount, status
 ```
 **Statuts:** draft, in_order, ordered, partial, received, cancelled
+
+### delivery_notes (BL)
+```sql
+id, bl_number, client_id, client_name, linked_po_id,
+delivery_date, delivery_description, status,
+is_prix_jobe, signature_data, signature_timestamp,
+client_signature_name, recipient_emails (JSONB),
+user_id, created_at, updated_at
+```
+**Statuts:** draft, ready_for_signature, signed, pending_send, sent
+**Matériaux:** Table séparée `delivery_note_materials` (product_id, quantity, unit, unit_price, etc.)
 
 ### products / non_inventory_items
 ```sql
@@ -325,8 +350,8 @@ CRON_SECRET                   # Auth pour cron jobs
 ## Points d'Attention / Roadmap
 
 ### À faire (priorité utilisateur)
-1. **Optimisation mobile BT** - 95% usage mobile, priorité #1
-2. **Bon de livraison digital** - Pour tablette terrain
+1. **Bon de Livraison (BL)** - Intégré dans l'app BT (Option A, décidé 2026-02-07)
+2. **Optimisation mobile BT/BL** - 95% usage mobile
 3. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
 4. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
 5. **Multi-utilisateurs** - Préparer système permissions/RLS
@@ -422,6 +447,66 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
   client_signature_name: "Jean Tremblay"
 }
 ```
+
+---
+
+## Structure d'un BL Complet (référence)
+
+```javascript
+{
+  id: 456,
+  bl_number: "BL-2602-001",
+  client_id: 1,
+  client_name: "Nom Client",
+  client: {
+    name: "Nom Client",
+    address: "123 Rue...",
+    email: "client@email.com",
+    email_admin: "admin@email.com"
+  },
+  linked_po_id: 789,
+  linked_po: { po_number: "PO-2026-001" },
+  delivery_date: "2026-02-07",
+  delivery_description: "Livraison matériels électriques - Phase 1",
+  materials: [
+    {
+      product_id: "PROD-001",
+      description: "Description produit",
+      quantity: 5,
+      unit: "UN",
+      unit_price: 50.00,
+      show_price: true,
+      notes: "Note optionnelle"
+    }
+  ],
+  status: "sent",
+  is_prix_jobe: false,
+  recipient_emails: ["client@email.com"],
+  signature_data: "data:image/png;base64,...",
+  signature_timestamp: "2026-02-07T14:30:00Z",
+  client_signature_name: "Jean Tremblay"
+}
+```
+
+**Différences clés BL vs BT:**
+- Pas de `time_entries` ni `total_hours` (pas de suivi temps)
+- Pas de `work_description` → `delivery_description` à la place
+- Pas de `work_date` → `delivery_date` à la place
+- Numérotation BL-YYMM-### au lieu de BT-YYMM-###
+
+---
+
+## Flux Inventaire (BT et BL)
+
+```
+AF Réception    → stock_qty += quantité reçue     (mouvement IN)
+BT Envoi email  → stock_qty -= quantité matériaux  (mouvement OUT)
+BL Envoi email  → stock_qty -= quantité livrée     (mouvement OUT)
+```
+
+Les mouvements sont enregistrés dans `inventory_movements`:
+- `reference_type`: 'work_order', 'delivery_note', ou 'supplier_purchase'
+- `movement_type`: 'IN' ou 'OUT'
 
 ---
 
