@@ -339,8 +339,21 @@ export const updateSupplier = async (id, supplierData) => {
       .from('suppliers')
       .update(supplierData)
       .eq('id', id);
-      
+
     if (error) throw error;
+
+    // Synchroniser supplier_name dans supplier_purchases si le nom a changé
+    if (supplierData.name) {
+      const { error: syncError } = await supabase
+        .from('supplier_purchases')
+        .update({ supplier_name: supplierData.name })
+        .eq('supplier_id', id);
+
+      if (syncError) {
+        console.warn('⚠️ Sync supplier_purchases.supplier_name échouée:', syncError.message);
+      }
+    }
+
     return true;
   } catch (error) {
     console.error('Erreur mise à jour fournisseur:', error);

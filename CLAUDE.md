@@ -379,9 +379,11 @@ CRON_SECRET                   # Auth pour cron jobs
 8. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
 9. **Multi-utilisateurs** - Préparer système permissions/RLS
 
-### Bugs connus
-- Code dupliqué dans `email-service.js` (fonction `formatQuebecDateTime` apparaît 2 fois)
-- Certaines tables ont des champs redondants (ex: `client_name` + `client_id`)
+### Bugs connus (corrigés 2026-02-07)
+- ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé
+- ~~Champs redondants non synchronisés (client_name + client_id)~~ → Sync automatique ajoutée
+- ~~Bug `COMPANY_EMAIL` dans send-inventory-report~~ → Corrigé
+- ~~Code mort dans work-orders GET (double return)~~ → Supprimé
 
 ### Backup/Restauration
 - `/api/admin/restore` existe mais jamais testé
