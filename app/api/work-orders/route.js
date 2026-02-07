@@ -314,15 +314,7 @@ export async function GET(request) {
     if (error) {
       console.error('Erreur récupération work_orders:', error);
       return Response.json(
-        { error: 'Erreur récupération bons de travail', details: error.message },
-        { status: 500 }
-      );
-    }
-
-      if (error) {
-      console.error('Erreur récupération work_orders:', error);
-      return Response.json(
-        { error: 'Erreur récupération bons de travail', details: error.message },
+        { success: false, error: 'Erreur récupération bons de travail', details: error.message },
         { status: 500 }
       );
     }
@@ -350,21 +342,10 @@ export async function GET(request) {
       }
     });
 
-    return Response.json({
-      success: true,
-      data: data || [],
-      pagination: {
-        page,
-        limit,
-        total: count,
-        hasMore: (count || 0) > (page + 1) * limit
-      }
-    });
-
   } catch (error) {
     console.error('Erreur API work-orders GET:', error);
     return Response.json(
-      { error: 'Erreur serveur', details: error.message },
+      { success: false, error: 'Erreur serveur', details: error.message },
       { status: 500 }
     );
   }

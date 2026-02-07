@@ -69,7 +69,7 @@ export async function POST(request) {
     // Envoyer l'email
     const { data: emailData, error: emailError } = await resend.emails.send({
       from: 'Services TMT <noreply@servicestmt.ca>',
-      to: [COMPANY_EMAIL],
+      to: [companyEmail],
       subject: `📦 Rapport Inventaire Hebdo - ${startDateStr} au ${endDateStr} (${movements.length} mouvements)`,
       html: html
     });

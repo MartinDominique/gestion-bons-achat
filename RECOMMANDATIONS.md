@@ -26,47 +26,40 @@ Document d'analyse technique et recommandations pour l'amelioration de l'applica
 
 ## Points a Ameliorer
 
-### 1. Code Duplique (Priorite: Haute)
+### 1. ~~Code Duplique~~ ✅ CORRIGE (2026-02-07)
 
-**Probleme:** Dans `lib/services/email-service.js`, la fonction `formatQuebecDateTime` est definie deux fois (lignes 80-127).
+~~**Probleme:** Dans `lib/services/email-service.js`, la fonction `formatQuebecDateTime` est definie deux fois (lignes 80-127).~~
 
-**Solution:**
-```javascript
-// Supprimer la deuxieme definition (lignes 104-127)
-```
+**Correction:** Premiere definition dupliquee supprimee. Une seule definition reste (lignes 80-102).
 
-### 2. Terminologie Confuse (Priorite: Moyenne)
+### 2. ~~Terminologie Confuse~~ ✅ CORRIGE (2026-02-07)
 
-**Probleme:** Le terme "Bon d'Achat" est utilise pour deux concepts differents:
-- BA Bons d'achat Clients (purchase_orders)
-- AF  Achats Fournisseurs (supplier_purchases)
+~~**Probleme:** Le terme "Bon d'Achat" est utilise pour deux concepts differents.~~
 
-**Solution:** Renommer dans l'interface:
-- "Bons d'Achat" → "Commandes Client" ou "BA Client"  //Martin t. : Dans la page principal, il est nommé : Clients. Ne pas le changer dans la page!
-- Page `/achat-materiels` → garder mais clarifier le titre
+**Correction:** Bouton "Nouvel Achat" dans SupplierPurchaseManager clarifie en "Nouvel Achat Fourn."
+**Note Martin:** La page principale reste "Clients" - ne pas changer.
 
-### 3. Champs Redondants en BD (Priorite: Basse)
+### 3. ~~Champs Redondants en BD~~ ✅ CORRIGE (2026-02-07)
 
-**Probleme:** Plusieurs tables stockent des donnees denormalisees:
-- `purchase_orders.client_name` ET `client_id`
-- `supplier_purchases.supplier_name` ET `supplier_id`
+~~**Probleme:** Risque d'inconsistance si le nom client/fournisseur change.~~
 
-**Impact:** Risque d'inconsistance si le nom client change.
+**Correction:** Synchronisation automatique ajoutee:
+- `save-client/route.js`: Met a jour `purchase_orders.client_name` apres modification client
+- `SupplierPurchaseServices.js`: Met a jour `supplier_purchases.supplier_name` apres modification fournisseur
+- Les champs denormalises restent pour la performance (recherche rapide)
 
-**Solution:** Garder les deux pour la performance mais s'assurer de les synchroniser lors des updates.
+### 4. ~~Gestion d'Erreurs~~ ✅ PARTIELLEMENT CORRIGE (2026-02-07)
 
-### 4. Gestion d'Erreurs (Priorite: Moyenne)
+**Corrections effectuees (sans risque):**
+- `save-client/route.js`: `ok: true` → `success: true` (frontend ne lisait pas ce champ)
+- `work-orders/route.js` GET: Code duplique supprime (error check + return en double)
+- `work-orders/route.js` GET: Ajout `success: false` aux reponses d'erreur
+- `send-inventory-report/route.js`: Bug critique corrige (`COMPANY_EMAIL` → `companyEmail`)
 
-**Probleme:** Certains endpoints API ne gèrent pas toutes les erreurs de manière uniforme.
-
-**Solution:** Standardiser les reponses d'erreur:
-```javascript
-// Pattern recommande
-return NextResponse.json(
-  { success: false, error: 'Message explicite' },
-  { status: 400 }
-);
-```
+**Non corrige (risque de casser le frontend):**
+- `/purchase-orders` GET, `/clients` GET, `/products` GET retournent des arrays bruts
+- Changer le format casserait les composants frontend qui consomment ces APIs
+- A corriger plus tard lors d'une refonte coordonnee frontend+API
 
 ### 5. TypeScript Partiel (Priorite: Basse)
 
@@ -836,15 +829,20 @@ Pas de tests automatises detectes.
 
 ## Plan d'Action Suggere
 
-### Phase 1 - Corrections Immediates (1-2 jours)
-- [ ] Supprimer le code duplique `formatQuebecDateTime`
+### Phase 1 - Corrections Immediates ✅ COMPLETE (2026-02-07)
+- [x] Supprimer le code duplique `formatQuebecDateTime`
+- [x] Clarifier la terminologie BA/AF dans l'interface ("Nouvel Achat Fourn.")
+- [x] Synchroniser champs redondants client_name/supplier_name
+- [x] Corriger bug `COMPANY_EMAIL` dans send-inventory-report
+- [x] Supprimer code duplique dans work-orders GET (double error check + double return)
+- [x] Standardiser `ok: true` → `success: true` dans save-client
 - [ ] Tester manuellement `/api/admin/restore`
 - [ ] Documenter les resultats du test restore
 
 ### Phase 2 - Ameliorations Court Terme (1-2 semaines)
 - [ ] Simplifier le workflow Prix Jobe (Option A)
 - [ ] Ajouter validation emails cotes serveur
-- [ ] Clarifier la terminologie BA/AF dans l'interface
+- [ ] Standardiser gestion erreurs API pour routes retournant arrays bruts (purchase-orders, clients, products)
 
 ### Phase 3 - Bon de Livraison (BL) - Fonctionnalite principale (Section 1)
 - [ ] Creer table `delivery_notes` + `delivery_note_materials` (SQL + RLS)

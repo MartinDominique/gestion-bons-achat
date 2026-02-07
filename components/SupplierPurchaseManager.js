@@ -401,7 +401,7 @@ export default function SupplierPurchaseManager() {
               }}
               className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
             >
-              Nouvel Achat
+              Nouvel Achat Fourn.
             </button>
             <button
               onClick={testDailyEmail}
