@@ -1183,14 +1183,9 @@ const getFilteredSupplierPurchases = () => {
   return (
     <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
     
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-xl font-bold text-gray-900">
-          {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
-        </h2>
-        
-        {/* Boutons workflow - en haut */}
-        <div className="space-y-2">
+      {/* Boutons workflow - en haut, centrés */}
+      <div className="mb-6">
+        <div className="space-y-2 sm:max-w-md sm:mx-auto">
           {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
             <button
               type="button"
@@ -1274,21 +1269,20 @@ const getFilteredSupplierPurchases = () => {
                     loadClients();
                     toast.success('Liste des clients actualisée');
                   }}
-                  className="flex-1 sm:flex-none h-12 sm:w-12 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
+                  className="w-12 h-12 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center"
                   title="Actualiser la liste des clients"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                   </svg>
-                  <span className="sm:hidden text-sm">Actualiser</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleEditClient}
                   disabled={!selectedClient}
-                  className={`flex-1 sm:flex-none h-12 sm:w-12 rounded-lg flex items-center justify-center gap-2 ${
+                  className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                     selectedClient
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -1296,17 +1290,15 @@ const getFilteredSupplierPurchases = () => {
                   title={selectedClient ? 'Modifier le client sélectionné' : 'Sélectionnez un client d\'abord'}
                 >
                   <PenTool size={20} />
-                  <span className="sm:hidden text-sm">Modifier</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleNewClient}
-                  className="flex-1 sm:flex-none h-12 sm:w-12 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
+                  className="w-12 h-12 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center"
                   title="Créer un nouveau client"
                 >
                   <Plus size={20} />
-                  <span className="sm:hidden text-sm">Nouveau</span>
                 </button>
               </div>
             </div>
