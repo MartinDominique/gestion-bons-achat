@@ -116,15 +116,16 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
       totalSelling: pdfFormatCurrency(item.selling_price * item.quantity),
       totalCost: pdfFormatCurrency(item.cost_price * item.quantity),
     }));
+    const amountPadding = { top: 2, right: 1.5, bottom: 2, left: 1 };
     columnStyles = {
-      code: { cellWidth: 22 },
+      code: { cellWidth: 30 },
       description: { cellWidth: 'auto' },
-      unit: { cellWidth: 15, halign: 'center' },
-      qty: { cellWidth: 12, halign: 'center' },
-      sellingPrice: { cellWidth: 22, halign: 'right' },
-      costPrice: { cellWidth: 22, halign: 'right' },
-      totalSelling: { cellWidth: 25, halign: 'right' },
-      totalCost: { cellWidth: 25, halign: 'right' },
+      unit: { cellWidth: 11, halign: 'center' },
+      qty: { cellWidth: 11, halign: 'center' },
+      sellingPrice: { cellWidth: 18, halign: 'right', cellPadding: amountPadding },
+      costPrice: { cellWidth: 18, halign: 'right', cellPadding: amountPadding },
+      totalSelling: { cellWidth: 20, halign: 'right', cellPadding: amountPadding },
+      totalCost: { cellWidth: 20, halign: 'right', cellPadding: amountPadding },
     };
   }
 
