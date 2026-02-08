@@ -1,3 +1,15 @@
+/**
+ * @file components/SoumissionsManager.js
+ * @description Gestionnaire complet des soumissions (devis/quotes)
+ *              - Création, édition, suppression de soumissions
+ *              - Impression PDF (version complète + version client)
+ *              - Recherche produits, calcul taxes QC, gestion fichiers
+ * @version 1.1.0
+ * @date 2026-02-08
+ * @changelog
+ *   1.1.0 - Ajout header répété sur pages 2+ pour PDF multi-pages (table wrapper)
+ *   1.0.0 - Version initiale
+ */
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, Plus, Upload, X, ChevronDown, MessageSquare, DollarSign, Calculator, Printer } from 'lucide-react';
@@ -1462,6 +1474,26 @@ const cleanupFilesForSubmission = async (files) => {
               font-size: 11px !important;
             }
             
+            /* Table wrapper pour répéter l'en-tête sur chaque page imprimée */
+            .print-wrapper {
+              width: 100% !important;
+              border-collapse: collapse !important;
+            }
+
+            .print-wrapper > thead {
+              display: table-header-group !important;
+            }
+
+            .print-wrapper > tbody {
+              display: table-row-group !important;
+            }
+
+            .print-wrapper > thead > tr > td,
+            .print-wrapper > tbody > tr > td {
+              padding: 0 !important;
+              border: none !important;
+            }
+
             /* Éléments à masquer à l'impression */
             .no-print {
               display: none !important;
@@ -1481,52 +1513,59 @@ const cleanupFilesForSubmission = async (files) => {
           {/* VERSION COMPLÈTE AVEC COÛTS - Zone d'impression */}
           {selectedItems.length > 0 && (
             <div className="print-area">
-              {/* En-tête professionnel amélioré */}
-              <div className="print-header">
-                <div className="print-company-section">
-                  <img src="/logo.png" alt="Services TMT" className="print-logo" />
-                  <div className="print-company-info">
-                    <div className="print-company-name">Services TMT Inc.</div>
-                    <div>3195, 42e Rue Nord</div>
-                    <div>Saint-Georges, QC G5Z 0V9</div>
-                    <div><strong>Tél:</strong> (418) 225-3875</div>
-                    <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
-                  </div>
-                </div>
-                <div className="print-submission-header">
-                  <h1 className="print-submission-title">SOUMISSION</h1>
-                  <div className="print-submission-details">
-                    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-                    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section client compacte */}
-              <div className="print-client-section">
-                <div className="print-client-info">
-                  <div className="print-client-label">CLIENT:</div>
-                  <div className="print-client-name">{submissionForm.client_name}</div>
-                  {(() => {
-                    const clientData = clients.find(c => c.name === submissionForm.client_name);
-                    if (clientData && (clientData.address || clientData.phone)) {
-                      return (
-                        <div style={{ fontSize: '9px', color: '#666' }}>
-                          {clientData.address && clientData.phone 
-                            ? `${clientData.address} • Tél.: ${clientData.phone}`
-                            : clientData.address || `Tél.: ${clientData.phone}`
-                          }
+              <table className="print-wrapper">
+                <thead>
+                  <tr><td>
+                    {/* En-tête professionnel amélioré - répété sur chaque page */}
+                    <div className="print-header">
+                      <div className="print-company-section">
+                        <img src="/logo.png" alt="Services TMT" className="print-logo" />
+                        <div className="print-company-info">
+                          <div className="print-company-name">Services TMT Inc.</div>
+                          <div>3195, 42e Rue Nord</div>
+                          <div>Saint-Georges, QC G5Z 0V9</div>
+                          <div><strong>Tél:</strong> (418) 225-3875</div>
+                          <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-                <div className="print-project-info">
-                  <div className="print-client-label">DESCRIPTION:</div>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
-                </div>
-              </div>
+                      </div>
+                      <div className="print-submission-header">
+                        <h1 className="print-submission-title">SOUMISSION</h1>
+                        <div className="print-submission-details">
+                          <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+                          <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section client compacte */}
+                    <div className="print-client-section">
+                      <div className="print-client-info">
+                        <div className="print-client-label">CLIENT:</div>
+                        <div className="print-client-name">{submissionForm.client_name}</div>
+                        {(() => {
+                          const clientData = clients.find(c => c.name === submissionForm.client_name);
+                          if (clientData && (clientData.address || clientData.phone)) {
+                            return (
+                              <div style={{ fontSize: '9px', color: '#666' }}>
+                                {clientData.address && clientData.phone
+                                  ? `${clientData.address} • Tél.: ${clientData.phone}`
+                                  : clientData.address || `Tél.: ${clientData.phone}`
+                                }
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                      <div className="print-project-info">
+                        <div className="print-client-label">DESCRIPTION:</div>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
+                      </div>
+                    </div>
+                  </td></tr>
+                </thead>
+                <tbody>
+                  <tr><td>
 
               {/* Tableau principal amélioré */}
               <table className="print-table complete">
@@ -1647,67 +1686,78 @@ const cleanupFilesForSubmission = async (files) => {
                 </div>
                 
                 {/* Contact en bas */}
-                <div style={{ 
-                  marginTop: '20px', 
-                  paddingTop: '10px', 
+                <div style={{
+                  marginTop: '20px',
+                  paddingTop: '10px',
                   borderTop: '1px solid #000',
                   textAlign: 'center',
                   fontSize: '9px'
                 }}>
                 </div>
               </div>
+
+                  </td></tr>
+                </tbody>
+              </table>
             </div>
           )}
 
           {/* VERSION CLIENT SANS COÛTS - Zone d'impression */}
           {selectedItems.length > 0 && (
             <div className="print-area-client">
-              {/* En-tête professionnel */}
-              <div className="print-header">
-                <div className="print-company-section">
-                  <img src="/logo.png" alt="Services TMT" className="print-logo" />
-                  <div className="print-company-info">
-                    <div className="print-company-name">Services TMT Inc.</div>
-                    <div>3195, 42e Rue Nord</div>
-                    <div>Saint-Georges, QC G5Z 0V9</div>
-                    <div><strong>Tél:</strong> (418) 225-3875</div>
-                    <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
-                  </div>
-                </div>
-                <div className="print-submission-header">
-                  <h1 className="print-submission-title">SOUMISSION</h1>
-                  <div className="print-submission-details">
-                    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-                    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section Impression client */}
-              <div className="print-client-section">
-                <div className="print-client-info">
-                  <div className="print-client-label">CLIENT:</div>
-                  <div className="print-client-name">{submissionForm.client_name}</div>
-                  {(() => {
-                    const clientData = clients.find(c => c.name === submissionForm.client_name);
-                    if (clientData && (clientData.address || clientData.phone)) {
-                      return (
-                        <div style={{ fontSize: '9px', color: '#666' }}>
-                          {clientData.address && clientData.phone 
-                            ? `${clientData.address} • Tél.: ${clientData.phone}`
-                            : clientData.address || `Tél.: ${clientData.phone}`
-                          }
+              <table className="print-wrapper">
+                <thead>
+                  <tr><td>
+                    {/* En-tête professionnel - répété sur chaque page */}
+                    <div className="print-header">
+                      <div className="print-company-section">
+                        <img src="/logo.png" alt="Services TMT" className="print-logo" />
+                        <div className="print-company-info">
+                          <div className="print-company-name">Services TMT Inc.</div>
+                          <div>3195, 42e Rue Nord</div>
+                          <div>Saint-Georges, QC G5Z 0V9</div>
+                          <div><strong>Tél:</strong> (418) 225-3875</div>
+                          <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-                <div className="print-project-info">
-                  <div className="print-client-label">DESCRIPTION:</div>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
-                </div>
-              </div>
+                      </div>
+                      <div className="print-submission-header">
+                        <h1 className="print-submission-title">SOUMISSION</h1>
+                        <div className="print-submission-details">
+                          <p><strong>N°:</strong> {submissionForm.submission_number}</p>
+                          <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section Impression client */}
+                    <div className="print-client-section">
+                      <div className="print-client-info">
+                        <div className="print-client-label">CLIENT:</div>
+                        <div className="print-client-name">{submissionForm.client_name}</div>
+                        {(() => {
+                          const clientData = clients.find(c => c.name === submissionForm.client_name);
+                          if (clientData && (clientData.address || clientData.phone)) {
+                            return (
+                              <div style={{ fontSize: '9px', color: '#666' }}>
+                                {clientData.address && clientData.phone
+                                  ? `${clientData.address} • Tél.: ${clientData.phone}`
+                                  : clientData.address || `Tél.: ${clientData.phone}`
+                                }
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                      <div className="print-project-info">
+                        <div className="print-client-label">DESCRIPTION:</div>
+                        <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
+                      </div>
+                    </div>
+                  </td></tr>
+                </thead>
+                <tbody>
+                  <tr><td>
 
               {/* Tableau client (sans colonnes de coût) */}
               <table className="print-table client">
@@ -1825,6 +1875,10 @@ const cleanupFilesForSubmission = async (files) => {
                 <div style={{ textAlign: 'center' }}>
                 </div>
               </div>
+
+                  </td></tr>
+                </tbody>
+              </table>
             </div>
           )}
 
