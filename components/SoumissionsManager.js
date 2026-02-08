@@ -917,8 +917,7 @@ export default function SoumissionsManager() {
       const doc = await generateSubmissionPDF({
         submissionForm, selectedItems, clients, isClientVersion: false
       });
-      const pdfUrl = doc.output('bloburl');
-      window.open(pdfUrl, '_blank');
+      doc.save(`Soumission Coutant ${submissionForm.submission_number || 'nouveau'}.pdf`);
     } catch (error) {
       console.error('Erreur génération PDF:', error);
       alert('❌ Erreur lors de la génération du PDF');
@@ -938,8 +937,7 @@ export default function SoumissionsManager() {
       const doc = await generateSubmissionPDF({
         submissionForm, selectedItems, clients, isClientVersion: true
       });
-      const pdfUrl = doc.output('bloburl');
-      window.open(pdfUrl, '_blank');
+      doc.save(`Soumission Client ${submissionForm.submission_number || 'nouveau'}.pdf`);
     } catch (error) {
       console.error('Erreur génération PDF:', error);
       alert('❌ Erreur lors de la génération du PDF');

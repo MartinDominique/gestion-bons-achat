@@ -15,12 +15,18 @@ export default function BonsTravailPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('client'); // 'client', 'bt_number', 'date'
   const [statusFilter, setStatusFilter] = useState(() => {
-  // Charger le filtre sauvegardé depuis localStorage
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('bt-status-filter') || 'all';
-  }
-  return 'all';
-});
+    // Charger les filtres sauvegardés depuis localStorage (tableau de statuts)
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('bt-status-filter');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) { /* migration depuis ancien format string */ }
+    }
+    return []; // vide = tous les statuts affichés
+  });
   const router = useRouter();
 
   // Fonction pour formater les heures en h:min
@@ -76,12 +82,22 @@ export default function BonsTravailPage() {
     }
   };
 
-  // Sauvegarder le filtre dans localStorage quand il change
+  // Sauvegarder les filtres dans localStorage quand ils changent
     useEffect(() => {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('bt-status-filter', statusFilter);
+        localStorage.setItem('bt-status-filter', JSON.stringify(statusFilter));
       }
     }, [statusFilter]);
+
+    // Toggle un statut dans le filtre multi-sélection
+    const toggleStatusFilter = (status) => {
+      setStatusFilter(prev => {
+        if (prev.includes(status)) {
+          return prev.filter(s => s !== status);
+        }
+        return [...prev, status];
+      });
+    };
 
   useEffect(() => {
     fetchWorkOrders();
@@ -91,9 +107,9 @@ export default function BonsTravailPage() {
     const filteredWorkOrders = useMemo(() => {
       let filtered = workOrders;
       
-      // 1. Filtrer par statut d'abord
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter(wo => wo.status === statusFilter);
+      // 1. Filtrer par statut(s) sélectionné(s)
+      if (statusFilter.length > 0) {
+        filtered = filtered.filter(wo => statusFilter.includes(wo.status));
       }
       
       // 2. Puis filtrer par recherche
@@ -359,85 +375,85 @@ export default function BonsTravailPage() {
           </div>
         </div>
 
-        {/* Filtres par statut - NOUVEAUX BOUTONS */}
+        {/* Filtres par statut - MULTI-SÉLECTION */}
           <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg p-4 mb-4 border border-white/50">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Filtrer par statut:</h3>
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setStatusFilter('all')}
+                onClick={() => setStatusFilter([])}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  statusFilter === 'all'
+                  statusFilter.length === 0
                     ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white shadow-md'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                📋 Tous ({workOrders.length})
+                Tous ({workOrders.length})
               </button>
-              
+
               <button
-                onClick={() => setStatusFilter('draft')}
+                onClick={() => toggleStatusFilter('draft')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  statusFilter === 'draft'
-                    ? 'bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md'
+                  statusFilter.includes('draft')
+                    ? 'bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md ring-2 ring-gray-400 ring-offset-1'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                ✏️ Brouillon ({workOrders.filter(wo => wo.status === 'draft').length})
+                Brouillon ({workOrders.filter(wo => wo.status === 'draft').length})
               </button>
-              
+
               <button
-                onClick={() => setStatusFilter('ready_for_signature')}
+                onClick={() => toggleStatusFilter('ready_for_signature')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  statusFilter === 'ready_for_signature'
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                  statusFilter.includes('ready_for_signature')
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md ring-2 ring-blue-400 ring-offset-1'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                ✍️ À signer ({workOrders.filter(wo => wo.status === 'ready_for_signature').length})
+                À signer ({workOrders.filter(wo => wo.status === 'ready_for_signature').length})
               </button>
-              
+
               <button
-                onClick={() => setStatusFilter('signed')}
+                onClick={() => toggleStatusFilter('signed')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  statusFilter === 'signed'
-                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md'
+                  statusFilter.includes('signed')
+                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md ring-2 ring-green-400 ring-offset-1'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                ✅ Signé ({workOrders.filter(wo => wo.status === 'signed').length})
+                Signé ({workOrders.filter(wo => wo.status === 'signed').length})
               </button>
-              
+
               <button
-                onClick={() => setStatusFilter('pending_send')}
+                onClick={() => toggleStatusFilter('pending_send')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  statusFilter === 'pending_send'
-                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md'
+                  statusFilter.includes('pending_send')
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md ring-2 ring-orange-400 ring-offset-1'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                ⏳ En attente ({workOrders.filter(wo => wo.status === 'pending_send').length})
+                En attente ({workOrders.filter(wo => wo.status === 'pending_send').length})
               </button>
-              
+
               <button
-                onClick={() => setStatusFilter('sent')}
+                onClick={() => toggleStatusFilter('sent')}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                  statusFilter === 'sent'
-                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md'
+                  statusFilter.includes('sent')
+                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md ring-2 ring-purple-400 ring-offset-1'
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                📧 Envoyé ({workOrders.filter(wo => wo.status === 'sent').length})
+                Envoyé ({workOrders.filter(wo => wo.status === 'sent').length})
               </button>
             </div>
-            
-            {/* Indicateur du filtre actif */}
-            {statusFilter !== 'all' && (
+
+            {/* Indicateur des filtres actifs */}
+            {statusFilter.length > 0 && (
               <div className="mt-3 text-sm text-blue-700 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 flex items-center justify-between">
                 <span>
-                  <span className="font-semibold">{filteredWorkOrders.length}</span> résultat(s) avec le statut sélectionné
+                  <span className="font-semibold">{filteredWorkOrders.length}</span> résultat(s) avec {statusFilter.length > 1 ? 'les statuts sélectionnés' : 'le statut sélectionné'}
                 </span>
                 <button
-                  onClick={() => setStatusFilter('all')}
+                  onClick={() => setStatusFilter([])}
                   className="text-blue-600 hover:text-blue-800 font-medium underline"
                 >
                   Réinitialiser
