@@ -818,13 +818,12 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
           // CRÉATION - Email automatique
           console.log('📧 Création avec statut email → Envoi automatique');
           
-          const pdf = generatePurchasePDF(savedPurchase);
-          const pdfBlob = pdf.output('blob');
-          
+          const pdf = await generatePurchasePDF(savedPurchase);
+
           setIsLoadingEmail(true);
           setEmailStatus('Envoi automatique en cours...');
-          
-          sendEmailToDominique(savedPurchase, pdfBlob)
+
+          sendEmailToDominique(savedPurchase, pdf)
             .then(() => {
               console.log('📧 EMAIL AUTOMATIQUE ENVOYÉ');
               setEmailStatus('✅ Email envoyé automatiquement à Dominique');

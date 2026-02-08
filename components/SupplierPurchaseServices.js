@@ -1,7 +1,42 @@
+/**
+ * @file components/SupplierPurchaseServices.js
+ * @description Services pour la gestion des achats fournisseurs (AF)
+ *              PDF standardisé via pdf-common.js, envoi email, CRUD Supabase
+ * @version 2.0.0
+ * @date 2026-02-08
+ * @changelog
+ *   2.0.0 - Standardisation PDF avec pdf-common.js, suppression html2canvas
+ *   1.5.0 - Sync supplier_name, corrections
+ *   1.0.0 - Version initiale
+ */
+
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
+import {
+  drawHeader,
+  drawFooter,
+  drawMaterialsTable,
+  drawTotals,
+  drawTwoColumns,
+  drawSectionTitle,
+  loadLogoBase64Client,
+  formatDate as pdfFormatDate,
+  formatCurrency as pdfFormatCurrency,
+  PAGE,
+} from '../lib/services/pdf-common';
+
+// Cache logo en mémoire (chargé une seule fois)
+let _cachedLogoBase64 = null;
+async function getLogoBase64() {
+  if (_cachedLogoBase64) return _cachedLogoBase64;
+  try {
+    _cachedLogoBase64 = await loadLogoBase64Client();
+  } catch (e) {
+    console.warn('⚠️ Logo non chargé:', e.message);
+  }
+  return _cachedLogoBase64;
+}
 
 // ===== CONSTANTES =====
 
@@ -558,276 +593,167 @@ export const fetchAvailableSubmissions = async (clientName = null) => {
 
 // ===== SERVICES PDF =====
 
-// Générer le PDF de l'achat fournisseur
-export const generatePurchasePDF = (purchase) => {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.width;
-  
-  // En-tête du document
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ACHAT FOURNISSEUR', pageWidth / 2, 20, { align: 'center' });
-  
-  doc.setFontSize(16);
-  doc.text(`N° ${purchase.purchase_number}`, pageWidth / 2, 30, { align: 'center' });
-  
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${new Date(purchase.created_at).toLocaleDateString('fr-FR')}`, pageWidth / 2, 40, { align: 'center' });
-  
-  // Ligne de séparation
-  doc.setLineWidth(0.5);
-  doc.line(10, 45, pageWidth - 10, 45);
-  
-  // Informations fournisseur
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('FOURNISSEUR:', 15, 60);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.text(purchase.supplier_name || 'N/A', 15, 70);
-  
-  // Informations de base
-  const startY = 85;
-  doc.text(`Date création: ${new Date(purchase.created_at).toLocaleDateString('fr-FR')}`, 15, startY);
-  
-  if (purchase.delivery_date) {
-    doc.text(`Date livraison: ${new Date(purchase.delivery_date).toLocaleDateString('fr-FR')}`, 15, startY + 8);
-  }
-  
-  doc.text(`Statut: ${PURCHASE_STATUSES[purchase.status] || purchase.status}`, 15, startY + 16);
-  
-  // NOUVEAU - BA Acomba
-  if (purchase.ba_acomba) {
-    doc.text(`BA Acomba: ${purchase.ba_acomba}`, 15, startY + 24);
-  }
-  
-  // Référence soumission fournisseur
+// Générer le PDF standardisé de l'achat fournisseur
+export const generatePurchasePDF = async (purchase, options = {}) => {
+  const { supplier, deliveryAddress } = options;
+  const logoBase64 = await getLogoBase64();
+  const doc = new jsPDF({ format: 'letter' });
+
+  // === En-tête standardisé ===
+  const headerFields = [
+    { value: purchase.purchase_number || 'N/A' },
+    { label: 'Date:', value: pdfFormatDate(purchase.created_at) },
+  ];
   if (purchase.supplier_quote_reference) {
-    const yPos = purchase.ba_acomba ? startY + 32 : startY + 24;
-    doc.text(`Réf. Soumission: ${purchase.supplier_quote_reference}`, 15, yPos);
+    headerFields.push({ label: 'Soumission:', value: purchase.supplier_quote_reference });
   }
-  
-  // Lien avec bon d'achat client si existant
+  if (purchase.ba_acomba) {
+    headerFields.push({ label: 'BA Acomba:', value: purchase.ba_acomba });
+  }
   if (purchase.linked_po_number) {
-    const yPos = purchase.supplier_quote_reference ? 
-      (purchase.ba_acomba ? startY + 45 : startY + 35) : 
-      (purchase.ba_acomba ? startY + 35 : startY + 35);
-    
-    doc.setFillColor(230, 240, 255);
-    doc.rect(10, yPos, pageWidth - 20, 20, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.text('LIEN AVEC BON D\'ACHAT CLIENT:', 15, yPos + 10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`N° Bon d'achat: ${purchase.linked_po_number}`, 15, yPos + 17);
+    headerFields.push({ label: 'BA Client:', value: purchase.linked_po_number });
   }
-  
-  // Tableau des articles
-  const itemsStartY = purchase.linked_po_number ? 
-    (purchase.supplier_quote_reference ? 
-      (purchase.ba_acomba ? startY + 75 : startY + 65) : 
-      (purchase.ba_acomba ? startY + 65 : startY + 65)
-    ) : 
-    (purchase.supplier_quote_reference ? 
-      (purchase.ba_acomba ? startY + 55 : startY + 45) : 
-      (purchase.ba_acomba ? startY + 45 : startY + 45)
-    );
-  
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('DÉTAIL DES ARTICLES:', 15, itemsStartY);
-  
+  if (purchase.delivery_date) {
+    headerFields.push({ label: 'Livraison prévue:', value: pdfFormatDate(purchase.delivery_date) });
+  }
+
+  let currentY = drawHeader(doc, logoBase64, {
+    title: 'BON DE COMMANDE',
+    fields: headerFields,
+  });
+
+  // === Section Fournisseur / Livrer à ===
+  const leftLines = [];
+  if (supplier) {
+    leftLines.push(supplier.company_name || purchase.supplier_name || 'N/A');
+    if (supplier.contact_name) leftLines.push('Contact: ' + supplier.contact_name);
+    if (supplier.address) leftLines.push(supplier.address);
+    if (supplier.city) leftLines.push(`${supplier.city}, ${supplier.province || ''} ${supplier.postal_code || ''}`);
+    if (supplier.country) leftLines.push(supplier.country);
+    if (supplier.email) leftLines.push('Email: ' + supplier.email);
+    if (supplier.phone) leftLines.push('Tél: ' + supplier.phone);
+  } else {
+    leftLines.push(purchase.supplier_name || 'N/A');
+  }
+
+  const rightLines = [];
+  if (deliveryAddress) {
+    rightLines.push(deliveryAddress.name || 'Services TMT');
+    if (deliveryAddress.address) rightLines.push(deliveryAddress.address);
+    if (deliveryAddress.city) rightLines.push(`${deliveryAddress.city}, ${deliveryAddress.province || ''} ${deliveryAddress.postal_code || ''}`);
+    if (deliveryAddress.country) rightLines.push(deliveryAddress.country);
+  } else {
+    rightLines.push('Services TMT');
+    rightLines.push('3195 42e Rue Nord');
+    rightLines.push('St-Georges, QC G5Z 0V9');
+    rightLines.push('Canada');
+  }
+
+  currentY = drawTwoColumns(doc, currentY, {
+    left: { title: 'Fournisseur:', lines: leftLines },
+    right: { title: 'Livrer à :', lines: rightLines },
+  });
+
+  // === Tableau des articles ===
   if (purchase.items && purchase.items.length > 0) {
-    const tableData = purchase.items.map(item => {
-      const quantity = parseFloat(item.quantity || 1);
+    const columns = [
+      { header: 'Code', dataKey: 'code' },
+      { header: 'Description', dataKey: 'description' },
+      { header: 'Qté', dataKey: 'quantity' },
+      { header: 'Unité', dataKey: 'unit' },
+      { header: 'Prix Unit.', dataKey: 'unitPrice' },
+      { header: 'Total', dataKey: 'total' },
+    ];
+
+    const columnStyles = {
+      code: { cellWidth: 28, halign: 'left' },
+      quantity: { cellWidth: 15, halign: 'center' },
+      unit: { cellWidth: 15, halign: 'center' },
+      unitPrice: { cellWidth: 25, halign: 'right' },
+      total: { cellWidth: 25, halign: 'right' },
+    };
+
+    const body = purchase.items.map(item => {
+      const qty = parseFloat(item.quantity || 1);
       const unitPrice = parseFloat(item.cost_price || 0);
-      const lineTotal = quantity * unitPrice;
-      
-      return [
-        item.product_id || '-',
-        item.description || '-',
-        quantity.toString(),
-        item.unit || 'UN',
-        `$${unitPrice.toFixed(4)}`,
-        `$${lineTotal.toFixed(2)}`
-      ];
+      const lineTotal = qty * unitPrice;
+      const notes = (item.notes && item.notes.trim()) ? '\nNote: ' + item.notes : '';
+
+      return {
+        code: item.product_id || '-',
+        description: (item.description || '-') + notes,
+        quantity: qty.toString(),
+        unit: item.unit || 'UN',
+        unitPrice: pdfFormatCurrency(unitPrice, 4),
+        total: pdfFormatCurrency(lineTotal),
+      };
     });
-    
-    doc.autoTable({
-      startY: itemsStartY + 10,
-      head: [['Code', 'Description', 'Qté', 'Unité', 'Prix Unit.', 'Total']],
-      body: tableData,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [70, 130, 180] },
-      margin: { left: 15, right: 15 }
+
+    currentY = drawMaterialsTable(doc, currentY, {
+      title: null,
+      columns,
+      body,
+      columnStyles,
     });
-    
-    // Totaux
-    const finalY = doc.lastAutoTable.finalY + 10;
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('Sous-total:', pageWidth - 80, finalY);
-    doc.text(`$${parseFloat(purchase.subtotal || 0).toFixed(2)}`, pageWidth - 15, finalY, { align: 'right' });
-    
-    if (parseFloat(purchase.tps || 0) > 0) {
-      doc.text('TPS (5%):', pageWidth - 80, finalY + 8);
-      doc.text(`$${parseFloat(purchase.tps || 0).toFixed(2)}`, pageWidth - 15, finalY + 8, { align: 'right' });
-    }
-    
-    if (parseFloat(purchase.tvq || 0) > 0) {
-      doc.text('TVQ (9.975%):', pageWidth - 80, finalY + 16);
-      doc.text(`$${parseFloat(purchase.tvq || 0).toFixed(2)}`, pageWidth - 15, finalY + 16, { align: 'right' });
-    }
-    
-    if (parseFloat(purchase.shipping_cost || 0) > 0) {
-      doc.text('Livraison:', pageWidth - 80, finalY + 24);
-      doc.text(`$${parseFloat(purchase.shipping_cost || 0).toFixed(2)}`, pageWidth - 15, finalY + 24, { align: 'right' });
-    }
-    
-    // Ligne de séparation
-    const totalLineY = finalY + 32;
-    doc.setLineWidth(1);
-    doc.line(pageWidth - 80, totalLineY, pageWidth - 15, totalLineY);
-    
-    doc.setFontSize(14);
-    doc.text('TOTAL GÉNÉRAL:', pageWidth - 80, totalLineY + 10);
-    doc.text(`$${parseFloat(purchase.total_amount || 0).toFixed(2)}`, pageWidth - 15, totalLineY + 10, { align: 'right' });
-    
-    // Notes si présentes
-    if (purchase.notes) {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Notes:', 15, totalLineY + 25);
-      doc.setFont('helvetica', 'normal');
-      doc.text(purchase.notes, 15, totalLineY + 35, { maxWidth: pageWidth - 30 });
-    }
+
+    // === Totaux ===
+    currentY = drawTotals(doc, currentY, {
+      subtotal: parseFloat(purchase.subtotal || 0),
+      tps: parseFloat(purchase.tps || 0),
+      tvq: parseFloat(purchase.tvq || 0),
+      shipping: parseFloat(purchase.shipping_cost || 0),
+      total: parseFloat(purchase.total_amount || 0),
+    });
   } else {
     doc.setFont('helvetica', 'italic');
-    doc.text('Aucun article disponible', 15, itemsStartY + 15);
+    doc.setFontSize(9);
+    doc.text('Aucun article disponible', PAGE.margin.left, currentY);
+    currentY += 10;
   }
-  
+
+  // === Notes ===
+  if (purchase.notes) {
+    currentY = drawSectionTitle(doc, 'Notes:', currentY);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const noteLines = doc.splitTextToSize(purchase.notes, PAGE.width - PAGE.margin.left - PAGE.margin.right);
+    doc.text(noteLines, PAGE.margin.left, currentY);
+    currentY += noteLines.length * 4.5 + 5;
+  }
+
+  // === Footer standardisé ===
+  drawFooter(doc);
+
   return doc;
 };
 
-// Exporter PDF avec différentes options
-export const exportPDF = async (action = 'download', purchase, purchaseForm) => {
+// Exporter PDF avec différentes options (utilise generatePurchasePDF standardisé)
+export const exportPDF = async (action = 'download', purchase, purchaseForm, options = {}) => {
   try {
-    const printContainer = document.querySelector('.print-container');
-    if (!printContainer) {
-      alert("Aucun contenu à exporter.");
-      return;
-    }
-
     const purchaseNumber =
       purchaseForm?.purchase_number ||
       purchase?.purchase_number ||
       'Achat-nouveau';
 
-    // 1) Styles d'impression temporaires
-    const printStyles = document.createElement('style');
-    printStyles.textContent = `
-      .temp-print-view * { visibility: visible !important; }
-      .temp-print-view {
-        position: absolute !important;
-        left: 0 !important; top: 0 !important;
-        width: 8.5in !important;
-        background: #fff !important;
-        padding: 0.5in !important;
-        font-size: 12px !important;
-        line-height: 1.4 !important;
-      }
-      .temp-print-view table { width: 100% !important; border-collapse: collapse !important; }
-      .temp-print-view th, .temp-print-view td {
-        border: 1px solid #000 !important; padding: 8px !important; text-align: left !important;
-      }
-      .temp-print-view th { background-color: #f0f0f0 !important; }
-    `;
-    document.head.appendChild(printStyles);
+    // Fusionner les données purchase + purchaseForm
+    const pdfData = { ...purchase, ...purchaseForm };
+    const doc = await generatePurchasePDF(pdfData, options);
 
-    // 2) Cloner le contenu
-    const clonedContainer = printContainer.cloneNode(true);
-    clonedContainer.className = 'temp-print-view';
-    clonedContainer.style.visibility = 'visible';
-    clonedContainer.style.display = 'block';
-    document.body.appendChild(clonedContainer);
-
-    await new Promise(r => setTimeout(r, 80));
-
-    // 3) Canvas (laisser html2canvas gérer la hauteur)
-    const canvas = await html2canvas(clonedContainer, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false
-    });
-
-    // Nettoyage DOM temporaire
-    document.body.removeChild(clonedContainer);
-    document.head.removeChild(printStyles);
-
-    // 4) PDF avec pagination, marges, numéros de page
-    const pdf = new jsPDF({ unit: 'pt', format: 'letter' }); // 612 x 792
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = { top: 36, right: 36, bottom: 36, left: 36 };
-    const usableWidth = pageWidth - margin.left - margin.right;
-    const usableHeight = pageHeight - margin.top - margin.bottom;
-
-    const imgData = canvas.toDataURL('image/png');
-    const imgWidth = usableWidth;
-    const imgHeight = canvas.height * (imgWidth / canvas.width);
-
-    let heightLeft = imgHeight;
-    let positionY = 0;
-    let page = 1;
-
-    while (heightLeft > 0) {
-      if (page > 1) pdf.addPage();
-
-      pdf.addImage(
-        imgData,
-        'PNG',
-        margin.left,
-        margin.top + positionY,
-        imgWidth,
-        imgHeight
-      );
-
-      // pied de page: numéro de page
-      pdf.setFontSize(10);
-      pdf.text(
-        `Page ${page}`,
-        pageWidth - margin.right,
-        pageHeight - 14,
-        { align: 'right', baseline: 'bottom' }
-      );
-
-      heightLeft -= usableHeight;
-      positionY -= usableHeight;
-      page++;
-    }
-
-    // 5) Actions : download / view / modal
     if (action === 'download') {
-      pdf.save(`${purchaseNumber}.pdf`);
+      doc.save(`${purchaseNumber}.pdf`);
       return;
     }
 
     if (action === 'view') {
-      // Nouvel onglet sans téléchargement auto
-      const pdfBlob = new Blob([pdf.output('arraybuffer')], { type: 'application/pdf' });
+      const pdfBlob = new Blob([doc.output('arraybuffer')], { type: 'application/pdf' });
       const blobUrl = URL.createObjectURL(pdfBlob);
       window.open(blobUrl, '_blank');
       return;
     }
 
     if (action === 'modal') {
-      // Data URL = rendu inline fiable dans <embed>
-      const dataUrl = pdf.output('dataurlstring');
-      openPdfModal(dataUrl, () => {
-        /* rien à révoquer pour data: URL */
-      });
+      const dataUrl = doc.output('dataurlstring');
+      openPdfModal(dataUrl, () => {});
       return;
     }
 
@@ -925,165 +851,44 @@ function openPdfModal(pdfUrl, onClose) {
 
 // ===== SERVICES EMAIL =====
 
-// Envoi email à Dominique
-export const sendEmailToDominique = async (purchase, pdfBlob) => {
+// Envoi email à Dominique (utilise le PDF jsPDF standardisé)
+export const sendEmailToDominique = async (purchase, pdfDoc) => {
   try {
-    const printContainer = document.querySelector('.print-container');
-    if (!printContainer) {
-      throw new Error('Conteneur d\'impression non trouvé');
+    // Si pdfDoc n'est pas fourni ou est un Blob (ancien usage), générer le PDF
+    let doc = pdfDoc;
+    if (!doc || doc instanceof Blob) {
+      console.log('📄 Génération du PDF standardisé AF...');
+      doc = await generatePurchasePDF(purchase);
     }
 
-    console.log('Génération du PDF professionnel...');
-    
-    // Styles d'impression améliorés
-    const printStyles = document.createElement('style');
-    printStyles.textContent = `
-      .temp-print-view * { visibility: visible !important; }
-      .temp-print-view {
-        position: fixed !important;
-        left: -9999px !important; 
-        top: 0 !important;
-        width: 1024px !important; /* Largeur fixe plus grande */
-        background: #fff !important;
-        padding: 48px !important;
-        font-size: 14px !important;
-        line-height: 1.5 !important;
-        font-family: Arial, sans-serif !important;
-        box-sizing: border-box !important;
-      }
-      .temp-print-view table { 
-        width: 100% !important; 
-        border-collapse: collapse !important; 
-        margin: 20px 0 !important;
-      }
-      .temp-print-view th, .temp-print-view td {
-        border: 1px solid #000 !important; 
-        padding: 12px !important; 
-        text-align: left !important;
-        font-size: 12px !important;
-      }
-      .temp-print-view th { 
-        background-color: #f0f0f0 !important; 
-        font-weight: bold !important;
-      }
-      .temp-print-view .text-right {
-        text-align: right !important;
-      }
-      .temp-print-view .text-center {
-        text-align: center !important;
-      }
-      .temp-print-view h1, .temp-print-view h2, .temp-print-view h3 {
-        margin: 10px 0 !important;
-      }
-    `;
-    document.head.appendChild(printStyles);
-
-    const clonedContainer = printContainer.cloneNode(true);
-    clonedContainer.className = 'temp-print-view';
-    clonedContainer.style.visibility = 'visible';
-    clonedContainer.style.display = 'block';
-    document.body.appendChild(clonedContainer);
-
-    // Attendre plus longtemps pour le rendu
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Capture avec meilleure qualité
-    const canvas = await html2canvas(clonedContainer, {
-      scale: 2, // Qualité élevée
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      width: 1024, // Largeur fixe
-      height: clonedContainer.scrollHeight,
-      windowWidth: 1024,
-      windowHeight: clonedContainer.scrollHeight + 100,
-      allowTaint: true,
-      imageTimeout: 15000
-    });
-
-    // Nettoyage
-    document.body.removeChild(clonedContainer);
-    document.head.removeChild(printStyles);
-
-    // PDF avec meilleure résolution
-    const pdf = new jsPDF({ 
-      unit: 'pt', 
-      format: 'letter',
-      compress: true
-    });
-    
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 50;
-    const usableWidth = pageWidth - (margin * 2);
-    const usableHeight = pageHeight - (margin * 2);
-
-    // Conversion en JPEG avec qualité élevée
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const imgWidth = usableWidth;
-    const imgHeight = canvas.height * (imgWidth / canvas.width);
-
-    if (imgHeight <= usableHeight) {
-      // Une seule page
-      pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
-    } else {
-      // Pagination
-      let heightLeft = imgHeight;
-      let positionY = 0;
-
-      while (heightLeft > 0) {
-        if (positionY > 0) pdf.addPage();
-
-        pdf.addImage(
-          imgData,
-          'JPEG',
-          margin,
-          margin + positionY,
-          imgWidth,
-          imgHeight
-        );
-
-        heightLeft -= usableHeight;
-        positionY -= usableHeight;
-      }
-    }
-
-    const pdfBase64 = pdf.output('dataurlstring').split(',')[1];
+    const pdfBase64 = doc.output('dataurlstring').split(',')[1];
     const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
-    
-    console.log(`Taille PDF: ${pdfSizeKB} KB`);
-    
+
+    console.log(`📧 Envoi email AF - Taille PDF: ${pdfSizeKB} KB`);
+
     if (pdfSizeKB > 5000) {
-      throw new Error(`PDF trop volumineux: ${Math.round(pdfSizeKB/1024 * 10)/10} MB`);
+      throw new Error(`PDF trop volumineux: ${Math.round(pdfSizeKB / 1024 * 10) / 10} MB`);
     }
 
     const response = await fetch('/api/send-purchase-email', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        purchase,
-        pdfBase64
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ purchase, pdfBase64 }),
     });
 
     const contentType = response.headers.get('content-type');
     if (!contentType?.includes('application/json')) {
-      const htmlResponse = await response.text();
       throw new Error('Réponse HTML au lieu de JSON');
     }
 
     const result = await response.json();
-    
     if (!response.ok) {
       throw new Error(result.error || `Erreur ${response.status}`);
     }
 
     return result;
-    
   } catch (error) {
-    console.error('Erreur envoi email:', error);
+    console.error('Erreur envoi email AF:', error);
     throw error;
   }
 };
@@ -1125,9 +930,8 @@ export const testEmailFunction = async () => {
   };
 
   try {
-    const pdf = generatePurchasePDF(testPurchase);
-    const pdfBlob = pdf.output('blob');
-    await sendEmailToDominique(testPurchase, pdfBlob);
+    const pdf = await generatePurchasePDF(testPurchase);
+    await sendEmailToDominique(testPurchase, pdf);
   } catch (error) {
     console.error('Erreur test email:', error);
     throw error;
