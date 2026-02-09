@@ -1157,7 +1157,7 @@ const cleanupFilesForSubmission = async (files) => {
                 color: #666;
               }
               @bottom-right {
-                content: "Page " counter(page);
+                content: counter(page) "/" counter(pages);
                 font-size: 9px;
                 color: #333;
               }
