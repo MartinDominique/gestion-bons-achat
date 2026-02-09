@@ -1,6 +1,167 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, Plus, Upload, X, ChevronDown, MessageSquare, DollarSign, Calculator, Printer } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import {
+  drawHeader, drawFooter, drawMaterialsTable, drawTotals, drawConditions,
+  drawTwoColumns, loadLogoBase64Client,
+  formatDate as pdfFormatDate, formatCurrency as pdfFormatCurrency, PAGE
+} from '../lib/services/pdf-common';
+
+// ============================================
+// GÉNÉRATION PDF SOUMISSION (jsPDF)
+// ============================================
+
+let _cachedLogoBase64 = null;
+async function getLogoBase64() {
+  if (_cachedLogoBase64) return _cachedLogoBase64;
+  try {
+    _cachedLogoBase64 = await loadLogoBase64Client();
+  } catch (e) {
+    console.warn('⚠️ Logo non chargé:', e.message);
+  }
+  return _cachedLogoBase64;
+}
+
+/**
+ * Génère un PDF de soumission standardisé
+ * @param {Object} params
+ * @param {Object} params.submissionForm - Données du formulaire
+ * @param {Array} params.selectedItems - Articles sélectionnés
+ * @param {Array} params.clients - Liste des clients
+ * @param {boolean} params.isClientVersion - true = version client (sans coûts)
+ * @returns {Promise<jsPDF>} Document jsPDF
+ */
+async function generateSubmissionPDF({ submissionForm, selectedItems, clients, isClientVersion = false }) {
+  const doc = new jsPDF({ format: 'letter', unit: 'mm' });
+  const logoBase64 = await getLogoBase64();
+
+  // ============ EN-TÊTE ============
+  let y = drawHeader(doc, logoBase64, {
+    title: 'SOUMISSION',
+    fields: [
+      { label: 'N°:', value: submissionForm.submission_number || '' },
+      { label: 'Date:', value: pdfFormatDate(new Date()) },
+    ],
+  });
+
+  // ============ CLIENT + DESCRIPTION ============
+  const clientData = clients.find(c => c.name === submissionForm.client_name);
+  const clientLines = [submissionForm.client_name || ''];
+  if (clientData?.address) clientLines.push(clientData.address);
+  if (clientData?.phone) clientLines.push('Tél.: ' + clientData.phone);
+
+  y = drawTwoColumns(doc, y, {
+    left: {
+      title: 'CLIENT',
+      lines: clientLines,
+    },
+    right: {
+      title: 'DESCRIPTION',
+      lines: [submissionForm.description || ''],
+    },
+  });
+
+  // ============ TABLE MATÉRIAUX ============
+  let columns, body, columnStyles;
+
+  if (isClientVersion) {
+    // Version client: 6 colonnes (Code, Description, Qté, Unité, Prix Unit., Total)
+    columns = [
+      { header: 'Code', dataKey: 'code' },
+      { header: 'Description', dataKey: 'description' },
+      { header: 'Qté', dataKey: 'qty' },
+      { header: 'Unité', dataKey: 'unit' },
+      { header: 'Prix Unit.', dataKey: 'unitPrice' },
+      { header: 'Total', dataKey: 'total' },
+    ];
+    body = selectedItems.map(item => ({
+      code: item.product_id,
+      description: item.description + (item.comment ? '\n' + item.comment : ''),
+      qty: String(item.quantity),
+      unit: item.unit,
+      unitPrice: pdfFormatCurrency(item.selling_price),
+      total: pdfFormatCurrency(item.selling_price * item.quantity),
+    }));
+    columnStyles = {
+      code: { cellWidth: 25 },
+      description: { cellWidth: 'auto' },
+      qty: { cellWidth: 15, halign: 'center' },
+      unit: { cellWidth: 18, halign: 'center' },
+      unitPrice: { cellWidth: 25, halign: 'right' },
+      total: { cellWidth: 25, halign: 'right' },
+    };
+  } else {
+    // Version complète (bureau): 8 colonnes
+    columns = [
+      { header: 'No Item', dataKey: 'code' },
+      { header: 'Description', dataKey: 'description' },
+      { header: 'Unité', dataKey: 'unit' },
+      { header: 'Qté', dataKey: 'qty' },
+      { header: 'Prix Unit.', dataKey: 'sellingPrice' },
+      { header: 'Coût Unit.', dataKey: 'costPrice' },
+      { header: 'Total Vente', dataKey: 'totalSelling' },
+      { header: 'Total Coût', dataKey: 'totalCost' },
+    ];
+    body = selectedItems.map(item => ({
+      code: item.product_id,
+      description: item.description
+        + (item.product_group ? '\nGroupe: ' + item.product_group : '')
+        + (item.comment ? '\n' + item.comment : ''),
+      unit: item.unit,
+      qty: String(item.quantity),
+      sellingPrice: pdfFormatCurrency(item.selling_price),
+      costPrice: pdfFormatCurrency(item.cost_price),
+      totalSelling: pdfFormatCurrency(item.selling_price * item.quantity),
+      totalCost: pdfFormatCurrency(item.cost_price * item.quantity),
+    }));
+    const amountPadding = { top: 2, right: 1.5, bottom: 2, left: 1 };
+    columnStyles = {
+      code: { cellWidth: 30 },
+      description: { cellWidth: 'auto' },
+      unit: { cellWidth: 11, halign: 'center' },
+      qty: { cellWidth: 11, halign: 'center' },
+      sellingPrice: { cellWidth: 18, halign: 'right', cellPadding: amountPadding },
+      costPrice: { cellWidth: 18, halign: 'right', cellPadding: amountPadding },
+      totalSelling: { cellWidth: 20, halign: 'right', cellPadding: amountPadding },
+      totalCost: { cellWidth: 20, halign: 'right', cellPadding: amountPadding },
+    };
+  }
+
+  y = drawMaterialsTable(doc, y, {
+    title: 'ARTICLES',
+    columns,
+    body,
+    columnStyles,
+  });
+
+  // ============ CONDITIONS ============
+  const conditions = [
+    'Prix valides pour 30 jours',
+    'Paiement: Net 30 jours',
+    'Prix sujets à changement sans préavis',
+  ];
+  y = drawConditions(doc, y, conditions);
+
+  // ============ TOTAUX ============
+  const sousTotal = submissionForm.amount || 0;
+  const tps = sousTotal * 0.05;
+  const tvq = sousTotal * 0.09975;
+  const total = sousTotal + tps + tvq;
+
+  y = drawTotals(doc, y, {
+    subtotal: sousTotal,
+    tps,
+    tvq,
+    total,
+  });
+
+  // ============ FOOTER ============
+  drawFooter(doc);
+
+  return doc;
+}
 
 export default function SoumissionsManager() {
   const [soumissions, setSoumissions] = useState([]);
@@ -752,47 +913,36 @@ export default function SoumissionsManager() {
     }
   };
 
-  const handlePrint = () => {
-  // Sauvegarder le titre original
-  const originalTitle = document.title;
-  // Changer le titre pour l'impression
-  document.title = `Soumission ${submissionForm.submission_number}`;
-  
-  window.print();
-  
-  // Restaurer le titre original après impression
-  setTimeout(() => {
-    document.title = originalTitle;
-  }, 100);
-};
+  const handlePrint = async () => {
+    try {
+      const doc = await generateSubmissionPDF({
+        submissionForm, selectedItems, clients, isClientVersion: false
+      });
+      doc.save(`Soumission Coutant ${submissionForm.submission_number || 'nouveau'}.pdf`);
+    } catch (error) {
+      console.error('Erreur génération PDF:', error);
+      alert('❌ Erreur lors de la génération du PDF');
+    }
+  };
 
   const handlePrintClient = async () => {
-    // 🆕 VÉRIFICATION AVANT IMPRESSION
     const confirmation = confirm(
       '⚠️ AVANT D\'IMPRIMER:\n\n' +
       'Avez-vous mis à jour la soumission avec les dernières modifications?\n\n' +
       '✅ Cliquez OK pour continuer l\'impression\n' +
       '❌ Cliquez Annuler pour revenir et modifier'
     );
-  
-    if (!confirmation) {
-      return; // L'utilisateur veut modifier avant d'imprimer
+    if (!confirmation) return;
+
+    try {
+      const doc = await generateSubmissionPDF({
+        submissionForm, selectedItems, clients, isClientVersion: true
+      });
+      doc.save(`Soumission Client ${submissionForm.submission_number || 'nouveau'}.pdf`);
+    } catch (error) {
+      console.error('Erreur génération PDF:', error);
+      alert('❌ Erreur lors de la génération du PDF');
     }
-  
-    // Sauvegarder le titre original
-    const originalTitle = document.title;
-    // Changer le titre pour l'impression
-    document.title = `Soumission ${submissionForm.submission_number}`;
-    
-    // Ajouter classe temporaire pour impression client
-    document.body.classList.add('print-client');
-    window.print();
-    
-    // Retirer la classe et restaurer le titre après impression
-    setTimeout(() => {
-      document.body.classList.remove('print-client');
-      document.title = originalTitle;
-    }, 100);
   };
 
   const formatCurrency = (amount) => {
@@ -807,151 +957,104 @@ export default function SoumissionsManager() {
         alert('⚠️ Veuillez sélectionner un client avant d\'imprimer');
         return;
       }
-    
+
       if (selectedItems.length === 0) {
         alert('⚠️ Veuillez ajouter au moins un produit avant d\'imprimer');
         return;
       }
-    
+
       const client = clients.find(c => c.name === submissionForm.client_name);
       if (!client || !client.email) {
         alert('⚠️ Aucun email trouvé pour ce client.');
         return;
       }
-    
+
       try {
-        // Changer le titre pour le nom du fichier PDF
-        const originalTitle = document.title;
-        document.title = `SOU-${submissionForm.submission_number}`;
-        
-        document.body.classList.add('print-client');
-        window.print();
-        
-        setTimeout(() => {
-          document.body.classList.remove('print-client');
-          document.title = originalTitle;
-        }, 1000);
-    
-        setTimeout(async () => {
-          const confirmation = confirm(
-            `✅ PDF sauvegardé : Soumission_${submissionForm.submission_number}.pdf\n\n` +
-            `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${client.email} ?`
-          );
-    
-          if (confirmation) {
-            // RÉSUMÉ COMPLET RESTAURÉ
-            const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
-            
-            const sousTotal = submissionForm.amount;
-            const tps = sousTotal * 0.05;
-            const tvq = sousTotal * 0.09975;
-            const total = sousTotal + tps + tvq;
-            
-            const corpsEmail = `Bonjour,
-    
-    Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
-    
-    RÉSUMÉ:
-    - Sous-total: ${formatCurrency(sousTotal)}
-    - TPS (5%): ${formatCurrency(tps)}
-    - TVQ (9.975%): ${formatCurrency(tvq)}
-    - TOTAL: ${formatCurrency(total)}
-    
-    Détails:
-    - Nombre d'articles: ${selectedItems.length}
-    - Validité: 30 jours
-    - Paiement: Net 30 jours
-    
-    N'hésitez pas à nous contacter pour toute question.`;
-    
-            const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
-            
-            // Iframe invisible pour éviter la navigation
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = mailtoLink;
-            document.body.appendChild(iframe);
-            
-            setTimeout(() => {
-              if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-              }
-            }, 1000);
-    
-            // 🆕 CHANGEMENT DE STATUT À "ENVOYÉE"
-            if (editingSubmission && submissionForm.status !== 'sent') {
-              try {
-                const { error } = await supabase
-                  .from('submissions')
-                  .update({ status: 'sent' })
-                  .eq('id', editingSubmission.id);
-                
-                if (error) throw error;
-                
-                // Mettre à jour l'état local
-                setSubmissionForm(prev => ({ ...prev, status: 'sent' }));
-                
-                // Rafraîchir la liste
-                await fetchSoumissions();
-                
-                // Notification temporaire auto-disparaissante
-                const notification = document.createElement('div');
-                notification.innerHTML = '✅ Statut changé à "Envoyée"';
-                notification.style.cssText = `
-                  position: fixed;
-                  top: 20px;
-                  right: 20px;
-                  background: #10b981;
-                  color: white;
-                  padding: 16px 24px;
-                  border-radius: 8px;
-                  font-weight: 600;
-                  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                  z-index: 9999;
-                  animation: slideIn 0.3s ease-out;
-                `;
-                document.body.appendChild(notification);
-                
-                // Retirer après 3 secondes
-                setTimeout(() => {
-                  notification.style.animation = 'slideOut 0.3s ease-out';
-                  setTimeout(() => {
-                    if (document.body.contains(notification)) {
-                      document.body.removeChild(notification);
-                    }
-                  }, 300);
-                }, 2000);
-                
-              } catch (error) {
-                console.error('Erreur mise à jour statut:', error);
-                
-                // Notification d'erreur temporaire
-                const errorNotif = document.createElement('div');
-                errorNotif.innerHTML = '⚠️ Erreur lors du changement de statut';
-                errorNotif.style.cssText = `
-                  position: fixed;
-                  top: 20px;
-                  right: 20px;
-                  background: #ef4444;
-                  color: white;
-                  padding: 16px 24px;
-                  border-radius: 8px;
-                  font-weight: 600;
-                  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                  z-index: 9999;
-                `;
-                document.body.appendChild(errorNotif);
-                
-                setTimeout(() => {
-                  if (document.body.contains(errorNotif)) {
-                    document.body.removeChild(errorNotif);
-                  }
-                }, 3000);
-              }
+        // Générer et sauvegarder le PDF client
+        const doc = await generateSubmissionPDF({
+          submissionForm, selectedItems, clients, isClientVersion: true
+        });
+        doc.save(`SOU-${submissionForm.submission_number}.pdf`);
+
+        // Proposer l'envoi par email
+        const confirmation = confirm(
+          `✅ PDF sauvegardé : SOU-${submissionForm.submission_number}.pdf\n\n` +
+          `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${client.email} ?`
+        );
+
+        if (confirmation) {
+          const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
+
+          const sousTotal = submissionForm.amount;
+          const tps = sousTotal * 0.05;
+          const tvq = sousTotal * 0.09975;
+          const total = sousTotal + tps + tvq;
+
+          const corpsEmail = `Bonjour,\n\nVeuillez trouver ci-joint notre soumission pour : ${submissionForm.description}\n\nRÉSUMÉ:\n- Sous-total: ${formatCurrency(sousTotal)}\n- TPS (5%): ${formatCurrency(tps)}\n- TVQ (9.975%): ${formatCurrency(tvq)}\n- TOTAL: ${formatCurrency(total)}\n\nDétails:\n- Nombre d'articles: ${selectedItems.length}\n- Validité: 30 jours\n- Paiement: Net 30 jours\n\nN'hésitez pas à nous contacter pour toute question.`;
+
+          const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = mailtoLink;
+          document.body.appendChild(iframe);
+
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 1000);
+
+          // Changement de statut à "Envoyée"
+          if (editingSubmission && submissionForm.status !== 'sent') {
+            try {
+              const { error } = await supabase
+                .from('submissions')
+                .update({ status: 'sent' })
+                .eq('id', editingSubmission.id);
+
+              if (error) throw error;
+
+              setSubmissionForm(prev => ({ ...prev, status: 'sent' }));
+              await fetchSoumissions();
+
+              const notification = document.createElement('div');
+              notification.innerHTML = '✅ Statut changé à "Envoyée"';
+              notification.style.cssText = `
+                position: fixed; top: 20px; right: 20px;
+                background: #10b981; color: white;
+                padding: 16px 24px; border-radius: 8px;
+                font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                z-index: 9999;
+              `;
+              document.body.appendChild(notification);
+              setTimeout(() => {
+                if (document.body.contains(notification)) {
+                  document.body.removeChild(notification);
+                }
+              }, 3000);
+
+            } catch (error) {
+              console.error('Erreur mise à jour statut:', error);
+              const errorNotif = document.createElement('div');
+              errorNotif.innerHTML = '⚠️ Erreur lors du changement de statut';
+              errorNotif.style.cssText = `
+                position: fixed; top: 20px; right: 20px;
+                background: #ef4444; color: white;
+                padding: 16px 24px; border-radius: 8px;
+                font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                z-index: 9999;
+              `;
+              document.body.appendChild(errorNotif);
+              setTimeout(() => {
+                if (document.body.contains(errorNotif)) {
+                  document.body.removeChild(errorNotif);
+                }
+              }, 3000);
             }
           }
-        }, 3000);
-    
+        }
+
       } catch (error) {
         alert(`❌ Erreur: ${error.message}`);
       }
@@ -1129,704 +1232,8 @@ const cleanupFilesForSubmission = async (files) => {
   if (showForm) {
     return (
       <>
-        <style>
-          {`
-          /* CSS d'impression professionnel amélioré */
-          @media print {
-           @page {
-              size: letter;
-              margin: 0.4in 0.6in 0.8in 0.6in; /* bottom margin plus grand pour footer */
-              @bottom-center {
-                content: "Pour toute question: (418) 225-3875 • Services TMT Inc. • info.servicestmt@gmail.com";
-                font-size: 8px;
-                color: #666;
-              }
-            }
-            
-            body * {
-              visibility: hidden;
-            }
-            
-            /* Version client - sans coûts */
-            body.print-client .print-area-client,
-            body.print-client .print-area-client * {
-              visibility: visible !important;
-            }
-            
-            /* Version complète - avec coûts */
-            body:not(.print-client) .print-area,
-            body:not(.print-client) .print-area * {
-              visibility: visible !important;
-            }
-            
-            .print-area,
-            .print-area-client {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-              background: white;
-              padding: 0;
-              font-size: 11px;
-              font-family: 'Arial', sans-serif;
-              line-height: 1.3;
-              color: #000;
-            }
-            
-            /* En-tête professionnel amélioré */
-            .print-header {
-              display: flex !important;
-              justify-content: space-between !important;
-              align-items: flex-start !important;
-              margin-bottom: 25px;
-              padding-bottom: 12px;
-              border-bottom: 3px solid #000;
-              page-break-inside: avoid;
-            }
-            
-            .print-company-section {
-              display: flex !important;
-              align-items: flex-start !important;
-              flex: 1;
-            }
-            
-            .print-logo {
-              width: 160px !important;
-              height: auto !important;
-              margin-right: 20px !important;
-              flex-shrink: 0 !important;
-            }
-            
-            .print-company-info {
-              flex: 1;
-              font-size: 11px;
-              line-height: 1.4;
-            }
-            
-            .print-company-name {
-              font-size: 16px !important;
-              font-weight: bold !important;
-              color: #000 !important;
-              margin-bottom: 5px !important;
-            }
-            
-            .print-submission-header {
-              text-align: right;
-              min-width: 200px;
-            }
-            
-            .print-submission-title {
-              font-size: 28px !important;
-              font-weight: bold !important;
-              margin: 0 0 8px 0 !important;
-              color: #000 !important;
-              letter-spacing: 2px !important;
-            }
-            
-            .print-submission-details {
-              font-size: 12px !important;
-              line-height: 1.5 !important;
-            }
-            
-            .print-submission-details p {
-              margin: 2px 0 !important;
-            }
-            
-            /* Section client améliorée */
-            .print-client-section {
-              display: flex !important;
-              justify-content: space-between !important;
-              margin: 20px 0 25px 0 !important;
-              page-break-inside: avoid;
-            }
-            
-            .print-client-info {
-              flex: 1;
-              margin-right: 20px;
-              padding: 0;
-              border: none;
-              background: none !important;
-            }
-            
-            .print-client-label {
-              font-weight: bold !important;
-              font-size: 12px !important;
-              color: #000 !important;
-              margin-bottom: 5px !important;
-            }
-            
-            .print-client-name {
-              font-size: 14px !important;
-              font-weight: bold !important;
-              margin-bottom: 8px !important;
-            }
-            
-            .print-project-info {
-              flex: 1;
-              padding: 0;
-              border: none;
-              background: none !important;
-            }
-            
-            /* Références et informations */
-            .print-reference-section {
-              display: flex !important;
-              justify-content: space-between !important;
-              margin: 15px 0 !important;
-              font-size: 10px !important;
-            }
-            
-            .print-ref-item {
-              padding: 5px 8px !important;
-              border: 1px solid #000 !important;
-              background-color: #f8f9fa !important;
-            }
-            
-            .print-ref-label {
-              font-weight: bold !important;
-              margin-bottom: 2px !important;
-            }
-            
-            /* Tableau principal amélioré */
-            .print-table {
-              width: 100% !important;
-              border-collapse: collapse !important;
-              margin: 20px 0 !important;
-              table-layout: fixed !important;
-              display: table !important;
-              font-size: 10px !important;
-            }
-            
-            .print-table thead {
-              display: table-header-group !important;
-            }
-            
-            .print-table tbody {
-              display: table-row-group !important;
-            }
-            
-            .print-table tr {
-              display: table-row !important;
-              page-break-inside: avoid;
-            }
-            
-            .print-table th,
-            .print-table td {
-              display: table-cell !important;
-              border: 2px solid #000 !important;
-              padding: 8px 6px !important;
-              text-align: left !important;
-              vertical-align: top !important;
-              word-wrap: break-word !important;
-              font-size: 10px !important;
-            }
-            
-            .print-table th {
-              background-color: #e9ecef !important;
-              font-weight: bold !important;
-              text-align: center !important;
-              font-size: 10px !important;
-              text-transform: uppercase !important;
-              letter-spacing: 0.5px !important;
-            }
-            
-            /* Largeurs des colonnes pour version COMPLÈTE */
-            .print-table.complete th:nth-child(1),
-            .print-table.complete td:nth-child(1) { width: 12% !important; }
-            .print-table.complete th:nth-child(2),
-            .print-table.complete td:nth-child(2) { width: 32% !important; }
-            .print-table.complete th:nth-child(3),
-            .print-table.complete td:nth-child(3) { width: 8% !important; text-align: center !important; }
-            .print-table.complete th:nth-child(4),
-            .print-table.complete td:nth-child(4) { width: 8% !important; text-align: center !important; }
-            .print-table.complete th:nth-child(5),
-            .print-table.complete td:nth-child(5) { width: 10% !important; text-align: right !important; }
-            .print-table.complete th:nth-child(6),
-            .print-table.complete td:nth-child(6) { width: 10% !important; text-align: right !important; }
-            .print-table.complete th:nth-child(7),
-            .print-table.complete td:nth-child(7) { width: 10% !important; text-align: right !important; }
-            .print-table.complete th:nth-child(8),
-            .print-table.complete td:nth-child(8) { width: 10% !important; text-align: right !important; }
-            
-            /* Largeurs des colonnes pour version CLIENT */
-            .print-table.client th:nth-child(1),
-            .print-table.client td:nth-child(1) { width: 15% !important; }
-            .print-table.client th:nth-child(2),
-            .print-table.client td:nth-child(2) { width: 45% !important; }
-            .print-table.client th:nth-child(3),
-            .print-table.client td:nth-child(3) { width: 10% !important; text-align: center !important; }
-            .print-table.client th:nth-child(4),
-            .print-table.client td:nth-child(4) { width: 10% !important; text-align: center !important; }
-            .print-table.client th:nth-child(5),
-            .print-table.client td:nth-child(5) { width: 10% !important; text-align: right !important; }
-            .print-table.client th:nth-child(6),
-            .print-table.client td:nth-child(6) { width: 10% !important; text-align: right !important; }
-            
-            /* Lignes alternées pour meilleure lisibilité */
-            .print-table tbody tr:nth-child(even) {
-              background-color: #f8f9fa !important;
-            }
-            
-            /* Commentaires dans le tableau */
-            .print-comment {
-              font-style: italic;
-              color: #666 !important;
-              font-size: 9px !important;
-              margin-top: 3px !important;
-              padding: 2px 4px !important;
-              background-color: #fff3cd !important;
-              border-left: 3px solid #ffc107 !important;
-            }
-            
-            /* Section totaux améliorée */
-            .print-totals-section {
-              margin-top: 25px !important;
-              page-break-inside: avoid;
-              border-top: 2px solid #000 !important;
-              padding-top: 15px !important;
-            }
-            
-            .print-totals {
-              text-align: right;
-              font-size: 12px !important;
-            }
-            
-            .print-totals .total-line {
-              display: flex !important;
-              justify-content: space-between !important;
-              margin: 5px 0 !important;
-              padding: 3px 0 !important;
-            }
-            
-            .print-totals .total-line.final-total {
-              font-size: 16px !important;
-              font-weight: bold !important;
-              border-top: 2px solid #000 !important;
-              border-bottom: 3px double #000 !important;
-              padding: 8px 0 !important;
-              margin-top: 10px !important;
-            }
-            
-            .print-totals .profit-margin {
-              color: #000 !important;
-              font-weight: bold !important;
-              background-color: #e3f2fd !important;
-              padding: 5px 10px !important;
-              border: 1px solid #2196f3 !important;
-              margin-top: 10px !important;
-            }
-            
-            /* Footer professionnel */
-              .print-footer {
-              margin-top: 30px !important;
-              padding-top: 15px !important;
-              border-top: 2px solid #000 !important;
-              font-size: 10px !important;
-              color: #000 !important;
-              page-break-inside: avoid;
-              background: white !important;
-            }
-            
-            .print-footer-content {
-              display: flex !important;
-              justify-content: space-between !important;
-              align-items: flex-start !important;
-              gap: 20px !important;
-            }
-            
-            .print-conditions {
-              flex: 1;
-              margin-right: 15px;
-              font-size: 7px !important;
-            }
-            
-            .print-contact-footer {
-              text-align: right;
-              flex-shrink: 0;
-              font-size: 8px !important;
-            }
-
-            .print-totals-footer {
-              min-width: 200px !important;
-              flex-shrink: 0 !important;
-              margin-left: 20px !important;
-            }
-                        
-            .print-validity {
-              background-color: #fff3cd !important;
-              border: 1px solid #ffc107 !important;
-              padding: 8px !important;
-              margin: 15px 0 !important;
-              text-align: center !important;
-              font-weight: bold !important;
-              font-size: 11px !important;
-            }
-            
-            /* Éléments à masquer à l'impression */
-            .no-print {
-              display: none !important;
-            }
-          }
-
-          @media screen {
-            .print-area,
-            .print-area-client {
-              display: none;
-            }
-          }
-          `}
-        </style>
 
         <div className="max-w-6xl mx-auto p-4">
-          {/* VERSION COMPLÈTE AVEC COÛTS - Zone d'impression */}
-          {selectedItems.length > 0 && (
-            <div className="print-area">
-              {/* En-tête professionnel amélioré */}
-              <div className="print-header">
-                <div className="print-company-section">
-                  <img src="/logo.png" alt="Services TMT" className="print-logo" />
-                  <div className="print-company-info">
-                    <div className="print-company-name">Services TMT Inc.</div>
-                    <div>3195, 42e Rue Nord</div>
-                    <div>Saint-Georges, QC G5Z 0V9</div>
-                    <div><strong>Tél:</strong> (418) 225-3875</div>
-                    <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
-                  </div>
-                </div>
-                <div className="print-submission-header">
-                  <h1 className="print-submission-title">SOUMISSION</h1>
-                  <div className="print-submission-details">
-                    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-                    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section client compacte */}
-              <div className="print-client-section">
-                <div className="print-client-info">
-                  <div className="print-client-label">CLIENT:</div>
-                  <div className="print-client-name">{submissionForm.client_name}</div>
-                  {(() => {
-                    const clientData = clients.find(c => c.name === submissionForm.client_name);
-                    if (clientData && (clientData.address || clientData.phone)) {
-                      return (
-                        <div style={{ fontSize: '9px', color: '#666' }}>
-                          {clientData.address && clientData.phone 
-                            ? `${clientData.address} • Tél.: ${clientData.phone}`
-                            : clientData.address || `Tél.: ${clientData.phone}`
-                          }
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-                <div className="print-project-info">
-                  <div className="print-client-label">DESCRIPTION:</div>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
-                </div>
-              </div>
-
-              {/* Tableau principal amélioré */}
-              <table className="print-table complete">
-                <thead>
-                  <tr>
-                    <th>No Item</th>
-                    <th>Description</th>
-                    <th>Unité</th>
-                    <th>Qté</th>
-                    <th>Prix Unit.</th>
-                    <th>Coût Unit.</th>
-                    <th>Total Vente</th>
-                    <th>Total Coût</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedItems.map((item, index) => (
-                    <tr key={item.product_id}>
-                      <td style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{item.product_id}</td>
-                      <td>
-                        <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.description}</div>
-                        {item.product_group && (
-                          <div style={{ fontSize: '8px', color: '#666', fontStyle: 'italic' }}>
-                            Groupe: {item.product_group}
-                          </div>
-                        )}
-                        {item.comment && (
-                          <div className="print-comment">💬 {item.comment}</div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{item.unit}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{formatCurrency(item.selling_price)}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{formatCurrency(item.cost_price)}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                        {formatCurrency(item.selling_price * item.quantity)}
-                      </td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                        {formatCurrency(item.cost_price * item.quantity)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Totaux avec taxes - Version qui fonctionne */}
-              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  
-                  {/* Conditions à gauche */}
-                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                   </div>
-                  
-                  {/* Totaux avec taxes à droite */}
-                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
-                    {(() => {
-                      const sousTotal = submissionForm.amount;
-                      const tps = sousTotal * 0.05;
-                      const tvq = sousTotal * 0.09975;
-                      const total = sousTotal + tps + tvq;
-                      
-                      return (
-                        <div>
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>Sous-total:</span>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                              {formatCurrency(sousTotal)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>TPS (5%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(tps)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '10px',
-                            paddingBottom: '5px'
-                          }}>
-                            <span>TVQ (9.975%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(tvq)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            borderTop: '2px solid #000', 
-                            paddingTop: '8px',
-                            fontWeight: 'bold',
-                            fontSize: '16px'
-                          }}>
-                            <span>TOTAL:</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(total)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-                
-                {/* Contact en bas */}
-                <div style={{ 
-                  marginTop: '20px', 
-                  paddingTop: '10px', 
-                  borderTop: '1px solid #000',
-                  textAlign: 'center',
-                  fontSize: '9px'
-                }}>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* VERSION CLIENT SANS COÛTS - Zone d'impression */}
-          {selectedItems.length > 0 && (
-            <div className="print-area-client">
-              {/* En-tête professionnel */}
-              <div className="print-header">
-                <div className="print-company-section">
-                  <img src="/logo.png" alt="Services TMT" className="print-logo" />
-                  <div className="print-company-info">
-                    <div className="print-company-name">Services TMT Inc.</div>
-                    <div>3195, 42e Rue Nord</div>
-                    <div>Saint-Georges, QC G5Z 0V9</div>
-                    <div><strong>Tél:</strong> (418) 225-3875</div>
-                    <div><strong>Email:</strong> info.servicestmt@gmail.com</div>
-                  </div>
-                </div>
-                <div className="print-submission-header">
-                  <h1 className="print-submission-title">SOUMISSION</h1>
-                  <div className="print-submission-details">
-                    <p><strong>N°:</strong> {submissionForm.submission_number}</p>
-                    <p><strong>Date:</strong> {new Date().toLocaleDateString('fr-CA')}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section Impression client */}
-              <div className="print-client-section">
-                <div className="print-client-info">
-                  <div className="print-client-label">CLIENT:</div>
-                  <div className="print-client-name">{submissionForm.client_name}</div>
-                  {(() => {
-                    const clientData = clients.find(c => c.name === submissionForm.client_name);
-                    if (clientData && (clientData.address || clientData.phone)) {
-                      return (
-                        <div style={{ fontSize: '9px', color: '#666' }}>
-                          {clientData.address && clientData.phone 
-                            ? `${clientData.address} • Tél.: ${clientData.phone}`
-                            : clientData.address || `Tél.: ${clientData.phone}`
-                          }
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-                <div className="print-project-info">
-                  <div className="print-client-label">DESCRIPTION:</div>
-                  <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{submissionForm.description}</div>
-                </div>
-              </div>
-
-              {/* Tableau client (sans colonnes de coût) */}
-              <table className="print-table client">
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Description</th>
-                    <th>Qté</th>
-                    <th>Unité</th>
-                    <th>Prix Unit.</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedItems.map((item, index) => (
-                    <tr key={item.product_id}>
-                      <td style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{item.product_id}</td>
-                      <td>
-                        <div style={{ fontWeight: 'bold' }}>{item.description}</div>
-                        {item.comment && (
-                          <div className="print-comment">💬 {item.comment}</div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'center' }}>{item.unit}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{formatCurrency(item.selling_price)}</td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                        {formatCurrency(item.selling_price * item.quantity)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-                {/* Totaux avec taxes pour client - Version directe */}
-              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  
-                  {/* Conditions à gauche */}
-                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                    <div>• Prix valides pour 30 jours</div>
-                    <div>• Paiement: Net 30 jours</div>
-                    <div>• Prix sujets à changement sans préavis</div>
-                  </div>
-                  
-                  {/* Totaux avec taxes à droite */}
-                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
-                    {(() => {
-                      const sousTotal = submissionForm.amount;
-                      const tps = sousTotal * 0.05;
-                      const tvq = sousTotal * 0.09975;
-                      const total = sousTotal + tps + tvq;
-                      
-                      return (
-                        <div>
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>Sous-total:</span>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                              {formatCurrency(sousTotal)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>TPS (5%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(tps)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '10px',
-                            paddingBottom: '5px'
-                          }}>
-                            <span>TVQ (9.975%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(tvq)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            borderTop: '2px solid #000', 
-                            paddingTop: '8px',
-                            fontWeight: 'bold',
-                            fontSize: '16px'
-                          }}>
-                            <span>TOTAL:</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(total)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer client */}
-              <div className="print-footer">
-                <div style={{ textAlign: 'center' }}>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* FORMULAIRE SOUMISSION MOBILE-FRIENDLY */}
           <div className="bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden">
