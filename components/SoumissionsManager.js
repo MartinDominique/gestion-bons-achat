@@ -1153,12 +1153,12 @@ const cleanupFilesForSubmission = async (files) => {
               margin: 0.4in 0.6in 0.5in 0.6in;
               @bottom-center {
                 content: "Pour toute question: (418) 225-3875 \\2022  Services TMT Inc. \\2022  info.servicestmt@gmail.com";
-                font-size: 7px;
+                font-size: 9px;
                 color: #666;
               }
               @bottom-right {
-                content: counter(page) "/" counter(pages);
-                font-size: 9px;
+                content: "Page " counter(page) "/" counter(pages);
+                font-size: 10px;
                 color: #333;
               }
             }
