@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.6.0
+ * @version 1.7.0
  * @date 2026-02-09
  * @changelog
+ *   1.7.0 - Header répété sur pages 2+ dans le PDF jsPDF (version Client)
  *   1.6.0 - Footer fixe avec conditions+totaux au bas de chaque page + pagination
  *   1.4.0 - Footer = bloc conditions+totaux fixé au bas de chaque page (position:fixed)
  *   1.2.0 - Ajout footer répété (tfoot) sur chaque page imprimée
@@ -53,13 +54,14 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
   const logoBase64 = await getLogoBase64();
 
   // ============ EN-TÊTE ============
-  let y = drawHeader(doc, logoBase64, {
+  const headerOptions = {
     title: 'SOUMISSION',
     fields: [
       { label: 'N°:', value: submissionForm.submission_number || '' },
       { label: 'Date:', value: pdfFormatDate(new Date()) },
     ],
-  });
+  };
+  let y = drawHeader(doc, logoBase64, headerOptions);
 
   // ============ CLIENT + DESCRIPTION ============
   const clientData = clients.find(c => c.name === submissionForm.client_name);
@@ -67,7 +69,7 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
   if (clientData?.address) clientLines.push(clientData.address);
   if (clientData?.phone) clientLines.push('Tél.: ' + clientData.phone);
 
-  y = drawTwoColumns(doc, y, {
+  const twoColumnsOptions = {
     left: {
       title: 'CLIENT',
       lines: clientLines,
@@ -76,7 +78,11 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
       title: 'DESCRIPTION',
       lines: [submissionForm.description || ''],
     },
-  });
+  };
+  y = drawTwoColumns(doc, y, twoColumnsOptions);
+
+  // Sauvegarder la position Y après en-tête+client pour les pages suivantes
+  const headerEndY = y;
 
   // ============ TABLE MATÉRIAUX ============
   let columns, body, columnStyles;
@@ -149,6 +155,12 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
     columns,
     body,
     columnStyles,
+    // Réserver l'espace en-tête sur les pages 2+ pour le header répété
+    margin: {
+      left: PAGE.margin.left,
+      right: PAGE.margin.right,
+      top: headerEndY,
+    },
   });
 
   // ============ CONDITIONS ============
@@ -174,6 +186,16 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
 
   // ============ FOOTER ============
   drawFooter(doc);
+
+  // ============ EN-TÊTE RÉPÉTÉ SUR PAGES 2+ ============
+  const totalPages = doc.internal.getNumberOfPages();
+  if (totalPages > 1) {
+    for (let i = 2; i <= totalPages; i++) {
+      doc.setPage(i);
+      const headerY = drawHeader(doc, logoBase64, headerOptions);
+      drawTwoColumns(doc, headerY, twoColumnsOptions);
+    }
+  }
 
   return doc;
 }
