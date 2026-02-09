@@ -163,7 +163,15 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
     },
   });
 
-  // ============ CONDITIONS ============
+  // ============ CONDITIONS + TOTAUX ============
+  // Vérifier si assez d'espace (~60mm) sinon nouvelle page avec header
+  const condTotalsHeight = 60;
+  const maxContentY = PAGE.height - PAGE.margin.bottom - 20;
+  if (y + condTotalsHeight > maxContentY) {
+    doc.addPage();
+    y = headerEndY; // Commencer après l'espace réservé au header
+  }
+
   const conditions = [
     'Prix valides pour 30 jours',
     'Paiement: Net 30 jours',
@@ -171,7 +179,6 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
   ];
   y = drawConditions(doc, y, conditions);
 
-  // ============ TOTAUX ============
   const sousTotal = submissionForm.amount || 0;
   const tps = sousTotal * 0.05;
   const tvq = sousTotal * 0.09975;
