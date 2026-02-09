@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import DeliverySlipModal from './DeliverySlipModal';
+import BCCConfirmationModal from './PurchaseOrder/BCCConfirmationModal';
 
 const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) => {
   // État principal du formulaire
@@ -31,6 +32,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showSupplierPurchaseModal, setShowSupplierPurchaseModal] = useState(false);
   const [selectedSupplierPurchase, setSelectedSupplierPurchase] = useState(null);
+  const [showBCCModal, setShowBCCModal] = useState(false);
   
   // Nouveaux états pour l'import depuis achats fournisseurs
   const [showSupplierImportModal, setShowSupplierImportModal] = useState(false);
@@ -1642,6 +1644,15 @@ setTimeout(() => {
                   </span>
                 )}
               </button>
+              {editingPO && items.length > 0 && (
+                <button
+                  onClick={() => setShowBCCModal(true)}
+                  className="px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap border-transparent text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                >
+                  <span>📧</span>
+                  <span>BCC</span>
+                </button>
+              )}
             </nav>
           </div>
 
@@ -2938,6 +2949,17 @@ setTimeout(() => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal BCC - Confirmation de Commande */}
+      {showBCCModal && editingPO && (
+        <BCCConfirmationModal
+          isOpen={showBCCModal}
+          onClose={() => setShowBCCModal(false)}
+          purchaseOrder={{ ...formData, id: editingPO.id }}
+          items={items}
+          supplierPurchases={supplierPurchases}
+        />
       )}
     </>
   );
