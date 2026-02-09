@@ -114,21 +114,23 @@ export const PurchaseForm = ({
   const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
   const selectedAddress = shippingAddresses.find(a => a.id === purchaseForm.shipping_address_id);
 
-  const handlePrint = () => {
-    const originalTitle = document.title;
-    const pdfFileName = purchaseForm.purchase_number || 'Achat-nouveau';
-    document.title = pdfFileName;
-    window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 1000);
+  const handlePrint = async () => {
+    try {
+      await exportPDF('download', editingPurchase, purchaseForm, {
+        supplier: selectedSupplier,
+        deliveryAddress: selectedAddress,
+      });
+    } catch (error) {
+      console.error('Erreur génération PDF:', error);
+      alert('Erreur lors de la génération du PDF');
+    }
   };
 
-  // Fonction pour imprimer et envoyer au fournisseur par email
+  // Fonction pour générer PDF et envoyer au fournisseur par email
   const imprimerEtEnvoyerFournisseur = async () => {
     // Validation des champs obligatoires
     const missingFields = [];
-    
+
     if (!purchaseForm.supplier_id) {
       missingFields.push('Fournisseur');
     }
@@ -141,7 +143,7 @@ export const PurchaseForm = ({
     if (selectedItems.length === 0) {
       missingFields.push('Au moins un produit');
     }
-    
+
     if (missingFields.length > 0) {
       alert(`⚠️ Champs obligatoires manquants:\n\n• ${missingFields.join('\n• ')}`);
       return;
@@ -158,24 +160,19 @@ export const PurchaseForm = ({
     }
 
     try {
-      // Changer le titre pour le nom du fichier PDF
-      const originalTitle = document.title;
-      document.title = purchaseForm.purchase_number;
-      
-      window.print();
-      
-      setTimeout(() => {
-        document.title = originalTitle;
-      }, 1000);
+      // Générer et sauvegarder le PDF via jsPDF
+      await exportPDF('download', editingPurchase, purchaseForm, {
+        supplier: selectedSupplier,
+        deliveryAddress: selectedAddress,
+      });
 
-      setTimeout(async () => {
-        const confirmation = confirm(
-          `✅ PDF sauvegardé : ${purchaseForm.purchase_number}.pdf\n\n` +
-          `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${selectedSupplier.email} ?`
-        );
+      const confirmation = confirm(
+        `✅ PDF sauvegardé : ${purchaseForm.purchase_number}.pdf\n\n` +
+        `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${selectedSupplier.email} ?`
+      );
 
-        if (confirmation) {
-          const isBilingual = shouldShowBilingual();
+      if (confirmation) {
+        const isBilingual = shouldShowBilingual();
           
           const sujet = isBilingual 
             ? `Purchase Order ${purchaseForm.purchase_number} - Services TMT Inc.`
@@ -250,7 +247,6 @@ Merci!`;
             }
           }, 3000);
         }
-      }, 3000);
 
     } catch (error) {
       alert(`❌ Erreur: ${error.message}`);
@@ -259,249 +255,6 @@ Merci!`;
 
   return (
     <>
-      {/* STYLES D'IMPRESSION */}
-      <style jsx>{`
-        @media print {
-          @page {
-            size: letter;
-            margin: 0.5in;
-          }
-          
-          body * {
-            visibility: hidden;
-          }
-          
-          .print-container, .print-container * {
-            visibility: visible;
-          }
-          
-          .print-container {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: white;
-            font-size: 12px;
-            line-height: 1.4;
-          }
-          
-          .no-print {
-            display: none !important;
-          }
-          
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0;
-          }
-          
-          th, td {
-            border: 1px solid #000;
-            padding: 8px;
-            text-align: left;
-            font-size: 11px;
-          }
-          
-          th {
-            background-color: #f0f0f0 !important;
-            font-weight: bold;
-          }
-          
-          .grid {
-            display: grid !important;
-          }
-          
-          .grid-cols-2 {
-            grid-template-columns: 1fr 1fr !important;
-          }
-          
-          .gap-8 {
-            gap: 2rem !important;
-          }
-        }
-        
-        .temp-print-view {
-          font-family: Arial, sans-serif;
-          background: white;
-          padding: 36pt;
-          width: 576pt;
-        }
-      `}</style>
-
-      {/* ZONE D'IMPRESSION */}
-      <div className="print-container hidden print:block">
-        {/* En-tête avec logo et informations du bon de commande */}
-        <div className="flex justify-between items-start mb-8">
-          <div className="flex-shrink-0">
-            <img src="/logo.png" alt="Logo" className="h-20 mb-4" />
-          </div>
-          
-          <div className="text-right">
-            <h1 className="text-2xl font-bold mb-2">
-              {shouldShowBilingual() ? 'PURCHASE ORDER' : 'BON DE COMMANDE'}
-            </h1>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p><strong>{purchaseForm.purchase_number}</strong></p>
-              <p><strong>{shouldShowBilingual() ? 'Date:' : 'Date:'}</strong> {formatDate(new Date())}</p>
-              {/* NOUVEAU - BA Acomba */}
-              {purchaseForm.ba_acomba && (
-                <p><strong>{shouldShowBilingual() ? 'Acomba PO:' : 'BA Acomba:'}</strong> {purchaseForm.ba_acomba}</p>
-              )}
-              {purchaseForm.supplier_quote_reference && (
-                <p><strong>{shouldShowBilingual() ? 'Supplier Quote:' : 'Soumission:'}</strong> {purchaseForm.supplier_quote_reference}</p>
-              )}
-              {purchaseForm.linked_po_number && (
-                <p><strong>{shouldShowBilingual() ? 'Client PO:' : 'BA Client:'}</strong> {purchaseForm.linked_po_number}</p>
-              )}
-              {purchaseForm.delivery_date && (
-                <p><strong>{shouldShowBilingual() ? 'Expected Delivery:' : 'Livraison prévue:'}</strong> {formatDate(purchaseForm.delivery_date)}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Section Fournisseur et Livrer à côte à côte */}
-        <div className="grid grid-cols-2 gap-8 mb-6">
-          {/* Fournisseur à gauche */}
-          {selectedSupplier && (
-            <div>
-              <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
-                {shouldShowBilingual() ? 'Supplier:' : 'Fournisseur:'}
-              </h3>
-              <div className="space-y-1 text-sm leading-tight">
-                <p className="font-medium text-base">{selectedSupplier.company_name}</p>
-                {selectedSupplier.contact_name && (
-                  <p>{shouldShowBilingual() ? 'Contact:' : 'Contact:'} {selectedSupplier.contact_name}</p>
-                )}
-                <p>{selectedSupplier.address}</p>
-                <p>{selectedSupplier.city}, {selectedSupplier.province} {selectedSupplier.postal_code}</p>
-                <p>{selectedSupplier.country}</p>
-                {selectedSupplier.email && <p>Email: {selectedSupplier.email}</p>}
-                {selectedSupplier.phone && (
-                  <p>{shouldShowBilingual() ? 'Tel:' : 'Tél:'} {selectedSupplier.phone}</p>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {/* Livrer à droite */}
-          {selectedAddress && (
-            <div>
-              <h3 className="font-bold mb-2 text-lg border-b border-gray-300 pb-1">
-                {shouldShowBilingual() ? 'Ship to:' : 'Livrer à :'}
-              </h3>
-              <div className="space-y-1">
-                <p className="font-medium text-base">{selectedAddress.name}</p>
-                <p>{selectedAddress.address}</p>
-                <p>{selectedAddress.city}, {selectedAddress.province} {selectedAddress.postal_code}</p>
-                <p>{selectedAddress.country}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Informations de livraison */}
-        {(purchaseForm.shipping_company || purchaseForm.shipping_account) && (
-          <div className="mb-6 bg-gray-50 p-3 rounded">
-            <h3 className="font-bold mb-2">
-              {shouldShowBilingual() ? 'Shipping:' : 'Livraison:'}
-            </h3>
-            <div className="flex gap-6">
-              {purchaseForm.shipping_company && (
-                <p><strong>{shouldShowBilingual() ? 'Carrier:' : 'Transporteur:'}</strong> {purchaseForm.shipping_company}</p>
-              )}
-              {purchaseForm.shipping_account && (
-                <p><strong>{shouldShowBilingual() ? 'Account #:' : 'N° de compte:'}</strong> {purchaseForm.shipping_account}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Tableau des produits */}
-        <table className="mb-6">
-          <thead>
-            <tr>
-              <th>{shouldShowBilingual() ? 'Code' : 'Code'}</th>
-              <th>{shouldShowBilingual() ? 'Description' : 'Description'}</th>
-              <th>{shouldShowBilingual() ? 'Qty' : 'Qté'}</th>
-              <th>{shouldShowBilingual() ? 'Unit' : 'Unité'}</th>
-              <th>{shouldShowBilingual() ? 'Unit Price' : 'Prix Unit.'}</th>
-              <th>{shouldShowBilingual() ? 'Total' : 'Total'}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {selectedItems.map((item) => (
-              <tr key={item.product_id}>
-                <td>{item.product_id}</td>
-                <td>
-                  {item.description}
-                  {item.notes && (
-                    <div style={{fontSize: '10px', color: '#666', marginTop: '4px', fontStyle: 'italic'}}>
-                      {item.notes}
-                    </div>
-                  )}
-                </td>
-                <td className="text-center">{item.quantity}</td>
-                <td className="text-center">{item.unit}</td>
-                <td className="text-right">{formatUnitPrice(item.cost_price)}</td>
-                <td className="text-right">{formatCurrency(item.cost_price * item.quantity)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan="5" className="text-right font-medium">
-                {shouldShowBilingual() ? 'Sous-total / Subtotal:' : 'Sous-total:'}
-              </td>
-              <td className="text-right">{formatCurrency(purchaseForm.subtotal)}</td>
-            </tr>
-            
-            {/* Afficher les taxes seulement si le fournisseur est canadien */}
-            {isCanadianSupplier() && (
-              <>
-                <tr>
-                  <td colSpan="5" className="text-right font-medium">
-                    {shouldShowBilingual() ? 'GST (5%):' : 'TPS (5%):'}
-                  </td>
-                  <td className="text-right">{formatCurrency(purchaseForm.tps)}</td>
-                </tr>
-                <tr>
-                  <td colSpan="5" className="text-right font-medium">
-                    {shouldShowBilingual() ? 'PST (9.975%):' : 'TVQ (9.975%):'}
-                  </td>
-                  <td className="text-right">{formatCurrency(purchaseForm.tvq)}</td>
-                </tr>
-              </>
-            )}
-            
-            {purchaseForm.shipping_cost > 0 && (
-              <tr>
-                <td colSpan="5" className="text-right font-medium">
-                  {shouldShowBilingual() ? 'Shipping:' : 'Frais de livraison:'}
-                </td>
-                <td className="text-right">{formatCurrency(purchaseForm.shipping_cost)}</td>
-              </tr>
-            )}
-            <tr>
-              <td colSpan="5" className="text-right font-bold text-lg bg-gray-100">
-                {shouldShowBilingual() ? 'TOTAL CAD$:' : 'TOTAL:'}
-              </td>
-              <td className="text-right font-bold text-lg bg-gray-100">{formatCurrency(purchaseForm.total_amount)}</td>
-            </tr>
-          </tfoot>
-        </table>
-
-        {/* Notes */}
-        {purchaseForm.notes && (
-          <div className="mt-6 border-t pt-4">
-            <h3 className="font-bold mb-2">
-              {shouldShowBilingual() ? 'Notes:' : 'Notes:'}
-            </h3>
-            <p className="text-sm">{purchaseForm.notes}</p>
-          </div>
-        )}
-      </div>
-
       {/* FORMULAIRE */}
       <div className="max-w-6xl mx-auto p-4 no-print">
         <div className="bg-white rounded-xl shadow-lg border border-orange-200 overflow-hidden">

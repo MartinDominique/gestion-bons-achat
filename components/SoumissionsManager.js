@@ -16,6 +16,167 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, Plus, Upload, X, ChevronDown, MessageSquare, DollarSign, Calculator, Printer } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import {
+  drawHeader, drawFooter, drawMaterialsTable, drawTotals, drawConditions,
+  drawTwoColumns, loadLogoBase64Client,
+  formatDate as pdfFormatDate, formatCurrency as pdfFormatCurrency, PAGE
+} from '../lib/services/pdf-common';
+
+// ============================================
+// GÉNÉRATION PDF SOUMISSION (jsPDF)
+// ============================================
+
+let _cachedLogoBase64 = null;
+async function getLogoBase64() {
+  if (_cachedLogoBase64) return _cachedLogoBase64;
+  try {
+    _cachedLogoBase64 = await loadLogoBase64Client();
+  } catch (e) {
+    console.warn('⚠️ Logo non chargé:', e.message);
+  }
+  return _cachedLogoBase64;
+}
+
+/**
+ * Génère un PDF de soumission standardisé
+ * @param {Object} params
+ * @param {Object} params.submissionForm - Données du formulaire
+ * @param {Array} params.selectedItems - Articles sélectionnés
+ * @param {Array} params.clients - Liste des clients
+ * @param {boolean} params.isClientVersion - true = version client (sans coûts)
+ * @returns {Promise<jsPDF>} Document jsPDF
+ */
+async function generateSubmissionPDF({ submissionForm, selectedItems, clients, isClientVersion = false }) {
+  const doc = new jsPDF({ format: 'letter', unit: 'mm' });
+  const logoBase64 = await getLogoBase64();
+
+  // ============ EN-TÊTE ============
+  let y = drawHeader(doc, logoBase64, {
+    title: 'SOUMISSION',
+    fields: [
+      { label: 'N°:', value: submissionForm.submission_number || '' },
+      { label: 'Date:', value: pdfFormatDate(new Date()) },
+    ],
+  });
+
+  // ============ CLIENT + DESCRIPTION ============
+  const clientData = clients.find(c => c.name === submissionForm.client_name);
+  const clientLines = [submissionForm.client_name || ''];
+  if (clientData?.address) clientLines.push(clientData.address);
+  if (clientData?.phone) clientLines.push('Tél.: ' + clientData.phone);
+
+  y = drawTwoColumns(doc, y, {
+    left: {
+      title: 'CLIENT',
+      lines: clientLines,
+    },
+    right: {
+      title: 'DESCRIPTION',
+      lines: [submissionForm.description || ''],
+    },
+  });
+
+  // ============ TABLE MATÉRIAUX ============
+  let columns, body, columnStyles;
+
+  if (isClientVersion) {
+    // Version client: 6 colonnes (Code, Description, Qté, Unité, Prix Unit., Total)
+    columns = [
+      { header: 'Code', dataKey: 'code' },
+      { header: 'Description', dataKey: 'description' },
+      { header: 'Qté', dataKey: 'qty' },
+      { header: 'Unité', dataKey: 'unit' },
+      { header: 'Prix Unit.', dataKey: 'unitPrice' },
+      { header: 'Total', dataKey: 'total' },
+    ];
+    body = selectedItems.map(item => ({
+      code: item.product_id,
+      description: item.description + (item.comment ? '\n' + item.comment : ''),
+      qty: String(item.quantity),
+      unit: item.unit,
+      unitPrice: pdfFormatCurrency(item.selling_price),
+      total: pdfFormatCurrency(item.selling_price * item.quantity),
+    }));
+    columnStyles = {
+      code: { cellWidth: 25 },
+      description: { cellWidth: 'auto' },
+      qty: { cellWidth: 15, halign: 'center' },
+      unit: { cellWidth: 18, halign: 'center' },
+      unitPrice: { cellWidth: 25, halign: 'right' },
+      total: { cellWidth: 25, halign: 'right' },
+    };
+  } else {
+    // Version complète (bureau): 8 colonnes
+    columns = [
+      { header: 'No Item', dataKey: 'code' },
+      { header: 'Description', dataKey: 'description' },
+      { header: 'Unité', dataKey: 'unit' },
+      { header: 'Qté', dataKey: 'qty' },
+      { header: 'Prix Unit.', dataKey: 'sellingPrice' },
+      { header: 'Coût Unit.', dataKey: 'costPrice' },
+      { header: 'Total Vente', dataKey: 'totalSelling' },
+      { header: 'Total Coût', dataKey: 'totalCost' },
+    ];
+    body = selectedItems.map(item => ({
+      code: item.product_id,
+      description: item.description
+        + (item.product_group ? '\nGroupe: ' + item.product_group : '')
+        + (item.comment ? '\n' + item.comment : ''),
+      unit: item.unit,
+      qty: String(item.quantity),
+      sellingPrice: pdfFormatCurrency(item.selling_price),
+      costPrice: pdfFormatCurrency(item.cost_price),
+      totalSelling: pdfFormatCurrency(item.selling_price * item.quantity),
+      totalCost: pdfFormatCurrency(item.cost_price * item.quantity),
+    }));
+    const amountPadding = { top: 2, right: 1.5, bottom: 2, left: 1 };
+    columnStyles = {
+      code: { cellWidth: 30 },
+      description: { cellWidth: 'auto' },
+      unit: { cellWidth: 11, halign: 'center' },
+      qty: { cellWidth: 11, halign: 'center' },
+      sellingPrice: { cellWidth: 18, halign: 'right', cellPadding: amountPadding },
+      costPrice: { cellWidth: 18, halign: 'right', cellPadding: amountPadding },
+      totalSelling: { cellWidth: 20, halign: 'right', cellPadding: amountPadding },
+      totalCost: { cellWidth: 20, halign: 'right', cellPadding: amountPadding },
+    };
+  }
+
+  y = drawMaterialsTable(doc, y, {
+    title: 'ARTICLES',
+    columns,
+    body,
+    columnStyles,
+  });
+
+  // ============ CONDITIONS ============
+  const conditions = [
+    'Prix valides pour 30 jours',
+    'Paiement: Net 30 jours',
+    'Prix sujets à changement sans préavis',
+  ];
+  y = drawConditions(doc, y, conditions);
+
+  // ============ TOTAUX ============
+  const sousTotal = submissionForm.amount || 0;
+  const tps = sousTotal * 0.05;
+  const tvq = sousTotal * 0.09975;
+  const total = sousTotal + tps + tvq;
+
+  y = drawTotals(doc, y, {
+    subtotal: sousTotal,
+    tps,
+    tvq,
+    total,
+  });
+
+  // ============ FOOTER ============
+  drawFooter(doc);
+
+  return doc;
+}
 
 export default function SoumissionsManager() {
   const [soumissions, setSoumissions] = useState([]);
@@ -767,47 +928,36 @@ export default function SoumissionsManager() {
     }
   };
 
-  const handlePrint = () => {
-  // Sauvegarder le titre original
-  const originalTitle = document.title;
-  // Changer le titre pour l'impression
-  document.title = `Soumission ${submissionForm.submission_number}`;
-  
-  window.print();
-  
-  // Restaurer le titre original après impression
-  setTimeout(() => {
-    document.title = originalTitle;
-  }, 100);
-};
+  const handlePrint = async () => {
+    try {
+      const doc = await generateSubmissionPDF({
+        submissionForm, selectedItems, clients, isClientVersion: false
+      });
+      doc.save(`Soumission Coutant ${submissionForm.submission_number || 'nouveau'}.pdf`);
+    } catch (error) {
+      console.error('Erreur génération PDF:', error);
+      alert('❌ Erreur lors de la génération du PDF');
+    }
+  };
 
   const handlePrintClient = async () => {
-    // 🆕 VÉRIFICATION AVANT IMPRESSION
     const confirmation = confirm(
       '⚠️ AVANT D\'IMPRIMER:\n\n' +
       'Avez-vous mis à jour la soumission avec les dernières modifications?\n\n' +
       '✅ Cliquez OK pour continuer l\'impression\n' +
       '❌ Cliquez Annuler pour revenir et modifier'
     );
-  
-    if (!confirmation) {
-      return; // L'utilisateur veut modifier avant d'imprimer
+    if (!confirmation) return;
+
+    try {
+      const doc = await generateSubmissionPDF({
+        submissionForm, selectedItems, clients, isClientVersion: true
+      });
+      doc.save(`Soumission Client ${submissionForm.submission_number || 'nouveau'}.pdf`);
+    } catch (error) {
+      console.error('Erreur génération PDF:', error);
+      alert('❌ Erreur lors de la génération du PDF');
     }
-  
-    // Sauvegarder le titre original
-    const originalTitle = document.title;
-    // Changer le titre pour l'impression
-    document.title = `Soumission ${submissionForm.submission_number}`;
-    
-    // Ajouter classe temporaire pour impression client
-    document.body.classList.add('print-client');
-    window.print();
-    
-    // Retirer la classe et restaurer le titre après impression
-    setTimeout(() => {
-      document.body.classList.remove('print-client');
-      document.title = originalTitle;
-    }, 100);
   };
 
   const formatCurrency = (amount) => {
@@ -822,151 +972,104 @@ export default function SoumissionsManager() {
         alert('⚠️ Veuillez sélectionner un client avant d\'imprimer');
         return;
       }
-    
+
       if (selectedItems.length === 0) {
         alert('⚠️ Veuillez ajouter au moins un produit avant d\'imprimer');
         return;
       }
-    
+
       const client = clients.find(c => c.name === submissionForm.client_name);
       if (!client || !client.email) {
         alert('⚠️ Aucun email trouvé pour ce client.');
         return;
       }
-    
+
       try {
-        // Changer le titre pour le nom du fichier PDF
-        const originalTitle = document.title;
-        document.title = `SOU-${submissionForm.submission_number}`;
-        
-        document.body.classList.add('print-client');
-        window.print();
-        
-        setTimeout(() => {
-          document.body.classList.remove('print-client');
-          document.title = originalTitle;
-        }, 1000);
-    
-        setTimeout(async () => {
-          const confirmation = confirm(
-            `✅ PDF sauvegardé : Soumission_${submissionForm.submission_number}.pdf\n\n` +
-            `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${client.email} ?`
-          );
-    
-          if (confirmation) {
-            // RÉSUMÉ COMPLET RESTAURÉ
-            const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
-            
-            const sousTotal = submissionForm.amount;
-            const tps = sousTotal * 0.05;
-            const tvq = sousTotal * 0.09975;
-            const total = sousTotal + tps + tvq;
-            
-            const corpsEmail = `Bonjour,
-    
-    Veuillez trouver ci-joint notre soumission pour : ${submissionForm.description}
-    
-    RÉSUMÉ:
-    - Sous-total: ${formatCurrency(sousTotal)}
-    - TPS (5%): ${formatCurrency(tps)}
-    - TVQ (9.975%): ${formatCurrency(tvq)}
-    - TOTAL: ${formatCurrency(total)}
-    
-    Détails:
-    - Nombre d'articles: ${selectedItems.length}
-    - Validité: 30 jours
-    - Paiement: Net 30 jours
-    
-    N'hésitez pas à nous contacter pour toute question.`;
-    
-            const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
-            
-            // Iframe invisible pour éviter la navigation
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = mailtoLink;
-            document.body.appendChild(iframe);
-            
-            setTimeout(() => {
-              if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-              }
-            }, 1000);
-    
-            // 🆕 CHANGEMENT DE STATUT À "ENVOYÉE"
-            if (editingSubmission && submissionForm.status !== 'sent') {
-              try {
-                const { error } = await supabase
-                  .from('submissions')
-                  .update({ status: 'sent' })
-                  .eq('id', editingSubmission.id);
-                
-                if (error) throw error;
-                
-                // Mettre à jour l'état local
-                setSubmissionForm(prev => ({ ...prev, status: 'sent' }));
-                
-                // Rafraîchir la liste
-                await fetchSoumissions();
-                
-                // Notification temporaire auto-disparaissante
-                const notification = document.createElement('div');
-                notification.innerHTML = '✅ Statut changé à "Envoyée"';
-                notification.style.cssText = `
-                  position: fixed;
-                  top: 20px;
-                  right: 20px;
-                  background: #10b981;
-                  color: white;
-                  padding: 16px 24px;
-                  border-radius: 8px;
-                  font-weight: 600;
-                  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                  z-index: 9999;
-                  animation: slideIn 0.3s ease-out;
-                `;
-                document.body.appendChild(notification);
-                
-                // Retirer après 3 secondes
-                setTimeout(() => {
-                  notification.style.animation = 'slideOut 0.3s ease-out';
-                  setTimeout(() => {
-                    if (document.body.contains(notification)) {
-                      document.body.removeChild(notification);
-                    }
-                  }, 300);
-                }, 2000);
-                
-              } catch (error) {
-                console.error('Erreur mise à jour statut:', error);
-                
-                // Notification d'erreur temporaire
-                const errorNotif = document.createElement('div');
-                errorNotif.innerHTML = '⚠️ Erreur lors du changement de statut';
-                errorNotif.style.cssText = `
-                  position: fixed;
-                  top: 20px;
-                  right: 20px;
-                  background: #ef4444;
-                  color: white;
-                  padding: 16px 24px;
-                  border-radius: 8px;
-                  font-weight: 600;
-                  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                  z-index: 9999;
-                `;
-                document.body.appendChild(errorNotif);
-                
-                setTimeout(() => {
-                  if (document.body.contains(errorNotif)) {
-                    document.body.removeChild(errorNotif);
-                  }
-                }, 3000);
-              }
+        // Générer et sauvegarder le PDF client
+        const doc = await generateSubmissionPDF({
+          submissionForm, selectedItems, clients, isClientVersion: true
+        });
+        doc.save(`SOU-${submissionForm.submission_number}.pdf`);
+
+        // Proposer l'envoi par email
+        const confirmation = confirm(
+          `✅ PDF sauvegardé : SOU-${submissionForm.submission_number}.pdf\n\n` +
+          `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${client.email} ?`
+        );
+
+        if (confirmation) {
+          const sujet = `Soumission ${submissionForm.submission_number} - Services TMT Inc.`;
+
+          const sousTotal = submissionForm.amount;
+          const tps = sousTotal * 0.05;
+          const tvq = sousTotal * 0.09975;
+          const total = sousTotal + tps + tvq;
+
+          const corpsEmail = `Bonjour,\n\nVeuillez trouver ci-joint notre soumission pour : ${submissionForm.description}\n\nRÉSUMÉ:\n- Sous-total: ${formatCurrency(sousTotal)}\n- TPS (5%): ${formatCurrency(tps)}\n- TVQ (9.975%): ${formatCurrency(tvq)}\n- TOTAL: ${formatCurrency(total)}\n\nDétails:\n- Nombre d'articles: ${selectedItems.length}\n- Validité: 30 jours\n- Paiement: Net 30 jours\n\nN'hésitez pas à nous contacter pour toute question.`;
+
+          const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = mailtoLink;
+          document.body.appendChild(iframe);
+
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 1000);
+
+          // Changement de statut à "Envoyée"
+          if (editingSubmission && submissionForm.status !== 'sent') {
+            try {
+              const { error } = await supabase
+                .from('submissions')
+                .update({ status: 'sent' })
+                .eq('id', editingSubmission.id);
+
+              if (error) throw error;
+
+              setSubmissionForm(prev => ({ ...prev, status: 'sent' }));
+              await fetchSoumissions();
+
+              const notification = document.createElement('div');
+              notification.innerHTML = '✅ Statut changé à "Envoyée"';
+              notification.style.cssText = `
+                position: fixed; top: 20px; right: 20px;
+                background: #10b981; color: white;
+                padding: 16px 24px; border-radius: 8px;
+                font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                z-index: 9999;
+              `;
+              document.body.appendChild(notification);
+              setTimeout(() => {
+                if (document.body.contains(notification)) {
+                  document.body.removeChild(notification);
+                }
+              }, 3000);
+
+            } catch (error) {
+              console.error('Erreur mise à jour statut:', error);
+              const errorNotif = document.createElement('div');
+              errorNotif.innerHTML = '⚠️ Erreur lors du changement de statut';
+              errorNotif.style.cssText = `
+                position: fixed; top: 20px; right: 20px;
+                background: #ef4444; color: white;
+                padding: 16px 24px; border-radius: 8px;
+                font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                z-index: 9999;
+              `;
+              document.body.appendChild(errorNotif);
+              setTimeout(() => {
+                if (document.body.contains(errorNotif)) {
+                  document.body.removeChild(errorNotif);
+                }
+              }, 3000);
             }
           }
-        }, 3000);
-    
+        }
+
       } catch (error) {
         alert(`❌ Erreur: ${error.message}`);
       }
@@ -1824,6 +1927,8 @@ const cleanupFilesForSubmission = async (files) => {
               </div>
             </div>
           )}
+
+        <div className="max-w-6xl mx-auto p-4">
 
           {/* FORMULAIRE SOUMISSION MOBILE-FRIENDLY */}
           <div className="bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden">
