@@ -112,21 +112,20 @@ const getAllSessions = () => {
 // ========================================
 useEffect(() => {
   if (!onTimeChange) return;
-  
-  // ⭐ Attendre que l'initialisation soit au moins tentée
+
+  // ⭐ Attendre que l'initialisation soit faite (garde interne, pas dans deps)
   if (!isInitialized) {
-    console.log('⏸️ Attente initialisation avant notification');
     return;
   }
-  
+
   const allSessions = getAllSessions();
   const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-  
+
   const dataToSend = {
     time_entries: allSessions,
     total_hours: grandTotal
   };
-  
+
   // Comparer avec dernière notification pour éviter boucles
   const dataString = JSON.stringify(dataToSend);
   if (dataString !== lastNotifiedData.current) {
@@ -134,7 +133,10 @@ useEffect(() => {
     lastNotifiedData.current = dataString;
     onTimeChange(dataToSend);
   }
-}, [timeEntries, currentSession, isInitialized]);
+  // ⭐ CRITIQUE: isInitialized N'EST PAS dans les deps pour éviter le race condition
+  // Le passage de isInitialized false→true ne doit PAS déclencher une notification vide
+  // La notification ne se déclenche que quand timeEntries ou currentSession changent réellement
+}, [timeEntries, currentSession]);
 
 // Mettre à jour affichage toutes les 30 secondes (pas chaque seconde)
 useEffect(() => {
@@ -217,9 +219,9 @@ useEffect(() => {
     processedEntriesRef.current = entriesSignature;
     setIsInitialized(true);
   } else if (initialTimeEntries && initialTimeEntries.length === 0) {
-    // Tableau vide explicite
-    console.log('📭 Aucune session à charger');
-    processedEntriesRef.current = entriesSignature;
+    // Tableau vide explicite - NE PAS stocker la signature pour ne pas bloquer
+    // le chargement des vraies données qui arrivent après
+    console.log('📭 Aucune session à charger (init vide)');
     if (!isInitialized) setIsInitialized(true);
   }
 }, [initialTimeEntries]); // ⭐ Écoute SEULEMENT initialTimeEntries
