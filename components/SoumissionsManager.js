@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.2.0
+ * @version 1.3.0
  * @date 2026-02-09
  * @changelog
+ *   1.3.0 - Footer fixe (position:fixed) au bas de chaque page + tfoot spacer
  *   1.2.0 - Ajout footer répété (tfoot) sur chaque page imprimée
  *   1.1.0 - Ajout header répété sur pages 2+ pour PDF multi-pages (table wrapper)
  *   1.0.0 - Version initiale
@@ -1148,12 +1149,7 @@ const cleanupFilesForSubmission = async (files) => {
           @media print {
            @page {
               size: letter;
-              margin: 0.4in 0.6in 0.8in 0.6in; /* bottom margin plus grand pour footer */
-              @bottom-center {
-                content: "Pour toute question: (418) 225-3875 • Services TMT Inc. • info.servicestmt@gmail.com";
-                font-size: 8px;
-                color: #666;
-              }
+              margin: 0.4in 0.6in 0.3in 0.6in;
             }
             
             body * {
@@ -1500,10 +1496,28 @@ const cleanupFilesForSubmission = async (files) => {
               border: none !important;
             }
 
+            /* Spacer dans tfoot pour réserver l'espace du footer sur chaque page */
+            .print-footer-spacer {
+              height: 1.25in;
+            }
+
+            /* Footer fixe positionné au bas de chaque page imprimée */
             .print-page-footer {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              height: 1.15in;
+              display: flex;
+              flex-direction: column;
+              justify-content: flex-end;
+              padding-bottom: 8px;
+              background: white;
+            }
+
+            .print-page-footer-line {
               border-top: 2px solid #000;
               padding-top: 6px;
-              margin-top: 15px;
               text-align: center;
               font-size: 8px;
               color: #666;
@@ -1714,13 +1728,14 @@ const cleanupFilesForSubmission = async (files) => {
                   </td></tr>
                 </tbody>
                 <tfoot>
-                  <tr><td>
-                    <div className="print-page-footer">
-                      Services TMT Inc. • (418) 225-3875 • info.servicestmt@gmail.com
-                    </div>
-                  </td></tr>
+                  <tr><td><div className="print-footer-spacer"></div></td></tr>
                 </tfoot>
               </table>
+              <div className="print-page-footer">
+                <div className="print-page-footer-line">
+                  Pour toute question: (418) 225-3875 • Services TMT Inc. • info.servicestmt@gmail.com
+                </div>
+              </div>
             </div>
           )}
 
@@ -1901,13 +1916,14 @@ const cleanupFilesForSubmission = async (files) => {
                   </td></tr>
                 </tbody>
                 <tfoot>
-                  <tr><td>
-                    <div className="print-page-footer">
-                      Services TMT Inc. • (418) 225-3875 • info.servicestmt@gmail.com
-                    </div>
-                  </td></tr>
+                  <tr><td><div className="print-footer-spacer"></div></td></tr>
                 </tfoot>
               </table>
+              <div className="print-page-footer">
+                <div className="print-page-footer-line">
+                  Pour toute question: (418) 225-3875 • Services TMT Inc. • info.servicestmt@gmail.com
+                </div>
+              </div>
             </div>
           )}
 
