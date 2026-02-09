@@ -4,10 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.3.0
+ * @version 1.4.0
  * @date 2026-02-09
  * @changelog
- *   1.3.0 - Footer fixe (position:fixed) au bas de chaque page + tfoot spacer
+ *   1.4.0 - Footer = bloc conditions+totaux fixé au bas de chaque page (position:fixed)
  *   1.2.0 - Ajout footer répété (tfoot) sur chaque page imprimée
  *   1.1.0 - Ajout header répété sur pages 2+ pour PDF multi-pages (table wrapper)
  *   1.0.0 - Version initiale
@@ -1498,7 +1498,7 @@ const cleanupFilesForSubmission = async (files) => {
 
             /* Spacer dans tfoot pour réserver l'espace du footer sur chaque page */
             .print-footer-spacer {
-              height: 1.25in;
+              height: 1.4in;
             }
 
             /* Footer fixe positionné au bas de chaque page imprimée */
@@ -1507,16 +1507,11 @@ const cleanupFilesForSubmission = async (files) => {
               bottom: 0;
               left: 0;
               width: 100%;
-              height: 1.15in;
-              display: flex;
-              flex-direction: column;
-              justify-content: flex-end;
-              padding-bottom: 8px;
               background: white;
             }
 
             .print-page-footer-line {
-              border-top: 2px solid #000;
+              margin-top: 8px;
               padding-top: 6px;
               text-align: center;
               font-size: 8px;
@@ -1640,91 +1635,6 @@ const cleanupFilesForSubmission = async (files) => {
                 </tbody>
               </table>
 
-              {/* Totaux avec taxes - Version qui fonctionne */}
-              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  
-                  {/* Conditions à gauche */}
-                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                   </div>
-                  
-                  {/* Totaux avec taxes à droite */}
-                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
-                    {(() => {
-                      const sousTotal = submissionForm.amount;
-                      const tps = sousTotal * 0.05;
-                      const tvq = sousTotal * 0.09975;
-                      const total = sousTotal + tps + tvq;
-                      
-                      return (
-                        <div>
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>Sous-total:</span>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                              {formatCurrency(sousTotal)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>TPS (5%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(tps)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '10px',
-                            paddingBottom: '5px'
-                          }}>
-                            <span>TVQ (9.975%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(tvq)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            borderTop: '2px solid #000', 
-                            paddingTop: '8px',
-                            fontWeight: 'bold',
-                            fontSize: '16px'
-                          }}>
-                            <span>TOTAL:</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(total)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-                
-                {/* Contact en bas */}
-                <div style={{
-                  marginTop: '20px',
-                  paddingTop: '10px',
-                  borderTop: '1px solid #000',
-                  textAlign: 'center',
-                  fontSize: '9px'
-                }}>
-                </div>
-              </div>
-
                   </td></tr>
                 </tbody>
                 <tfoot>
@@ -1732,6 +1642,47 @@ const cleanupFilesForSubmission = async (files) => {
                 </tfoot>
               </table>
               <div className="print-page-footer">
+                {/* Totaux avec taxes - footer fixe au bas de chaque page */}
+                <div style={{ borderTop: '2px solid #000', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+
+                    {/* Conditions à gauche */}
+                    <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
+                    </div>
+
+                    {/* Totaux avec taxes à droite */}
+                    <div style={{ minWidth: '250px', fontSize: '12px' }}>
+                      {(() => {
+                        const sousTotal = submissionForm.amount;
+                        const tps = sousTotal * 0.05;
+                        const tvq = sousTotal * 0.09975;
+                        const total = sousTotal + tps + tvq;
+
+                        return (
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', paddingBottom: '3px' }}>
+                              <span>Sous-total:</span>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{formatCurrency(sousTotal)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', paddingBottom: '3px' }}>
+                              <span>TPS (5%):</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(tps)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px' }}>
+                              <span>TVQ (9.975%):</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(tvq)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #000', paddingTop: '8px', fontWeight: 'bold', fontSize: '16px' }}>
+                              <span>TOTAL:</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(total)}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
                 <div className="print-page-footer-line">
                   Pour toute question: (418) 225-3875 • Services TMT Inc. • info.servicestmt@gmail.com
                 </div>
@@ -1829,90 +1780,6 @@ const cleanupFilesForSubmission = async (files) => {
                 </tbody>
               </table>
 
-                {/* Totaux avec taxes pour client - Version directe */}
-              <div style={{ marginTop: '30px', borderTop: '2px solid #000', paddingTop: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  
-                  {/* Conditions à gauche */}
-                  <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                    <div>• Prix valides pour 30 jours</div>
-                    <div>• Paiement: Net 30 jours</div>
-                    <div>• Prix sujets à changement sans préavis</div>
-                  </div>
-                  
-                  {/* Totaux avec taxes à droite */}
-                  <div style={{ minWidth: '250px', fontSize: '12px' }}>
-                    {(() => {
-                      const sousTotal = submissionForm.amount;
-                      const tps = sousTotal * 0.05;
-                      const tvq = sousTotal * 0.09975;
-                      const total = sousTotal + tps + tvq;
-                      
-                      return (
-                        <div>
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>Sous-total:</span>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                              {formatCurrency(sousTotal)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '5px',
-                            paddingBottom: '3px'
-                          }}>
-                            <span>TPS (5%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(tps)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            marginBottom: '10px',
-                            paddingBottom: '5px'
-                          }}>
-                            <span>TVQ (9.975%):</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(tvq)}
-                            </span>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            borderTop: '2px solid #000', 
-                            paddingTop: '8px',
-                            fontWeight: 'bold',
-                            fontSize: '16px'
-                          }}>
-                            <span>TOTAL:</span>
-                            <span style={{ fontFamily: 'monospace' }}>
-                              {formatCurrency(total)}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer client */}
-              <div className="print-footer">
-                <div style={{ textAlign: 'center' }}>
-                </div>
-              </div>
-
                   </td></tr>
                 </tbody>
                 <tfoot>
@@ -1920,6 +1787,50 @@ const cleanupFilesForSubmission = async (files) => {
                 </tfoot>
               </table>
               <div className="print-page-footer">
+                {/* Totaux avec taxes pour client - footer fixe au bas de chaque page */}
+                <div style={{ borderTop: '2px solid #000', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+
+                    {/* Conditions à gauche */}
+                    <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
+                      <div>• Prix valides pour 30 jours</div>
+                      <div>• Paiement: Net 30 jours</div>
+                      <div>• Prix sujets à changement sans préavis</div>
+                    </div>
+
+                    {/* Totaux avec taxes à droite */}
+                    <div style={{ minWidth: '250px', fontSize: '12px' }}>
+                      {(() => {
+                        const sousTotal = submissionForm.amount;
+                        const tps = sousTotal * 0.05;
+                        const tvq = sousTotal * 0.09975;
+                        const total = sousTotal + tps + tvq;
+
+                        return (
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', paddingBottom: '3px' }}>
+                              <span>Sous-total:</span>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{formatCurrency(sousTotal)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', paddingBottom: '3px' }}>
+                              <span>TPS (5%):</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(tps)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '5px' }}>
+                              <span>TVQ (9.975%):</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(tvq)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #000', paddingTop: '8px', fontWeight: 'bold', fontSize: '16px' }}>
+                              <span>TOTAL:</span>
+                              <span style={{ fontFamily: 'monospace' }}>{formatCurrency(total)}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
                 <div className="print-page-footer-line">
                   Pour toute question: (418) 225-3875 • Services TMT Inc. • info.servicestmt@gmail.com
                 </div>
