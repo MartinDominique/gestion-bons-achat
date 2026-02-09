@@ -152,39 +152,49 @@ useEffect(() => {
 // ========================================
 
 useEffect(() => {
-  // Créer une signature unique des données reçues
-  const entriesSignature = JSON.stringify(initialTimeEntries);
-  
+  // ⭐ Créer une signature STABLE des données reçues
+  // Exclure total_hours et in_progress car ils changent dynamiquement
+  // et causeraient une boucle parent→child→parent
+  const stableEntries = (initialTimeEntries || []).map(e => ({
+    date: e.date || '',
+    start_time: e.start_time || '',
+    end_time: e.end_time || '',
+    pause_minutes: e.pause_minutes || 0
+  }));
+  const entriesSignature = JSON.stringify(stableEntries);
+
   console.log('🚀 TimeTracker useEffect DÉCLENCHÉ', {
     hasEntries: initialTimeEntries?.length > 0,
     entriesCount: initialTimeEntries?.length,
     isInitialized: isInitialized,
-    processedBefore: processedEntriesRef.current === entriesSignature
+    signatureMatch: processedEntriesRef.current === entriesSignature
   });
-  
-  // ⭐ CRITIQUE : Ne traiter que si les données ont VRAIMENT changé
+
+  // ⭐ CRITIQUE : Ne pas re-traiter les mêmes données stables (empêche la boucle)
   if (processedEntriesRef.current === entriesSignature) {
-    console.log('⏭️ Mêmes données déjà traitées, skip');
+    console.log('⏭️ Signature stable identique, skip');
+    // Marquer comme initialisé même si on skip (les données sont les mêmes)
+    if (!isInitialized) setIsInitialized(true);
     return;
   }
-  
+
   if (initialTimeEntries && initialTimeEntries.length > 0) {
-    console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries);
-    
+    console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries.length, 'entrées');
+
     // Chercher une session en cours (par INDEX, pas par référence)
     const sessionInProgressIndex = initialTimeEntries.findIndex(
       entry => !entry.end_time || entry.in_progress
     );
-    
+
     if (sessionInProgressIndex !== -1) {
       const sessionInProgress = initialTimeEntries[sessionInProgressIndex];
       console.log('⏰ Session en cours détectée à index', sessionInProgressIndex, ':', sessionInProgress);
-      
-      // ✅ FIX: Filtrer par INDEX au lieu de référence d'objet
+
+      // Filtrer par INDEX au lieu de référence d'objet
       const completedSessions = initialTimeEntries.filter(
         (entry, index) => index !== sessionInProgressIndex
       );
-      
+
       setTimeEntries(completedSessions);
       setCurrentSession({
         date: sessionInProgress.date,
@@ -194,23 +204,23 @@ useEffect(() => {
         total_hours: 0
       });
       setIsWorking(true);
-      
-      console.log('✅ Session en cours restaurée:', sessionInProgress);
+
+      console.log('✅ Session en cours restaurée:', sessionInProgress.start_time);
       console.log('✅ Sessions complétées:', completedSessions.length);
     } else {
       // Toutes les sessions sont complétées
       console.log('📋 Toutes les sessions sont complétées:', initialTimeEntries.length);
       setTimeEntries(initialTimeEntries);
     }
-    
+
     // ⭐ Marquer ces données comme traitées
     processedEntriesRef.current = entriesSignature;
     setIsInitialized(true);
-  } else if (initialTimeEntries && initialTimeEntries.length === 0 && !isInitialized) {
-    // Tableau vide explicite - seulement si pas encore initialisé
+  } else if (initialTimeEntries && initialTimeEntries.length === 0) {
+    // Tableau vide explicite
     console.log('📭 Aucune session à charger');
     processedEntriesRef.current = entriesSignature;
-    setIsInitialized(true);
+    if (!isInitialized) setIsInitialized(true);
   }
 }, [initialTimeEntries]); // ⭐ Écoute SEULEMENT initialTimeEntries
 
