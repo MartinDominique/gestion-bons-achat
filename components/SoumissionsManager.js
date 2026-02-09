@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.1.0
- * @date 2026-02-08
+ * @version 1.2.0
+ * @date 2026-02-09
  * @changelog
+ *   1.2.0 - Ajout footer répété (tfoot) sur chaque page imprimée
  *   1.1.0 - Ajout header répété sur pages 2+ pour PDF multi-pages (table wrapper)
  *   1.0.0 - Version initiale
  */
@@ -1488,10 +1489,24 @@ const cleanupFilesForSubmission = async (files) => {
               display: table-row-group !important;
             }
 
+            .print-wrapper > tfoot {
+              display: table-footer-group !important;
+            }
+
             .print-wrapper > thead > tr > td,
-            .print-wrapper > tbody > tr > td {
+            .print-wrapper > tbody > tr > td,
+            .print-wrapper > tfoot > tr > td {
               padding: 0 !important;
               border: none !important;
+            }
+
+            .print-page-footer {
+              border-top: 2px solid #000;
+              padding-top: 6px;
+              margin-top: 15px;
+              text-align: center;
+              font-size: 8px;
+              color: #666;
             }
 
             /* Éléments à masquer à l'impression */
@@ -1698,6 +1713,13 @@ const cleanupFilesForSubmission = async (files) => {
 
                   </td></tr>
                 </tbody>
+                <tfoot>
+                  <tr><td>
+                    <div className="print-page-footer">
+                      Services TMT Inc. • (418) 225-3875 • info.servicestmt@gmail.com
+                    </div>
+                  </td></tr>
+                </tfoot>
               </table>
             </div>
           )}
@@ -1878,6 +1900,13 @@ const cleanupFilesForSubmission = async (files) => {
 
                   </td></tr>
                 </tbody>
+                <tfoot>
+                  <tr><td>
+                    <div className="print-page-footer">
+                      Services TMT Inc. • (418) 225-3875 • info.servicestmt@gmail.com
+                    </div>
+                  </td></tr>
+                </tfoot>
               </table>
             </div>
           )}
