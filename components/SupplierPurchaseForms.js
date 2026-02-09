@@ -116,7 +116,9 @@ export const PurchaseForm = ({
 
   const handlePrint = async () => {
     try {
-      await exportPDF('download', editingPurchase, purchaseForm, {
+      // Inclure les selectedItems actuels dans purchaseForm pour le PDF
+      const formWithItems = { ...purchaseForm, items: selectedItems };
+      await exportPDF('download', editingPurchase, formWithItems, {
         supplier: selectedSupplier,
         deliveryAddress: selectedAddress,
       });
@@ -160,8 +162,9 @@ export const PurchaseForm = ({
     }
 
     try {
-      // Générer et sauvegarder le PDF via jsPDF
-      await exportPDF('download', editingPurchase, purchaseForm, {
+      // Générer et sauvegarder le PDF via jsPDF (inclure selectedItems actuels)
+      const formWithItems = { ...purchaseForm, items: selectedItems };
+      await exportPDF('download', editingPurchase, formWithItems, {
         supplier: selectedSupplier,
         deliveryAddress: selectedAddress,
       });

@@ -847,24 +847,28 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
           );
           
           if (shouldSendEmail) {
-            const pdf = generatePurchasePDF(savedPurchase);
-            const pdfBlob = pdf.output('blob');
-            
             setIsLoadingEmail(true);
             setEmailStatus('Envoi en cours...');
-            
-            sendEmailToDominique(savedPurchase, pdfBlob)
-              .then(() => {
-                console.log('📧 EMAIL MANUEL ENVOYÉ');
-                setEmailStatus('✅ Email envoyé avec succès');
-              })
-              .catch((emailError) => {
-                console.error('📧 ERREUR EMAIL:', emailError);
-                setEmailStatus(`❌ Erreur email: ${emailError.message}`);
-              })
-              .finally(() => {
-                setIsLoadingEmail(false);
-              });
+
+            try {
+              const pdf = await generatePurchasePDF(savedPurchase);
+              sendEmailToDominique(savedPurchase, pdf)
+                .then(() => {
+                  console.log('📧 EMAIL MANUEL ENVOYÉ');
+                  setEmailStatus('✅ Email envoyé avec succès');
+                })
+                .catch((emailError) => {
+                  console.error('📧 ERREUR EMAIL:', emailError);
+                  setEmailStatus(`❌ Erreur email: ${emailError.message}`);
+                })
+                .finally(() => {
+                  setIsLoadingEmail(false);
+                });
+            } catch (pdfError) {
+              console.error('📧 ERREUR PDF:', pdfError);
+              setEmailStatus(`❌ Erreur génération PDF: ${pdfError.message}`);
+              setIsLoadingEmail(false);
+            }
           } else {
             setEmailStatus('📧 Email non envoyé (choix utilisateur)');
           }
@@ -907,27 +911,31 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         );
         
         if (shouldSendEmail) {
-          const pdf = generatePurchasePDF(savedPurchase);
-          const pdfBlob = pdf.output('blob');
-          
           setIsLoadingEmail(true);
           setEmailStatus('Envoi en cours...');
-          
-          sendEmailToDominique(savedPurchase, pdfBlob)
-            .then(() => {
-              setEmailStatus('✅ Email envoyé avec succès');
-            })
-            .catch((emailError) => {
-              setEmailStatus(`❌ Erreur email: ${emailError.message}`);
-            })
-            .finally(() => {
-              setIsLoadingEmail(false);
-            });
+
+          try {
+            const pdf = await generatePurchasePDF(savedPurchase);
+            sendEmailToDominique(savedPurchase, pdf)
+              .then(() => {
+                setEmailStatus('✅ Email envoyé avec succès');
+              })
+              .catch((emailError) => {
+                setEmailStatus(`❌ Erreur email: ${emailError.message}`);
+              })
+              .finally(() => {
+                setIsLoadingEmail(false);
+              });
+          } catch (pdfError) {
+            console.error('📧 ERREUR PDF:', pdfError);
+            setEmailStatus(`❌ Erreur génération PDF: ${pdfError.message}`);
+            setIsLoadingEmail(false);
+          }
         } else {
           setEmailStatus('📧 Email non envoyé (choix utilisateur)');
         }
       }
-      
+
       // Recharger la liste
       await loadSupplierPurchases();
       
