@@ -121,7 +121,7 @@ CREATE POLICY "Users can delete own data" ON nom_table
 
 ### Génération PDF (jsPDF)
 
-Standards visuels pour tous les PDF générés:
+Standards visuels pour tous les PDF générés avec jsPDF:
 
 ```javascript
 // Logo
@@ -140,6 +140,45 @@ const MARGIN = 20; // mm
 // Footer avec numéro de page
 doc.setFontSize(10);
 doc.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+```
+
+### Génération PDF (window.print / CSS @media print)
+
+Standards pour les PDF générés via impression CSS (Soumissions, etc.):
+
+**Structure multi-pages obligatoire:**
+- **Header répété** sur chaque page via `<table class="print-wrapper">` avec `<thead>` (logo, infos entreprise, N° document, client, description)
+- **Footer fixe** au bas de chaque page via `position: fixed; bottom: 0` (conditions générales + totaux avec les 2 lignes noires)
+- **Spacer** via `<tfoot>` avec hauteur fixe (~1.4in) pour réserver l'espace du footer et éviter chevauchement
+
+**Pagination obligatoire:**
+```css
+@page {
+  size: letter;
+  margin: 0.4in 0.6in 0.5in 0.6in;
+  @bottom-center {
+    content: "Pour toute question: (418) 225-3875 \\2022  Services TMT Inc. \\2022  info.servicestmt@gmail.com";
+    font-size: 9px;
+    color: #666;
+  }
+  @bottom-right {
+    content: "Page " counter(page) "/" counter(pages);
+    font-size: 10px;
+    color: #333;
+  }
+}
+```
+
+**Structure HTML type:**
+```html
+<div class="print-area">
+  <table class="print-wrapper">
+    <thead><tr><td><!-- Header: logo + company + N° + client --></td></tr></thead>
+    <tbody><tr><td><!-- Contenu: tableau items --></td></tr></tbody>
+    <tfoot><tr><td><div class="print-footer-spacer"></div></td></tr></tfoot>
+  </table>
+  <div class="print-page-footer"><!-- Footer fixe: conditions + totaux --></div>
+</div>
 ```
 
 ### Mobile / Responsive (CRITIQUE pour BT et BL)
