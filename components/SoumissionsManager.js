@@ -1928,8 +1928,6 @@ const cleanupFilesForSubmission = async (files) => {
             </div>
           )}
 
-        <div className="max-w-6xl mx-auto p-4">
-
           {/* FORMULAIRE SOUMISSION MOBILE-FRIENDLY */}
           <div className="bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden">
             
