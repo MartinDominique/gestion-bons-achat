@@ -49,22 +49,36 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
       setError('');
 
       // 1. Charger le client pour les contacts email
+      let client = null;
+
+      // Essayer par client_id d'abord, puis par client_name
       if (purchaseOrder.client_id) {
-        const { data: client } = await supabase
+        const { data } = await supabase
           .from('clients')
           .select('*')
           .eq('id', purchaseOrder.client_id)
           .single();
+        client = data;
+      }
 
-        if (client) {
-          setClientData(client);
-          // Pré-remplir les emails disponibles
-          const emails = [];
-          if (client.email) emails.push(client.email);
-          if (client.email_2 && !emails.includes(client.email_2)) emails.push(client.email_2);
-          if (client.email_admin && !emails.includes(client.email_admin)) emails.push(client.email_admin);
-          setRecipientEmails(emails.length > 0 ? [emails[0]] : []);
-        }
+      if (!client && purchaseOrder.client_name) {
+        const { data } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('name', purchaseOrder.client_name)
+          .single();
+        client = data;
+      }
+
+      if (client) {
+        setClientData(client);
+        // Pré-remplir les emails disponibles - ne pas pré-sélectionner
+        // L'utilisateur choisira les destinataires
+      }
+
+      // Aussi récupérer l'email directement du BA si disponible
+      if (purchaseOrder.client_email && !client?.email?.includes(purchaseOrder.client_email)) {
+        // L'email du formulaire BA est différent, on le garde comme option
       }
 
       // 2. Charger les livraisons pour connaître les quantités déjà livrées
@@ -265,15 +279,32 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
   // Formater montant
   const fmt = (amount) => '$' + (parseFloat(amount) || 0).toFixed(2);
 
-  // Emails disponibles du client
+  // Emails disponibles du client (tous les contacts)
   const availableEmails = useMemo(() => {
-    if (!clientData) return [];
     const emails = [];
-    if (clientData.email) emails.push({ email: clientData.email, label: clientData.contact_name || 'Contact principal' });
-    if (clientData.email_2) emails.push({ email: clientData.email_2, label: clientData.contact_name_2 || 'Contact 2' });
-    if (clientData.email_admin) emails.push({ email: clientData.email_admin, label: clientData.contact_name_admin || 'Admin' });
+    const seen = new Set();
+
+    const addEmail = (email, label) => {
+      if (email && !seen.has(email.toLowerCase())) {
+        seen.add(email.toLowerCase());
+        emails.push({ email, label });
+      }
+    };
+
+    // Emails du dossier client
+    if (clientData) {
+      addEmail(clientData.email, clientData.contact_name || 'Contact principal');
+      addEmail(clientData.email_2, clientData.contact_name_2 || 'Contact 2');
+      addEmail(clientData.email_admin, clientData.contact_name_admin || 'Admin/Facturation');
+    }
+
+    // Email du formulaire BA (si different)
+    if (purchaseOrder?.client_email) {
+      addEmail(purchaseOrder.client_email, 'Email BA');
+    }
+
     return emails;
-  }, [clientData]);
+  }, [clientData, purchaseOrder]);
 
   if (!isOpen) return null;
 
@@ -517,46 +548,56 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                   Destinataires
                 </h3>
 
-                {/* Contacts client disponibles */}
+                {/* Contacts du dossier client */}
                 {availableEmails.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs text-gray-500 mb-2">Contacts du client:</p>
+                  <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs font-medium text-blue-700 mb-2">Emails du dossier client (cliquer pour selectionner):</p>
                     <div className="flex flex-wrap gap-2">
                       {availableEmails.map(({ email, label }) => (
                         <button
                           key={email}
                           onClick={() => toggleClientEmail(email)}
-                          className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                          className={`text-xs px-3 py-2 rounded-lg border-2 transition-all min-h-[44px] ${
                             recipientEmails.includes(email)
-                              ? 'bg-emerald-100 border-emerald-300 text-emerald-800'
-                              : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-300'
+                              ? 'bg-emerald-100 border-emerald-400 text-emerald-800 shadow-sm font-medium'
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:bg-emerald-50'
                           }`}
                         >
-                          {recipientEmails.includes(email) ? '✓ ' : ''}{label} ({email})
+                          <span className="block font-medium">{recipientEmails.includes(email) ? '✓ ' : ''}{label}</span>
+                          <span className="block text-[10px] opacity-75">{email}</span>
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
+                {availableEmails.length === 0 && (
+                  <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-xs text-yellow-700">Aucun email dans le dossier client. Ajoutez un email manuellement ci-dessous.</p>
+                  </div>
+                )}
+
                 {/* Ajouter un email manuellement */}
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addEmail()}
-                    placeholder="Ajouter un email..."
-                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                    inputMode="email"
-                  />
-                  <button
-                    onClick={addEmail}
-                    disabled={!newEmail.trim()}
-                    className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 mb-1">Ajouter un autre email:</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addEmail()}
+                      placeholder="Entrer un email non dans le dossier..."
+                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 min-h-[44px]"
+                      inputMode="email"
+                    />
+                    <button
+                      onClick={addEmail}
+                      disabled={!newEmail.trim()}
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 transition-colors min-h-[44px] text-sm"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
                 </div>
 
                 {/* Liste emails sélectionnés */}
