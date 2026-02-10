@@ -124,6 +124,8 @@ export async function GET(request, { params }) {
     console.log('Client:', data.client?.name);
     console.log('Matériaux:', data.materials?.length || 0);
     console.log('Linked PO:', data.linked_po?.po_number || 'Aucun');
+    console.log('🕐 GET - time_entries:', JSON.stringify(data.time_entries));
+    console.log('🕐 GET - total_hours:', data.total_hours);
     
     return NextResponse.json({
       success: true,
@@ -254,6 +256,8 @@ export async function PUT(request, { params }) {
       }
     
     // 1. Mettre à jour le work_order principal
+    console.log('🕐 PUT - time_entries à sauvegarder:', JSON.stringify(updateData.time_entries));
+    console.log('🕐 PUT - total_hours à sauvegarder:', updateData.total_hours);
     const { data: updatedWorkOrder, error: updateError } = await supabase
     .from('work_orders')
     .update({

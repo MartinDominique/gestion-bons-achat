@@ -389,9 +389,12 @@ const formatDuration = (hours) => {
       // Éditer session existante
       const newEntries = [...timeEntries];
       newEntries[editingIndex] = session;
+      console.log('🔧 EDIT session manuelle:', session);
       setTimeEntries(newEntries);
     } else {
       // Ajouter nouvelle session
+      console.log('➕ AJOUT session manuelle:', session);
+      console.log('➕ timeEntries AVANT ajout:', timeEntries.length, 'sessions');
       setTimeEntries([...timeEntries, session]);
     }
 

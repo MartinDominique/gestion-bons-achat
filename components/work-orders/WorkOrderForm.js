@@ -1567,6 +1567,8 @@ const getFilteredSupplierPurchases = () => {
           )}
         </div>
 
+        {/* DEBUG: Afficher ce que TimeTracker va recevoir */}
+        {console.log('🕐 PROP initialTimeEntries pour TimeTracker:', JSON.stringify(workOrder?.time_entries || []))}
         <TimeTracker
           onTimeChange={handleTimeChange}
           initialTimeEntries={workOrder?.time_entries || []}

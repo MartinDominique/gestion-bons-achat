@@ -37,8 +37,10 @@ export default function ModifierBonTravailPage({ params }) {
 
         const responseData = await response.json();
         console.log('Données BT chargées:', responseData);
-        
+
         const workOrderData = responseData.success ? responseData.data : responseData;
+        console.log('🕐 MODIFIER - time_entries du BT:', JSON.stringify(workOrderData.time_entries));
+        console.log('🕐 MODIFIER - total_hours du BT:', workOrderData.total_hours);
         setWorkOrder(workOrderData);
         
       } catch (err) {
