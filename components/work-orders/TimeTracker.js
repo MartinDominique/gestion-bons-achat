@@ -1,9 +1,8 @@
 import React, { useState, useEffect,useRef } from 'react';
 import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-react';
 
-export default function TimeTracker({
-  onTimeChange,
-  onSaveAndStart,
+export default function TimeTracker({ 
+  onTimeChange, 
   initialTimeEntries = [],
   workDate = null,
   status = 'draft',
@@ -18,7 +17,6 @@ export default function TimeTracker({
   const [isInitialized, setIsInitialized] = useState(false);
   const lastNotifiedData = useRef(null);
   const processedEntriesRef = useRef(null);
-  const hasRealData = useRef(false); // true dès qu'on a des vraies données ou action utilisateur
   
   // États d'édition manuelle
   const [showManualEdit, setShowManualEdit] = useState(false);
@@ -113,27 +111,21 @@ const getAllSessions = () => {
 // ========================================
 useEffect(() => {
   if (!onTimeChange) return;
-
+  
   // ⭐ Attendre que l'initialisation soit au moins tentée
   if (!isInitialized) {
+    console.log('⏸️ Attente initialisation avant notification');
     return;
   }
-
+  
   const allSessions = getAllSessions();
-
-  // ⭐ PROTECTION: Ne pas envoyer de notification vide si on n'a jamais eu de vraies données
-  // Empêche la race condition où la notification vide écrase les données du BT chargé par le parent
-  if (allSessions.length === 0 && !hasRealData.current) {
-    return;
-  }
-
   const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-
+  
   const dataToSend = {
     time_entries: allSessions,
     total_hours: grandTotal
   };
-
+  
   // Comparer avec dernière notification pour éviter boucles
   const dataString = JSON.stringify(dataToSend);
   if (dataString !== lastNotifiedData.current) {
@@ -176,7 +168,6 @@ useEffect(() => {
   }
   
   if (initialTimeEntries && initialTimeEntries.length > 0) {
-    hasRealData.current = true;
     console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries);
     
     // Chercher une session en cours (par INDEX, pas par référence)
@@ -273,8 +264,8 @@ const formatDuration = (hours) => {
       // En cas d'erreur, on laisse continuer pour ne pas bloquer
     }
 
-    hasRealData.current = true;
     const now = new Date();
+    
     const newSession = {
       date: now.toISOString().split('T')[0],  // ✅ Toujours la date du jour
       start_time: now.toTimeString().substring(0, 5),
@@ -293,7 +284,7 @@ const formatDuration = (hours) => {
     alert('❌ Impossible de terminer cette session.\nCe bon de travail a déjà été envoyé au client.');
     return;
   }
-      hasRealData.current = true;
+      
       const now = new Date();
       const endTime = now.toTimeString().substring(0, 5);
       
@@ -330,7 +321,6 @@ const formatDuration = (hours) => {
   // Supprimer une session
   const handleDeleteSession = (index) => {
     if (confirm('Supprimer cette session de travail ?')) {
-      hasRealData.current = true;
       const newEntries = timeEntries.filter((_, i) => i !== index);
       setTimeEntries(newEntries);
     }
@@ -387,7 +377,6 @@ const formatDuration = (hours) => {
       include_transport_fee: true,
     };
 
-    hasRealData.current = true;
     if (editingIndex !== null) {
       // Éditer session existante
       const newEntries = [...timeEntries];
@@ -744,37 +733,19 @@ const formatDuration = (hours) => {
               </div>
             )}
             
-            <div className="flex flex-col gap-2 items-center">
-              <button
-                type="button"
-                onClick={handlePunchIn}
-                disabled={status === 'sent' || status === 'signed'}
-                className={`w-full sm:w-auto px-6 py-3 rounded-lg flex items-center justify-center font-medium ${
-                  status === 'sent' || status === 'signed'
-                    ? 'bg-gray-400 cursor-not-allowed text-gray-700'
-                    : 'bg-green-600 hover:bg-green-700 text-white'
-                }`}
-              >
-                <Play className="mr-2" size={18} />
-                Commencer nouvelle session
-              </button>
-              {onSaveAndStart && !(status === 'sent' || status === 'signed') && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    handlePunchIn();
-                    if (onSaveAndStart) {
-                      setTimeout(() => onSaveAndStart(), 300);
-                    }
-                  }}
-                  className="w-full sm:w-auto px-6 py-3 rounded-lg flex items-center justify-center font-medium bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Play className="mr-1" size={18} />
-                  <Save className="mr-2" size={18} />
-                  Commencer et sauvegarder
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={handlePunchIn}
+              disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
+              className={`px-6 py-3 rounded-lg flex items-center mx-auto font-medium ${
+                status === 'sent' || status === 'signed'
+                  ? 'bg-gray-400 cursor-not-allowed text-gray-700'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+            >
+              <Play className="mr-2" size={18} />
+              Commencer nouvelle session
+            </button>
           </div>
         )}
 

@@ -1183,52 +1183,52 @@ const getFilteredSupplierPurchases = () => {
   return (
     <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
     
-      {/* Boutons workflow - en haut, centrés */}
-      <div className="mb-6">
-        <div className="space-y-2 sm:max-w-md sm:mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h2 className="text-xl font-bold text-gray-900">
+          {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
+        </h2>
+        
+        {/* Boutons workflow - en haut (colonne sur mobile, ligne sur tablet/PC) */}
+        <div className="flex flex-col sm:flex-row gap-2">
           {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
             <button
               type="button"
               onClick={onCancel}
-              className="w-full sm:w-auto bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center font-medium"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center font-medium text-sm"
             >
-              <Check className="mr-2" size={18} />
+              <Check className="mr-2" size={16} />
               Terminer
             </button>
           ) : (
             <>
-              {/* Sauvegarder - pleine largeur, vert, bien visible */}
               <button
                 type="button"
                 onClick={() => handleSubmit('draft')}
                 disabled={saving || isSubmitting}
-                className="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center font-medium text-base"
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
               >
-                <Save className="mr-2" size={18} />
+                <Save className="mr-2" size={16} />
                 {(saving || isSubmitting) ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
-
-              {/* Présenter + Annuler - côte à côte, même taille */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSubmit('ready_for_signature')}
-                  disabled={saving || isSubmitting}
-                  className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium text-base"
-                >
-                  <FileText className="mr-2" size={18} />
-                  {(saving || isSubmitting) ? 'Prép...' : 'Présenter'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="bg-red-100 border-2 border-red-400 text-red-700 px-4 py-3 rounded-lg hover:bg-red-200 font-medium text-base"
-                >
-                  <X className="mr-2 inline" size={18} />
-                  Annuler
-                </button>
-              </div>
+        
+              <button
+                type="button"
+                onClick={() => handleSubmit('ready_for_signature')}
+                disabled={saving || isSubmitting}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
+              >
+                <FileText className="mr-2" size={16} />
+                {(saving || isSubmitting) ? 'Préparation...' : 'Présenter'}
+              </button>
+        
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium text-sm"
+              >
+                Annuler
+              </button>
             </>
           )}
         </div>
@@ -1243,12 +1243,12 @@ const getFilteredSupplierPurchases = () => {
               Client *
             </label>
             
-            {/* Sélecteur client: dropdown pleine largeur, boutons en dessous sur mobile */}
-            <div className="space-y-2">
+            <div className="flex gap-2">
               <select
-                className={`w-full px-3 py-3 text-base border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                className={`flex-1 min-w-0 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
                   errors.client_id ? 'border-red-500' : 'border-gray-300'
                 } ${workOrder ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                style={{ maxWidth: 'calc(100vw - 240px)' }}
                 value={formData.client_id}
                 onChange={(e) => handleClientSelect(e.target.value)}
                 disabled={!!workOrder}
@@ -1256,51 +1256,49 @@ const getFilteredSupplierPurchases = () => {
                 <option value="">Sélectionner un client</option>
                 {clients.map(client => (
                   <option key={client.id} value={client.id}>
-                    {client.name.length > 50 ? client.name.substring(0, 50) + '...' : client.name}
+                    {client.name.length > 40 ? client.name.substring(0, 40) + '...' : client.name}
                   </option>
                 ))}
               </select>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('🔄 Rafraîchissement manuel de la liste clients');
-                    loadClients();
-                    toast.success('Liste des clients actualisée');
-                  }}
-                  className="w-12 h-12 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center"
-                  title="Actualiser la liste des clients"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="23 4 23 10 17 10"></polyline>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleEditClient}
-                  disabled={!selectedClient}
-                  className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                    selectedClient
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                  title={selectedClient ? 'Modifier le client sélectionné' : 'Sélectionnez un client d\'abord'}
-                >
-                  <PenTool size={20} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleNewClient}
-                  className="w-12 h-12 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center"
-                  title="Créer un nouveau client"
-                >
-                  <Plus size={20} />
-                </button>
-              </div>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  console.log('🔄 Rafraîchissement manuel de la liste clients');
+                  loadClients();
+                  toast.success('Liste des clients actualisée');
+                }}
+                className="flex-shrink-0 w-12 h-12 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center"
+                title="🔄 Actualiser la liste des clients"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleEditClient}
+                disabled={!selectedClient}
+                className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
+                  selectedClient
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                title={selectedClient ? '✏️ Modifier le client sélectionné' : 'Sélectionnez un client d\'abord'}
+              >
+                <PenTool size={20} />
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleNewClient}
+                className="flex-shrink-0 w-12 h-12 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center"
+                title="➕ Créer un nouveau client"
+              >
+                <Plus size={20} />
+              </button>
             </div>
             
             {errors.client_id && (
@@ -1315,58 +1313,58 @@ const getFilteredSupplierPurchases = () => {
           </div>
 
           {selectedClient && (selectedClient.email || selectedClient.email_2 || selectedClient.email_admin) && (
-            <div className="bg-white border border-blue-200 rounded-lg p-3 sm:p-4 overflow-hidden">
+            <div className="bg-white border border-blue-200 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
-                <Mail className="mr-2 flex-shrink-0" size={16} />
+                <Mail className="mr-2" size={16} />
                 Emails pour envoi du bon de travail
               </h3>
               <div className="space-y-2">
                 {selectedClient.email && (
-                  <label className="flex items-start gap-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition min-h-[44px]">
+                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
                     <input
                       type="checkbox"
                       checked={selectedEmails.email}
                       onChange={() => handleEmailSelection('email')}
-                      className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1">
                       <span className="text-sm font-medium text-gray-900">Principal</span>
-                      <p className="text-sm text-gray-600 break-all">{selectedClient.email}</p>
+                      <span className="text-sm text-gray-600 ml-2">{selectedClient.email}</span>
                     </div>
                   </label>
                 )}
-
+                
                 {selectedClient.email_2 && (
-                  <label className="flex items-start gap-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition min-h-[44px]">
+                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
                     <input
                       type="checkbox"
                       checked={selectedEmails.email_2}
                       onChange={() => handleEmailSelection('email_2')}
-                      className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1">
                       <span className="text-sm font-medium text-gray-900">Secondaire</span>
-                      <p className="text-sm text-gray-600 break-all">{selectedClient.email_2}</p>
+                      <span className="text-sm text-gray-600 ml-2">{selectedClient.email_2}</span>
                     </div>
                   </label>
                 )}
-
+                
                 {selectedClient.email_admin && (
-                  <label className="flex items-start gap-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition min-h-[44px]">
+                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
                     <input
                       type="checkbox"
                       checked={selectedEmails.email_admin}
                       onChange={() => handleEmailSelection('email_admin')}
-                      className="w-5 h-5 mt-0.5 flex-shrink-0 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1">
                       <span className="text-sm font-medium text-gray-900">Administration</span>
-                      <p className="text-sm text-gray-600 break-all">{selectedClient.email_admin}</p>
+                      <span className="text-sm text-gray-600 ml-2">{selectedClient.email_admin}</span>
                     </div>
                   </label>
                 )}
               </div>
-
+              
               <div className="mt-3 pt-3 border-t border-blue-200">
                 <p className="text-xs text-blue-700">
                   {Object.values(selectedEmails).filter(Boolean).length} email(s) sélectionné(s) pour l'envoi
@@ -1550,7 +1548,6 @@ const getFilteredSupplierPurchases = () => {
 
         <TimeTracker
           onTimeChange={handleTimeChange}
-          onSaveAndStart={() => handleSubmit('draft')}
           initialTimeEntries={formData.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
@@ -1673,53 +1670,56 @@ const getFilteredSupplierPurchases = () => {
           )}
         </div>
 
-        {/* Boutons workflow - en bas (même style que le haut) */}
-        <div className="space-y-2 pt-4 border-t">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
           {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
             <button
               type="button"
               onClick={onCancel}
-              className="w-full sm:w-auto bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center font-medium"
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center font-medium"
             >
-              <Check className="mr-2" size={18} />
+              <Check className="mr-2" size={16} />
               Terminer - Retour à la liste
             </button>
           ) : (
             <>
-              {/* Sauvegarder - pleine largeur, vert */}
               <button
                 type="button"
                 onClick={() => handleSubmit('draft')}
-                disabled={saving || isSubmitting}
-                className="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center font-medium text-base"
+                disabled={saving}
+                className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium"
               >
-                <Save className="mr-2" size={18} />
-                {(saving || isSubmitting) ? 'Sauvegarde...' : 'Sauvegarder'}
+                <Save className="mr-2" size={16} />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder pour plus tard'}
               </button>
-
-              {/* Présenter + Annuler - côte à côte, même taille */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSubmit('ready_for_signature')}
-                  disabled={saving || isSubmitting}
-                  className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium text-base"
-                >
-                  <FileText className="mr-2" size={18} />
-                  {(saving || isSubmitting) ? 'Prép...' : 'Présenter'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="bg-red-100 border-2 border-red-400 text-red-700 px-4 py-3 rounded-lg hover:bg-red-200 font-medium text-base"
-                >
-                  <X className="mr-2 inline" size={18} />
-                  Annuler
-                </button>
-              </div>
+        
+              <button
+                type="button"
+                onClick={() => handleSubmit('ready_for_signature')}
+                disabled={saving}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium"
+              >
+                <FileText className="mr-2" size={16} />
+                {saving ? 'Préparation...' : 'Présenter au client'}
+              </button>
+        
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Annuler
+              </button>
             </>
           )}
+        </div>
+
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h4 className="font-medium text-blue-900 mb-2">💡 Workflow Terrain</h4>
+          <div className="text-sm text-blue-800 space-y-1">
+            <p><strong>Sauvegarder pour plus tard:</strong> Garde le BT en brouillon, vous pourrez le reprendre</p>
+            <p><strong>Présenter au client:</strong> Prépare le BT pour signature sur tablette</p>
+            <p><strong>Emails:</strong> Sélectionnez les emails du client qui recevront le BT signé</p>
+          </div>
         </div>
       </form>
 
