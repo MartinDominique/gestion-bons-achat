@@ -269,13 +269,14 @@ export async function PUT(request, { params }) {
       linked_po_id: finalLinkedPoId,
       work_date: updateData.work_date,
       time_entries: updateData.time_entries || [],
-      total_hours: updateData.total_hours || 0,  
+      total_hours: updateData.total_hours || 0,
       work_description: updateData.work_description || null,
       additional_notes: updateData.additional_notes || null,
       status: updateData.status || 'draft',
       recipient_emails: updateData.recipient_emails || [],
       include_travel_time: include_travel_time,
-      is_prix_jobe: updateData.is_prix_jobe || false
+      is_prix_jobe: updateData.is_prix_jobe || false,
+      apply_surcharge: updateData.apply_surcharge !== false
     })
     .eq('id', workOrderId)
     .select()
