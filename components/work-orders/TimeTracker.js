@@ -17,28 +17,8 @@ export default function TimeTracker({
 
   const [isInitialized, setIsInitialized] = useState(false);
   const lastNotifiedData = useRef(null);
-
-  // ========================================
-  // NOTIFICATION SYNCHRONE AU PARENT (punch-out seulement)
-  // Corrige la race condition: useEffect est async (après paint),
-  // donc le parent peut sauvegarder avec des données périmées
-  // si l'utilisateur clique "Sauvegarder" juste après punch-out.
-  // ⚠️ NE PAS appeler dans handlePunchIn pour éviter la boucle!
-  // ========================================
-  const notifyParentSync = (sessions) => {
-    if (!onTimeChange) return;
-    const grandTotal = sessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-    const dataToSend = {
-      time_entries: sessions,
-      total_hours: grandTotal
-    };
-    const dataString = JSON.stringify(dataToSend);
-    if (dataString !== lastNotifiedData.current) {
-      console.log('📤 Notification parent (sync) - Sessions:', sessions.length);
-      lastNotifiedData.current = dataString;
-      onTimeChange(dataToSend);
-    }
-  };
+  const processedEntriesRef = useRef(null);
+  const hasRealData = useRef(false); // true dès qu'on a des vraies données ou action utilisateur
   
   // États d'édition manuelle
   const [showManualEdit, setShowManualEdit] = useState(false);
@@ -133,21 +113,27 @@ const getAllSessions = () => {
 // ========================================
 useEffect(() => {
   if (!onTimeChange) return;
-  
+
   // ⭐ Attendre que l'initialisation soit au moins tentée
   if (!isInitialized) {
-    console.log('⏸️ Attente initialisation avant notification');
     return;
   }
-  
+
   const allSessions = getAllSessions();
+
+  // ⭐ PROTECTION: Ne pas envoyer de notification vide si on n'a jamais eu de vraies données
+  // Empêche la race condition où la notification vide écrase les données du BT chargé par le parent
+  if (allSessions.length === 0 && !hasRealData.current) {
+    return;
+  }
+
   const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-  
+
   const dataToSend = {
     time_entries: allSessions,
     total_hours: grandTotal
   };
-  
+
   // Comparer avec dernière notification pour éviter boucles
   const dataString = JSON.stringify(dataToSend);
   if (dataString !== lastNotifiedData.current) {
@@ -170,20 +156,28 @@ useEffect(() => {
 
 // ========================================
 // INITIALISATION AVEC VALEURS EXISTANTES
-// ⭐ FIX DÉPENDANCE CIRCULAIRE:
-// Une fois initialisé, on ne re-lit JAMAIS initialTimeEntries.
-// TimeTracker devient propriétaire de son propre state.
-// Ceci casse la boucle: parent→prop→useEffect→notify→parent→prop...
 // ========================================
 
 useEffect(() => {
-  // ⭐ CRITIQUE: Une fois initialisé, on sort IMMÉDIATEMENT
-  // Le parent va changer initialTimeEntries quand on le notifie,
-  // mais on s'en fiche car on gère notre propre state maintenant.
-  if (isInitialized) return;
-
+  // Créer une signature unique des données reçues
+  const entriesSignature = JSON.stringify(initialTimeEntries);
+  
+  console.log('🚀 TimeTracker useEffect DÉCLENCHÉ', {
+    hasEntries: initialTimeEntries?.length > 0,
+    entriesCount: initialTimeEntries?.length,
+    isInitialized: isInitialized,
+    processedBefore: processedEntriesRef.current === entriesSignature
+  });
+  
+  // ⭐ CRITIQUE : Ne traiter que si les données ont VRAIMENT changé
+  if (processedEntriesRef.current === entriesSignature) {
+    console.log('⏭️ Mêmes données déjà traitées, skip');
+    return;
+  }
+  
   if (initialTimeEntries && initialTimeEntries.length > 0) {
-    console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries.length, 'sessions');
+    hasRealData.current = true;
+    console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries);
     
     // Chercher une session en cours (par INDEX, pas par référence)
     const sessionInProgressIndex = initialTimeEntries.findIndex(
@@ -192,8 +186,9 @@ useEffect(() => {
     
     if (sessionInProgressIndex !== -1) {
       const sessionInProgress = initialTimeEntries[sessionInProgressIndex];
-      console.log('⏰ Session en cours détectée:', sessionInProgress);
+      console.log('⏰ Session en cours détectée à index', sessionInProgressIndex, ':', sessionInProgress);
       
+      // ✅ FIX: Filtrer par INDEX au lieu de référence d'objet
       const completedSessions = initialTimeEntries.filter(
         (entry, index) => index !== sessionInProgressIndex
       );
@@ -208,18 +203,24 @@ useEffect(() => {
       });
       setIsWorking(true);
       
-      console.log('✅ Session en cours restaurée, sessions complétées:', completedSessions.length);
+      console.log('✅ Session en cours restaurée:', sessionInProgress);
+      console.log('✅ Sessions complétées:', completedSessions.length);
     } else {
+      // Toutes les sessions sont complétées
       console.log('📋 Toutes les sessions sont complétées:', initialTimeEntries.length);
       setTimeEntries(initialTimeEntries);
     }
     
+    // ⭐ Marquer ces données comme traitées
+    processedEntriesRef.current = entriesSignature;
     setIsInitialized(true);
-  } else if (initialTimeEntries && initialTimeEntries.length === 0) {
+  } else if (initialTimeEntries && initialTimeEntries.length === 0 && !isInitialized) {
+    // Tableau vide explicite - seulement si pas encore initialisé
     console.log('📭 Aucune session à charger');
+    processedEntriesRef.current = entriesSignature;
     setIsInitialized(true);
   }
-}, [initialTimeEntries]); // Écoute le prop, mais sort immédiatement si déjà initialisé
+}, [initialTimeEntries]); // ⭐ Écoute SEULEMENT initialTimeEntries
 
 // ========================================
 // FONCTIONS DE CALCUL
@@ -272,8 +273,8 @@ const formatDuration = (hours) => {
       // En cas d'erreur, on laisse continuer pour ne pas bloquer
     }
 
+    hasRealData.current = true;
     const now = new Date();
-    
     const newSession = {
       date: now.toISOString().split('T')[0],  // ✅ Toujours la date du jour
       start_time: now.toTimeString().substring(0, 5),
@@ -292,7 +293,7 @@ const formatDuration = (hours) => {
     alert('❌ Impossible de terminer cette session.\nCe bon de travail a déjà été envoyé au client.');
     return;
   }
-      
+      hasRealData.current = true;
       const now = new Date();
       const endTime = now.toTimeString().substring(0, 5);
       
@@ -324,15 +325,12 @@ const formatDuration = (hours) => {
       setIsWorking(false);
       
      console.log('✅ Session terminée:', completedSession);
-
-      // ⭐ Notifier le parent de façon SYNCHRONE pour éviter la race condition
-      // si l'utilisateur sauvegarde immédiatement après le punch-out
-      notifyParentSync([...timeEntries, completedSession]);
     };  
 
   // Supprimer une session
   const handleDeleteSession = (index) => {
     if (confirm('Supprimer cette session de travail ?')) {
+      hasRealData.current = true;
       const newEntries = timeEntries.filter((_, i) => i !== index);
       setTimeEntries(newEntries);
     }
@@ -389,6 +387,7 @@ const formatDuration = (hours) => {
       include_transport_fee: true,
     };
 
+    hasRealData.current = true;
     if (editingIndex !== null) {
       // Éditer session existante
       const newEntries = [...timeEntries];
@@ -763,12 +762,9 @@ const formatDuration = (hours) => {
                 <button
                   type="button"
                   onClick={async () => {
-                    // ⭐ CRITIQUE: Attendre que handlePunchIn termine COMPLÈTEMENT
-                    // (incluant le fetch /api/check-active-session) AVANT de sauvegarder.
-                    // Sans await, le save part avant que le punch-in soit enregistré dans le ref.
-                    await handlePunchIn();
+                    handlePunchIn();
                     if (onSaveAndStart) {
-                      onSaveAndStart();
+                      setTimeout(() => onSaveAndStart(), 300);
                     }
                   }}
                   className="w-full sm:w-auto px-6 py-3 rounded-lg flex items-center justify-center font-medium bg-blue-600 hover:bg-blue-700 text-white"

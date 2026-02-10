@@ -94,10 +94,6 @@ export default function WorkOrderForm({
   const [isInitializing, setIsInitializing] = useState(true);
   const initializedWorkOrderId = useRef(null);
   
-  // ⭐ Ref pour stocker les dernières données de temps (anti race-condition)
-  // Le ref est toujours à jour, même si setFormData n'a pas encore été appliqué
-  const latestTimeDataRef = useRef({ time_entries: [], total_hours: 0 });
-
   const [cachedProducts, setCachedProducts] = useState([]);
   const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState([]);
 
@@ -209,25 +205,16 @@ export default function WorkOrderForm({
       console.log('🔍 DEBUG INIT - workOrder complet:', workOrder);
       console.log('🔍 DEBUG INIT - linked_po_id:', workOrder.linked_po_id);
       console.log('🔍 DEBUG INIT - linked_po objet:', workOrder.linked_po);
-      const initTimeEntries = workOrder.time_entries || [];
-      const initTotalHours = workOrder.total_hours || 0;
-
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
         linked_po_id: workOrder.linked_po_id?.toString() || workOrder.linked_po?.po_number || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
-        time_entries: initTimeEntries,
+        time_entries: workOrder.time_entries || [],
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft',
         is_prix_jobe: workOrder.is_prix_jobe || false
       });
-
-      // ⭐ Initialiser le ref de temps aussi
-      latestTimeDataRef.current = {
-        time_entries: initTimeEntries,
-        total_hours: initTotalHours
-      };
 
       console.log('🔍 DEBUG INIT - formData.linked_po_id après init:', workOrder.linked_po_id?.toString() || '');
       
@@ -1005,24 +992,12 @@ const getFilteredSupplierPurchases = () => {
   };
 
   const handleTimeChange = (timeData) => {
-    const entries = timeData.time_entries || [];
-    const hours = timeData.total_hours || 0;
-
-    console.log('📥 WorkOrderForm reçoit timeData:', entries.length, 'sessions, total:', hours);
-    entries.forEach((e, i) => {
-      console.log(`📥 Session ${i}: start=${e.start_time} end=${e.end_time} in_progress=${e.in_progress} total=${e.total_hours}`);
-    });
-
-    // ⭐ Mettre à jour le ref IMMÉDIATEMENT (synchrone, toujours à jour)
-    latestTimeDataRef.current = {
-      time_entries: entries,
-      total_hours: hours
-    };
-
+    console.log('📥 WorkOrderForm reçoit timeData:', timeData);
+    
     setFormData(prev => ({
       ...prev,
-      time_entries: entries,
-      total_hours: hours
+      time_entries: timeData.time_entries || [],
+      total_hours: timeData.total_hours || 0
     }));
     if (onFormChange && !isInitializing) {
       onFormChange();
@@ -1105,27 +1080,6 @@ const getFilteredSupplierPurchases = () => {
     setIsSubmitting(true); // 🔒 Bloquer immédiatement
 
     let payload = { ...formData };
-
-    // ⭐ CRITIQUE: TOUJOURS utiliser le ref pour les données de temps
-    // Le ref est mis à jour de façon synchrone par handleTimeChange,
-    // alors que formData peut être en retard si setFormData n'a pas encore été appliqué
-    // On prend le ref s'il a des données, sinon on garde formData comme fallback
-    const refEntries = latestTimeDataRef.current.time_entries;
-    const formEntries = payload.time_entries || [];
-
-    if (refEntries.length > 0) {
-      payload.time_entries = refEntries;
-      payload.total_hours = latestTimeDataRef.current.total_hours;
-    } else if (formEntries.length > 0) {
-      // Fallback: utiliser formData si le ref est vide
-      payload.time_entries = formEntries;
-      // Garder payload.total_hours tel quel
-    }
-
-    console.log('🔒 handleSubmit - Source temps:', refEntries.length > 0 ? 'REF' : 'FORMDATA');
-    console.log('🔒 handleSubmit - time_entries:', JSON.stringify(payload.time_entries));
-    console.log('🔒 handleSubmit - total_hours:', payload.total_hours);
-
     if (payload.start_time && payload.end_time) {
       payload.total_hours = toQuarterHourUp(
         payload.start_time,
@@ -1597,7 +1551,7 @@ const getFilteredSupplierPurchases = () => {
         <TimeTracker
           onTimeChange={handleTimeChange}
           onSaveAndStart={() => handleSubmit('draft')}
-          initialTimeEntries={workOrder?.time_entries || []}
+          initialTimeEntries={formData.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
           selectedClient={selectedClient}
