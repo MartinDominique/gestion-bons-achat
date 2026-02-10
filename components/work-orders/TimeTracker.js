@@ -19,6 +19,27 @@ export default function TimeTracker({
   const lastNotifiedData = useRef(null);
   const processedEntriesRef = useRef(null);
   const hasRealData = useRef(false); // true dès qu'on a des vraies données ou action utilisateur
+
+  // ========================================
+  // NOTIFICATION SYNCHRONE AU PARENT
+  // Corrige la race condition: useEffect est async (après paint),
+  // donc le parent peut sauvegarder avec des données périmées
+  // si l'utilisateur clique "Sauvegarder" juste après punch-out.
+  // ========================================
+  const notifyParentSync = (sessions) => {
+    if (!onTimeChange) return;
+    const grandTotal = sessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
+    const dataToSend = {
+      time_entries: sessions,
+      total_hours: grandTotal
+    };
+    const dataString = JSON.stringify(dataToSend);
+    if (dataString !== lastNotifiedData.current) {
+      console.log('📤 Notification parent (sync) - Sessions:', sessions.length, sessions);
+      lastNotifiedData.current = dataString;
+      onTimeChange(dataToSend);
+    }
+  };
   
   // États d'édition manuelle
   const [showManualEdit, setShowManualEdit] = useState(false);
@@ -284,6 +305,14 @@ const formatDuration = (hours) => {
     };
     setCurrentSession(newSession);
     setIsWorking(true);
+
+    // ⭐ Notifier le parent de façon synchrone
+    const sessionInProgress = {
+      ...newSession,
+      total_hours: 1,
+      in_progress: true
+    };
+    notifyParentSync([...timeEntries, sessionInProgress]);
   };
 
   // Terminer la session courante
@@ -320,12 +349,17 @@ const formatDuration = (hours) => {
         in_progress: false
       };
       
-      setTimeEntries([...timeEntries, completedSession]);
+      const newTimeEntries = [...timeEntries, completedSession];
+      setTimeEntries(newTimeEntries);
       setCurrentSession(null);
       setIsWorking(false);
-      
-     console.log('✅ Session terminée:', completedSession);
-    };  
+
+      console.log('✅ Session terminée:', completedSession);
+
+      // ⭐ CRITIQUE: Notifier le parent de façon SYNCHRONE dans le même event handler
+      // pour éviter la race condition avec useEffect (qui est async, après le paint)
+      notifyParentSync(newTimeEntries);
+    };
 
   // Supprimer une session
   const handleDeleteSession = (index) => {
@@ -333,6 +367,7 @@ const formatDuration = (hours) => {
       hasRealData.current = true;
       const newEntries = timeEntries.filter((_, i) => i !== index);
       setTimeEntries(newEntries);
+      notifyParentSync(currentSession ? [...newEntries, { ...currentSession, in_progress: true }] : newEntries);
     }
   };
 
@@ -388,15 +423,17 @@ const formatDuration = (hours) => {
     };
 
     hasRealData.current = true;
+    let newEntries;
     if (editingIndex !== null) {
       // Éditer session existante
-      const newEntries = [...timeEntries];
+      newEntries = [...timeEntries];
       newEntries[editingIndex] = session;
-      setTimeEntries(newEntries);
     } else {
       // Ajouter nouvelle session
-      setTimeEntries([...timeEntries, session]);
+      newEntries = [...timeEntries, session];
     }
+    setTimeEntries(newEntries);
+    notifyParentSync(currentSession ? [...newEntries, { ...currentSession, in_progress: true }] : newEntries);
 
     setShowManualEdit(false);
     setEditingIndex(null);

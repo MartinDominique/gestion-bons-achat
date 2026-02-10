@@ -94,6 +94,10 @@ export default function WorkOrderForm({
   const [isInitializing, setIsInitializing] = useState(true);
   const initializedWorkOrderId = useRef(null);
   
+  // ⭐ Ref pour stocker les dernières données de temps (anti race-condition)
+  // Le ref est toujours à jour, même si setFormData n'a pas encore été appliqué
+  const latestTimeDataRef = useRef({ time_entries: [], total_hours: 0 });
+
   const [cachedProducts, setCachedProducts] = useState([]);
   const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState([]);
 
@@ -205,16 +209,25 @@ export default function WorkOrderForm({
       console.log('🔍 DEBUG INIT - workOrder complet:', workOrder);
       console.log('🔍 DEBUG INIT - linked_po_id:', workOrder.linked_po_id);
       console.log('🔍 DEBUG INIT - linked_po objet:', workOrder.linked_po);
+      const initTimeEntries = workOrder.time_entries || [];
+      const initTotalHours = workOrder.total_hours || 0;
+
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
         linked_po_id: workOrder.linked_po_id?.toString() || workOrder.linked_po?.po_number || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
-        time_entries: workOrder.time_entries || [],
+        time_entries: initTimeEntries,
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft',
         is_prix_jobe: workOrder.is_prix_jobe || false
       });
+
+      // ⭐ Initialiser le ref de temps aussi
+      latestTimeDataRef.current = {
+        time_entries: initTimeEntries,
+        total_hours: initTotalHours
+      };
 
       console.log('🔍 DEBUG INIT - formData.linked_po_id après init:', workOrder.linked_po_id?.toString() || '');
       
@@ -993,7 +1006,13 @@ const getFilteredSupplierPurchases = () => {
 
   const handleTimeChange = (timeData) => {
     console.log('📥 WorkOrderForm reçoit timeData:', timeData);
-    
+
+    // ⭐ Mettre à jour le ref IMMÉDIATEMENT (synchrone, toujours à jour)
+    latestTimeDataRef.current = {
+      time_entries: timeData.time_entries || [],
+      total_hours: timeData.total_hours || 0
+    };
+
     setFormData(prev => ({
       ...prev,
       time_entries: timeData.time_entries || [],
@@ -1080,6 +1099,15 @@ const getFilteredSupplierPurchases = () => {
     setIsSubmitting(true); // 🔒 Bloquer immédiatement
 
     let payload = { ...formData };
+
+    // ⭐ CRITIQUE: Utiliser le ref pour les données de temps (anti race-condition)
+    // Le ref est mis à jour de façon synchrone par handleTimeChange,
+    // alors que formData peut être en retard si setFormData n'a pas encore été appliqué
+    if (latestTimeDataRef.current.time_entries.length > 0 || payload.time_entries.length > 0) {
+      payload.time_entries = latestTimeDataRef.current.time_entries;
+      payload.total_hours = latestTimeDataRef.current.total_hours;
+    }
+
     if (payload.start_time && payload.end_time) {
       payload.total_hours = toQuarterHourUp(
         payload.start_time,
