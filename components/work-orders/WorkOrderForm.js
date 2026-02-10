@@ -93,7 +93,8 @@ export default function WorkOrderForm({
   const [editingClient, setEditingClient] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const initializedWorkOrderId = useRef(null);
-  
+  const latestTimeDataRef = useRef({ time_entries: [], total_hours: 0 });
+
   const [cachedProducts, setCachedProducts] = useState([]);
   const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState([]);
 
@@ -205,18 +206,26 @@ export default function WorkOrderForm({
       console.log('🔍 DEBUG INIT - workOrder complet:', workOrder);
       console.log('🔍 DEBUG INIT - linked_po_id:', workOrder.linked_po_id);
       console.log('🔍 DEBUG INIT - linked_po objet:', workOrder.linked_po);
+      const initTimeEntries = workOrder.time_entries || [];
       setFormData({
         client_id: workOrder.client_id?.toString() || '',
         linked_po_id: workOrder.linked_po_id?.toString() || workOrder.linked_po?.po_number || '',
         work_date: workOrder.work_date || new Date().toISOString().split('T')[0],
-        time_entries: workOrder.time_entries || [],
+        time_entries: initTimeEntries,
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft',
         is_prix_jobe: workOrder.is_prix_jobe || false
       });
 
+      // Initialize ref with workOrder time data so handleSubmit always has it
+      latestTimeDataRef.current = {
+        time_entries: initTimeEntries,
+        total_hours: workOrder.total_hours || 0
+      };
+
       console.log('🔍 DEBUG INIT - formData.linked_po_id après init:', workOrder.linked_po_id?.toString() || '');
+      console.log('🔍 DEBUG INIT - time_entries:', initTimeEntries);
       
       if (workOrder.work_description) {
         const paragraphs = workOrder.work_description.split('\n\n').filter(p => p.trim());
@@ -993,7 +1002,13 @@ const getFilteredSupplierPurchases = () => {
 
   const handleTimeChange = (timeData) => {
     console.log('📥 WorkOrderForm reçoit timeData:', timeData);
-    
+
+    // Synchronous ref update - always up-to-date for handleSubmit
+    latestTimeDataRef.current = {
+      time_entries: timeData.time_entries || [],
+      total_hours: timeData.total_hours || 0
+    };
+
     setFormData(prev => ({
       ...prev,
       time_entries: timeData.time_entries || [],
@@ -1079,7 +1094,13 @@ const getFilteredSupplierPurchases = () => {
   
     setIsSubmitting(true); // 🔒 Bloquer immédiatement
 
-    let payload = { ...formData };
+    // Use ref for time data (always fresh, even if React state is stale)
+    let payload = {
+      ...formData,
+      time_entries: latestTimeDataRef.current.time_entries,
+      total_hours: latestTimeDataRef.current.total_hours
+    };
+    console.log('📋 handleSubmit - time_entries from REF:', payload.time_entries);
     if (payload.start_time && payload.end_time) {
       payload.total_hours = toQuarterHourUp(
         payload.start_time,
@@ -1548,7 +1569,7 @@ const getFilteredSupplierPurchases = () => {
 
         <TimeTracker
           onTimeChange={handleTimeChange}
-          initialTimeEntries={formData.time_entries || []}
+          initialTimeEntries={workOrder?.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
           selectedClient={selectedClient}
