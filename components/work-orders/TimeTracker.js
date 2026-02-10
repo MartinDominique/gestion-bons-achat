@@ -18,6 +18,7 @@ export default function TimeTracker({
   const [isInitialized, setIsInitialized] = useState(false);
   const lastNotifiedData = useRef(null);
   const processedEntriesRef = useRef(null);
+  const hasRealData = useRef(false); // true dès qu'on a des vraies données ou action utilisateur
   
   // États d'édition manuelle
   const [showManualEdit, setShowManualEdit] = useState(false);
@@ -112,21 +113,27 @@ const getAllSessions = () => {
 // ========================================
 useEffect(() => {
   if (!onTimeChange) return;
-  
+
   // ⭐ Attendre que l'initialisation soit au moins tentée
   if (!isInitialized) {
-    console.log('⏸️ Attente initialisation avant notification');
     return;
   }
-  
+
   const allSessions = getAllSessions();
+
+  // ⭐ PROTECTION: Ne pas envoyer de notification vide si on n'a jamais eu de vraies données
+  // Empêche la race condition où la notification vide écrase les données du BT chargé par le parent
+  if (allSessions.length === 0 && !hasRealData.current) {
+    return;
+  }
+
   const grandTotal = allSessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-  
+
   const dataToSend = {
     time_entries: allSessions,
     total_hours: grandTotal
   };
-  
+
   // Comparer avec dernière notification pour éviter boucles
   const dataString = JSON.stringify(dataToSend);
   if (dataString !== lastNotifiedData.current) {
@@ -169,6 +176,7 @@ useEffect(() => {
   }
   
   if (initialTimeEntries && initialTimeEntries.length > 0) {
+    hasRealData.current = true;
     console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries);
     
     // Chercher une session en cours (par INDEX, pas par référence)
@@ -265,8 +273,8 @@ const formatDuration = (hours) => {
       // En cas d'erreur, on laisse continuer pour ne pas bloquer
     }
 
+    hasRealData.current = true;
     const now = new Date();
-    
     const newSession = {
       date: now.toISOString().split('T')[0],  // ✅ Toujours la date du jour
       start_time: now.toTimeString().substring(0, 5),
@@ -285,7 +293,7 @@ const formatDuration = (hours) => {
     alert('❌ Impossible de terminer cette session.\nCe bon de travail a déjà été envoyé au client.');
     return;
   }
-      
+      hasRealData.current = true;
       const now = new Date();
       const endTime = now.toTimeString().substring(0, 5);
       
@@ -322,6 +330,7 @@ const formatDuration = (hours) => {
   // Supprimer une session
   const handleDeleteSession = (index) => {
     if (confirm('Supprimer cette session de travail ?')) {
+      hasRealData.current = true;
       const newEntries = timeEntries.filter((_, i) => i !== index);
       setTimeEntries(newEntries);
     }
@@ -378,6 +387,7 @@ const formatDuration = (hours) => {
       include_transport_fee: true,
     };
 
+    hasRealData.current = true;
     if (editingIndex !== null) {
       // Éditer session existante
       const newEntries = [...timeEntries];
