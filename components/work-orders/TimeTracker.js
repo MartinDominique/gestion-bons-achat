@@ -1,6 +1,14 @@
 import React, { useState, useEffect,useRef } from 'react';
 import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-react';
 
+// Helper pour obtenir la date locale en format YYYY-MM-DD (évite le décalage UTC)
+const getLocalDateString = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  const localDate = new Date(now.getTime() - offset);
+  return localDate.toISOString().split('T')[0];
+};
+
 export default function TimeTracker({ 
   onTimeChange, 
   initialTimeEntries = [],
@@ -267,7 +275,7 @@ const formatDuration = (hours) => {
     const now = new Date();
     
     const newSession = {
-      date: now.toISOString().split('T')[0],  // ✅ Toujours la date du jour
+      date: getLocalDateString(),  // Date locale (pas UTC)
       start_time: now.toTimeString().substring(0, 5),
       end_time: null,
       pause_minutes: 0,
@@ -344,7 +352,7 @@ const formatDuration = (hours) => {
     return;
   }
     setEditingIndex(null);
-    setManualDate(new Date().toISOString().split('T')[0]);  // ✅ Toujours la date du jour
+    setManualDate(getLocalDateString());  // Date locale (pas UTC)
     setManualStart('');
     setManualEnd('');
     setManualPause(0);
