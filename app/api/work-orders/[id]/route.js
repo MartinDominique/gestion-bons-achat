@@ -124,10 +124,26 @@ export async function GET(request, { params }) {
     console.log('Client:', data.client?.name);
     console.log('Matériaux:', data.materials?.length || 0);
     console.log('Linked PO:', data.linked_po?.po_number || 'Aucun');
-    
+
+    // 🔍 LOG CRITIQUE: Vérifier les time_entries retournées par la DB
+    console.log('⏱️ GET time_entries:', JSON.stringify(data.time_entries));
+    console.log('⏱️ GET total_hours:', data.total_hours);
+    if (data.time_entries && data.time_entries.length > 0) {
+      data.time_entries.forEach((entry, i) => {
+        console.log(`⏱️ GET Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress} total=${entry.total_hours}`);
+      });
+    }
+
+    // ⭐ FORCER no-cache pour éviter que le navigateur serve des données périmées
     return NextResponse.json({
       success: true,
       data: data
+    }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
 
   } catch (error) {
@@ -286,6 +302,14 @@ export async function PUT(request, { params }) {
     }
 
     console.log('📋 API - Work order mis à jour avec succès:', updatedWorkOrder.bt_number);
+    // 🔍 CRITIQUE: Vérifier ce que la DB retourne APRÈS update
+    console.log('📋 API - APRÈS UPDATE time_entries DB:', JSON.stringify(updatedWorkOrder.time_entries));
+    console.log('📋 API - APRÈS UPDATE total_hours DB:', updatedWorkOrder.total_hours);
+    if (updatedWorkOrder.time_entries) {
+      updatedWorkOrder.time_entries.forEach((entry, i) => {
+        console.log(`📋 API - APRÈS UPDATE Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress}`);
+      });
+    }
 
     // 2. Supprimer les anciens matériaux
     console.log('📋 API - Suppression anciens matériaux...');
@@ -432,7 +456,14 @@ export async function PUT(request, { params }) {
     console.log('📋 API - Work order complet récupéré:');
     console.log('📋 API - Nombre de matériaux dans le retour:', completeWorkOrder.materials?.length || 0);
     console.log('📋 API - Purchase order lié:', completeWorkOrder.linked_po?.po_number || 'Aucun');
-    
+    // 🔍 CRITIQUE: Vérifier les time_entries dans la réponse FINALE
+    console.log('📋 API - FINAL time_entries:', JSON.stringify(completeWorkOrder.time_entries));
+    if (completeWorkOrder.time_entries) {
+      completeWorkOrder.time_entries.forEach((entry, i) => {
+        console.log(`📋 API - FINAL Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress}`);
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: completeWorkOrder,
