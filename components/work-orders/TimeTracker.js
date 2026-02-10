@@ -804,9 +804,12 @@ const formatDuration = (hours) => {
                 <button
                   type="button"
                   onClick={async () => {
-                    handlePunchIn();
+                    // ⭐ CRITIQUE: Attendre que handlePunchIn termine COMPLÈTEMENT
+                    // (incluant le fetch /api/check-active-session) AVANT de sauvegarder.
+                    // Sans await, le save part avant que le punch-in soit enregistré dans le ref.
+                    await handlePunchIn();
                     if (onSaveAndStart) {
-                      setTimeout(() => onSaveAndStart(), 300);
+                      onSaveAndStart();
                     }
                   }}
                   className="w-full sm:w-auto px-6 py-3 rounded-lg flex items-center justify-center font-medium bg-blue-600 hover:bg-blue-700 text-white"
