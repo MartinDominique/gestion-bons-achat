@@ -355,6 +355,11 @@ const formatDuration = (hours) => {
       setIsWorking(false);
 
       console.log('✅ Session terminée:', completedSession);
+      console.log('✅ Session terminée DÉTAIL: start=' + completedSession.start_time + ' end=' + completedSession.end_time + ' in_progress=' + completedSession.in_progress + ' total=' + completedSession.total_hours);
+      console.log('✅ Toutes les sessions après punch-out:', newTimeEntries.length);
+      newTimeEntries.forEach((e, i) => {
+        console.log(`✅ Session ${i}: start=${e.start_time} end=${e.end_time} in_progress=${e.in_progress}`);
+      });
 
       // ⭐ CRITIQUE: Notifier le parent de façon SYNCHRONE dans le même event handler
       // pour éviter la race condition avec useEffect (qui est async, après le paint)
