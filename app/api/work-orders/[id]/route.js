@@ -4,6 +4,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 
+// Désactiver le cache Next.js pour cette route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Arrondi au quart d'heure supérieur (HH:MM -> heures décimales)
 function toQuarterHourUp(startHHMM, endHHMM, pauseMinutes = 0) {
   const parseHHMM = (t) => {

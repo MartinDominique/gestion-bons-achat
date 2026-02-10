@@ -26,7 +26,9 @@ export default function ModifierBonTravailPage({ params }) {
   useEffect(() => {
     const fetchWorkOrder = async () => {
       try {
-        const response = await fetch(`/api/work-orders/${params.id}`);
+        const response = await fetch(`/api/work-orders/${params.id}?t=${Date.now()}`, {
+          cache: 'no-store'
+        });
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -159,8 +161,10 @@ export default function ModifierBonTravailPage({ params }) {
 
       const responseData = await response.json();
       console.log('📝 MODIFICATION - Réponse API:', responseData);
-      
+
       const savedWorkOrder = responseData.success ? responseData.data : responseData;
+      console.log('🕐 PUT RÉPONSE - time_entries sauvegardées:', JSON.stringify(savedWorkOrder.time_entries));
+      console.log('🕐 PUT RÉPONSE - total_hours sauvegardé:', savedWorkOrder.total_hours);
 
       // ✅ SUCCÈS CONFIRMÉ - Maintenant on peut afficher succès et rediriger
       if (status !== 'ready_for_signature') {
