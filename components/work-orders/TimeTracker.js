@@ -1,9 +1,16 @@
 import React, { useState, useEffect,useRef } from 'react';
 import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-react';
 
-export default function TimeTracker({
-  onTimeChange,
-  onSaveAndStart,
+// Helper pour obtenir la date locale en format YYYY-MM-DD (évite le décalage UTC)
+const getLocalDateString = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  const localDate = new Date(now.getTime() - offset);
+  return localDate.toISOString().split('T')[0];
+};
+
+export default function TimeTracker({ 
+  onTimeChange, 
   initialTimeEntries = [],
   workDate = null,
   status = 'draft',
@@ -17,28 +24,7 @@ export default function TimeTracker({
 
   const [isInitialized, setIsInitialized] = useState(false);
   const lastNotifiedData = useRef(null);
-
-  // ========================================
-  // NOTIFICATION SYNCHRONE AU PARENT (punch-out seulement)
-  // Corrige la race condition: useEffect est async (après paint),
-  // donc le parent peut sauvegarder avec des données périmées
-  // si l'utilisateur clique "Sauvegarder" juste après punch-out.
-  // ⚠️ NE PAS appeler dans handlePunchIn pour éviter la boucle!
-  // ========================================
-  const notifyParentSync = (sessions) => {
-    if (!onTimeChange) return;
-    const grandTotal = sessions.reduce((sum, e) => sum + (e.total_hours || 0), 0);
-    const dataToSend = {
-      time_entries: sessions,
-      total_hours: grandTotal
-    };
-    const dataString = JSON.stringify(dataToSend);
-    if (dataString !== lastNotifiedData.current) {
-      console.log('📤 Notification parent (sync) - Sessions:', sessions.length);
-      lastNotifiedData.current = dataString;
-      onTimeChange(dataToSend);
-    }
-  };
+  const processedEntriesRef = useRef(null);
   
   // États d'édition manuelle
   const [showManualEdit, setShowManualEdit] = useState(false);
@@ -170,20 +156,27 @@ useEffect(() => {
 
 // ========================================
 // INITIALISATION AVEC VALEURS EXISTANTES
-// ⭐ FIX DÉPENDANCE CIRCULAIRE:
-// Une fois initialisé, on ne re-lit JAMAIS initialTimeEntries.
-// TimeTracker devient propriétaire de son propre state.
-// Ceci casse la boucle: parent→prop→useEffect→notify→parent→prop...
 // ========================================
 
 useEffect(() => {
-  // ⭐ CRITIQUE: Une fois initialisé, on sort IMMÉDIATEMENT
-  // Le parent va changer initialTimeEntries quand on le notifie,
-  // mais on s'en fiche car on gère notre propre state maintenant.
-  if (isInitialized) return;
-
+  // Créer une signature unique des données reçues
+  const entriesSignature = JSON.stringify(initialTimeEntries);
+  
+  console.log('🚀 TimeTracker useEffect DÉCLENCHÉ', {
+    hasEntries: initialTimeEntries?.length > 0,
+    entriesCount: initialTimeEntries?.length,
+    isInitialized: isInitialized,
+    processedBefore: processedEntriesRef.current === entriesSignature
+  });
+  
+  // ⭐ CRITIQUE : Ne traiter que si les données ont VRAIMENT changé
+  if (processedEntriesRef.current === entriesSignature) {
+    console.log('⏭️ Mêmes données déjà traitées, skip');
+    return;
+  }
+  
   if (initialTimeEntries && initialTimeEntries.length > 0) {
-    console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries.length, 'sessions');
+    console.log('🔄 Initialisation TimeTracker avec:', initialTimeEntries);
     
     // Chercher une session en cours (par INDEX, pas par référence)
     const sessionInProgressIndex = initialTimeEntries.findIndex(
@@ -192,8 +185,9 @@ useEffect(() => {
     
     if (sessionInProgressIndex !== -1) {
       const sessionInProgress = initialTimeEntries[sessionInProgressIndex];
-      console.log('⏰ Session en cours détectée:', sessionInProgress);
+      console.log('⏰ Session en cours détectée à index', sessionInProgressIndex, ':', sessionInProgress);
       
+      // ✅ FIX: Filtrer par INDEX au lieu de référence d'objet
       const completedSessions = initialTimeEntries.filter(
         (entry, index) => index !== sessionInProgressIndex
       );
@@ -208,18 +202,24 @@ useEffect(() => {
       });
       setIsWorking(true);
       
-      console.log('✅ Session en cours restaurée, sessions complétées:', completedSessions.length);
+      console.log('✅ Session en cours restaurée:', sessionInProgress);
+      console.log('✅ Sessions complétées:', completedSessions.length);
     } else {
+      // Toutes les sessions sont complétées
       console.log('📋 Toutes les sessions sont complétées:', initialTimeEntries.length);
       setTimeEntries(initialTimeEntries);
     }
     
+    // ⭐ Marquer ces données comme traitées
+    processedEntriesRef.current = entriesSignature;
     setIsInitialized(true);
-  } else if (initialTimeEntries && initialTimeEntries.length === 0) {
+  } else if (initialTimeEntries && initialTimeEntries.length === 0 && !isInitialized) {
+    // Tableau vide explicite - seulement si pas encore initialisé
     console.log('📭 Aucune session à charger');
+    processedEntriesRef.current = entriesSignature;
     setIsInitialized(true);
   }
-}, [initialTimeEntries]); // Écoute le prop, mais sort immédiatement si déjà initialisé
+}, [initialTimeEntries]); // ⭐ Écoute SEULEMENT initialTimeEntries
 
 // ========================================
 // FONCTIONS DE CALCUL
@@ -275,7 +275,7 @@ const formatDuration = (hours) => {
     const now = new Date();
     
     const newSession = {
-      date: now.toISOString().split('T')[0],  // ✅ Toujours la date du jour
+      date: getLocalDateString(),  // Date locale (pas UTC)
       start_time: now.toTimeString().substring(0, 5),
       end_time: null,
       pause_minutes: 0,
@@ -324,10 +324,6 @@ const formatDuration = (hours) => {
       setIsWorking(false);
       
      console.log('✅ Session terminée:', completedSession);
-
-      // ⭐ Notifier le parent de façon SYNCHRONE pour éviter la race condition
-      // si l'utilisateur sauvegarde immédiatement après le punch-out
-      notifyParentSync([...timeEntries, completedSession]);
     };  
 
   // Supprimer une session
@@ -356,7 +352,7 @@ const formatDuration = (hours) => {
     return;
   }
     setEditingIndex(null);
-    setManualDate(new Date().toISOString().split('T')[0]);  // ✅ Toujours la date du jour
+    setManualDate(getLocalDateString());  // Date locale (pas UTC)
     setManualStart('');
     setManualEnd('');
     setManualPause(0);
@@ -393,9 +389,12 @@ const formatDuration = (hours) => {
       // Éditer session existante
       const newEntries = [...timeEntries];
       newEntries[editingIndex] = session;
+      console.log('🔧 EDIT session manuelle:', session);
       setTimeEntries(newEntries);
     } else {
       // Ajouter nouvelle session
+      console.log('➕ AJOUT session manuelle:', session);
+      console.log('➕ timeEntries AVANT ajout:', timeEntries.length, 'sessions');
       setTimeEntries([...timeEntries, session]);
     }
 
@@ -745,40 +744,19 @@ const formatDuration = (hours) => {
               </div>
             )}
             
-            <div className="flex flex-col gap-2 items-center">
-              <button
-                type="button"
-                onClick={handlePunchIn}
-                disabled={status === 'sent' || status === 'signed'}
-                className={`w-full sm:w-auto px-6 py-3 rounded-lg flex items-center justify-center font-medium ${
-                  status === 'sent' || status === 'signed'
-                    ? 'bg-gray-400 cursor-not-allowed text-gray-700'
-                    : 'bg-green-600 hover:bg-green-700 text-white'
-                }`}
-              >
-                <Play className="mr-2" size={18} />
-                Commencer nouvelle session
-              </button>
-              {onSaveAndStart && !(status === 'sent' || status === 'signed') && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    // ⭐ CRITIQUE: Attendre que handlePunchIn termine COMPLÈTEMENT
-                    // (incluant le fetch /api/check-active-session) AVANT de sauvegarder.
-                    // Sans await, le save part avant que le punch-in soit enregistré dans le ref.
-                    await handlePunchIn();
-                    if (onSaveAndStart) {
-                      onSaveAndStart();
-                    }
-                  }}
-                  className="w-full sm:w-auto px-6 py-3 rounded-lg flex items-center justify-center font-medium bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Play className="mr-1" size={18} />
-                  <Save className="mr-2" size={18} />
-                  Commencer et sauvegarder
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={handlePunchIn}
+              disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
+              className={`px-6 py-3 rounded-lg flex items-center mx-auto font-medium ${
+                status === 'sent' || status === 'signed'
+                  ? 'bg-gray-400 cursor-not-allowed text-gray-700'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+            >
+              <Play className="mr-2" size={18} />
+              Commencer nouvelle session
+            </button>
           </div>
         )}
 

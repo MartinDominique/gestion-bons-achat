@@ -26,8 +26,9 @@ export default function ModifierBonTravailPage({ params }) {
   useEffect(() => {
     const fetchWorkOrder = async () => {
       try {
-        // ⭐ Cache-busting: ajouter timestamp pour éviter réponse cachée
-        const response = await fetch(`/api/work-orders/${params.id}?_t=${Date.now()}`);
+        const response = await fetch(`/api/work-orders/${params.id}?t=${Date.now()}`, {
+          cache: 'no-store'
+        });
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -38,15 +39,10 @@ export default function ModifierBonTravailPage({ params }) {
 
         const responseData = await response.json();
         console.log('Données BT chargées:', responseData);
-        
+
         const workOrderData = responseData.success ? responseData.data : responseData;
-        // 🔍 CRITIQUE: Vérifier les time_entries chargées depuis la DB
-        console.log('📦 CHARGEMENT BT - time_entries:', JSON.stringify(workOrderData.time_entries));
-        if (workOrderData.time_entries && workOrderData.time_entries.length > 0) {
-          workOrderData.time_entries.forEach((entry, i) => {
-            console.log(`📦 CHARGEMENT Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress} total=${entry.total_hours}`);
-          });
-        }
+        console.log('🕐 MODIFIER - time_entries du BT:', JSON.stringify(workOrderData.time_entries));
+        console.log('🕐 MODIFIER - total_hours du BT:', workOrderData.total_hours);
         setWorkOrder(workOrderData);
         
       } catch (err) {
@@ -134,13 +130,6 @@ export default function ModifierBonTravailPage({ params }) {
 
     console.log('📝 MODIFICATION - workOrderData:', workOrderData);
     console.log('📝 MODIFICATION - status:', status);
-    console.log('📝 MODIFICATION - time_entries DÉTAIL:', JSON.stringify(workOrderData.time_entries));
-    console.log('📝 MODIFICATION - total_hours:', workOrderData.total_hours);
-    if (workOrderData.time_entries) {
-      workOrderData.time_entries.forEach((entry, i) => {
-        console.log(`📝 MODIFICATION - Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress} total=${entry.total_hours}`);
-      });
-    }
 
     // Afficher toast de chargement (durée 0 = reste affiché)
     showToast('💾 Sauvegarde en cours...', 'loading', 0);
@@ -172,15 +161,10 @@ export default function ModifierBonTravailPage({ params }) {
 
       const responseData = await response.json();
       console.log('📝 MODIFICATION - Réponse API:', responseData);
-      // 🔍 CRITIQUE: Vérifier ce que l'API retourne après la sauvegarde
-      console.log('📝 MODIFICATION - Réponse time_entries:', JSON.stringify(responseData.data?.time_entries));
-      if (responseData.data?.time_entries) {
-        responseData.data.time_entries.forEach((entry, i) => {
-          console.log(`📝 RÉPONSE Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress}`);
-        });
-      }
-      
+
       const savedWorkOrder = responseData.success ? responseData.data : responseData;
+      console.log('🕐 PUT RÉPONSE - time_entries sauvegardées:', JSON.stringify(savedWorkOrder.time_entries));
+      console.log('🕐 PUT RÉPONSE - total_hours sauvegardé:', savedWorkOrder.total_hours);
 
       // ✅ SUCCÈS CONFIRMÉ - Maintenant on peut afficher succès et rediriger
       if (status !== 'ready_for_signature') {

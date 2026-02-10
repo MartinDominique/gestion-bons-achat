@@ -46,13 +46,6 @@ export default function NouveauBonTravailPage() {
 
     console.log('📋 CRÉATION - workOrderData:', workOrderData);
     console.log('📋 CRÉATION - status:', status);
-    console.log('📋 CRÉATION - time_entries DÉTAIL:', JSON.stringify(workOrderData.time_entries));
-    console.log('📋 CRÉATION - total_hours:', workOrderData.total_hours);
-    if (workOrderData.time_entries) {
-      workOrderData.time_entries.forEach((entry, i) => {
-        console.log(`📋 CRÉATION Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress} total=${entry.total_hours}`);
-      });
-    }
 
     // ✅ Toast de chargement
     const loadingToastId = toast.loading('💾 Sauvegarde en cours...', {
@@ -87,8 +80,7 @@ export default function NouveauBonTravailPage() {
       if (response.ok) {
         const responseData = await response.json();
         console.log('📋 CRÉATION - Réponse API:', responseData);
-        console.log('📋 CRÉATION - Réponse time_entries:', JSON.stringify(responseData.data?.time_entries));
-
+        
         const savedWorkOrder = responseData.success ? responseData.data : responseData;
         
         // ✅ Marquer sauvegardé

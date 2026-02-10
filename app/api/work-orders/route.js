@@ -150,11 +150,13 @@ let finalLinkedPoId = null;
 }
 
     // 1. Créer le work_order principal
+    console.log('🕐 POST - time_entries à sauvegarder:', JSON.stringify(body.time_entries));
+    console.log('🕐 POST - total_hours:', body.total_hours);
     const workOrderData = {
       client_id: parseInt(client_id),
       linked_po_id: finalLinkedPoId,
       work_date,
-      time_entries: body.time_entries || [],    
+      time_entries: body.time_entries || [],
       total_hours: body.total_hours || 0, 
       work_description,
       additional_notes: additional_notes || null,
