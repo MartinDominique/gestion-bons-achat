@@ -1019,26 +1019,34 @@ const getFilteredSupplierPurchases = () => {
     }
   };
 
-  const validateForm = () => {
+  const DEFAULT_DESCRIPTION = 'DESCRIPTION À VENIR!';
+
+  const validateForm = (status = 'draft') => {
     const newErrors = {};
-  
+
     if (!formData.client_id) newErrors.client_id = 'Client requis';
     if (!formData.work_date) newErrors.work_date = 'Date requise';
-    
-    const hasValidDescription = descriptions.some(desc => desc.trim().length >= 10);
-    if (!hasValidDescription) {
-      newErrors.work_description = 'Au moins une description de 10 caractères minimum requise';
-      toast.error('⚠️ Description requise! Ajoutez au moins 10 caractères.', {
-        duration: 4000,
-        icon: '📝',
-        style: {
-        background: '#FEE2E2',
-        color: '#991B1B',
-        border: '1px solid #FECACA'
-      }
+
+    // Pour la présentation client, la description est obligatoire et ne peut pas être la valeur par défaut
+    if (status === 'ready_for_signature') {
+      const hasValidDescription = descriptions.some(desc => {
+        const trimmed = desc.trim();
+        return trimmed.length >= 10 && trimmed !== DEFAULT_DESCRIPTION;
       });
+      if (!hasValidDescription) {
+        newErrors.work_description = 'Description obligatoire pour présenter au client (minimum 10 caractères)';
+        toast.error('⚠️ Description obligatoire pour présenter au client!', {
+          duration: 4000,
+          icon: '📝',
+          style: {
+          background: '#FEE2E2',
+          color: '#991B1B',
+          border: '1px solid #FECACA'
+        }
+        });
+      }
     }
-  
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -1089,14 +1097,22 @@ const getFilteredSupplierPurchases = () => {
       console.log('⏸️ Soumission déjà en cours, ignorée');
       return;
     }
-    
-    if (!validateForm()) return;
-  
+
+    if (!validateForm(status)) return;
+
     setIsSubmitting(true); // 🔒 Bloquer immédiatement
+
+    // Si description vide lors de la sauvegarde brouillon, mettre la valeur par défaut
+    const hasDescription = descriptions.some(desc => desc.trim().length > 0);
+    if (!hasDescription && status !== 'ready_for_signature') {
+      setDescriptions([DEFAULT_DESCRIPTION]);
+      setFormData(prev => ({ ...prev, work_description: DEFAULT_DESCRIPTION }));
+    }
 
     // Use ref for time data (always fresh, even if React state is stale)
     let payload = {
       ...formData,
+      work_description: formData.work_description || DEFAULT_DESCRIPTION,
       time_entries: latestTimeDataRef.current.time_entries,
       total_hours: latestTimeDataRef.current.total_hours
     };
@@ -1581,7 +1597,7 @@ const getFilteredSupplierPurchases = () => {
           <div className="flex items-center justify-between mb-3">
             <label className="block text-sm font-medium text-gray-700">
               <FileText className="inline mr-2" size={16} />
-              Descriptions du travail *
+              Descriptions du travail
             </label>
             <button
               type="button"
