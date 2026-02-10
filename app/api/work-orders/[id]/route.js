@@ -146,6 +146,13 @@ export async function PUT(request, { params }) {
     console.log('📋 API REÇOIT - linked_po_id:', body.linked_po_id);
     console.log('📋 API REÇOIT - materials:', body.materials);
     console.log('📋 API REÇOIT - materials.length:', body.materials?.length || 0);
+    console.log('📋 API REÇOIT - time_entries DÉTAIL:', JSON.stringify(body.time_entries));
+    console.log('📋 API REÇOIT - total_hours:', body.total_hours);
+    if (body.time_entries) {
+      body.time_entries.forEach((entry, i) => {
+        console.log(`📋 API Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress} total=${entry.total_hours}`);
+      });
+    }
     
     const supabase = supabaseAdmin;
     const workOrderId = parseInt(params.id);

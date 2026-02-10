@@ -1005,18 +1005,24 @@ const getFilteredSupplierPurchases = () => {
   };
 
   const handleTimeChange = (timeData) => {
-    console.log('📥 WorkOrderForm reçoit timeData:', timeData);
+    const entries = timeData.time_entries || [];
+    const hours = timeData.total_hours || 0;
+
+    console.log('📥 WorkOrderForm reçoit timeData:', entries.length, 'sessions, total:', hours);
+    entries.forEach((e, i) => {
+      console.log(`📥 Session ${i}: start=${e.start_time} end=${e.end_time} in_progress=${e.in_progress} total=${e.total_hours}`);
+    });
 
     // ⭐ Mettre à jour le ref IMMÉDIATEMENT (synchrone, toujours à jour)
     latestTimeDataRef.current = {
-      time_entries: timeData.time_entries || [],
-      total_hours: timeData.total_hours || 0
+      time_entries: entries,
+      total_hours: hours
     };
 
     setFormData(prev => ({
       ...prev,
-      time_entries: timeData.time_entries || [],
-      total_hours: timeData.total_hours || 0
+      time_entries: entries,
+      total_hours: hours
     }));
     if (onFormChange && !isInitializing) {
       onFormChange();
@@ -1100,13 +1106,25 @@ const getFilteredSupplierPurchases = () => {
 
     let payload = { ...formData };
 
-    // ⭐ CRITIQUE: Utiliser le ref pour les données de temps (anti race-condition)
+    // ⭐ CRITIQUE: TOUJOURS utiliser le ref pour les données de temps
     // Le ref est mis à jour de façon synchrone par handleTimeChange,
     // alors que formData peut être en retard si setFormData n'a pas encore été appliqué
-    if (latestTimeDataRef.current.time_entries.length > 0 || payload.time_entries.length > 0) {
-      payload.time_entries = latestTimeDataRef.current.time_entries;
+    // On prend le ref s'il a des données, sinon on garde formData comme fallback
+    const refEntries = latestTimeDataRef.current.time_entries;
+    const formEntries = payload.time_entries || [];
+
+    if (refEntries.length > 0) {
+      payload.time_entries = refEntries;
       payload.total_hours = latestTimeDataRef.current.total_hours;
+    } else if (formEntries.length > 0) {
+      // Fallback: utiliser formData si le ref est vide
+      payload.time_entries = formEntries;
+      // Garder payload.total_hours tel quel
     }
+
+    console.log('🔒 handleSubmit - Source temps:', refEntries.length > 0 ? 'REF' : 'FORMDATA');
+    console.log('🔒 handleSubmit - time_entries:', JSON.stringify(payload.time_entries));
+    console.log('🔒 handleSubmit - total_hours:', payload.total_hours);
 
     if (payload.start_time && payload.end_time) {
       payload.total_hours = toQuarterHourUp(
@@ -1579,7 +1597,7 @@ const getFilteredSupplierPurchases = () => {
         <TimeTracker
           onTimeChange={handleTimeChange}
           onSaveAndStart={() => handleSubmit('draft')}
-          initialTimeEntries={formData.time_entries || []}
+          initialTimeEntries={workOrder?.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
           selectedClient={selectedClient}

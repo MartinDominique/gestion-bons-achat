@@ -126,6 +126,13 @@ export default function ModifierBonTravailPage({ params }) {
 
     console.log('📝 MODIFICATION - workOrderData:', workOrderData);
     console.log('📝 MODIFICATION - status:', status);
+    console.log('📝 MODIFICATION - time_entries DÉTAIL:', JSON.stringify(workOrderData.time_entries));
+    console.log('📝 MODIFICATION - total_hours:', workOrderData.total_hours);
+    if (workOrderData.time_entries) {
+      workOrderData.time_entries.forEach((entry, i) => {
+        console.log(`📝 MODIFICATION - Session ${i}: start=${entry.start_time} end=${entry.end_time} in_progress=${entry.in_progress} total=${entry.total_hours}`);
+      });
+    }
 
     // Afficher toast de chargement (durée 0 = reste affiché)
     showToast('💾 Sauvegarde en cours...', 'loading', 0);
