@@ -1,8 +1,9 @@
 import React, { useState, useEffect,useRef } from 'react';
 import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-react';
 
-export default function TimeTracker({ 
-  onTimeChange, 
+export default function TimeTracker({
+  onTimeChange,
+  onSaveAndStart,
   initialTimeEntries = [],
   workDate = null,
   status = 'draft',
