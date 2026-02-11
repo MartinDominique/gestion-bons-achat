@@ -926,7 +926,7 @@ export const NonInventoryModal = ({
               <input
                 type="text"
                 value={nonInventoryForm.product_id}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, product_id: e.target.value})}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, product_id: e.target.value.toUpperCase()})}
                 className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Ex: TEMP-001"
                 required
@@ -955,7 +955,7 @@ export const NonInventoryModal = ({
               <input
                 type="text"
                 value={nonInventoryForm.description}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, description: e.target.value})}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, description: e.target.value.toUpperCase()})}
                 className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Description du produit..."
                 required
