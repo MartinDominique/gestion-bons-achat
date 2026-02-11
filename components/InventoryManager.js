@@ -1,9 +1,21 @@
+/**
+ * @file components/InventoryManager.js
+ * @description Gestionnaire d'inventaire avec affichage des quantités
+ *              - En main (stock_qty)
+ *              - En commande (AF commandés/partiels)
+ *              - Réservé (BT brouillon/signés + BL non envoyés)
+ * @version 1.1.0
+ * @date 2026-02-11
+ * @changelog
+ *   1.1.0 - Ajout quantités en commande et réservé dans cartes et modal modifier
+ *   1.0.0 - Version initiale
+ */
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { 
-  Search, Package, Edit, DollarSign, Filter, X, 
+import {
+  Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
-  Eye, Plus, Trash2, RotateCcw, Upload
+  Eye, Plus, Trash2, RotateCcw, Upload, ShoppingCart, Clock
 } from 'lucide-react';
 
 export default function InventoryManager() {
@@ -17,16 +29,19 @@ export default function InventoryManager() {
   const [productGroups, setProductGroups] = useState([]);
   const [activeTab, setActiveTab] = useState('products'); // 'products' ou 'non_inventory'
   const [showFilters, setShowFilters] = useState(false);
-  
+
+  // Quantités en commande et réservé par product_id
+  const [quantityMap, setQuantityMap] = useState({});
+
   // Cache intelligent
   const [cachedProducts, setCachedProducts] = useState(null);
   const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState(null);
   const [lastFetchTime, setLastFetchTime] = useState(null);
-  
+
   // Cache pour les filtres (optimisation supplémentaire)
   const [filteredCache, setFilteredCache] = useState({});
   const [lastFilterParams, setLastFilterParams] = useState('');
-  
+
   // Modal d'édition
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -36,11 +51,11 @@ export default function InventoryManager() {
   });
   const [saving, setSaving] = useState(false);
   const [marginPercent, setMarginPercent] = useState('');
-  
+
   // États pour l'upload d'inventaire
   const [showInventoryUpload, setShowInventoryUpload] = useState(false);
   const [uploadingInventory, setUploadingInventory] = useState(false);
-  
+
   // Statistiques (gardées pour les calculs internes)
   const [stats, setStats] = useState({
     total: 0,
@@ -51,6 +66,7 @@ export default function InventoryManager() {
   // Chargement initial
   useEffect(() => {
     loadData();
+    loadQuantities();
   }, []);
 
   // Filtrage et recherche
@@ -148,6 +164,96 @@ export default function InventoryManager() {
     }
   };
 
+  // Charger les quantités en commande et réservé
+  const loadQuantities = async () => {
+    try {
+      const map = {};
+
+      // 1. En commande: AF avec statut ordered ou partial (items en JSONB)
+      const { data: afPurchases, error: afError } = await supabase
+        .from('supplier_purchases')
+        .select('items, status')
+        .in('status', ['ordered', 'partial']);
+
+      if (!afError && afPurchases) {
+        afPurchases.forEach(purchase => {
+          const items = purchase.items || [];
+          items.forEach(item => {
+            if (!item.product_id) return;
+            if (!map[item.product_id]) map[item.product_id] = { onOrder: 0, reserved: 0 };
+            map[item.product_id].onOrder += (parseFloat(item.quantity) || 0);
+          });
+        });
+      }
+
+      // 2. Réservé BT: matériaux dans BT non complétés
+      const { data: workOrders, error: woError } = await supabase
+        .from('work_orders')
+        .select('id, status')
+        .in('status', ['draft', 'signed', 'pending_send']);
+
+      if (!woError && workOrders && workOrders.length > 0) {
+        const woIds = workOrders.map(wo => wo.id);
+        const { data: woMaterials, error: womError } = await supabase
+          .from('work_order_materials')
+          .select('product_id, quantity')
+          .in('work_order_id', woIds);
+
+        if (!womError && woMaterials) {
+          woMaterials.forEach(m => {
+            if (!m.product_id) return;
+            if (!map[m.product_id]) map[m.product_id] = { onOrder: 0, reserved: 0 };
+            map[m.product_id].reserved += (parseFloat(m.quantity) || 0);
+          });
+        }
+      }
+
+      // 3. Réservé BL: matériaux dans BL non envoyés
+      const { data: deliveryNotes, error: blError } = await supabase
+        .from('delivery_notes')
+        .select('id, status')
+        .in('status', ['draft', 'ready_for_signature', 'signed', 'pending_send']);
+
+      if (!blError && deliveryNotes && deliveryNotes.length > 0) {
+        const blIds = deliveryNotes.map(bl => bl.id);
+        const { data: blMaterials, error: blmError } = await supabase
+          .from('delivery_note_materials')
+          .select('product_id, quantity')
+          .in('delivery_note_id', blIds);
+
+        if (!blmError && blMaterials) {
+          blMaterials.forEach(m => {
+            if (!m.product_id) return;
+            if (!map[m.product_id]) map[m.product_id] = { onOrder: 0, reserved: 0 };
+            map[m.product_id].reserved += (parseFloat(m.quantity) || 0);
+          });
+        }
+      }
+
+      // 4. Réservé Soumissions: items dans soumissions acceptées
+      const { data: submissions, error: subError } = await supabase
+        .from('submissions')
+        .select('items, status')
+        .eq('status', 'accepted');
+
+      if (!subError && submissions) {
+        submissions.forEach(sub => {
+          const items = sub.items || [];
+          items.forEach(item => {
+            if (!item.product_id) return;
+            if (!map[item.product_id]) map[item.product_id] = { onOrder: 0, reserved: 0 };
+            map[item.product_id].reserved += (parseFloat(item.quantity) || 0);
+          });
+        });
+      }
+
+      setQuantityMap(map);
+      console.log(`✅ Quantités chargées: ${Object.keys(map).length} produits avec données`);
+    } catch (error) {
+      console.error('Erreur chargement quantités:', error);
+    }
+  };
+
   // Fonction pour gérer l'upload d'inventaire
   const handleInventoryUpload = async (event) => {
     const file = event.target.files[0];
@@ -167,7 +273,8 @@ export default function InventoryManager() {
       if (response.ok) {
         const result = await response.json();
         alert(`Inventaire importé avec succès !\n${result.message || 'Produits mis à jour'}`);
-        await loadData(true); // Force le rechargement après import
+        await loadData(true);
+        await loadQuantities();
       } else {
         const errorData = await response.json();
         alert(`Erreur lors de l'import: ${errorData.error || 'Erreur inconnue'}`);
@@ -458,7 +565,7 @@ export default function InventoryManager() {
               <span className="hidden sm:inline">Import</span>
             </button>
             <button
-              onClick={() => loadData(true)} // Force le rechargement
+              onClick={() => { loadData(true); loadQuantities(); }}
               disabled={loading}
               className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-xs font-medium hover:bg-white/20 disabled:opacity-50"
             >
@@ -563,10 +670,13 @@ export default function InventoryManager() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {filteredItems.map((item) => (
+            {filteredItems.map((item) => {
+              const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
+              const stockQty = parseInt(item.stock_qty) || 0;
+              return (
               <div key={item.id} className="p-4 hover:bg-gray-50">
                 <div className="flex justify-between items-start">
-                  
+
                   {/* Informations produit */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
@@ -578,30 +688,47 @@ export default function InventoryManager() {
                           {item.product_group}
                         </span>
                       )}
-                      {activeTab === 'products' && item.stock_qty < 10 && (
+                      {activeTab === 'products' && stockQty < 10 && (
                         <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
                           Stock faible
                         </span>
                       )}
                     </div>
-                    
+
                     <h3 className="text-sm font-medium text-gray-900 mb-1 pr-2">
                       {item.description || 'Description non disponible'}
                     </h3>
-                    
+
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
                       {item.unit && <span>Unité: {item.unit}</span>}
-                      {activeTab === 'products' && (
-                        <span className={item.stock_qty < 10 ? 'text-red-600 font-medium' : ''}>
-                          Stock: {item.stock_qty || 0}
-                        </span>
-                      )}
                       {item.supplier && <span>Fournisseur: {item.supplier}</span>}
                     </div>
                   </div>
 
+                  {/* Quantités (3e colonne) - seulement pour produits inventaire */}
+                  {activeTab === 'products' && (
+                    <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
+                      <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                        {stockQty}
+                      </div>
+                      <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
+                      {qty.onOrder > 0 && (
+                        <div className="text-blue-600 font-medium" title="En commande (AF)">
+                          +{qty.onOrder}
+                          <span className="text-[10px] text-blue-400 ml-0.5">cmd</span>
+                        </div>
+                      )}
+                      {qty.reserved > 0 && (
+                        <div className="text-orange-600 font-medium" title="Réservé (BT/BL/Soumissions)">
+                          -{qty.reserved}
+                          <span className="text-[10px] text-orange-400 ml-0.5">rés</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Prix et marge */}
-                  <div className="flex flex-col items-end space-y-1 ml-4">
+                  <div className="flex flex-col items-end space-y-1 ml-3">
                     <div className="text-right">
                       <div className="text-sm font-medium text-gray-900">
                         {formatCurrency(item.selling_price)}
@@ -610,11 +737,11 @@ export default function InventoryManager() {
                         Coût: {formatCurrency(item.cost_price)}
                       </div>
                     </div>
-                    
+
                     <div className={`text-xs font-medium ${getMarginColor(item.cost_price, item.selling_price)}`}>
                       {getMarginPercentage(item.cost_price, item.selling_price)}
                     </div>
-                    
+
                     <button
                       onClick={() => openEditModal(item)}
                       className="mt-2 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs flex items-center"
@@ -625,7 +752,8 @@ export default function InventoryManager() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -726,6 +854,35 @@ export default function InventoryManager() {
                     className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                     placeholder="0"
                   />
+
+                  {/* Quantités en commande et réservé (lecture seule) */}
+                  {editingItem && (() => {
+                    const qty = quantityMap[editingItem.product_id] || { onOrder: 0, reserved: 0 };
+                    if (qty.onOrder === 0 && qty.reserved === 0) return null;
+                    const stockVal = parseInt(editForm.stock_qty) || 0;
+                    const dispo = stockVal - qty.reserved;
+                    return (
+                      <div className="mt-3 bg-gray-50 rounded-lg p-3 space-y-1.5">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Détail quantités</div>
+                        {qty.onOrder > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-blue-700">En commande (AF)</span>
+                            <span className="font-medium text-blue-700">+{qty.onOrder}</span>
+                          </div>
+                        )}
+                        {qty.reserved > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-orange-700">Réservé (BT/BL/Soum.)</span>
+                            <span className="font-medium text-orange-700">-{qty.reserved}</span>
+                          </div>
+                        )}
+                        <div className="border-t pt-1.5 flex justify-between text-sm">
+                          <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
+                          <span className={`font-bold ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>{dispo}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
       
