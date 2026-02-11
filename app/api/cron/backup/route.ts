@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import pako from 'pako';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
       'suppliers',
       'work_order_materials',
       'work_orders'
-    ];;
+    ];
 
     const backup: any = {
       date: new Date().toISOString(),
@@ -78,33 +79,51 @@ export async function GET(request: Request) {
       )
       .join('\n');
 
+    // Compresser le JSON en gzip pour respecter la limite de 40 MB de Resend
+    const compressed = pako.gzip(backupJson);
+    const compressedSizeMB = (compressed.length / (1024 * 1024)).toFixed(2);
+
     // Envoyer par email avec Resend
-    await resend.emails.send({
-      from: 'Services TMT <noreply@servicestmt.ca>', // Ajuste avec ton domaine
+    const { data: emailResult, error: emailError } = await resend.emails.send({
+      from: 'Services TMT <noreply@servicestmt.ca>',
       to: 'servicestmt@gmail.com',
       subject: `💾 Backup Services TMT - ${backupDate}`,
       text: `Backup hebdomadaire de la base de données Services TMT
 
 Date: ${backup.date}
-Taille: ${sizeInMB} MB
+Taille originale: ${sizeInMB} MB
+Taille compressée: ${compressedSizeMB} MB
 
 Résumé:
 ${summary}
 
-Le fichier JSON complet est en pièce jointe.`,
+Le fichier JSON compressé (gzip) est en pièce jointe.
+Pour décompresser: gunzip backup-services-tmt-${backupDate}.json.gz`,
       attachments: [
         {
-          filename: `backup-services-tmt-${backupDate}.json`,
-          content: Buffer.from(backupJson).toString('base64'),
+          filename: `backup-services-tmt-${backupDate}.json.gz`,
+          content: Buffer.from(compressed).toString('base64'),
         },
       ],
     });
+
+    if (emailError) {
+      console.error('Erreur envoi email backup:', emailError);
+      return NextResponse.json({
+        success: false,
+        error: `Backup OK mais email échoué: ${emailError.message}`,
+        tables: Object.keys(backup.tables).length,
+        size: `${sizeInMB} MB`,
+        compressedSize: `${compressedSizeMB} MB`,
+      }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
       date: backup.date,
       tables: Object.keys(backup.tables).length,
       size: `${sizeInMB} MB`,
+      compressedSize: `${compressedSizeMB} MB`,
       summary
     });
 
