@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.7.0
- * @date 2026-02-09
+ * @version 1.7.1
+ * @date 2026-02-11
  * @changelog
+ *   1.7.1 - Forcer majuscules sur code produit et description des items non-inventaire
  *   1.7.0 - Header répété sur pages 2+ dans le PDF jsPDF (version Client)
  *   1.6.0 - Footer fixe avec conditions+totaux au bas de chaque page + pagination
  *   1.4.0 - Footer = bloc conditions+totaux fixé au bas de chaque page (position:fixed)
@@ -2310,7 +2311,7 @@ const cleanupFilesForSubmission = async (files) => {
                             <input
                               type="text"
                               value={quickProductForm.product_id}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, product_id: e.target.value})}
+                              onChange={(e) => setQuickProductForm({...quickProductForm, product_id: e.target.value.toUpperCase()})}
                               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                               placeholder="Ex: TEMP-001"
                               required
@@ -2335,7 +2336,7 @@ const cleanupFilesForSubmission = async (files) => {
                             <input
                               type="text"
                               value={quickProductForm.description}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value})}
+                              onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value.toUpperCase()})}
                               className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                               placeholder="Description du produit..."
                               required
