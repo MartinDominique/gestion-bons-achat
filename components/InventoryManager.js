@@ -4,9 +4,12 @@
  *              - En main (stock_qty)
  *              - En commande (AF commandés/partiels)
  *              - Réservé (BT brouillon/signés + BL non envoyés)
- * @version 1.2.0
+ *              - Historique des mouvements par produit (IN/OUT avec dates)
+ * @version 1.3.0
  * @date 2026-02-11
  * @changelog
+ *   1.3.0 - Ajout modal historique des mouvements d'inventaire par produit (dates IN/OUT)
+ *         - Correction affichage stock_qty pour non-inventaire (était caché)
  *   1.2.0 - Recherche cross-liste (produits + non-inventaire) et quantités pour non-inventaire
  *   1.1.0 - Ajout quantités en commande et réservé dans cartes et modal modifier
  *   1.0.0 - Version initiale
@@ -16,7 +19,8 @@ import { supabase } from '../lib/supabase';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
-  Eye, Plus, Trash2, RotateCcw, Upload, ShoppingCart, Clock
+  Eye, Plus, Trash2, RotateCcw, Upload, ShoppingCart, Clock,
+  History, ArrowDownCircle, ArrowUpCircle
 } from 'lucide-react';
 
 export default function InventoryManager() {
@@ -56,6 +60,11 @@ export default function InventoryManager() {
   // États pour l'upload d'inventaire
   const [showInventoryUpload, setShowInventoryUpload] = useState(false);
   const [uploadingInventory, setUploadingInventory] = useState(false);
+
+  // États pour l'historique des mouvements
+  const [historyItem, setHistoryItem] = useState(null);
+  const [historyMovements, setHistoryMovements] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Statistiques (gardées pour les calculs internes)
   const [stats, setStats] = useState({
@@ -289,6 +298,45 @@ export default function InventoryManager() {
     }
   };
 
+  // Charger l'historique des mouvements pour un produit
+  const openMovementHistory = async (item) => {
+    setHistoryItem(item);
+    setHistoryLoading(true);
+    setHistoryMovements([]);
+
+    try {
+      const { data: movements, error } = await supabase
+        .from('inventory_movements')
+        .select('*')
+        .eq('product_id', item.product_id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setHistoryMovements(movements || []);
+    } catch (err) {
+      console.error('Erreur chargement historique:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const closeMovementHistory = () => {
+    setHistoryItem(null);
+    setHistoryMovements([]);
+  };
+
+  const formatMovementDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('fr-CA', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const applyFilters = () => {
     // 🚀 OPTIMISATION - Créer une clé de cache unique basée sur les paramètres de filtre
     const filterKey = `${activeTab}-${searchTerm}-${selectedGroup}`;
@@ -341,13 +389,9 @@ export default function InventoryManager() {
 
     for (const item of filtered) {
       const cost = parseFloat(item.cost_price) || 0;
-      if (item._source === 'products') {
-        const stock = parseInt(item.stock_qty) || 0;
-        totalValue += (stock * cost);
-        if (stock < 10) lowStock++;
-      } else {
-        totalValue += cost;
-      }
+      const stock = parseInt(item.stock_qty) || 0;
+      totalValue += (stock * cost);
+      if (stock < 10) lowStock++;
     }
 
     const newStats = {
@@ -406,12 +450,8 @@ export default function InventoryManager() {
       const updates = {
         cost_price: parseFloat(editForm.cost_price) || 0,
         selling_price: parseFloat(editForm.selling_price) || 0,
+        stock_qty: parseInt(editForm.stock_qty) || 0,
       };
-
-      // Ajouter stock_qty seulement pour les produits
-      if (isProduct) {
-        updates.stock_qty = parseInt(editForm.stock_qty) || 0;
-      }
 
       // Détecter les changements pour l'email
       const changes = [];
@@ -425,7 +465,7 @@ export default function InventoryManager() {
       if (updates.selling_price !== oldSelling) {
         changes.push(`Prix vendant: ${oldSelling.toFixed(2)}$ → ${updates.selling_price.toFixed(2)}$`);
       }
-      if (isProduct && updates.stock_qty !== oldQty) {
+      if (updates.stock_qty !== oldQty) {
         changes.push(`Quantité: ${oldQty} → ${updates.stock_qty}`);
       }
 
@@ -679,7 +719,7 @@ export default function InventoryManager() {
             {filteredItems.map((item) => {
               const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
               const isProduct = item._source === 'products';
-              const stockQty = isProduct ? (parseInt(item.stock_qty) || 0) : null;
+              const stockQty = parseInt(item.stock_qty) || 0;
               return (
               <div key={`${item._source}-${item.id}`} className="p-4 hover:bg-gray-50">
                 <div className="flex justify-between items-start">
@@ -705,7 +745,7 @@ export default function InventoryManager() {
                           {isProduct ? 'Inventaire' : 'Non-inv.'}
                         </span>
                       )}
-                      {isProduct && stockQty < 10 && (
+                      {stockQty < 10 && (
                         <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
                           Stock faible
                         </span>
@@ -724,14 +764,10 @@ export default function InventoryManager() {
 
                   {/* Quantités (3e colonne) - toujours affiché */}
                   <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
-                    {isProduct && (
-                      <>
-                        <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                          {stockQty}
-                        </div>
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
-                      </>
-                    )}
+                    <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                      {stockQty}
+                    </div>
+                    <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
                     <div className={`font-medium ${qty.onOrder > 0 ? 'text-blue-600' : 'text-gray-400'}`} title="En commande (AF)">
                       +{qty.onOrder}
                       <span className={`text-[10px] ml-0.5 ${qty.onOrder > 0 ? 'text-blue-400' : 'text-gray-300'}`}>cmd</span>
@@ -757,13 +793,23 @@ export default function InventoryManager() {
                       {getMarginPercentage(item.cost_price, item.selling_price)}
                     </div>
 
-                    <button
-                      onClick={() => openEditModal(item)}
-                      className="mt-2 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs flex items-center"
-                    >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Modifier
-                    </button>
+                    <div className="flex gap-1 mt-2">
+                      <button
+                        onClick={() => openMovementHistory(item)}
+                        className="px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-xs flex items-center"
+                        title="Historique des mouvements"
+                      >
+                        <History className="w-3 h-3 mr-1" />
+                        Hist.
+                      </button>
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs flex items-center"
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Modifier
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -856,37 +902,32 @@ export default function InventoryManager() {
                 />
               </div>
       
-              {editingItem?._source === 'products' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantité en stock
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editForm.stock_qty}
-                    onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                    placeholder="0"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantité en stock
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editForm.stock_qty}
+                  onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                  placeholder="0"
+                />
+              </div>
 
               {/* Quantités en commande et réservé (lecture seule) - toujours affiché */}
               {editingItem && (() => {
                 const qty = quantityMap[editingItem.product_id] || { onOrder: 0, reserved: 0 };
-                const isProduct = editingItem._source === 'products';
-                const stockVal = isProduct ? (parseInt(editForm.stock_qty) || 0) : null;
-                const dispo = isProduct ? stockVal - qty.reserved : null;
+                const stockVal = parseInt(editForm.stock_qty) || 0;
+                const dispo = stockVal - qty.reserved;
                 return (
                   <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
                     <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Détail quantités</div>
-                    {isProduct && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-700">En main (stock)</span>
-                        <span className="font-medium text-gray-900">{stockVal}</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">En main (stock)</span>
+                      <span className="font-medium text-gray-900">{stockVal}</span>
+                    </div>
                     <div className="flex justify-between text-sm">
                       <span className={qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}>En commande (AF)</span>
                       <span className={`font-medium ${qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}`}>+{qty.onOrder}</span>
@@ -895,12 +936,10 @@ export default function InventoryManager() {
                       <span className={qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}>Réservé (BT/BL/Soum.)</span>
                       <span className={`font-medium ${qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}`}>-{qty.reserved}</span>
                     </div>
-                    {isProduct && (
-                      <div className="border-t pt-1.5 flex justify-between text-sm">
-                        <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
-                        <span className={`font-bold ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>{dispo}</span>
-                      </div>
-                    )}
+                    <div className="border-t pt-1.5 flex justify-between text-sm">
+                      <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
+                      <span className={`font-bold ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>{dispo}</span>
+                    </div>
                   </div>
                 );
               })()}
@@ -993,6 +1032,140 @@ export default function InventoryManager() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal historique des mouvements */}
+      {historyItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white px-6 py-4 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    <History className="w-5 h-5" />
+                    Historique - {historyItem.product_id}
+                  </h3>
+                  <p className="text-gray-300 text-sm mt-1 truncate">
+                    {historyItem.description}
+                  </p>
+                </div>
+                <button
+                  onClick={closeMovementHistory}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenu */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+                  <span className="ml-3 text-gray-600">Chargement...</span>
+                </div>
+              ) : historyMovements.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>Aucun mouvement enregistré pour ce produit</p>
+                </div>
+              ) : (
+                <>
+                  {/* Résumé */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                      <ArrowDownCircle className="w-5 h-5 mx-auto mb-1 text-green-600" />
+                      <div className="text-lg font-bold text-green-700">
+                        {historyMovements
+                          .filter(m => m.movement_type === 'IN')
+                          .reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0)
+                          .toFixed(2)}
+                      </div>
+                      <div className="text-xs text-green-600">Total entré (IN)</div>
+                    </div>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                      <ArrowUpCircle className="w-5 h-5 mx-auto mb-1 text-red-600" />
+                      <div className="text-lg font-bold text-red-700">
+                        {historyMovements
+                          .filter(m => m.movement_type === 'OUT')
+                          .reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0)
+                          .toFixed(2)}
+                      </div>
+                      <div className="text-xs text-red-600">Total sorti (OUT)</div>
+                    </div>
+                  </div>
+
+                  {/* Liste des mouvements */}
+                  <div className="space-y-2">
+                    {historyMovements.map((movement, index) => {
+                      const isIn = movement.movement_type === 'IN';
+                      return (
+                        <div
+                          key={movement.id || index}
+                          className={`border rounded-lg p-3 ${
+                            isIn ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                                  isIn
+                                    ? 'bg-green-200 text-green-800'
+                                    : 'bg-red-200 text-red-800'
+                                }`}>
+                                  {isIn ? '+ IN' : '- OUT'}
+                                </span>
+                                <span className="text-sm font-medium text-gray-900">
+                                  {parseFloat(movement.quantity).toFixed(2)} {movement.unit}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600 truncate">
+                                {movement.notes || movement.reference_number || '-'}
+                              </p>
+                              {movement.reference_type && (
+                                <span className="text-[10px] text-gray-400 uppercase">
+                                  {movement.reference_type === 'supplier_purchase' && 'Achat fournisseur'}
+                                  {movement.reference_type === 'work_order' && 'Bon de travail'}
+                                  {movement.reference_type === 'delivery_note' && 'Bon de livraison'}
+                                  {movement.reference_type === 'delivery_slip' && 'Bon de livraison'}
+                                  {movement.reference_type === 'adjustment' && 'Ajustement'}
+                                  {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'adjustment'].includes(movement.reference_type) && movement.reference_type}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-right ml-3 shrink-0">
+                              <div className="text-xs font-medium text-gray-700">
+                                {formatMovementDate(movement.created_at)}
+                              </div>
+                              {movement.unit_cost > 0 && (
+                                <div className="text-[10px] text-gray-400">
+                                  {formatCurrency(movement.unit_cost)}/{movement.unit}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t px-6 py-3 bg-gray-50 rounded-b-lg">
+              <button
+                onClick={closeMovementHistory}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+              >
+                Fermer
+              </button>
             </div>
           </div>
         </div>

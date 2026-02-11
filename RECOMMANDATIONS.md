@@ -317,7 +317,9 @@ Affichage:
 #### 1.11 Migration de l'ancien modal DeliverySlipModal
 
 L'ancien `DeliverySlipModal.js` dans BA:
-- **Phase 1**: Garder fonctionnel (backward compatible)
+- **Phase 1**: ~~Garder fonctionnel (backward compatible)~~ ✅ COMPLETE (2026-02-11)
+  - Ajout déduction inventaire `stock_qty` (products/non_inventory_items) lors de la création du BL
+  - Ajout création mouvements `inventory_movements` (type OUT, reference_type: delivery_slip)
 - **Phase 2**: Ajouter un lien "Creer un BL complet" qui redirige vers `/bons-travail/nouveau-bl?po_id=XXX`
 - **Phase 3**: Deprecier l'ancien modal une fois le BL stabilise
 
@@ -1003,6 +1005,13 @@ Basees sur les reponses et decisions (2026-02-07):
 - **UI:** Liste unifiee BT+BL avec filtre type, boutons +Nouveau BT et +Nouveau BL
 - **Mini-dashboard:** Bandeau alertes BA orphelins/AF recus integre dans la liste
 - **Ancien modal:** `DeliverySlipModal.js` garde fonctionnel, deprecie progressivement
+  - ✅ 2026-02-11: Ajout déduction inventaire + mouvements inventory_movements dans DeliverySlipModal
+
+### 2026-02-11 - Corrections inventaire et historique mouvements
+- **DeliverySlipModal.js:** Ajout déduction `stock_qty` + création `inventory_movements` (OUT) lors de la création du BL
+- **InventoryManager.js:** Ajout bouton "Hist." + modal historique des mouvements par produit (dates IN/OUT, résumé totaux)
+- **Vérification AF (SupplierReceiptModal):** Confirmé fonctionnel - met à jour `stock_qty` et crée mouvements IN
+- **Vérification BT (send-email):** Confirmé fonctionnel - déduit `stock_qty` et crée mouvements OUT
 
 ### 2026-02-07 - Nouvelles fonctionnalites demandees
 - ~~**TimeTracker surcharges:** Checkbox optionnel, detection auto, minimums 2h/3h, jours feries QC~~ → ✅ COMPLETE 2026-02-10
