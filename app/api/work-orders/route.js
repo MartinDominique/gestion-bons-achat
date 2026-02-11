@@ -71,9 +71,9 @@ export async function POST(request) {
   //  }
 
     // Validation de base
-    if (!client_id || !work_date || !work_description) {
+    if (!client_id || !work_date) {
       return Response.json(
-        { error: 'Champs requis manquants: client_id, work_date, work_description' },
+        { error: 'Champs requis manquants: client_id, work_date' },
         { status: 400 }
       );
     }
@@ -158,7 +158,7 @@ let finalLinkedPoId = null;
       work_date,
       time_entries: body.time_entries || [],
       total_hours: body.total_hours || 0,
-      work_description,
+      work_description: work_description || 'DESCRIPTION À VENIR!',
       additional_notes: additional_notes || null,
       status: status || 'draft',
       recipient_emails: recipient_emails || [],
@@ -289,7 +289,7 @@ export async function GET(request) {
         client:clients(id, name),
         linked_po:purchase_orders(id, po_number)
       `, { count: 'exact' })
-      .order('work_date', { ascending: false });
+      .order('bt_number', { ascending: false });
 
     // Appliquer les filtres
     if (status && status !== 'all') {
