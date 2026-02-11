@@ -5,9 +5,16 @@
  *              - En commande (AF commandés/partiels)
  *              - Réservé (BT brouillon/signés + BL non envoyés)
  *              - Historique des mouvements par produit (IN/OUT avec dates)
- * @version 1.3.0
+ *              - Historique des prix (shift cost_price/selling_price)
+ *              - Modification de la description produit
+ *              - Modal unifié : Édition + Historique mouvements + Historique prix
+ * @version 2.0.0
  * @date 2026-02-11
  * @changelog
+ *   2.0.0 - Modal unifié avec onglets (Édition / Historique / Prix)
+ *         - Ajout modification description produit
+ *         - Ajout historique prix avec décalage (shift) sur changement
+ *         - Intégration historique mouvements dans le modal produit
  *   1.3.0 - Ajout modal historique des mouvements d'inventaire par produit (dates IN/OUT)
  *         - Correction affichage stock_qty pour non-inventaire (était caché)
  *   1.2.0 - Recherche cross-liste (produits + non-inventaire) et quantités pour non-inventaire
@@ -16,6 +23,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
@@ -47,22 +55,23 @@ export default function InventoryManager() {
   const [filteredCache, setFilteredCache] = useState({});
   const [lastFilterParams, setLastFilterParams] = useState('');
 
-  // Modal d'édition
+  // Modal d'édition (unifié avec historique)
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({
+    description: '',
     cost_price: '',
     selling_price: '',
     stock_qty: ''
   });
   const [saving, setSaving] = useState(false);
   const [marginPercent, setMarginPercent] = useState('');
+  const [modalTab, setModalTab] = useState('edit'); // 'edit', 'history', 'prices'
 
   // États pour l'upload d'inventaire
   const [showInventoryUpload, setShowInventoryUpload] = useState(false);
   const [uploadingInventory, setUploadingInventory] = useState(false);
 
-  // États pour l'historique des mouvements
-  const [historyItem, setHistoryItem] = useState(null);
+  // États pour l'historique des mouvements (chargé dans le modal unifié)
   const [historyMovements, setHistoryMovements] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -298,34 +307,6 @@ export default function InventoryManager() {
     }
   };
 
-  // Charger l'historique des mouvements pour un produit
-  const openMovementHistory = async (item) => {
-    setHistoryItem(item);
-    setHistoryLoading(true);
-    setHistoryMovements([]);
-
-    try {
-      const { data: movements, error } = await supabase
-        .from('inventory_movements')
-        .select('*')
-        .eq('product_id', item.product_id)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (error) throw error;
-      setHistoryMovements(movements || []);
-    } catch (err) {
-      console.error('Erreur chargement historique:', err);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  const closeMovementHistory = () => {
-    setHistoryItem(null);
-    setHistoryMovements([]);
-  };
-
   const formatMovementDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('fr-CA', {
@@ -420,22 +401,43 @@ export default function InventoryManager() {
     console.log(`✅ Filtres calculés en ${(endTime - startTime).toFixed(2)}ms (${filtered.length} items)`);
   };
 
-  const openEditModal = (item) => {
+  const openEditModal = async (item, initialTab = 'edit') => {
     setEditingItem(item);
     setEditForm({
+      description: item.description || '',
       cost_price: item.cost_price?.toString() || '',
       selling_price: item.selling_price?.toString() || '',
       stock_qty: item.stock_qty?.toString() || ''
     });
+    setModalTab(initialTab);
+    // Load movement history in background
+    setHistoryLoading(true);
+    setHistoryMovements([]);
+    try {
+      const { data: movements, error } = await supabase
+        .from('inventory_movements')
+        .select('*')
+        .eq('product_id', item.product_id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (!error) setHistoryMovements(movements || []);
+    } catch (err) {
+      console.error('Erreur chargement historique:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   const closeEditModal = () => {
     setEditingItem(null);
     setEditForm({
+      description: '',
       cost_price: '',
       selling_price: '',
       stock_qty: ''
     });
+    setModalTab('edit');
+    setMarginPercent('');
   };
 
   const saveChanges = async () => {
@@ -448,17 +450,29 @@ export default function InventoryManager() {
       setSaving(true);
 
       const updates = {
+        description: editForm.description.trim(),
         cost_price: parseFloat(editForm.cost_price) || 0,
         selling_price: parseFloat(editForm.selling_price) || 0,
         stock_qty: parseInt(editForm.stock_qty) || 0,
       };
+
+      // Price shift: décaler l'historique si le prix change
+      const priceShiftUpdates = buildPriceShiftUpdates(editingItem, {
+        cost_price: updates.cost_price,
+        selling_price: updates.selling_price,
+      });
+      Object.assign(updates, priceShiftUpdates);
 
       // Détecter les changements pour l'email
       const changes = [];
       const oldCost = parseFloat(editingItem.cost_price) || 0;
       const oldSelling = parseFloat(editingItem.selling_price) || 0;
       const oldQty = parseInt(editingItem.stock_qty) || 0;
+      const oldDescription = editingItem.description || '';
 
+      if (updates.description !== oldDescription) {
+        changes.push(`Description: "${oldDescription}" → "${updates.description}"`);
+      }
       if (updates.cost_price !== oldCost) {
         changes.push(`Prix coûtant: ${oldCost.toFixed(2)}$ → ${updates.cost_price.toFixed(2)}$`);
       }
@@ -795,7 +809,7 @@ export default function InventoryManager() {
 
                     <div className="flex gap-1 mt-2">
                       <button
-                        onClick={() => openMovementHistory(item)}
+                        onClick={() => openEditModal(item, 'history')}
                         className="px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-xs flex items-center"
                         title="Historique des mouvements"
                       >
@@ -819,173 +833,437 @@ export default function InventoryManager() {
         )}
       </div>
 
-      {/* Modal d'édition */}
+      {/* Modal unifié : Édition + Historique + Prix */}
       {editingItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[95vh] flex flex-col shadow-xl">
+            {/* Header */}
             <div className="bg-blue-50 px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold text-blue-900">
-                Modifier {editingItem.product_id}
-              </h3>
-              <p className="text-sm text-blue-700 mt-1">
-                {editingItem.description}
-              </p>
-            </div>
-      
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prix coût
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editForm.cost_price}
-                  onChange={(e) => setEditForm({...editForm, cost_price: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                  placeholder="0.00"
-                />
-              </div>
-      
-              {/* Calcul automatique de marge */}
-              {editForm.cost_price && parseFloat(editForm.cost_price) > 0 && (
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <label className="block text-sm font-medium text-green-800 mb-2">
-                    Calcul automatique par marge %
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      value={marginPercent}
-                      onChange={(e) => setMarginPercent(e.target.value)}
-                      className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2"
-                      placeholder="Ex: 25"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const cost = parseFloat(editForm.cost_price) || 0;
-                        const margin = parseFloat(marginPercent) || 0;
-                        if (cost > 0 && margin > 0) {
-                          const newSellingPrice = cost * (1 + margin / 100);
-                          setEditForm({...editForm, selling_price: newSellingPrice.toFixed(2)});
-                        }
-                      }}
-                      disabled={!marginPercent || parseFloat(marginPercent) <= 0}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                    >
-                      OK
-                    </button>
-                  </div>
-                  <p className="text-xs text-green-600 mt-1">
-                    Entrez le % de marge désiré et cliquez OK
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-900">
+                    {editingItem.product_id}
+                  </h3>
+                  <p className="text-sm text-blue-700 mt-1">
+                    {editingItem.description}
                   </p>
                 </div>
-              )}
-      
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prix de vente *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editForm.selling_price}
-                  onChange={(e) => setEditForm({...editForm, selling_price: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                  placeholder="0.00"
-                  required
-                />
+                <button onClick={closeEditModal} className="p-1 hover:bg-blue-100 rounded">
+                  <X className="w-5 h-5 text-blue-800" />
+                </button>
               </div>
-      
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Quantité en stock
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={editForm.stock_qty}
-                  onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                  placeholder="0"
-                />
-              </div>
+            </div>
 
-              {/* Quantités en commande et réservé (lecture seule) - toujours affiché */}
-              {editingItem && (() => {
-                const qty = quantityMap[editingItem.product_id] || { onOrder: 0, reserved: 0 };
-                const stockVal = parseInt(editForm.stock_qty) || 0;
-                const dispo = stockVal - qty.reserved;
-                return (
-                  <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Détail quantités</div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">En main (stock)</span>
-                      <span className="font-medium text-gray-900">{stockVal}</span>
+            {/* Onglets */}
+            <div className="flex border-b">
+              <button
+                onClick={() => setModalTab('edit')}
+                className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  modalTab === 'edit'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Edit className="w-4 h-4 inline mr-1" />
+                Modifier
+              </button>
+              <button
+                onClick={() => setModalTab('history')}
+                className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  modalTab === 'history'
+                    ? 'border-gray-700 text-gray-800 bg-gray-50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <History className="w-4 h-4 inline mr-1" />
+                Mouvements
+              </button>
+              <button
+                onClick={() => setModalTab('prices')}
+                className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  modalTab === 'prices'
+                    ? 'border-green-500 text-green-700 bg-green-50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <DollarSign className="w-4 h-4 inline mr-1" />
+                Hist. Prix
+              </button>
+            </div>
+
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto p-5">
+
+              {/* === ONGLET MODIFIER === */}
+              {modalTab === 'edit' && (
+                <div className="space-y-4">
+                  {/* Description (modifiable) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.description}
+                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      placeholder="Description du produit"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Prix coût
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editForm.cost_price}
+                      onChange={(e) => setEditForm({...editForm, cost_price: e.target.value})}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  {/* Calcul automatique de marge */}
+                  {editForm.cost_price && parseFloat(editForm.cost_price) > 0 && (
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <label className="block text-sm font-medium text-green-800 mb-2">
+                        Calcul automatique par marge %
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          inputMode="numeric"
+                          value={marginPercent}
+                          onChange={(e) => setMarginPercent(e.target.value)}
+                          className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2"
+                          placeholder="Ex: 25"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cost = parseFloat(editForm.cost_price) || 0;
+                            const margin = parseFloat(marginPercent) || 0;
+                            if (cost > 0 && margin > 0) {
+                              const newSellingPrice = cost * (1 + margin / 100);
+                              setEditForm({...editForm, selling_price: newSellingPrice.toFixed(2)});
+                            }
+                          }}
+                          disabled={!marginPercent || parseFloat(marginPercent) <= 0}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                          OK
+                        </button>
+                      </div>
+                      <p className="text-xs text-green-600 mt-1">
+                        Entrez le % de marge désiré et cliquez OK
+                      </p>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className={qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}>En commande (AF)</span>
-                      <span className={`font-medium ${qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}`}>+{qty.onOrder}</span>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Prix de vente *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editForm.selling_price}
+                      onChange={(e) => setEditForm({...editForm, selling_price: e.target.value})}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantité en stock
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={editForm.stock_qty}
+                      onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  {/* Quantités en commande et réservé */}
+                  {(() => {
+                    const qty = quantityMap[editingItem.product_id] || { onOrder: 0, reserved: 0 };
+                    const stockVal = parseInt(editForm.stock_qty) || 0;
+                    const dispo = stockVal - qty.reserved;
+                    return (
+                      <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Détail quantités</div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-700">En main (stock)</span>
+                          <span className="font-medium text-gray-900">{stockVal}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className={qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}>En commande (AF)</span>
+                          <span className={`font-medium ${qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}`}>+{qty.onOrder}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className={qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}>Réservé (BT/BL/Soum.)</span>
+                          <span className={`font-medium ${qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}`}>-{qty.reserved}</span>
+                        </div>
+                        <div className="border-t pt-1.5 flex justify-between text-sm">
+                          <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
+                          <span className={`font-bold ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>{dispo}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Aperçu de la marge */}
+                  {editForm.cost_price && editForm.selling_price && (
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600 mb-1">Aperçu marge:</div>
+                      <div className={`text-lg font-medium ${getMarginColor(editForm.cost_price, editForm.selling_price)}`}>
+                        {getMarginPercentage(editForm.cost_price, editForm.selling_price)}
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className={qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}>Réservé (BT/BL/Soum.)</span>
-                      <span className={`font-medium ${qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}`}>-{qty.reserved}</span>
+                  )}
+                </div>
+              )}
+
+              {/* === ONGLET HISTORIQUE MOUVEMENTS === */}
+              {modalTab === 'history' && (
+                <div>
+                  {historyLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+                      <span className="ml-3 text-gray-600">Chargement...</span>
                     </div>
-                    <div className="border-t pt-1.5 flex justify-between text-sm">
-                      <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
-                      <span className={`font-bold ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>{dispo}</span>
+                  ) : historyMovements.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>Aucun mouvement enregistré pour ce produit</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Résumé IN/OUT */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                          <ArrowDownCircle className="w-5 h-5 mx-auto mb-1 text-green-600" />
+                          <div className="text-lg font-bold text-green-700">
+                            {historyMovements
+                              .filter(m => m.movement_type === 'IN')
+                              .reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0)
+                              .toFixed(2)}
+                          </div>
+                          <div className="text-xs text-green-600">Total entré (IN)</div>
+                        </div>
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                          <ArrowUpCircle className="w-5 h-5 mx-auto mb-1 text-red-600" />
+                          <div className="text-lg font-bold text-red-700">
+                            {historyMovements
+                              .filter(m => m.movement_type === 'OUT')
+                              .reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0)
+                              .toFixed(2)}
+                          </div>
+                          <div className="text-xs text-red-600">Total sorti (OUT)</div>
+                        </div>
+                      </div>
+
+                      {/* Liste des mouvements */}
+                      <div className="space-y-2">
+                        {historyMovements.map((movement, index) => {
+                          const isIn = movement.movement_type === 'IN';
+                          return (
+                            <div
+                              key={movement.id || index}
+                              className={`border rounded-lg p-3 ${
+                                isIn ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                                      isIn
+                                        ? 'bg-green-200 text-green-800'
+                                        : 'bg-red-200 text-red-800'
+                                    }`}>
+                                      {isIn ? '+ IN' : '- OUT'}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {parseFloat(movement.quantity).toFixed(2)} {movement.unit}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-600 truncate">
+                                    {movement.notes || movement.reference_number || '-'}
+                                  </p>
+                                  {movement.reference_type && (
+                                    <span className="text-[10px] text-gray-400 uppercase">
+                                      {movement.reference_type === 'supplier_purchase' && 'Achat fournisseur'}
+                                      {movement.reference_type === 'work_order' && 'Bon de travail'}
+                                      {movement.reference_type === 'delivery_note' && 'Bon de livraison'}
+                                      {movement.reference_type === 'delivery_slip' && 'Bon de livraison'}
+                                      {movement.reference_type === 'adjustment' && 'Ajustement'}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'adjustment'].includes(movement.reference_type) && movement.reference_type}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-right ml-3 shrink-0">
+                                  <div className="text-xs font-medium text-gray-700">
+                                    {formatMovementDate(movement.created_at)}
+                                  </div>
+                                  {movement.unit_cost > 0 && (
+                                    <div className="text-[10px] text-gray-400">
+                                      {formatCurrency(movement.unit_cost)}/{movement.unit}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* === ONGLET HISTORIQUE PRIX === */}
+              {modalTab === 'prices' && (
+                <div className="space-y-4">
+                  {/* Prix actuel */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="text-xs font-medium text-blue-500 uppercase tracking-wide mb-2">Prix actuel</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs text-gray-500">Coûtant</div>
+                        <div className="text-lg font-bold text-gray-900">{formatCurrency(editingItem.cost_price)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500">Vendant</div>
+                        <div className="text-lg font-bold text-gray-900">{formatCurrency(editingItem.selling_price)}</div>
+                      </div>
+                    </div>
+                    <div className={`text-sm font-medium mt-1 ${getMarginColor(editingItem.cost_price, editingItem.selling_price)}`}>
+                      Marge: {getMarginPercentage(editingItem.cost_price, editingItem.selling_price)}
                     </div>
                   </div>
-                );
-              })()}
-      
-              {/* Aperçu de la marge */}
-              {editForm.cost_price && editForm.selling_price && (
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <div className="text-sm text-gray-600 mb-1">Aperçu marge:</div>
-                  <div className={`text-lg font-medium ${getMarginColor(editForm.cost_price, editForm.selling_price)}`}>
-                    {getMarginPercentage(editForm.cost_price, editForm.selling_price)}
-                  </div>
+
+                  {/* Historique des prix */}
+                  {(editingItem.cost_price_1st != null || editingItem.selling_price_1st != null) ? (
+                    <div className="space-y-3">
+                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Historique (du plus récent au plus ancien)</div>
+
+                      {/* Prix précédent (1st) */}
+                      {(editingItem.cost_price_1st != null || editingItem.selling_price_1st != null) && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                          <div className="text-xs font-medium text-gray-400 mb-1">Prix précédent (n-1)</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <div className="text-xs text-gray-400">Coûtant</div>
+                              <div className="text-sm font-medium text-gray-700">
+                                {editingItem.cost_price_1st != null ? formatCurrency(editingItem.cost_price_1st) : '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400">Vendant</div>
+                              <div className="text-sm font-medium text-gray-700">
+                                {editingItem.selling_price_1st != null ? formatCurrency(editingItem.selling_price_1st) : '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Prix n-2 (2nd) */}
+                      {(editingItem.cost_price_2nd != null || editingItem.selling_price_2nd != null) && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                          <div className="text-xs font-medium text-gray-400 mb-1">Avant-dernier (n-2)</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <div className="text-xs text-gray-400">Coûtant</div>
+                              <div className="text-sm font-medium text-gray-700">
+                                {editingItem.cost_price_2nd != null ? formatCurrency(editingItem.cost_price_2nd) : '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400">Vendant</div>
+                              <div className="text-sm font-medium text-gray-700">
+                                {editingItem.selling_price_2nd != null ? formatCurrency(editingItem.selling_price_2nd) : '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Prix n-3 (3rd) */}
+                      {(editingItem.cost_price_3rd != null || editingItem.selling_price_3rd != null) && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                          <div className="text-xs font-medium text-gray-400 mb-1">Plus ancien (n-3)</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <div className="text-xs text-gray-400">Coûtant</div>
+                              <div className="text-sm font-medium text-gray-700">
+                                {editingItem.cost_price_3rd != null ? formatCurrency(editingItem.cost_price_3rd) : '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400">Vendant</div>
+                              <div className="text-sm font-medium text-gray-700">
+                                {editingItem.selling_price_3rd != null ? formatCurrency(editingItem.selling_price_3rd) : '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>Aucun historique de prix enregistré</p>
+                      <p className="text-xs mt-1">L'historique se remplira au prochain changement de prix</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-      
-            <div className="bg-gray-50 px-6 py-4 flex gap-3">
+
+            {/* Footer avec boutons */}
+            <div className="bg-gray-50 px-6 py-4 flex gap-3 border-t">
               <button
-                onClick={() => {
-                  closeEditModal();
-                  setMarginPercent('');
-                }}
+                onClick={closeEditModal}
                 disabled={saving}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
               >
-                Annuler
+                {modalTab === 'edit' ? 'Annuler' : 'Fermer'}
               </button>
-              <button
-                onClick={() => {
-                  saveChanges();
-                  setMarginPercent('');
-                }}
-                disabled={saving || !editForm.selling_price}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              >
-                {saving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Sauvegarde...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Sauvegarder
-                  </>
-                )}
-              </button>
+              {modalTab === 'edit' && (
+                <button
+                  onClick={saveChanges}
+                  disabled={saving || !editForm.selling_price}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Sauvegarder
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1037,139 +1315,6 @@ export default function InventoryManager() {
         </div>
       )}
 
-      {/* Modal historique des mouvements */}
-      {historyItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white px-6 py-4 rounded-t-lg">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <History className="w-5 h-5" />
-                    Historique - {historyItem.product_id}
-                  </h3>
-                  <p className="text-gray-300 text-sm mt-1 truncate">
-                    {historyItem.description}
-                  </p>
-                </div>
-                <button
-                  onClick={closeMovementHistory}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Contenu */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {historyLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
-                  <span className="ml-3 text-gray-600">Chargement...</span>
-                </div>
-              ) : historyMovements.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Aucun mouvement enregistré pour ce produit</p>
-                </div>
-              ) : (
-                <>
-                  {/* Résumé */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                      <ArrowDownCircle className="w-5 h-5 mx-auto mb-1 text-green-600" />
-                      <div className="text-lg font-bold text-green-700">
-                        {historyMovements
-                          .filter(m => m.movement_type === 'IN')
-                          .reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0)
-                          .toFixed(2)}
-                      </div>
-                      <div className="text-xs text-green-600">Total entré (IN)</div>
-                    </div>
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-                      <ArrowUpCircle className="w-5 h-5 mx-auto mb-1 text-red-600" />
-                      <div className="text-lg font-bold text-red-700">
-                        {historyMovements
-                          .filter(m => m.movement_type === 'OUT')
-                          .reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0)
-                          .toFixed(2)}
-                      </div>
-                      <div className="text-xs text-red-600">Total sorti (OUT)</div>
-                    </div>
-                  </div>
-
-                  {/* Liste des mouvements */}
-                  <div className="space-y-2">
-                    {historyMovements.map((movement, index) => {
-                      const isIn = movement.movement_type === 'IN';
-                      return (
-                        <div
-                          key={movement.id || index}
-                          className={`border rounded-lg p-3 ${
-                            isIn ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                          }`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                                  isIn
-                                    ? 'bg-green-200 text-green-800'
-                                    : 'bg-red-200 text-red-800'
-                                }`}>
-                                  {isIn ? '+ IN' : '- OUT'}
-                                </span>
-                                <span className="text-sm font-medium text-gray-900">
-                                  {parseFloat(movement.quantity).toFixed(2)} {movement.unit}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-600 truncate">
-                                {movement.notes || movement.reference_number || '-'}
-                              </p>
-                              {movement.reference_type && (
-                                <span className="text-[10px] text-gray-400 uppercase">
-                                  {movement.reference_type === 'supplier_purchase' && 'Achat fournisseur'}
-                                  {movement.reference_type === 'work_order' && 'Bon de travail'}
-                                  {movement.reference_type === 'delivery_note' && 'Bon de livraison'}
-                                  {movement.reference_type === 'delivery_slip' && 'Bon de livraison'}
-                                  {movement.reference_type === 'adjustment' && 'Ajustement'}
-                                  {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'adjustment'].includes(movement.reference_type) && movement.reference_type}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-right ml-3 shrink-0">
-                              <div className="text-xs font-medium text-gray-700">
-                                {formatMovementDate(movement.created_at)}
-                              </div>
-                              {movement.unit_cost > 0 && (
-                                <div className="text-[10px] text-gray-400">
-                                  {formatCurrency(movement.unit_cost)}/{movement.unit}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="border-t px-6 py-3 bg-gray-50 rounded-b-lg">
-              <button
-                onClick={closeMovementHistory}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
