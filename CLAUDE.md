@@ -80,6 +80,26 @@ Chaque fichier TypeScript/JavaScript DOIT avoir cet en-tête:
 3. Ajouter une ligne au changelog (en haut de la liste)
 4. Le changelog garde l'historique complet
 
+### Mise à jour RECOMMANDATIONS.md (OBLIGATOIRE)
+
+Après chaque modification de code liée à une fonctionnalité ou un item du plan d'action dans `RECOMMANDATIONS.md`:
+
+1. **Rayer l'item complété** avec `~~texte~~` et ajouter `✅ COMPLETE (YYYY-MM-DD)`
+2. **Cocher les checkboxes** correspondantes: `- [ ]` → `- [x]`
+3. **Ajouter un résumé** des fichiers modifiés/créés sous l'item complété
+4. **Mettre à jour la date** du document en bas de RECOMMANDATIONS.md
+5. **Mettre à jour la roadmap** dans CLAUDE.md (section "Points d'Attention / Roadmap") pour refléter les items complétés
+
+**Exemple:**
+```markdown
+### 2. ~~Nom de la fonctionnalité~~ ✅ COMPLETE (2026-02-10)
+**Implementation completee (2026-02-10):**
+- `fichier1.js` - Description du changement
+- `fichier2.js` - Description du changement
+```
+
+Cette règle assure la traçabilité des modifications et permet de savoir rapidement ce qui reste à faire.
+
 ### Dates et Heures
 
 | Type | Format | Exemple |
@@ -409,9 +429,9 @@ CRON_SECRET                   # Auth pour cron jobs
 
 ### À faire (priorité utilisateur - décisions 2026-02-07)
 1. **Bon de Livraison (BL)** - Intégré dans l'app BT (Option A)
-2. **TimeTracker surcharges** - Soirs/fins de semaine/jours fériés (checkbox optionnel)
+2. ~~**TimeTracker surcharges**~~ - ✅ COMPLÉTÉ 2026-02-10 (holidays.js, TimeTracker v2.0.0, PDF, API)
 3. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
-4. **BCC Confirmation commande** - Formulaire confirmation commande client par email
+4. ~~**BCC Confirmation commande**~~ - ✅ COMPLÉTÉ 2026-02-09 (BCCConfirmationModal, API send-confirmation, PDF)
 5. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
 6. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
 7. **Optimisation mobile BT/BL** - 95% usage mobile

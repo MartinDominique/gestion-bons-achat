@@ -329,9 +329,17 @@ L'ancien `DeliverySlipModal.js` dans BA:
 - **Performance**: Lazy load des materiaux BA/soumission (ne pas charger au mount)
 - **Email**: Meme pattern que BT (client + CC bureau), avec PDF BL attache
 
-### 2. TimeTracker - Tarifs soirs/fins de semaine/jours feries (Priorite: Haute - demande utilisateur)
+### 2. ~~TimeTracker - Tarifs soirs/fins de semaine/jours feries~~ ✅ COMPLETE (2026-02-10)
 
 **Demande (2026-02-07):** Gerer les surcharges horaires pour le travail en dehors des heures normales.
+
+**Implementation completee (2026-02-10):**
+- `lib/utils/holidays.js` (v1.0.0) - Calcul dynamique des jours feries Quebec (9 jours)
+- `components/work-orders/TimeTracker.js` (v2.0.0) - Checkbox, detection auto, badges colores, minimums
+- `components/work-orders/WorkOrderForm.js` - Checkbox "Appliquer tarifs speciaux" (defaut: active)
+- `lib/services/email-service.js` - Affichage surcharge dans PDF (ex: `3h [Samedi - min. applique]`)
+- `components/work-orders/WorkOrderClientView.js` - Badges surcharge dans vue client
+- `app/api/work-orders/route.js` et `[id]/route.js` - Persistance champ `apply_surcharge`
 
 **Regles de l'entreprise Services TMT:**
 
@@ -466,9 +474,17 @@ const getQuebecHolidays = (year) => {
 
 ---
 
-### 3. BCC - Bon de Confirmation de Commande Client (Priorite: Haute - demande utilisateur)
+### 3. ~~BCC - Bon de Confirmation de Commande Client~~ ✅ COMPLETE (2026-02-09)
 
 **Demande (2026-02-07):** Envoyer au client une confirmation que le materiel demande par son BA est bien en commande.
+
+**Implementation completee (2026-02-09) - Option A retenue (module dans BA):**
+- `app/api/purchase-orders/[id]/send-confirmation/route.js` (v1.0.0) - API envoi email + PDF BCC
+- `components/PurchaseOrder/BCCConfirmationModal.js` (v1.0.0) - Modal BCC avec selection items, calcul B/O, taxes TPS/TVQ
+- `components/PurchaseOrderModal.js` - Bouton "Confirmation commande" integre dans l'onglet BA
+- PDF genere avec en-tete standardise, tableau items (Code, Description, Qte Cmd, Prix, B/O, Livree, Delai)
+- Gestion multi-destinataires, CC bureau, validation email
+- Design responsive mobile/tablette
 
 **Contexte:**
 Quand un client envoie un BA, Martin cree un ou plusieurs AF pour commander le materiel. Le client n'a actuellement aucune visibilite sur l'etat de sa commande. Le BCC permet de lui envoyer un recapitulatif.
@@ -874,13 +890,13 @@ Pas de tests automatises detectes.
 - [ ] Ajouter bandeau alertes (BA orphelins, AF recus sans livraison)
 - [ ] Tester sur tablette et mobile (responsive critique)
 
-### Phase 4 - TimeTracker surcharges (Section 2)
-- [ ] #1: Ajouter checkbox "Appliquer tarifs speciaux" dans TimeTracker
-- [ ] #2: Creer `lib/utils/holidays.js` (jours feries Quebec)
-- [ ] #3: Implementer detection auto (samedi/dimanche/soir/ferie)
-- [ ] #4: Appliquer minimums (3h weekend/ferie, 2h soir)
-- [ ] #5: Afficher badges dans TimeTracker (Samedi, Dimanche, Soir, Jour ferie)
-- [ ] #6: Mettre a jour le PDF BT pour afficher les mentions de surcharge
+### Phase 4 - TimeTracker surcharges (Section 2) ✅ COMPLETE (2026-02-10)
+- [x] #1: Ajouter checkbox "Appliquer tarifs speciaux" dans TimeTracker
+- [x] #2: Creer `lib/utils/holidays.js` (jours feries Quebec)
+- [x] #3: Implementer detection auto (samedi/dimanche/soir/ferie)
+- [x] #4: Appliquer minimums (3h weekend/ferie, 2h soir)
+- [x] #5: Afficher badges dans TimeTracker (Samedi, Dimanche, Soir, Jour ferie)
+- [x] #6: Mettre a jour le PDF BT pour afficher les mentions de surcharge
 
 ### Phase 5 - Statut soumissions + import partiel (Section 5)
 - [ ] #1: Modal import soumission avec selection partielle (checkboxes par item)
@@ -888,12 +904,12 @@ Pas de tests automatises detectes.
 - [ ] #3: Ajouter champ `linked_po_numbers` dans table `submissions`
 - [ ] #4: Afficher BA associe(s) dans le formulaire soumission
 
-### Phase 6 - BCC Confirmation de commande client (Section 3)
-- [ ] #1: Bouton "Confirmation commande" dans PurchaseOrderModal
-- [ ] #2: Modal/formulaire BCC avec import items depuis BA + AF
-- [ ] #3: Calcul B/O, qte livree, delai par item
-- [ ] #4: Generation PDF BCC (en-tete standardise)
-- [ ] #5: API envoi email confirmation au client
+### Phase 6 - BCC Confirmation de commande client (Section 3) ✅ COMPLETE (2026-02-09)
+- [x] #1: Bouton "Confirmation commande" dans PurchaseOrderModal
+- [x] #2: Modal/formulaire BCC avec import items depuis BA + AF
+- [x] #3: Calcul B/O, qte livree, delai par item
+- [x] #4: Generation PDF BCC (en-tete standardise)
+- [x] #5: API envoi email confirmation au client
 
 ### Phase 7 - Standardisation PDF (Section 4)
 - [ ] #1: Creer module partage `lib/services/pdf-common.js`
@@ -968,9 +984,9 @@ Priorite a l'optimisation responsive pour:
 Basees sur les reponses et decisions (2026-02-07):
 
 1. **Bon de Livraison (BL) integre dans BT** - Phase 3 (decision 2026-02-07, Option A)
-2. **TimeTracker surcharges soir/weekend/ferie** - Phase 4 (demande 2026-02-07)
+2. ~~**TimeTracker surcharges soir/weekend/ferie**~~ - ✅ Phase 4 COMPLETE (2026-02-10)
 3. **Statut soumissions + import partiel** - Phase 5 (demande 2026-02-07)
-4. **BCC Confirmation de commande client** - Phase 6 (demande 2026-02-07)
+4. ~~**BCC Confirmation de commande client**~~ - ✅ Phase 6 COMPLETE (2026-02-09)
 5. **Standardisation PDF** - Phase 7 (demande 2026-02-07)
 6. **Optimisation mobile BT/BL** - Continue (95% mobile)
 7. **Systeme permissions** - Futur (multi-utilisateurs)
@@ -989,11 +1005,11 @@ Basees sur les reponses et decisions (2026-02-07):
 - **Ancien modal:** `DeliverySlipModal.js` garde fonctionnel, deprecie progressivement
 
 ### 2026-02-07 - Nouvelles fonctionnalites demandees
-- **TimeTracker surcharges:** Checkbox optionnel, detection auto, minimums 2h/3h, jours feries QC
-- **BCC:** Confirmation commande client, integre dans BA, envoi email+PDF
+- ~~**TimeTracker surcharges:** Checkbox optionnel, detection auto, minimums 2h/3h, jours feries QC~~ → ✅ COMPLETE 2026-02-10
+- ~~**BCC:** Confirmation commande client, integre dans BA, envoi email+PDF~~ → ✅ COMPLETE 2026-02-09
 - **PDF standardise:** Module partage `pdf-common.js`, migration progressive vers jsPDF
 - **Statut soumissions:** Import partiel, changement auto "Acceptee", reference croisee BA
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-02-07 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-02-11 par Claude AI*
