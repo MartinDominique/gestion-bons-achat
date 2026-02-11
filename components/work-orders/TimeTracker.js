@@ -1,5 +1,21 @@
+/**
+ * @file components/work-orders/TimeTracker.js
+ * @description Composant de suivi du temps multi-sessions pour les Bons de Travail
+ *              - Punch-in / Punch-out avec timer en temps réel
+ *              - Sessions manuelles (ajout, édition, suppression)
+ *              - Détection automatique surcharges (soir, samedi, dimanche, jours fériés QC)
+ *              - Application des minimums (2h soir, 3h weekend/férié)
+ * @version 2.0.0
+ * @date 2026-02-10
+ * @changelog
+ *   2.0.0 - Intégration surcharges: détection auto, minimums, badges, recalcul toggle
+ *   1.2.0 - Fix UTC date (getLocalDateString), fix circular dependency
+ *   1.0.0 - Version initiale multi-sessions
+ */
+
 import React, { useState, useEffect,useRef } from 'react';
 import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-react';
+import { getSurchargeType } from '../../lib/utils/holidays';
 
 // Helper pour obtenir la date locale en format YYYY-MM-DD (évite le décalage UTC)
 const getLocalDateString = () => {
@@ -9,12 +25,21 @@ const getLocalDateString = () => {
   return localDate.toISOString().split('T')[0];
 };
 
-export default function TimeTracker({ 
-  onTimeChange, 
+// Labels et couleurs pour les badges de surcharge
+const SURCHARGE_BADGES = {
+  saturday:  { label: 'Samedi',     color: 'bg-orange-500 text-white' },
+  sunday:    { label: 'Dimanche',   color: 'bg-red-600 text-white' },
+  evening:   { label: 'Soir',       color: 'bg-blue-600 text-white' },
+  holiday:   { label: 'Jour férié', color: 'bg-purple-600 text-white' },
+};
+
+export default function TimeTracker({
+  onTimeChange,
   initialTimeEntries = [],
   workDate = null,
   status = 'draft',
-  selectedClient = null
+  selectedClient = null,
+  applySurcharge = true
 }) {
   // État pour gérer PLUSIEURS sessions
   const [timeEntries, setTimeEntries] = useState(initialTimeEntries || []);
@@ -90,6 +115,22 @@ const toQuarterHourUp = (startHHMM, endHHMM, pauseMinutes = 0) => {
     return roundedMinutes / 60;
   };
 
+  // Calculer les heures avec surcharge (minimum + taux) si activé
+  const computeSurcharge = (date, startTime, actualHours) => {
+    if (!applySurcharge) {
+      return { surcharge_type: null, surcharge_rate: 1.0, total_hours: actualHours };
+    }
+    const surcharge = getSurchargeType(date, startTime);
+    const withMinimum = Math.max(actualHours, surcharge.minimum);
+    return {
+      surcharge_type: surcharge.type === 'normal' ? null : surcharge.type,
+      surcharge_rate: surcharge.rate,
+      surcharge_label: surcharge.label,
+      actual_hours: actualHours,
+      total_hours: withMinimum
+    };
+  };
+
 const getAllSessions = () => {
   if (!currentSession) {
     return timeEntries;
@@ -113,6 +154,43 @@ const getAllSessions = () => {
   
   return [...timeEntries, sessionInProgress];
 };
+
+// ========================================
+// RECALCULER SURCHARGES QUAND TOGGLE
+// ========================================
+const applySurchargeRef = useRef(applySurcharge);
+useEffect(() => {
+  // Ne rien faire si la valeur n'a pas changé ou si pas encore initialisé
+  if (applySurchargeRef.current === applySurcharge || !isInitialized) {
+    applySurchargeRef.current = applySurcharge;
+    return;
+  }
+  applySurchargeRef.current = applySurcharge;
+
+  // Recalculer toutes les sessions existantes
+  if (timeEntries.length > 0) {
+    const recalculated = timeEntries.map(entry => {
+      if (!entry.end_time) return entry; // Session en cours, skip
+
+      // Recalculer les heures de base (sans surcharge)
+      const sessionHours = toQuarterHourUp(entry.start_time, entry.end_time, entry.pause_minutes || 0);
+      const travelHours = entry.include_travel && selectedClient?.travel_minutes > 0
+        ? (selectedClient.travel_minutes / 60) : 0;
+      const baseHours = roundToQuarterHour(sessionHours + travelHours);
+
+      const surchargeInfo = computeSurcharge(entry.date, entry.start_time, baseHours);
+
+      return {
+        ...entry,
+        actual_hours: baseHours,
+        total_hours: surchargeInfo.total_hours,
+        surcharge_type: surchargeInfo.surcharge_type || null,
+        surcharge_rate: surchargeInfo.surcharge_rate || 1.0
+      };
+    });
+    setTimeEntries(recalculated);
+  }
+}, [applySurcharge]);
 
 // ========================================
 // NOTIFIER PARENT DES CHANGEMENTS
@@ -292,37 +370,43 @@ const formatDuration = (hours) => {
     alert('❌ Impossible de terminer cette session.\nCe bon de travail a déjà été envoyé au client.');
     return;
   }
-      
+
       const now = new Date();
       const endTime = now.toTimeString().substring(0, 5);
-      
+
       // Calculer les heures de session (sans voyage)
       const sessionHours = toQuarterHourUp(
-        currentSession.start_time, 
-        endTime, 
+        currentSession.start_time,
+        endTime,
         currentSession.pause_minutes
       );
-      
+
       // Par défaut, inclure le voyage si le client a travel_minutes
       const includeTravel = selectedClient?.travel_minutes > 0;
       const travelHours = includeTravel ? (selectedClient.travel_minutes / 60) : 0;
-      const totalHours = roundToQuarterHour(sessionHours + travelHours);
-      
+      const baseHours = roundToQuarterHour(sessionHours + travelHours);
+
+      // Appliquer surcharge si activée
+      const surchargeInfo = computeSurcharge(currentSession.date, currentSession.start_time, baseHours);
+
       const completedSession = {
         date: currentSession.date,
         start_time: currentSession.start_time,
         end_time: endTime,
         pause_minutes: currentSession.pause_minutes,
-        total_hours: totalHours,
+        actual_hours: baseHours,
+        total_hours: surchargeInfo.total_hours,
+        surcharge_type: surchargeInfo.surcharge_type || null,
+        surcharge_rate: surchargeInfo.surcharge_rate || 1.0,
         include_travel: includeTravel,
         include_transport_fee: true,
         in_progress: false
       };
-      
+
       setTimeEntries([...timeEntries, completedSession]);
       setCurrentSession(null);
       setIsWorking(false);
-      
+
      console.log('✅ Session terminée:', completedSession);
     };  
 
@@ -367,20 +451,26 @@ const formatDuration = (hours) => {
     }
 
     // Calculer les heures de session (sans voyage)
-    const sessionHours = manualEnd ? 
+    const sessionHours = manualEnd ?
       toQuarterHourUp(manualStart, manualEnd, manualPause) : 0;
-    
+
     // Par défaut, inclure le voyage si le client a travel_minutes
     const includeTravel = selectedClient?.travel_minutes > 0;
     const travelHours = includeTravel ? (selectedClient.travel_minutes / 60) : 0;
-    const totalHours = roundToQuarterHour(sessionHours + travelHours);
+    const baseHours = roundToQuarterHour(sessionHours + travelHours);
+
+    // Appliquer surcharge si activée
+    const surchargeInfo = computeSurcharge(manualDate, manualStart, baseHours);
 
     const session = {
       date: manualDate,
       start_time: manualStart,
       end_time: manualEnd || null,
       pause_minutes: parseInt(manualPause) || 0,
-      total_hours: totalHours,
+      actual_hours: baseHours,
+      total_hours: surchargeInfo.total_hours,
+      surcharge_type: surchargeInfo.surcharge_type || null,
+      surcharge_rate: surchargeInfo.surcharge_rate || 1.0,
       include_travel: includeTravel,
       include_transport_fee: true,
     };
@@ -508,17 +598,24 @@ const formatDuration = (hours) => {
           >
             {/* VERSION MOBILE */}
             <div className="md:hidden space-y-2">
-              {/* Ligne 1: Date + Badge en cours */}
+              {/* Ligne 1: Date + Badges */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center font-semibold">
                   <Calendar size={14} className="mr-1 text-blue-600" />
                   {entry.date}
                 </div>
-                {entry.in_progress && (
-                  <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
-                    EN COURS
-                  </span>
-                )}
+                <div className="flex items-center gap-1">
+                  {entry.surcharge_type && SURCHARGE_BADGES[entry.surcharge_type] && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${SURCHARGE_BADGES[entry.surcharge_type].color}`}>
+                      {SURCHARGE_BADGES[entry.surcharge_type].label}
+                    </span>
+                  )}
+                  {entry.in_progress && (
+                    <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
+                      EN COURS
+                    </span>
+                  )}
+                </div>
               </div>
               
               {/* Ligne 2: Début - Fin - Pause */}
@@ -538,6 +635,11 @@ const formatDuration = (hours) => {
                 <div className={`font-bold ${entry.in_progress ? 'text-green-700' : 'text-blue-700'}`}>
                   {formatDuration(entry.total_hours || 0)}
                   {entry.in_progress && ' ⏱️'}
+                  {entry.surcharge_type && entry.actual_hours != null && entry.actual_hours !== entry.total_hours && (
+                    <span className="text-xs font-normal text-gray-500 ml-1">
+                      (réel: {formatDuration(entry.actual_hours)})
+                    </span>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-3">
@@ -551,10 +653,15 @@ const formatDuration = (hours) => {
                           const newEntries = [...timeEntries];
                           const sessionHours = toQuarterHourUp(entry.start_time, entry.end_time, entry.pause_minutes);
                           const travelHours = e.target.checked ? (selectedClient.travel_minutes / 60) : 0;
+                          const baseHours = roundToQuarterHour(sessionHours + travelHours);
+                          const surchargeInfo = computeSurcharge(entry.date, entry.start_time, baseHours);
                           newEntries[index] = {
                             ...entry,
                             include_travel: e.target.checked,
-                            total_hours: roundToQuarterHour(sessionHours + travelHours)
+                            actual_hours: baseHours,
+                            total_hours: surchargeInfo.total_hours,
+                            surcharge_type: surchargeInfo.surcharge_type || null,
+                            surcharge_rate: surchargeInfo.surcharge_rate || 1.0
                           };
                           setTimeEntries(newEntries);
                         }}
@@ -563,7 +670,7 @@ const formatDuration = (hours) => {
                       <span className="text-xs text-orange-600">{selectedClient.travel_minutes}m</span>
                     </label>
                   )}
-                  
+
                   {/* Checkbox Transport */}
                   {!entry.in_progress && (
                     <label className="flex items-center cursor-pointer">
@@ -609,11 +716,16 @@ const formatDuration = (hours) => {
               <div className="flex-1 grid grid-cols-6 gap-2 text-sm">
                 <div>
                   <div className="text-xs text-gray-500">Date</div>
-                  <div className="font-semibold flex items-center">
+                  <div className="font-semibold flex items-center flex-wrap gap-1">
                     <Calendar size={12} className="mr-1 text-blue-600" />
                     {entry.date}
+                    {entry.surcharge_type && SURCHARGE_BADGES[entry.surcharge_type] && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${SURCHARGE_BADGES[entry.surcharge_type].color}`}>
+                        {SURCHARGE_BADGES[entry.surcharge_type].label}
+                      </span>
+                    )}
                     {entry.in_progress && (
-                      <span className="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
                         EN COURS
                       </span>
                     )}
@@ -638,6 +750,11 @@ const formatDuration = (hours) => {
                   <div className={`font-bold ${entry.in_progress ? 'text-green-700' : 'text-blue-700'}`}>
                     {formatDuration(entry.total_hours || 0)}
                     {entry.in_progress && ' ⏱️'}
+                    {entry.surcharge_type && entry.actual_hours != null && entry.actual_hours !== entry.total_hours && (
+                      <div className="text-xs font-normal text-gray-500">
+                        (réel: {formatDuration(entry.actual_hours)})
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -651,10 +768,15 @@ const formatDuration = (hours) => {
                           const newEntries = [...timeEntries];
                           const sessionHours = toQuarterHourUp(entry.start_time, entry.end_time, entry.pause_minutes);
                           const travelHours = e.target.checked ? (selectedClient.travel_minutes / 60) : 0;
+                          const baseHours = roundToQuarterHour(sessionHours + travelHours);
+                          const surchargeInfo = computeSurcharge(entry.date, entry.start_time, baseHours);
                           newEntries[index] = {
                             ...entry,
                             include_travel: e.target.checked,
-                            total_hours: roundToQuarterHour(sessionHours + travelHours)
+                            actual_hours: baseHours,
+                            total_hours: surchargeInfo.total_hours,
+                            surcharge_type: surchargeInfo.surcharge_type || null,
+                            surcharge_rate: surchargeInfo.surcharge_rate || 1.0
                           };
                           setTimeEntries(newEntries);
                         }}
@@ -819,11 +941,29 @@ const formatDuration = (hours) => {
                 />
               </div>
 
-              {manualStart && manualEnd && (
-                <div className="bg-blue-50 p-3 rounded text-sm">
-                  <strong>Aperçu:</strong> {formatDuration(toQuarterHourUp(manualStart, manualEnd, manualPause))}
-                </div>
-              )}
+              {manualStart && manualEnd && (() => {
+                const sessionHours = toQuarterHourUp(manualStart, manualEnd, manualPause);
+                const includeTravel = selectedClient?.travel_minutes > 0;
+                const travelHours = includeTravel ? (selectedClient.travel_minutes / 60) : 0;
+                const baseHours = roundToQuarterHour(sessionHours + travelHours);
+                const surchargeInfo = computeSurcharge(manualDate, manualStart, baseHours);
+                const hasSurcharge = surchargeInfo.surcharge_type && surchargeInfo.total_hours !== baseHours;
+                return (
+                  <div className="bg-blue-50 p-3 rounded text-sm space-y-1">
+                    <div><strong>Aperçu:</strong> {formatDuration(surchargeInfo.total_hours)}</div>
+                    {hasSurcharge && (
+                      <div className="text-xs text-gray-600">
+                        Heures réelles: {formatDuration(baseHours)} → Minimum {SURCHARGE_BADGES[surchargeInfo.surcharge_type]?.label || surchargeInfo.surcharge_type} appliqué
+                      </div>
+                    )}
+                    {surchargeInfo.surcharge_type && SURCHARGE_BADGES[surchargeInfo.surcharge_type] && (
+                      <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${SURCHARGE_BADGES[surchargeInfo.surcharge_type].color}`}>
+                        {SURCHARGE_BADGES[surchargeInfo.surcharge_type].label} (taux {surchargeInfo.surcharge_rate}x)
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             
             <div className="flex gap-3 mt-6">
