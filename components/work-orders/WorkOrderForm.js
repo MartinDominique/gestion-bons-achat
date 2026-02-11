@@ -1035,15 +1035,7 @@ const getFilteredSupplierPurchases = () => {
       });
       if (!hasValidDescription) {
         newErrors.work_description = 'Description obligatoire pour présenter au client (minimum 10 caractères)';
-        toast.error('⚠️ Description obligatoire pour présenter au client!', {
-          duration: 4000,
-          icon: '📝',
-          style: {
-          background: '#FEE2E2',
-          color: '#991B1B',
-          border: '1px solid #FECACA'
-        }
-        });
+        alert('⚠️ Description obligatoire pour présenter au client!\n\nMinimum 10 caractères requis.');
       }
     }
 
