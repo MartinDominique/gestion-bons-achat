@@ -680,7 +680,6 @@ export default function InventoryManager() {
               const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
               const isProduct = item._source === 'products';
               const stockQty = isProduct ? (parseInt(item.stock_qty) || 0) : null;
-              const hasQuantityData = isProduct || qty.onOrder > 0 || qty.reserved > 0;
               return (
               <div key={`${item._source}-${item.id}`} className="p-4 hover:bg-gray-50">
                 <div className="flex justify-between items-start">
@@ -723,31 +722,25 @@ export default function InventoryManager() {
                     </div>
                   </div>
 
-                  {/* Quantités (3e colonne) - pour tous les items ayant des données */}
-                  {hasQuantityData && (
-                    <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
-                      {isProduct && (
-                        <>
-                          <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                            {stockQty}
-                          </div>
-                          <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
-                        </>
-                      )}
-                      {qty.onOrder > 0 && (
-                        <div className="text-blue-600 font-medium" title="En commande (AF)">
-                          +{qty.onOrder}
-                          <span className="text-[10px] text-blue-400 ml-0.5">cmd</span>
+                  {/* Quantités (3e colonne) - toujours affiché */}
+                  <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
+                    {isProduct && (
+                      <>
+                        <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                          {stockQty}
                         </div>
-                      )}
-                      {qty.reserved > 0 && (
-                        <div className="text-orange-600 font-medium" title="Réservé (BT/BL/Soumissions)">
-                          -{qty.reserved}
-                          <span className="text-[10px] text-orange-400 ml-0.5">rés</span>
-                        </div>
-                      )}
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
+                      </>
+                    )}
+                    <div className={`font-medium ${qty.onOrder > 0 ? 'text-blue-600' : 'text-gray-400'}`} title="En commande (AF)">
+                      +{qty.onOrder}
+                      <span className={`text-[10px] ml-0.5 ${qty.onOrder > 0 ? 'text-blue-400' : 'text-gray-300'}`}>cmd</span>
                     </div>
-                  )}
+                    <div className={`font-medium ${qty.reserved > 0 ? 'text-orange-600' : 'text-gray-400'}`} title="Réservé (BT/BL/Soumissions)">
+                      -{qty.reserved}
+                      <span className={`text-[10px] ml-0.5 ${qty.reserved > 0 ? 'text-orange-400' : 'text-gray-300'}`}>rés</span>
+                    </div>
+                  </div>
 
                   {/* Prix et marge */}
                   <div className="flex flex-col items-end space-y-1 ml-3">
@@ -879,11 +872,10 @@ export default function InventoryManager() {
                 </div>
               )}
 
-              {/* Quantités en commande et réservé (lecture seule) - pour tous les items */}
+              {/* Quantités en commande et réservé (lecture seule) - toujours affiché */}
               {editingItem && (() => {
                 const qty = quantityMap[editingItem.product_id] || { onOrder: 0, reserved: 0 };
                 const isProduct = editingItem._source === 'products';
-                if (qty.onOrder === 0 && qty.reserved === 0) return null;
                 const stockVal = isProduct ? (parseInt(editForm.stock_qty) || 0) : null;
                 const dispo = isProduct ? stockVal - qty.reserved : null;
                 return (
@@ -895,18 +887,14 @@ export default function InventoryManager() {
                         <span className="font-medium text-gray-900">{stockVal}</span>
                       </div>
                     )}
-                    {qty.onOrder > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-blue-700">En commande (AF)</span>
-                        <span className="font-medium text-blue-700">+{qty.onOrder}</span>
-                      </div>
-                    )}
-                    {qty.reserved > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-orange-700">Réservé (BT/BL/Soum.)</span>
-                        <span className="font-medium text-orange-700">-{qty.reserved}</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className={qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}>En commande (AF)</span>
+                      <span className={`font-medium ${qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}`}>+{qty.onOrder}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className={qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}>Réservé (BT/BL/Soum.)</span>
+                      <span className={`font-medium ${qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}`}>-{qty.reserved}</span>
+                    </div>
                     {isProduct && (
                       <div className="border-t pt-1.5 flex justify-between text-sm">
                         <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
