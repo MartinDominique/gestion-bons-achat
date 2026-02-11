@@ -1,3 +1,16 @@
+/**
+ * @file components/DeliverySlipModal.js
+ * @description Modal de création de bon de livraison (BL) depuis un bon d'achat client (BA)
+ *              - Sélection des articles à livrer
+ *              - Déduction automatique du stock (products/non_inventory_items)
+ *              - Création des mouvements d'inventaire (inventory_movements)
+ *              - Génération PDF avec 2 copies (Client + STMT)
+ * @version 1.1.0
+ * @date 2026-02-11
+ * @changelog
+ *   1.1.0 - Ajout déduction inventaire (stock_qty) et mouvements (inventory_movements) lors de la création du BL
+ *   1.0.0 - Version initiale
+ */
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
@@ -449,7 +462,89 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
         }
       }
 
-      // 4. Mettre à jour le statut du BA si nécessaire
+      // 4. Déduire l'inventaire et créer les mouvements
+      console.log('📦 Déduction inventaire pour', selectedItems.length, 'articles livrés');
+
+      for (const item of selectedItems) {
+        if (!item.product_id || !item.quantity_to_deliver) continue;
+
+        const qty = parseFloat(item.quantity_to_deliver) || 0;
+        if (qty === 0) continue;
+
+        try {
+          // Déterminer la table (products ou non_inventory_items)
+          let tableName = 'products';
+          let productData = null;
+
+          // Essayer products d'abord
+          const { data: product, error: productError } = await supabase
+            .from('products')
+            .select('stock_qty, product_group, is_non_inventory')
+            .eq('product_id', item.product_id)
+            .single();
+
+          if (!productError && product) {
+            productData = product;
+            if (product.is_non_inventory) {
+              tableName = 'non_inventory_items';
+            }
+          } else {
+            // Essayer non_inventory_items
+            const { data: nonInvProduct, error: nonInvError } = await supabase
+              .from('non_inventory_items')
+              .select('stock_qty, product_group')
+              .eq('product_id', item.product_id)
+              .single();
+
+            if (!nonInvError && nonInvProduct) {
+              productData = nonInvProduct;
+              tableName = 'non_inventory_items';
+            }
+          }
+
+          // Mettre à jour le stock
+          if (productData) {
+            const currentStock = parseFloat(productData.stock_qty) || 0;
+            const newStock = currentStock - qty;
+            const roundedStock = Math.round(newStock * 10000) / 10000;
+
+            await supabase
+              .from(tableName)
+              .update({ stock_qty: roundedStock.toString() })
+              .eq('product_id', item.product_id);
+
+            console.log(`✅ Stock déduit: ${item.product_id} (${tableName}): ${currentStock} → ${roundedStock}`);
+          }
+
+          // Créer le mouvement d'inventaire
+          const unitCost = Math.abs(parseFloat(item.price) || 0);
+          const totalCost = Math.round(qty * unitCost * 100) / 100;
+
+          await supabase
+            .from('inventory_movements')
+            .insert({
+              product_id: item.product_id,
+              product_description: item.description || '',
+              product_group: productData?.product_group || '',
+              unit: item.unit || 'UN',
+              movement_type: 'OUT',
+              quantity: qty,
+              unit_cost: unitCost,
+              total_cost: totalCost,
+              reference_type: 'delivery_slip',
+              reference_id: deliverySlip.id.toString(),
+              reference_number: deliveryNumber,
+              notes: `BL ${deliveryNumber} - BA #${purchaseOrder.po_number} - ${purchaseOrder.client_name || 'Client'}`,
+              created_at: new Date().toISOString()
+            });
+
+        } catch (invError) {
+          console.error(`⚠️ Erreur inventaire pour ${item.product_id}:`, invError);
+          // Non bloquant - le BL est déjà créé
+        }
+      }
+
+      // 5. Mettre à jour le statut du BA si nécessaire
       const allItemsDelivered = formData.items.every(item => {
         if (selectedItems.find(si => si.id === item.id)) {
           return (item.delivered_quantity + item.quantity_to_deliver) >= item.quantity;
@@ -457,11 +552,11 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
         return item.delivered_quantity >= item.quantity;
       });
 
-      // Mettre à jour le statut à "partial" (le statut "completed" sera mis manuellement)
+      // Mettre à jour le statut à "partial" ou "completed"
       await supabase
         .from('purchase_orders')
-        .update({ 
-          status: 'partial',
+        .update({
+          status: allItemsDelivered ? 'completed' : 'partial',
           updated_at: new Date().toISOString()
         })
         .eq('id', purchaseOrder.id);
