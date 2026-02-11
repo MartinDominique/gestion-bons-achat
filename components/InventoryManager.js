@@ -9,6 +9,7 @@
  * @date 2026-02-11
  * @changelog
  *   1.3.0 - Ajout modal historique des mouvements d'inventaire par produit (dates IN/OUT)
+ *         - Correction affichage stock_qty pour non-inventaire (était caché)
  *   1.2.0 - Recherche cross-liste (produits + non-inventaire) et quantités pour non-inventaire
  *   1.1.0 - Ajout quantités en commande et réservé dans cartes et modal modifier
  *   1.0.0 - Version initiale
@@ -388,13 +389,9 @@ export default function InventoryManager() {
 
     for (const item of filtered) {
       const cost = parseFloat(item.cost_price) || 0;
-      if (item._source === 'products') {
-        const stock = parseInt(item.stock_qty) || 0;
-        totalValue += (stock * cost);
-        if (stock < 10) lowStock++;
-      } else {
-        totalValue += cost;
-      }
+      const stock = parseInt(item.stock_qty) || 0;
+      totalValue += (stock * cost);
+      if (stock < 10) lowStock++;
     }
 
     const newStats = {
@@ -453,12 +450,8 @@ export default function InventoryManager() {
       const updates = {
         cost_price: parseFloat(editForm.cost_price) || 0,
         selling_price: parseFloat(editForm.selling_price) || 0,
+        stock_qty: parseInt(editForm.stock_qty) || 0,
       };
-
-      // Ajouter stock_qty seulement pour les produits
-      if (isProduct) {
-        updates.stock_qty = parseInt(editForm.stock_qty) || 0;
-      }
 
       // Détecter les changements pour l'email
       const changes = [];
@@ -472,7 +465,7 @@ export default function InventoryManager() {
       if (updates.selling_price !== oldSelling) {
         changes.push(`Prix vendant: ${oldSelling.toFixed(2)}$ → ${updates.selling_price.toFixed(2)}$`);
       }
-      if (isProduct && updates.stock_qty !== oldQty) {
+      if (updates.stock_qty !== oldQty) {
         changes.push(`Quantité: ${oldQty} → ${updates.stock_qty}`);
       }
 
@@ -726,7 +719,7 @@ export default function InventoryManager() {
             {filteredItems.map((item) => {
               const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
               const isProduct = item._source === 'products';
-              const stockQty = isProduct ? (parseInt(item.stock_qty) || 0) : null;
+              const stockQty = parseInt(item.stock_qty) || 0;
               return (
               <div key={`${item._source}-${item.id}`} className="p-4 hover:bg-gray-50">
                 <div className="flex justify-between items-start">
@@ -752,7 +745,7 @@ export default function InventoryManager() {
                           {isProduct ? 'Inventaire' : 'Non-inv.'}
                         </span>
                       )}
-                      {isProduct && stockQty < 10 && (
+                      {stockQty < 10 && (
                         <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
                           Stock faible
                         </span>
@@ -771,14 +764,10 @@ export default function InventoryManager() {
 
                   {/* Quantités (3e colonne) - toujours affiché */}
                   <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
-                    {isProduct && (
-                      <>
-                        <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                          {stockQty}
-                        </div>
-                        <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
-                      </>
-                    )}
+                    <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                      {stockQty}
+                    </div>
+                    <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
                     <div className={`font-medium ${qty.onOrder > 0 ? 'text-blue-600' : 'text-gray-400'}`} title="En commande (AF)">
                       +{qty.onOrder}
                       <span className={`text-[10px] ml-0.5 ${qty.onOrder > 0 ? 'text-blue-400' : 'text-gray-300'}`}>cmd</span>
@@ -913,37 +902,32 @@ export default function InventoryManager() {
                 />
               </div>
       
-              {editingItem?._source === 'products' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantité en stock
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editForm.stock_qty}
-                    onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                    placeholder="0"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quantité en stock
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editForm.stock_qty}
+                  onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                  placeholder="0"
+                />
+              </div>
 
               {/* Quantités en commande et réservé (lecture seule) - toujours affiché */}
               {editingItem && (() => {
                 const qty = quantityMap[editingItem.product_id] || { onOrder: 0, reserved: 0 };
-                const isProduct = editingItem._source === 'products';
-                const stockVal = isProduct ? (parseInt(editForm.stock_qty) || 0) : null;
-                const dispo = isProduct ? stockVal - qty.reserved : null;
+                const stockVal = parseInt(editForm.stock_qty) || 0;
+                const dispo = stockVal - qty.reserved;
                 return (
                   <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
                     <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Détail quantités</div>
-                    {isProduct && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-700">En main (stock)</span>
-                        <span className="font-medium text-gray-900">{stockVal}</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">En main (stock)</span>
+                      <span className="font-medium text-gray-900">{stockVal}</span>
+                    </div>
                     <div className="flex justify-between text-sm">
                       <span className={qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}>En commande (AF)</span>
                       <span className={`font-medium ${qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}`}>+{qty.onOrder}</span>
@@ -952,12 +936,10 @@ export default function InventoryManager() {
                       <span className={qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}>Réservé (BT/BL/Soum.)</span>
                       <span className={`font-medium ${qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}`}>-{qty.reserved}</span>
                     </div>
-                    {isProduct && (
-                      <div className="border-t pt-1.5 flex justify-between text-sm">
-                        <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
-                        <span className={`font-bold ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>{dispo}</span>
-                      </div>
-                    )}
+                    <div className="border-t pt-1.5 flex justify-between text-sm">
+                      <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
+                      <span className={`font-bold ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>{dispo}</span>
+                    </div>
                   </div>
                 );
               })()}
