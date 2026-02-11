@@ -439,8 +439,24 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                       <span className="text-orange-600 ml-2">(Retour: {workOrder.client.travel_minutes}min)</span>
                     )}
                     {entry.include_transport_fee && (
-                    <span className="text-green-600 ml-2">🚗 Transport</span>
-                  )}
+                      <span className="text-green-600 ml-2">🚗 Transport</span>
+                    )}
+                    {entry.surcharge_type && (() => {
+                      const badges = {
+                        saturday:  { label: 'Samedi',     cls: 'bg-orange-500 text-white' },
+                        sunday:    { label: 'Dimanche',   cls: 'bg-red-600 text-white' },
+                        evening:   { label: 'Soir',       cls: 'bg-blue-600 text-white' },
+                        holiday:   { label: 'Jour férié', cls: 'bg-purple-600 text-white' },
+                      };
+                      const badge = badges[entry.surcharge_type];
+                      if (!badge) return null;
+                      return (
+                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${badge.cls}`}>
+                          {badge.label}
+                          {entry.actual_hours != null && entry.actual_hours !== entry.total_hours && ' - min. appliqué'}
+                        </span>
+                      );
+                    })()}
                   </div>
                 ))}
                <div className="text-sm font-bold text-blue-900 pt-2 border-t mt-2">

@@ -157,13 +157,14 @@ let finalLinkedPoId = null;
       linked_po_id: finalLinkedPoId,
       work_date,
       time_entries: body.time_entries || [],
-      total_hours: body.total_hours || 0, 
+      total_hours: body.total_hours || 0,
       work_description: work_description || 'DESCRIPTION À VENIR!',
       additional_notes: additional_notes || null,
       status: status || 'draft',
       recipient_emails: recipient_emails || [],
       include_travel_time: include_travel_time,
-      is_prix_jobe: body.is_prix_jobe || false
+      is_prix_jobe: body.is_prix_jobe || false,
+      apply_surcharge: body.apply_surcharge !== false
     };
 
     const { data: workOrder, error: workOrderError } = await client
@@ -452,13 +453,14 @@ export async function PUT(request) {
       client_id: parseInt(client_id),
       linked_po_id: finalLinkedPoId,
       work_date,
-      time_entries: body.time_entries || [],    
-      total_hours: body.total_hours || 0, 
+      time_entries: body.time_entries || [],
+      total_hours: body.total_hours || 0,
       work_description,
       additional_notes: additional_notes || null,
       status: status || 'draft',
       recipient_emails: recipient_emails || [],
-      include_travel_time: include_travel_time
+      include_travel_time: include_travel_time,
+      apply_surcharge: body.apply_surcharge !== false
     };
 
     const { data: workOrder, error: workOrderError } = await client

@@ -69,11 +69,12 @@ export default function WorkOrderForm({
     client_id: '',
     linked_po_id: '',
     work_date: getLocalDateString(),
-    time_entries: [], 
+    time_entries: [],
     work_description: '',
     additional_notes: '',
     status: 'draft',
-    is_prix_jobe: false
+    is_prix_jobe: false,
+    apply_surcharge: true
   });
 
   const [selectedEmails, setSelectedEmails] = useState({
@@ -215,7 +216,8 @@ export default function WorkOrderForm({
         work_description: workOrder.work_description || '',
         additional_notes: workOrder.additional_notes || '',
         status: workOrder.status || 'draft',
-        is_prix_jobe: workOrder.is_prix_jobe || false
+        is_prix_jobe: workOrder.is_prix_jobe || false,
+        apply_surcharge: workOrder.apply_surcharge !== false
       });
 
       // Initialize ref with workOrder time data so handleSubmit always has it
@@ -1577,12 +1579,32 @@ const getFilteredSupplierPurchases = () => {
 
         {/* DEBUG: Afficher ce que TimeTracker va recevoir */}
         {console.log('🕐 PROP initialTimeEntries pour TimeTracker:', JSON.stringify(workOrder?.time_entries || []))}
+
+        {/* Checkbox surcharge (tarifs spéciaux soir/weekend/férié) */}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.apply_surcharge}
+              onChange={(e) => handleChange('apply_surcharge', e.target.checked)}
+              className="mr-3 h-5 w-5 text-amber-600 rounded"
+            />
+            <div>
+              <span className="font-medium text-amber-900">Appliquer tarifs spéciaux</span>
+              <span className="block text-xs text-amber-700 mt-0.5">
+                Soir (min 2h, 1.5x) · Samedi/Dimanche/Férié (min 3h, 1.5x)
+              </span>
+            </div>
+          </label>
+        </div>
+
         <TimeTracker
           onTimeChange={handleTimeChange}
           initialTimeEntries={workOrder?.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
           selectedClient={selectedClient}
+          applySurcharge={formData.apply_surcharge}
         />
 
         <div className="bg-gray-50 p-4 rounded-lg">
