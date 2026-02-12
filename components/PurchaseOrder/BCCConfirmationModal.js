@@ -5,17 +5,18 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.0.0
- * @date 2026-02-09
+ * @version 1.1.0
+ * @date 2026-02-12
  * @changelog
+ *   1.1.0 - Ajout affichage historique des envois BCC precedents
  *   1.0.0 - Version initiale - Création du modal BCC
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { X, Send, Loader2, Mail, Package, AlertCircle, FileText, Plus, Trash2 } from 'lucide-react';
+import { X, Send, Loader2, Mail, Package, AlertCircle, FileText, Plus, Trash2, Clock, CheckCircle } from 'lucide-react';
 
-const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, supplierPurchases }) => {
+const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, supplierPurchases, onBCCSent }) => {
   // États du formulaire BCC
   const [bccItems, setBccItems] = useState([]);
   const [recipientEmails, setRecipientEmails] = useState([]);
@@ -268,6 +269,11 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
         messageId: result.messageId,
       });
 
+      // Notifier le parent pour rafraîchir les données (compteur BCC, historique, fichiers)
+      if (onBCCSent) {
+        onBCCSent();
+      }
+
     } catch (err) {
       console.error('Erreur envoi BCC:', err);
       setError('Erreur lors de l\'envoi: ' + err.message);
@@ -356,6 +362,36 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
               >
                 Fermer
               </button>
+            </div>
+          )}
+
+          {/* Historique des envois BCC précédents */}
+          {purchaseOrder?.bcc_history && purchaseOrder.bcc_history.length > 0 && !sendResult?.success && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+              <h4 className="text-sm font-semibold text-emerald-800 flex items-center gap-2 mb-2">
+                <CheckCircle className="w-4 h-4" />
+                {purchaseOrder.bcc_history.length} BCC envoyé(s) précédemment
+              </h4>
+              <div className="space-y-1">
+                {purchaseOrder.bcc_history.map((entry, idx) => (
+                  <div key={idx} className="flex flex-wrap items-center gap-2 text-xs text-emerald-700">
+                    <Clock className="w-3 h-3 flex-shrink-0" />
+                    <span className="font-medium">
+                      {new Date(entry.sent_at).toLocaleDateString('fr-CA', {
+                        timeZone: 'America/Toronto', day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </span>
+                    <span>-</span>
+                    <span>{entry.items_count} article(s)</span>
+                    <span>-</span>
+                    <span className="font-medium">${(parseFloat(entry.total) || 0).toFixed(2)}</span>
+                    <span className="text-emerald-600 truncate max-w-[200px]" title={entry.recipients?.join(', ')}>
+                      → {entry.recipients?.join(', ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

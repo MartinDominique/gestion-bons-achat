@@ -1289,13 +1289,17 @@ export const PriceUpdateModal = ({
     : null;
 
   const handleKeyDown = (e) => {
+    // Toujours stopper la propagation pour empêcher le formulaire parent de réagir
     if (e.key === 'Escape') {
+      e.stopPropagation();
       onClose();
-    } else if (e.key === 'Enter' && form.newSellingPrice) {
-      // Ignorer si on est dans un input (laisser l'input gérer)
-      if (e.target.tagName === 'INPUT') return;
+    } else if (e.key === 'Enter') {
       e.preventDefault();
-      onUpdate();
+      e.stopPropagation();
+      // Si un prix de vente est défini, appliquer la mise à jour
+      if (form.newSellingPrice) {
+        onUpdate();
+      }
     }
   };
 
@@ -1386,6 +1390,15 @@ export const PriceUpdateModal = ({
               min="0"
               value={form.newSellingPrice}
               onChange={(e) => setForm({...form, newSellingPrice: e.target.value})}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (form.newSellingPrice) {
+                    onUpdate();
+                  }
+                }
+              }}
               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 p-3"
               placeholder="0.00"
             />
@@ -1406,12 +1419,14 @@ export const PriceUpdateModal = ({
 
         <div className="bg-gray-50 px-6 py-4 flex gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
           >
             Ignorer (Esc)
           </button>
           <button
+            type="button"
             onClick={onUpdate}
             disabled={!form.newSellingPrice}
             className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"

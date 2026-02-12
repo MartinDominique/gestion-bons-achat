@@ -78,9 +78,9 @@ export default function WorkOrderForm({
   });
 
   const [selectedEmails, setSelectedEmails] = useState({
-    email: true,      
+    email: true,
     email_2: false,
-    email_admin: false
+    email_admin: true
   });
 
   const [descriptions, setDescriptions] = useState(['']);
@@ -126,21 +126,22 @@ export default function WorkOrderForm({
 
   const loadEmailPreferences = (clientId) => {
     if (!clientId) return;
-    
+
     const saved = localStorage.getItem('workorder_email_preferences');
     if (saved) {
       try {
         const preferences = JSON.parse(saved);
         if (preferences[clientId]) {
-          setSelectedEmails(preferences[clientId]);
+          // Toujours forcer email_admin à true (Administration toujours coché)
+          setSelectedEmails({ ...preferences[clientId], email_admin: true });
           return;
         }
       } catch (e) {
         console.error('Erreur chargement préférences email:', e);
       }
     }
-    
-    setSelectedEmails({ email: true, email_2: false, email_admin: false });
+
+    setSelectedEmails({ email: true, email_2: false, email_admin: true });
   };
 
   const saveEmailPreferences = (clientId, emailSelections) => {

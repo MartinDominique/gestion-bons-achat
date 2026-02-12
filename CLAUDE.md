@@ -431,7 +431,7 @@ CRON_SECRET                   # Auth pour cron jobs
 1. **Bon de Livraison (BL)** - Intégré dans l'app BT (Option A)
 2. ~~**TimeTracker surcharges**~~ - ✅ COMPLÉTÉ 2026-02-10 (holidays.js, TimeTracker v2.0.0, PDF, API)
 3. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
-4. ~~**BCC Confirmation commande**~~ - ✅ COMPLÉTÉ 2026-02-09 (BCCConfirmationModal, API send-confirmation, PDF)
+4. ~~**BCC Confirmation commande**~~ - ✅ COMPLÉTÉ 2026-02-09, mis à jour 2026-02-12 (suivi BCC: indicateurs liste/onglet, historique, PDFs dans Docs)
 5. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
 6. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
 7. **Optimisation mobile BT/BL** - 95% usage mobile

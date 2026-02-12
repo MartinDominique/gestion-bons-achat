@@ -38,7 +38,7 @@ const PurchaseOrderManager = () => {
       
       const { data, error: fetchError } = await supabase
         .from('purchase_orders')
-        .select('id, po_number, client_name, client_id, description, amount, status, date, created_at, submission_no')
+        .select('id, po_number, client_name, client_id, description, amount, status, date, created_at, submission_no, bcc_sent_count')
         .order('created_at', { ascending: false });
 
       if (fetchError) {
@@ -432,6 +432,14 @@ const PurchaseOrderManager = () => {
                       </select>
                     )}
                   </div>
+
+                  {/* BCC */}
+                  {(po.bcc_sent_count || 0) > 0 && (
+                    <div className="flex items-center gap-1 bg-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0" title={`${po.bcc_sent_count} BCC envoyé(s)`}>
+                      <FileText className="w-3 h-3 text-emerald-600" />
+                      <span className="text-xs font-medium text-emerald-700">{po.bcc_sent_count}</span>
+                    </div>
+                  )}
 
                   {/* LIVRAISON */}
                   <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">
