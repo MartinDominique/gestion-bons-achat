@@ -735,7 +735,7 @@ export default function InventoryManager() {
               const isProduct = item._source === 'products';
               const stockQty = parseInt(item.stock_qty) || 0;
               return (
-              <div key={`${item._source}-${item.id}`} className="p-4 hover:bg-gray-50">
+              <div key={`${item._source}-${item.id}`} className="p-4 hover:bg-blue-50 cursor-pointer active:bg-blue-100 transition-colors" onClick={() => openEditModal(item)}>
                 <div className="flex justify-between items-start">
 
                   {/* Informations produit */}
@@ -805,24 +805,6 @@ export default function InventoryManager() {
 
                     <div className={`text-xs font-medium ${getMarginColor(item.cost_price, item.selling_price)}`}>
                       {getMarginPercentage(item.cost_price, item.selling_price)}
-                    </div>
-
-                    <div className="flex gap-1 mt-2">
-                      <button
-                        onClick={() => openEditModal(item, 'history')}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-xs flex items-center"
-                        title="Historique des mouvements"
-                      >
-                        <History className="w-3 h-3 mr-1" />
-                        Hist.
-                      </button>
-                      <button
-                        onClick={() => openEditModal(item)}
-                        className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs flex items-center"
-                      >
-                        <Edit className="w-3 h-3 mr-1" />
-                        Modifier
-                      </button>
                     </div>
                   </div>
                 </div>
