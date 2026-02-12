@@ -808,6 +808,9 @@ export const ProductSearch = ({
                   <p className="font-medium">{product.product_id} - {product.description}</p>
                   <p className="text-sm text-gray-600">
                     Prix coût: {formatUnitPrice(product.cost_price)} / {product.unit}
+                    {' | '}Main: <span className={product.stock_qty > 0 ? 'font-medium text-green-700' : 'text-gray-400'}>{product.stock_qty || 0}</span>
+                    {' | '}Cmd: <span className={product.on_order > 0 ? 'font-medium text-blue-700' : 'text-gray-400'}>{product.on_order || 0}</span>
+                    {' | '}Rés: <span className={product.reserved > 0 ? 'font-medium text-orange-600' : 'text-gray-400'}>{product.reserved || 0}</span>
                   </p>
                 </div>
                 <button
