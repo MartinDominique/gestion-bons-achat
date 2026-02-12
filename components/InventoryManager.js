@@ -1,16 +1,20 @@
 /**
  * @file components/InventoryManager.js
- * @description Gestionnaire d'inventaire avec affichage des quantités
- *              - En main (stock_qty)
- *              - En commande (AF commandés/partiels)
- *              - Réservé (BT brouillon/signés + BL non envoyés)
- *              - Historique des mouvements par produit (IN/OUT avec dates)
- *              - Historique des prix (shift cost_price/selling_price)
- *              - Modification de la description produit
+ * @description Gestionnaire d'inventaire avec recherche serveur performante
+ *              - Recherche côté Supabase (ilike) après 2+ caractères, debounce 300ms
+ *              - Aucun produit chargé au départ (page vide + barre de recherche)
+ *              - Bouton "Charger tout" pour consultation complète
+ *              - Dropdown "Charger par groupe" pour chargement ciblé
+ *              - Badge visuel Inventaire vs Non-inventaire
+ *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 2.0.0
- * @date 2026-02-11
+ * @version 3.0.0
+ * @date 2026-02-12
  * @changelog
+ *   3.0.0 - Recherche serveur (plus de chargement initial des ~7000 produits)
+ *         - Ajout bouton "Charger tout" + dropdown "Charger par groupe"
+ *         - Debounce 300ms sur la recherche, min 2 caractères
+ *         - Badge source toujours visible (Inventaire / Non-inv.)
  *   2.0.0 - Modal unifié avec onglets (Édition / Historique / Prix)
  *         - Ajout modification description produit
  *         - Ajout historique prix avec décalage (shift) sur changement
@@ -21,39 +25,33 @@
  *   1.1.0 - Ajout quantités en commande et réservé dans cartes et modal modifier
  *   1.0.0 - Version initiale
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
   Eye, Plus, Trash2, RotateCcw, Upload, ShoppingCart, Clock,
-  History, ArrowDownCircle, ArrowUpCircle
+  History, ArrowDownCircle, ArrowUpCircle, Loader2, FolderOpen, List
 } from 'lucide-react';
 
 export default function InventoryManager() {
-  // États principaux
-  const [products, setProducts] = useState([]);
-  const [nonInventoryItems, setNonInventoryItems] = useState([]);
-  const [filteredItems, setFilteredItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // ===== ÉTATS PRINCIPAUX =====
+  const [displayItems, setDisplayItems] = useState([]);       // Items affichés (résultats recherche OU chargement)
+  const [loading, setLoading] = useState(false);               // Chargement général
+  const [searchLoading, setSearchLoading] = useState(false);   // Chargement recherche
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState('all');
   const [productGroups, setProductGroups] = useState([]);
-  const [activeTab, setActiveTab] = useState('products'); // 'products' ou 'non_inventory'
+  const [loadMode, setLoadMode] = useState('idle');            // 'idle', 'search', 'all', 'group'
+  const [selectedLoadGroup, setSelectedLoadGroup] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [itemCount, setItemCount] = useState({ products: 0, nonInventory: 0 });
 
   // Quantités en commande et réservé par product_id
   const [quantityMap, setQuantityMap] = useState({});
 
-  // Cache intelligent
-  const [cachedProducts, setCachedProducts] = useState(null);
-  const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState(null);
-  const [lastFetchTime, setLastFetchTime] = useState(null);
-
-  // Cache pour les filtres (optimisation supplémentaire)
-  const [filteredCache, setFilteredCache] = useState({});
-  const [lastFilterParams, setLastFilterParams] = useState('');
+  // Debounce timer
+  const searchTimerRef = useRef(null);
 
   // Modal d'édition (unifié avec historique)
   const [editingItem, setEditingItem] = useState(null);
@@ -75,115 +73,143 @@ export default function InventoryManager() {
   const [historyMovements, setHistoryMovements] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Statistiques (gardées pour les calculs internes)
-  const [stats, setStats] = useState({
-    total: 0,
-    lowStock: 0,
-    totalValue: 0
-  });
-
-  // Chargement initial
+  // ===== CHARGEMENT INITIAL (groupes + quantités seulement) =====
   useEffect(() => {
-    loadData();
+    loadProductGroups();
     loadQuantities();
   }, []);
 
-  // Filtrage et recherche
+  // ===== DEBOUNCE RECHERCHE =====
   useEffect(() => {
-    applyFilters();
-  }, [searchTerm, selectedGroup, activeTab, products, nonInventoryItems]);
+    // Nettoyer le timer précédent
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
 
-  const loadData = async (forceReload = false) => {
+    // Si moins de 2 caractères, revenir à idle
+    if (searchTerm.length < 2) {
+      if (loadMode === 'search') {
+        setDisplayItems([]);
+        setLoadMode('idle');
+        setItemCount({ products: 0, nonInventory: 0 });
+      }
+      return;
+    }
+
+    // Debounce 300ms
+    setSearchLoading(true);
+    searchTimerRef.current = setTimeout(() => {
+      performSearch(searchTerm);
+    }, 300);
+
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [searchTerm]);
+
+  // ===== CHARGER LES GROUPES DISTINCTS =====
+  const loadProductGroups = async () => {
     try {
-      const now = Date.now();
-      const fiveMinutesAgo = now - (5 * 60 * 1000); // 5 minutes en millisecondes
-      
-      // 🧠 CACHE INTELLIGENT - Vérifier si on peut utiliser le cache
-      if (!forceReload && cachedProducts && cachedNonInventoryItems && lastFetchTime && lastFetchTime > fiveMinutesAgo) {
-        console.log("✅ Cache utilisé - Chargement instantané (données < 5 min)");
-        setProducts(cachedProducts);
-        setNonInventoryItems(cachedNonInventoryItems);
-        
-        // Extraire les groupes depuis le cache
-        const allItems = [...cachedProducts, ...cachedNonInventoryItems];
-        const groups = [...new Set(allItems
-          .map(item => item.product_group)
-          .filter(group => group && group.trim() !== '')
-        )].sort();
-        setProductGroups(groups);
-        
-        setLoading(false);
-        return;
+      const response = await fetch('/api/products/groups');
+      const result = await response.json();
+      if (result.success) {
+        setProductGroups(result.data);
       }
-      
-      // 📡 Chargement depuis la base de données
-      console.log(`📡 Chargement depuis Supabase ${forceReload ? '(rechargement forcé)' : '(données expirées ou premier chargement)'}`);
-      setLoading(true);
-      
-      // Charger TOUS les produits par pagination
-      const allProducts = [];
-      let page = 0;
-      const pageSize = 1000;
-      
-      while (true) {
-        const { data: batch, error } = await supabase
-          .from('products')
-          .select('*')
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-          .order('product_id', { ascending: true });
-        
-        if (error) throw error;
-        if (!batch || batch.length === 0) break;
-        
-        allProducts.push(...batch);
-        console.log(`Lot ${page + 1}: ${batch.length} produits (Total: ${allProducts.length})`);
-        
-        if (batch.length < pageSize) break; // Dernier lot
-        page++;
-      }
-      
-      // Charger les articles non-inventaire
-      const { data: nonInventoryData, error: nonInventoryError } = await supabase
-        .from('non_inventory_items')
-        .select('*')
-        .order('product_id', { ascending: true });
-      
-      if (nonInventoryError) throw nonInventoryError;
-      
-      console.log(`✅ Chargement terminé: ${allProducts.length} produits + ${(nonInventoryData || []).length} non-inventaire`);
-      
-      // 💾 SAUVEGARDER EN CACHE
-      setCachedProducts(allProducts);
-      setCachedNonInventoryItems(nonInventoryData || []);
-      setLastFetchTime(now);
-      console.log("💾 Données mises en cache pour 5 minutes");
-      
-      // Mettre à jour les états
-      setProducts(allProducts);
-      setNonInventoryItems(nonInventoryData || []);
-      
-      // 🧹 Nettoyer le cache de filtres quand les données changent
-      setFilteredCache({});
-      setLastFilterParams('');
-      
-      // Extraire les groupes uniques
-      const allItems = [...allProducts, ...(nonInventoryData || [])];
-      const groups = [...new Set(allItems
-        .map(item => item.product_group)
-        .filter(group => group && group.trim() !== '')
-      )].sort();
-      
-      setProductGroups(groups);
-      
     } catch (error) {
-      console.error('Erreur chargement inventaire:', error);
+      console.error('Erreur chargement groupes:', error);
+    }
+  };
+
+  // ===== RECHERCHE SERVEUR =====
+  const performSearch = async (term) => {
+    try {
+      setSearchLoading(true);
+      const response = await fetch(`/api/products/search?mode=search&search=${encodeURIComponent(term)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setDisplayItems(result.data);
+        setLoadMode('search');
+        setItemCount({
+          products: result.data.filter(i => i._source === 'products').length,
+          nonInventory: result.data.filter(i => i._source === 'non_inventory').length,
+        });
+      } else {
+        console.error('Erreur recherche:', result.error);
+      }
+    } catch (error) {
+      console.error('Erreur recherche:', error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // ===== CHARGER TOUT =====
+  const loadAll = async () => {
+    try {
+      setLoading(true);
+      setSearchTerm('');
+      const response = await fetch('/api/products/search?mode=all');
+      const result = await response.json();
+
+      if (result.success) {
+        setDisplayItems(result.data);
+        setLoadMode('all');
+        setItemCount({
+          products: result.data.filter(i => i._source === 'products').length,
+          nonInventory: result.data.filter(i => i._source === 'non_inventory').length,
+        });
+      } else {
+        alert('Erreur lors du chargement: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Erreur charger tout:', error);
       alert('Erreur lors du chargement de l\'inventaire');
     } finally {
       setLoading(false);
     }
   };
 
-  // Charger les quantités en commande et réservé
+  // ===== CHARGER PAR GROUPE =====
+  const loadByGroup = async (group) => {
+    if (!group) return;
+    try {
+      setLoading(true);
+      setSelectedLoadGroup(group);
+      setSearchTerm('');
+      const response = await fetch(`/api/products/search?mode=group&group=${encodeURIComponent(group)}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setDisplayItems(result.data);
+        setLoadMode('group');
+        setItemCount({
+          products: result.data.filter(i => i._source === 'products').length,
+          nonInventory: result.data.filter(i => i._source === 'non_inventory').length,
+        });
+      } else {
+        alert('Erreur lors du chargement: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Erreur charger groupe:', error);
+      alert('Erreur lors du chargement du groupe');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ===== EFFACER / RETOUR IDLE =====
+  const clearResults = () => {
+    setSearchTerm('');
+    setDisplayItems([]);
+    setLoadMode('idle');
+    setSelectedLoadGroup('');
+    setItemCount({ products: 0, nonInventory: 0 });
+  };
+
+  // ===== CHARGER QUANTITÉS (en commande + réservé) =====
   const loadQuantities = async () => {
     try {
       const map = {};
@@ -267,19 +293,18 @@ export default function InventoryManager() {
       }
 
       setQuantityMap(map);
-      console.log(`✅ Quantités chargées: ${Object.keys(map).length} produits avec données`);
     } catch (error) {
       console.error('Erreur chargement quantités:', error);
     }
   };
 
-  // Fonction pour gérer l'upload d'inventaire
+  // ===== UPLOAD INVENTAIRE =====
   const handleInventoryUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     setUploadingInventory(true);
-    
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -292,8 +317,16 @@ export default function InventoryManager() {
       if (response.ok) {
         const result = await response.json();
         alert(`Inventaire importé avec succès !\n${result.message || 'Produits mis à jour'}`);
-        await loadData(true);
+        // Recharger les groupes et si on avait des résultats, les rafraîchir
+        await loadProductGroups();
         await loadQuantities();
+        if (loadMode === 'all') {
+          await loadAll();
+        } else if (loadMode === 'group' && selectedLoadGroup) {
+          await loadByGroup(selectedLoadGroup);
+        } else if (loadMode === 'search' && searchTerm.length >= 2) {
+          await performSearch(searchTerm);
+        }
       } else {
         const errorData = await response.json();
         alert(`Erreur lors de l'import: ${errorData.error || 'Erreur inconnue'}`);
@@ -307,6 +340,7 @@ export default function InventoryManager() {
     }
   };
 
+  // ===== FORMATAGE =====
   const formatMovementDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('fr-CA', {
@@ -318,89 +352,32 @@ export default function InventoryManager() {
     });
   };
 
-  const applyFilters = () => {
-    // 🚀 OPTIMISATION - Créer une clé de cache unique basée sur les paramètres de filtre
-    const filterKey = `${activeTab}-${searchTerm}-${selectedGroup}`;
-
-    // 🧠 Vérifier si on a déjà calculé ce filtre
-    if (filteredCache[filterKey] && filterKey === lastFilterParams) {
-      console.log("⚡ Cache de filtre utilisé - Instantané");
-      setFilteredItems(filteredCache[filterKey].items);
-      setStats(filteredCache[filterKey].stats);
-      return;
-    }
-
-    console.log("🔄 Calcul des filtres...");
-    const startTime = performance.now();
-
-    // Lors d'une recherche, chercher dans les DEUX listes (produits + non-inventaire)
-    // Sans recherche, afficher seulement l'onglet actif
-    let sourceData;
-    if (searchTerm) {
-      // Taguer chaque item avec sa source pour l'affichage
-      const taggedProducts = products.map(p => ({ ...p, _source: 'products' }));
-      const taggedNonInv = nonInventoryItems.map(p => ({ ...p, _source: 'non_inventory' }));
-      sourceData = [...taggedProducts, ...taggedNonInv];
-    } else {
-      sourceData = activeTab === 'products'
-        ? products.map(p => ({ ...p, _source: 'products' }))
-        : nonInventoryItems.map(p => ({ ...p, _source: 'non_inventory' }));
-    }
-
-    // 🚀 OPTIMISATION - Filtrage optimisé
-    let filtered;
-    if (!searchTerm && selectedGroup === 'all') {
-      filtered = sourceData;
-    } else {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = sourceData.filter(item => {
-        const matchesSearch = !searchTerm ||
-          item.product_id.toLowerCase().includes(searchLower) ||
-          (item.description && item.description.toLowerCase().includes(searchLower));
-
-        const matchesGroup = selectedGroup === 'all' || item.product_group === selectedGroup;
-
-        return matchesSearch && matchesGroup;
-      });
-    }
-
-    // 🚀 OPTIMISATION - Calcul des statistiques optimisé
-    let totalValue = 0;
-    let lowStock = 0;
-
-    for (const item of filtered) {
-      const cost = parseFloat(item.cost_price) || 0;
-      const stock = parseInt(item.stock_qty) || 0;
-      totalValue += (stock * cost);
-      if (stock < 10) lowStock++;
-    }
-
-    const newStats = {
-      total: filtered.length,
-      lowStock: lowStock,
-      totalValue: totalValue
-    };
-
-    // 💾 Sauvegarder en cache
-    const cacheData = {
-      items: filtered,
-      stats: newStats
-    };
-
-    setFilteredCache(prev => ({
-      ...prev,
-      [filterKey]: cacheData
-    }));
-    setLastFilterParams(filterKey);
-
-    // Mettre à jour les états
-    setFilteredItems(filtered);
-    setStats(newStats);
-
-    const endTime = performance.now();
-    console.log(`✅ Filtres calculés en ${(endTime - startTime).toFixed(2)}ms (${filtered.length} items)`);
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-CA', {
+      style: 'currency',
+      currency: 'CAD'
+    }).format(amount || 0);
   };
 
+  const getMarginColor = (costPrice, sellingPrice) => {
+    const cost = parseFloat(costPrice) || 0;
+    const selling = parseFloat(sellingPrice) || 0;
+    if (cost === 0) return 'text-gray-400';
+    const margin = ((selling - cost) / cost) * 100;
+    if (margin < 10) return 'text-red-600';
+    if (margin < 25) return 'text-yellow-600';
+    return 'text-green-600';
+  };
+
+  const getMarginPercentage = (costPrice, sellingPrice) => {
+    const cost = parseFloat(costPrice) || 0;
+    const selling = parseFloat(sellingPrice) || 0;
+    if (cost === 0) return '-%';
+    const margin = ((selling - cost) / cost) * 100;
+    return `${margin.toFixed(1)}%`;
+  };
+
+  // ===== MODAL ÉDITION =====
   const openEditModal = async (item, initialTab = 'edit') => {
     setEditingItem(item);
     setEditForm({
@@ -443,7 +420,6 @@ export default function InventoryManager() {
   const saveChanges = async () => {
     if (!editingItem) return;
 
-    // Utiliser _source de l'item pour déterminer la table (fonctionne avec recherche cross-liste)
     const isProduct = editingItem._source === 'products';
 
     try {
@@ -506,43 +482,22 @@ export default function InventoryManager() {
               type: isProduct ? 'Inventaire' : 'Non-Inventaire'
             })
           });
-          console.log('📧 Email de notification envoyé');
         } catch (emailError) {
           console.error('Erreur envoi email:', emailError);
         }
       }
 
-      // Mettre à jour localement au lieu de tout recharger
+      // Mettre à jour localement dans displayItems
       if (data && data.length > 0) {
-        const updatedItem = data[0];
+        const updatedItem = { ...data[0], _source: editingItem._source };
 
-        if (isProduct) {
-          setProducts(prevProducts =>
-            prevProducts.map(product =>
-              product.product_id === updatedItem.product_id ? updatedItem : product
-            )
-          );
-          setCachedProducts(prevCache =>
-            prevCache ? prevCache.map(product =>
-              product.product_id === updatedItem.product_id ? updatedItem : product
-            ) : null
-          );
-        } else {
-          setNonInventoryItems(prevItems =>
-            prevItems.map(item =>
-              item.product_id === updatedItem.product_id ? updatedItem : item
-            )
-          );
-          setCachedNonInventoryItems(prevCache =>
-            prevCache ? prevCache.map(item =>
-              item.product_id === updatedItem.product_id ? updatedItem : item
-            ) : null
-          );
-        }
-
-        console.log('✅ Produit mis à jour localement et en cache');
-        setFilteredCache({});
-        setLastFilterParams('');
+        setDisplayItems(prev =>
+          prev.map(item =>
+            item.product_id === updatedItem.product_id && item._source === updatedItem._source
+              ? updatedItem
+              : item
+          )
+        );
 
         alert('Modifications sauvegardées avec succès !');
       }
@@ -557,65 +512,34 @@ export default function InventoryManager() {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
+  // ===== LABEL DU MODE ACTIF =====
+  const getModeLabel = () => {
+    switch (loadMode) {
+      case 'search':
+        return `Résultats pour "${searchTerm}"`;
+      case 'all':
+        return 'Tous les produits';
+      case 'group':
+        return `Groupe: ${selectedLoadGroup}`;
+      default:
+        return null;
+    }
   };
 
-  const getMarginColor = (costPrice, sellingPrice) => {
-    const cost = parseFloat(costPrice) || 0;
-    const selling = parseFloat(sellingPrice) || 0;
-    
-    if (cost === 0) return 'text-gray-400';
-    
-    const margin = ((selling - cost) / cost) * 100;
-    
-    if (margin < 10) return 'text-red-600';
-    if (margin < 25) return 'text-yellow-600';
-    return 'text-green-600';
-  };
-
-  const getMarginPercentage = (costPrice, sellingPrice) => {
-    const cost = parseFloat(costPrice) || 0;
-    const selling = parseFloat(sellingPrice) || 0;
-    
-    if (cost === 0) return '-%';
-    
-    const margin = ((selling - cost) / cost) * 100;
-    return `${margin.toFixed(1)}%`;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="ml-4 text-blue-600 font-medium">Chargement de l'inventaire...</p>
-      </div>
-    );
-  }
-
+  // ===== RENDU =====
   return (
     <div className="max-w-6xl mx-auto p-2 sm:p-4 space-y-3">
-      
-      {/* En-tête compact - STATISTIQUES SUPPRIMÉES */}
+
+      {/* En-tête */}
       <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-lg shadow-lg p-3 text-white">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <h2 className="text-xl font-bold">Gestion Inventaire</h2>
-            <div className="flex items-center gap-2">
-              <p className="text-white/90 text-sm mt-1">
-                Consultez et modifiez vos produits et prix
-              </p>
-              {lastFetchTime && (
-                <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                  {Date.now() - lastFetchTime < 300000 ? '🟢 Cache' : '🔄 Actualisé'}
-                </span>
-              )}
-            </div>
+            <p className="text-white/90 text-sm mt-1">
+              Recherchez ou chargez vos produits
+            </p>
           </div>
-          
+
           <div className="flex gap-2">
             <button
               onClick={() => setShowInventoryUpload(true)}
@@ -624,196 +548,230 @@ export default function InventoryManager() {
               <Upload className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Import</span>
             </button>
-            <button
-              onClick={() => { loadData(true); loadQuantities(); }}
-              disabled={loading}
-              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-xs font-medium hover:bg-white/20 disabled:opacity-50"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Onglets */}
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="flex border-b">
-          <button
-            onClick={() => setActiveTab('products')}
-            className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 ${
-              activeTab === 'products'
-                ? 'border-blue-500 text-blue-600 bg-blue-50'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Package className="w-4 h-4 inline mr-2" />
-            Produits ({products.length})
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('non_inventory')}
-            className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 ${
-              activeTab === 'non_inventory'
-                ? 'border-purple-500 text-purple-600 bg-purple-50'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Eye className="w-4 h-4 inline mr-2" />
-            Non-inventaire ({nonInventoryItems.length})
-          </button>
-        </div>
-
-        {/* Barre de recherche et filtres */}
-        <div className="p-3 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Recherche */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Rechercher par code ou description..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
-              />
-            </div>
-
-            {/* Bouton filtres mobile */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="sm:hidden px-4 py-3 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center"
-            >
-              <Filter className="w-5 h-5 mr-2" />
-              Filtres
-            </button>
-          </div>
-
-          {/* Filtres */}
-          <div className={`${showFilters ? 'block' : 'hidden'} sm:block`}>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <select
-                value={selectedGroup}
-                onChange={(e) => setSelectedGroup(e.target.value)}
-                className="w-full sm:w-auto px-2 py-2 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+            {loadMode !== 'idle' && (
+              <button
+                onClick={clearResults}
+                className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-xs font-medium hover:bg-white/20 flex items-center"
+                title="Effacer et revenir à l'accueil"
               >
-                <option value="all">Tous les groupes</option>
-                {productGroups.map(group => (
-                  <option key={group} value={group}>{group}</option>
-                ))}
-              </select>
-              
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="w-full sm:w-auto px-2 py-2 bg-red-100 text-red-700 rounded-lg text-xs hover:bg-red-200 flex items-center justify-center"
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  Effacer recherche
-                </button>
-              )}
-            </div>
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Liste des produits */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        {filteredItems.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500 text-lg">
-              {searchTerm || selectedGroup !== 'all' 
-                ? 'Aucun produit trouvé avec ces critères'
-                : 'Aucun produit dans cette catégorie'
-              }
-            </p>
+      {/* Barre de recherche + Options de chargement */}
+      <div className="bg-white rounded-lg shadow-md p-3 space-y-3">
+        {/* Recherche */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Rechercher par code ou description (min. 2 caractères)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-10 py-3 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
+          />
+          {searchLoading && (
+            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 w-5 h-5 animate-spin" />
+          )}
+          {searchTerm && !searchLoading && (
+            <button
+              onClick={() => { setSearchTerm(''); if (loadMode === 'search') clearResults(); }}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Boutons de chargement */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* Dropdown charger par groupe */}
+          <div className="flex-1 relative">
+            <select
+              value=""
+              onChange={(e) => { if (e.target.value) loadByGroup(e.target.value); }}
+              className="w-full px-3 py-3 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm appearance-none bg-white cursor-pointer"
+              disabled={loading}
+            >
+              <option value="">Charger par groupe...</option>
+              {productGroups.map(group => (
+                <option key={group} value={group}>{group}</option>
+              ))}
+            </select>
+            <FolderOpen className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
           </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {filteredItems.map((item) => {
-              const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
-              const isProduct = item._source === 'products';
-              const stockQty = parseInt(item.stock_qty) || 0;
-              return (
-              <div key={`${item._source}-${item.id}`} className="p-4 hover:bg-blue-50 cursor-pointer active:bg-blue-100 transition-colors" onClick={() => openEditModal(item)}>
-                <div className="flex justify-between items-start">
 
-                  {/* Informations produit */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1 flex-wrap gap-y-1">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
-                        {item.product_id}
-                      </span>
-                      {item.product_group && (
-                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
-                          {item.product_group}
-                        </span>
-                      )}
-                      {/* Badge source quand recherche dans les 2 listes */}
-                      {searchTerm && (
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                          isProduct
-                            ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                            : 'bg-purple-50 text-purple-600 border border-purple-200'
-                        }`}>
-                          {isProduct ? 'Inventaire' : 'Non-inv.'}
-                        </span>
-                      )}
-                      {stockQty < 10 && (
-                        <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
-                          Stock faible
-                        </span>
-                      )}
-                    </div>
+          {/* Bouton charger tout */}
+          <button
+            onClick={loadAll}
+            disabled={loading}
+            className="px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center gap-2 min-w-[140px]"
+          >
+            {loading && loadMode !== 'group' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <List className="w-4 h-4" />
+            )}
+            Charger tout
+          </button>
+        </div>
 
-                    <h3 className="text-sm font-medium text-gray-900 mb-1 pr-2">
-                      {item.description || 'Description non disponible'}
-                    </h3>
-
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
-                      {item.unit && <span>Unité: {item.unit}</span>}
-                      {item.supplier && <span>Fournisseur: {item.supplier}</span>}
-                    </div>
-                  </div>
-
-                  {/* Quantités (3e colonne) - toujours affiché */}
-                  <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
-                    <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                      {stockQty}
-                    </div>
-                    <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
-                    <div className={`font-medium ${qty.onOrder > 0 ? 'text-blue-600' : 'text-gray-400'}`} title="En commande (AF)">
-                      +{qty.onOrder}
-                      <span className={`text-[10px] ml-0.5 ${qty.onOrder > 0 ? 'text-blue-400' : 'text-gray-300'}`}>cmd</span>
-                    </div>
-                    <div className={`font-medium ${qty.reserved > 0 ? 'text-orange-600' : 'text-gray-400'}`} title="Réservé (BT/BL/Soumissions)">
-                      -{qty.reserved}
-                      <span className={`text-[10px] ml-0.5 ${qty.reserved > 0 ? 'text-orange-400' : 'text-gray-300'}`}>rés</span>
-                    </div>
-                  </div>
-
-                  {/* Prix et marge */}
-                  <div className="flex flex-col items-end space-y-1 ml-3">
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatCurrency(item.selling_price)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Coût: {formatCurrency(item.cost_price)}
-                      </div>
-                    </div>
-
-                    <div className={`text-xs font-medium ${getMarginColor(item.cost_price, item.selling_price)}`}>
-                      {getMarginPercentage(item.cost_price, item.selling_price)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              );
-            })}
+        {/* Indicateur du mode actif + compteurs */}
+        {loadMode !== 'idle' && (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-sm text-gray-600 font-medium">
+              {getModeLabel()}
+            </span>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+              {itemCount.products} inventaire
+            </span>
+            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+              {itemCount.nonInventory} non-inv.
+            </span>
+            <span className="text-xs text-gray-500">
+              ({displayItems.length} total)
+            </span>
           </div>
         )}
       </div>
+
+      {/* État IDLE — Instructions */}
+      {loadMode === 'idle' && !loading && (
+        <div className="bg-white rounded-lg shadow-md py-16 text-center">
+          <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <h3 className="text-lg font-medium text-gray-600 mb-2">
+            Recherchez un produit pour commencer
+          </h3>
+          <p className="text-sm text-gray-400 max-w-md mx-auto">
+            Tapez au moins 2 caractères dans la barre de recherche,
+            ou utilisez les boutons ci-dessus pour charger les produits par groupe ou en totalité.
+          </p>
+        </div>
+      )}
+
+      {/* Spinner de chargement (charger tout / par groupe) */}
+      {loading && (
+        <div className="bg-white rounded-lg shadow-md py-16 text-center">
+          <Loader2 className="w-12 h-12 mx-auto mb-4 text-blue-500 animate-spin" />
+          <p className="text-blue-600 font-medium">
+            {loadMode === 'all' || (!selectedLoadGroup && loadMode !== 'group')
+              ? 'Chargement de tous les produits...'
+              : `Chargement du groupe "${selectedLoadGroup}"...`
+            }
+          </p>
+          <p className="text-sm text-gray-400 mt-1">
+            Cela peut prendre quelques secondes
+          </p>
+        </div>
+      )}
+
+      {/* Liste des produits */}
+      {!loading && loadMode !== 'idle' && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          {displayItems.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500 text-lg">
+                Aucun produit trouvé
+              </p>
+              {loadMode === 'search' && (
+                <p className="text-sm text-gray-400 mt-1">
+                  Essayez un autre terme de recherche
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {displayItems.map((item) => {
+                const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
+                const isProduct = item._source === 'products';
+                const stockQty = parseInt(item.stock_qty) || 0;
+                return (
+                  <div
+                    key={`${item._source}-${item.product_id}`}
+                    className="p-4 hover:bg-blue-50 cursor-pointer active:bg-blue-100 transition-colors"
+                    onClick={() => openEditModal(item)}
+                  >
+                    <div className="flex justify-between items-start">
+
+                      {/* Informations produit */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1 flex-wrap gap-y-1">
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
+                            {item.product_id}
+                          </span>
+                          {item.product_group && (
+                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                              {item.product_group}
+                            </span>
+                          )}
+                          {/* Badge source — toujours visible */}
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                            isProduct
+                              ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                              : 'bg-purple-50 text-purple-600 border border-purple-200'
+                          }`}>
+                            {isProduct ? 'Inventaire' : 'Non-inv.'}
+                          </span>
+                          {stockQty < 10 && isProduct && (
+                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                              Stock faible
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-sm font-medium text-gray-900 mb-1 pr-2">
+                          {item.description || 'Description non disponible'}
+                        </h3>
+
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                          {item.unit && <span>Unité: {item.unit}</span>}
+                          {item.supplier && <span>Fournisseur: {item.supplier}</span>}
+                        </div>
+                      </div>
+
+                      {/* Quantités */}
+                      <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
+                        <div className={`font-semibold ${stockQty < 10 && isProduct ? 'text-red-600' : 'text-gray-900'}`}>
+                          {stockQty}
+                        </div>
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
+                        <div className={`font-medium ${qty.onOrder > 0 ? 'text-blue-600' : 'text-gray-400'}`} title="En commande (AF)">
+                          +{qty.onOrder}
+                          <span className={`text-[10px] ml-0.5 ${qty.onOrder > 0 ? 'text-blue-400' : 'text-gray-300'}`}>cmd</span>
+                        </div>
+                        <div className={`font-medium ${qty.reserved > 0 ? 'text-orange-600' : 'text-gray-400'}`} title="Réservé (BT/BL/Soumissions)">
+                          -{qty.reserved}
+                          <span className={`text-[10px] ml-0.5 ${qty.reserved > 0 ? 'text-orange-400' : 'text-gray-300'}`}>rés</span>
+                        </div>
+                      </div>
+
+                      {/* Prix et marge */}
+                      <div className="flex flex-col items-end space-y-1 ml-3">
+                        <div className="text-right">
+                          <div className="text-sm font-medium text-gray-900">
+                            {formatCurrency(item.selling_price)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Coût: {formatCurrency(item.cost_price)}
+                          </div>
+                        </div>
+
+                        <div className={`text-xs font-medium ${getMarginColor(item.cost_price, item.selling_price)}`}>
+                          {getMarginPercentage(item.cost_price, item.selling_price)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal unifié : Édition + Historique + Prix */}
       {editingItem && (

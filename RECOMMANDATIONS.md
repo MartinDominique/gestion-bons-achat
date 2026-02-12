@@ -814,15 +814,24 @@ await supabase
 
 1. **Pagination:** Ajouter de la pagination pour les listes longues (BT, BA, AF)
 
-2. **Indexes BD:** Verifier que les colonnes frequemment recherchees ont des indexes:
-   - `work_orders.client_id`
-   - `work_orders.status`
-   - `work_orders.work_date`
-   - `purchase_orders.client_id`
+2. ~~**Indexes BD inventaire**~~ ✅ COMPLETE (2026-02-12)
+   - [x] `products.product_id`, `products.description`, `products.product_group`
+   - [x] `non_inventory_items.product_id`, `non_inventory_items.description`
+   - [ ] `work_orders.client_id`, `work_orders.status`, `work_orders.work_date`
+   - [ ] `purchase_orders.client_id`
 
-3. **Cache logo:** Le logo est deja cache en base64 au demarrage - c'est bien.
+3. ~~**Recherche serveur inventaire**~~ ✅ COMPLETE (2026-02-12)
+   **Implementation completee (2026-02-12):**
+   - `app/api/products/search/route.js` (v1.0.0) - API recherche serveur (3 modes: search, all, group)
+   - `app/api/products/groups/route.js` (v1.0.0) - API groupes produits distincts
+   - `components/InventoryManager.js` (v3.0.0) - Refonte: page vide au depart, recherche debounce 300ms, charger tout/par groupe
+   - `supabase/migrations/add_inventory_search_indexes.sql` (v1.0.0) - Indexes pour recherche rapide
+   **Avant:** Chargement de ~7000 produits au mount (lent sur tablette)
+   **Apres:** Recherche serveur rapide, max 50 resultats, ou chargement cible par groupe
 
-4. **Lazy loading:** Pour les listes avec beaucoup d'items, considerer le virtual scrolling.
+4. **Cache logo:** Le logo est deja cache en base64 au demarrage - c'est bien.
+
+5. **Lazy loading:** Pour les listes avec beaucoup d'items, considerer le virtual scrolling.
 
 ---
 
@@ -1021,4 +1030,4 @@ Basees sur les reponses et decisions (2026-02-07):
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-02-11 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-02-12 par Claude AI*
