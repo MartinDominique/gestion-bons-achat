@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.0.0
+ * @version 3.1.0
  * @date 2026-02-12
  * @changelog
+ *   3.1.0 - Ajout champ Fournisseur (supplier) dans l'édition + sauvegarde
  *   3.0.0 - Recherche serveur (plus de chargement initial des ~7000 produits)
  *         - Ajout bouton "Charger tout" + dropdown "Charger par groupe"
  *         - Debounce 300ms sur la recherche, min 2 caractères
@@ -57,6 +58,7 @@ export default function InventoryManager() {
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({
     description: '',
+    supplier: '',
     cost_price: '',
     selling_price: '',
     stock_qty: ''
@@ -382,6 +384,7 @@ export default function InventoryManager() {
     setEditingItem(item);
     setEditForm({
       description: item.description || '',
+      supplier: item.supplier || '',
       cost_price: item.cost_price?.toString() || '',
       selling_price: item.selling_price?.toString() || '',
       stock_qty: item.stock_qty?.toString() || ''
@@ -409,6 +412,7 @@ export default function InventoryManager() {
     setEditingItem(null);
     setEditForm({
       description: '',
+      supplier: '',
       cost_price: '',
       selling_price: '',
       stock_qty: ''
@@ -427,6 +431,7 @@ export default function InventoryManager() {
 
       const updates = {
         description: editForm.description.trim(),
+        supplier: editForm.supplier.trim() || null,
         cost_price: parseFloat(editForm.cost_price) || 0,
         selling_price: parseFloat(editForm.selling_price) || 0,
         stock_qty: parseInt(editForm.stock_qty) || 0,
@@ -445,9 +450,13 @@ export default function InventoryManager() {
       const oldSelling = parseFloat(editingItem.selling_price) || 0;
       const oldQty = parseInt(editingItem.stock_qty) || 0;
       const oldDescription = editingItem.description || '';
+      const oldSupplier = editingItem.supplier || '';
 
       if (updates.description !== oldDescription) {
         changes.push(`Description: "${oldDescription}" → "${updates.description}"`);
+      }
+      if ((updates.supplier || '') !== oldSupplier) {
+        changes.push(`Fournisseur: "${oldSupplier}" → "${updates.supplier || ''}"`);
       }
       if (updates.cost_price !== oldCost) {
         changes.push(`Prix coûtant: ${oldCost.toFixed(2)}$ → ${updates.cost_price.toFixed(2)}$`);
@@ -848,6 +857,19 @@ export default function InventoryManager() {
                       onChange={(e) => setEditForm({...editForm, description: e.target.value})}
                       className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="Description du produit"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fournisseur
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.supplier}
+                      onChange={(e) => setEditForm({...editForm, supplier: e.target.value})}
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      placeholder="Nom du fournisseur (optionnel)"
                     />
                   </div>
 

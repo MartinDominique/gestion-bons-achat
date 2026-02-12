@@ -138,7 +138,8 @@ export const useSupplierPurchase = () => {
   cost_price: '',
   selling_price: '',
   unit: 'Un',
-  product_group: 'Non-Inventaire'
+  product_group: 'Non-Inventaire',
+  supplier: ''
 });
 
   // États pour le modal non-inventaire
@@ -708,6 +709,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
               selling_price: parseFloat(nonInventoryForm.selling_price),
               unit: nonInventoryForm.unit || 'Un',
               product_group: nonInventoryForm.product_group || 'Non-Inventaire',
+              supplier: nonInventoryForm.supplier || null,
               is_non_inventory: true
             });
     
@@ -736,14 +738,16 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     
         setSelectedItems([...selectedItems, newItem]);
         
-        // Reset form
+        // Reset form (garder le supplier pour le prochain ajout dans le même AF)
+        const currentSupplier = nonInventoryForm.supplier;
         setNonInventoryForm({
           product_id: '',
           description: '',
           cost_price: '',
           selling_price: '',
           unit: 'Un',
-          product_group: 'Non-Inventaire'
+          product_group: 'Non-Inventaire',
+          supplier: currentSupplier
         });
         setShowNonInventoryModal(false);
         setShowUsdCalculatorCost(false);
