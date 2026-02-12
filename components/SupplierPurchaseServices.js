@@ -2,9 +2,10 @@
  * @file components/SupplierPurchaseServices.js
  * @description Services pour la gestion des achats fournisseurs (AF)
  *              PDF standardisé via pdf-common.js, envoi email, CRUD Supabase
- * @version 2.0.0
- * @date 2026-02-08
+ * @version 2.1.0
+ * @date 2026-02-12
  * @changelog
+ *   2.1.0 - Ajout quantités inventaire (en main, en commande, réservé) dans recherche produits
  *   2.0.0 - Standardisation PDF avec pdf-common.js, suppression html2canvas
  *   1.5.0 - Sync supplier_name, corrections
  *   1.0.0 - Version initiale
@@ -524,37 +525,128 @@ export const deleteShippingAddress = async (id) => {
 
 // ===== API SUPABASE - PRODUITS =====
 
-// Recherche produits
+// Recherche produits (avec quantités inventaire: en main, en commande, réservé)
 export const searchProducts = async (searchTerm) => {
   if (!searchTerm || searchTerm.length < 2) {
     return [];
   }
 
   try {
-    // Recherche dans les produits inventaire
-    const { data: inventoryProducts, error: error1 } = await supabase
-      .from('products')
-      .select('*')
-      .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
-      .order('description', { ascending: true })
-      .limit(25);
+    // Lancer toutes les requêtes en parallèle pour la performance
+    const [
+      { data: inventoryProducts, error: error1 },
+      { data: nonInventoryProducts, error: error2 },
+      { data: afPurchases },
+      { data: draftWorkOrders },
+      { data: draftDeliveryNotes },
+      { data: acceptedSubmissions }
+    ] = await Promise.all([
+      // 1. Recherche produits inventaire
+      supabase
+        .from('products')
+        .select('*')
+        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
+        .order('description', { ascending: true })
+        .limit(25),
+      // 2. Recherche produits non-inventaire
+      supabase
+        .from('non_inventory_items')
+        .select('*')
+        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
+        .order('description', { ascending: true })
+        .limit(25),
+      // 3. AF en commande (pour "en commande")
+      supabase
+        .from('supplier_purchases')
+        .select('items, status')
+        .in('status', ['ordered', 'partial']),
+      // 4. BT non complétés (pour "réservé")
+      supabase
+        .from('work_orders')
+        .select('id, status')
+        .in('status', ['draft', 'signed', 'pending_send']),
+      // 5. BL non envoyés (pour "réservé")
+      supabase
+        .from('delivery_notes')
+        .select('id, status')
+        .in('status', ['draft', 'ready_for_signature', 'signed', 'pending_send']),
+      // 6. Soumissions acceptées (pour "réservé")
+      supabase
+        .from('submissions')
+        .select('items, status')
+        .eq('status', 'accepted')
+    ]);
 
     if (error1) throw error1;
-
-    // Recherche dans les produits non-inventaire
-    const { data: nonInventoryProducts, error: error2 } = await supabase
-      .from('non_inventory_items')
-      .select('*')
-      .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
-      .order('description', { ascending: true })
-      .limit(25);
-
     if (error2) throw error2;
 
-    // Combiner les résultats avec un indicateur de type
+    // Calculer les quantités en commande et réservées par product_id
+    const qtyMap = {};
+
+    // En commande: items des AF ordered/partial
+    if (afPurchases) {
+      afPurchases.forEach(purchase => {
+        (purchase.items || []).forEach(item => {
+          if (!item.product_id) return;
+          if (!qtyMap[item.product_id]) qtyMap[item.product_id] = { onOrder: 0, reserved: 0 };
+          qtyMap[item.product_id].onOrder += (parseFloat(item.quantity) || 0);
+        });
+      });
+    }
+
+    // Réservé BT: matériaux des BT non complétés
+    if (draftWorkOrders && draftWorkOrders.length > 0) {
+      const woIds = draftWorkOrders.map(wo => wo.id);
+      const { data: woMaterials } = await supabase
+        .from('work_order_materials')
+        .select('product_id, quantity')
+        .in('work_order_id', woIds);
+      if (woMaterials) {
+        woMaterials.forEach(m => {
+          if (!m.product_id) return;
+          if (!qtyMap[m.product_id]) qtyMap[m.product_id] = { onOrder: 0, reserved: 0 };
+          qtyMap[m.product_id].reserved += (parseFloat(m.quantity) || 0);
+        });
+      }
+    }
+
+    // Réservé BL: matériaux des BL non envoyés
+    if (draftDeliveryNotes && draftDeliveryNotes.length > 0) {
+      const blIds = draftDeliveryNotes.map(bl => bl.id);
+      const { data: blMaterials } = await supabase
+        .from('delivery_note_materials')
+        .select('product_id, quantity')
+        .in('delivery_note_id', blIds);
+      if (blMaterials) {
+        blMaterials.forEach(m => {
+          if (!m.product_id) return;
+          if (!qtyMap[m.product_id]) qtyMap[m.product_id] = { onOrder: 0, reserved: 0 };
+          qtyMap[m.product_id].reserved += (parseFloat(m.quantity) || 0);
+        });
+      }
+    }
+
+    // Réservé Soumissions: items des soumissions acceptées
+    if (acceptedSubmissions) {
+      acceptedSubmissions.forEach(sub => {
+        (sub.items || []).forEach(item => {
+          if (!item.product_id) return;
+          if (!qtyMap[item.product_id]) qtyMap[item.product_id] = { onOrder: 0, reserved: 0 };
+          qtyMap[item.product_id].reserved += (parseFloat(item.quantity) || 0);
+        });
+      });
+    }
+
+    // Combiner les résultats avec indicateur de type + quantités
     const combinedResults = [
-      ...(inventoryProducts || []).map(item => ({ ...item, type: 'inventory' })),
-      ...(nonInventoryProducts || []).map(item => ({ ...item, type: 'non_inventory' }))
+      ...(inventoryProducts || []).map(item => {
+        const qty = qtyMap[item.product_id] || { onOrder: 0, reserved: 0 };
+        return { ...item, type: 'inventory', on_order: qty.onOrder, reserved: qty.reserved };
+      }),
+      ...(nonInventoryProducts || []).map(item => {
+        const qty = qtyMap[item.product_id] || { onOrder: 0, reserved: 0 };
+        return { ...item, type: 'non_inventory', on_order: qty.onOrder, reserved: qty.reserved };
+      })
     ];
 
     // Trier par description
