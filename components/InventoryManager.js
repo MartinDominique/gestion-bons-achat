@@ -8,9 +8,11 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.1.0
+ * @version 3.2.0
  * @date 2026-02-12
  * @changelog
+ *   3.2.0 - Toast 2s au lieu de alert(), majuscules Description + Fournisseur,
+ *         - Renommé "Fournisseur" en "Dernier fournisseur"
  *   3.1.0 - Ajout champ Fournisseur (supplier) dans l'édition + sauvegarde
  *   3.0.0 - Recherche serveur (plus de chargement initial des ~7000 produits)
  *         - Ajout bouton "Charger tout" + dropdown "Charger par groupe"
@@ -71,9 +73,18 @@ export default function InventoryManager() {
   const [showInventoryUpload, setShowInventoryUpload] = useState(false);
   const [uploadingInventory, setUploadingInventory] = useState(false);
 
+  // Toast notification (auto-disparaissant)
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
   // États pour l'historique des mouvements (chargé dans le modal unifié)
   const [historyMovements, setHistoryMovements] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // ===== TOAST NOTIFICATION =====
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2000);
+  }, []);
 
   // ===== CHARGEMENT INITIAL (groupes + quantités seulement) =====
   useEffect(() => {
@@ -508,14 +519,14 @@ export default function InventoryManager() {
           )
         );
 
-        alert('Modifications sauvegardées avec succès !');
+        showToast('Modifications sauvegardées');
       }
 
       closeEditModal();
 
     } catch (error) {
       console.error('Erreur sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde');
+      showToast('Erreur lors de la sauvegarde', 'error');
     } finally {
       setSaving(false);
     }
@@ -738,7 +749,7 @@ export default function InventoryManager() {
 
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
                           {item.unit && <span>Unité: {item.unit}</span>}
-                          {item.supplier && <span>Fournisseur: {item.supplier}</span>}
+                          {item.supplier && <span>Dern. fourn.: {item.supplier}</span>}
                         </div>
                       </div>
 
@@ -846,7 +857,7 @@ export default function InventoryManager() {
               {/* === ONGLET MODIFIER === */}
               {modalTab === 'edit' && (
                 <div className="space-y-4">
-                  {/* Description (modifiable) */}
+                  {/* Description (modifiable, majuscules) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Description
@@ -854,7 +865,7 @@ export default function InventoryManager() {
                     <input
                       type="text"
                       value={editForm.description}
-                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                      onChange={(e) => setEditForm({...editForm, description: e.target.value.toUpperCase()})}
                       className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="Description du produit"
                     />
@@ -862,14 +873,14 @@ export default function InventoryManager() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fournisseur
+                      Dernier fournisseur
                     </label>
                     <input
                       type="text"
                       value={editForm.supplier}
-                      onChange={(e) => setEditForm({...editForm, supplier: e.target.value})}
+                      onChange={(e) => setEditForm({...editForm, supplier: e.target.value.toUpperCase()})}
                       className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                      placeholder="Nom du fournisseur (optionnel)"
+                      placeholder="Mis à jour automatiquement lors d'un AF"
                     />
                   </div>
 
@@ -1274,6 +1285,15 @@ export default function InventoryManager() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[100] px-5 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-opacity ${
+          toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'
+        }`}>
+          {toast.message}
         </div>
       )}
 

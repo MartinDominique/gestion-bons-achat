@@ -808,6 +808,20 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         console.log('Achat créé avec succès');
       }
 
+      // Mettre à jour "Dernier fournisseur" sur tous les produits de cet AF
+      if (purchaseData.supplier_name && selectedItems.length > 0) {
+        const supplierUpper = purchaseData.supplier_name.toUpperCase();
+        const productIds = selectedItems.filter(i => !i.is_non_inventory).map(i => i.product_id);
+        const nonInvIds = selectedItems.filter(i => i.is_non_inventory).map(i => i.product_id);
+
+        if (productIds.length > 0) {
+          supabase.from('products').update({ supplier: supplierUpper }).in('product_id', productIds).then(() => {});
+        }
+        if (nonInvIds.length > 0) {
+          supabase.from('non_inventory_items').update({ supplier: supplierUpper }).in('product_id', nonInvIds).then(() => {});
+        }
+      }
+
       // LOGIQUE EMAIL MODIFIÉE
       const shouldSendEmailStatuses = ['in_order', 'ordered']; // EN COMMANDE et COMMANDÉ
       const isEmailableStatus = shouldSendEmailStatuses.includes(savedPurchase.status);

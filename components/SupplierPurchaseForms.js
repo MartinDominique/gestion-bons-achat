@@ -970,15 +970,15 @@ export const NonInventoryModal = ({
               />
             </div>
 
-            {/* Fournisseur */}
+            {/* Dernier fournisseur */}
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Fournisseur</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Dernier fournisseur</label>
               <input
                 type="text"
                 value={nonInventoryForm.supplier || ''}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, supplier: e.target.value})}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, supplier: e.target.value.toUpperCase()})}
                 className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
-                placeholder="Nom du fournisseur (optionnel)"
+                placeholder="Rempli automatiquement depuis l'AF en cours"
               />
               {nonInventoryForm.supplier && (
                 <p className="text-xs text-gray-500 mt-1">Auto-rempli depuis l'AF en cours</p>
