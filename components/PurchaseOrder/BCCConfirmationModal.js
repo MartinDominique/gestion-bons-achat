@@ -5,9 +5,10 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-02-12
  * @changelog
+ *   1.2.0 - Fix B/O: lecture vraies réceptions (supplier_purchase_receipts) + ajout colonne "En Main" (stock)
  *   1.1.0 - Ajout affichage historique des envois BCC precedents
  *   1.0.0 - Version initiale - Création du modal BCC
  */
@@ -106,9 +107,10 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
         }
       }
 
-      // 3. Calculer les quantités en backorder depuis les AF
+      // 3. Calculer les quantités en backorder depuis les AF + réceptions réelles
       let afQuantities = {}; // { product_id: { ordered: X, received: Y } }
       if (supplierPurchases && supplierPurchases.length > 0) {
+        // Quantités commandées depuis les items AF
         supplierPurchases.forEach(sp => {
           if (sp.items && Array.isArray(sp.items)) {
             sp.items.forEach(afItem => {
@@ -118,8 +120,51 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                 afQuantities[code] = { ordered: 0, received: 0 };
               }
               afQuantities[code].ordered += parseFloat(afItem.quantity || afItem.qty || 0);
-              afQuantities[code].received += parseFloat(afItem.received_quantity || afItem.received_qty || 0);
             });
+          }
+        });
+
+        // Quantités réellement reçues depuis supplier_purchase_receipts
+        const afIds = supplierPurchases.map(sp => sp.id);
+        const { data: receipts } = await supabase
+          .from('supplier_purchase_receipts')
+          .select('supplier_purchase_id, items_received')
+          .in('supplier_purchase_id', afIds);
+
+        (receipts || []).forEach(receipt => {
+          (receipt.items_received || []).forEach(ri => {
+            const code = ri.product_id || '';
+            if (!code) return;
+            if (!afQuantities[code]) {
+              afQuantities[code] = { ordered: 0, received: 0 };
+            }
+            afQuantities[code].received += parseFloat(ri.quantity_received || 0);
+          });
+        });
+      }
+
+      // 3b. Charger le stock actuel des produits (En Main)
+      let stockByProduct = {};
+      const productCodes = (baItems || []).map(i => i.product_id).filter(Boolean);
+      if (productCodes.length > 0) {
+        const { data: productsStock } = await supabase
+          .from('products')
+          .select('product_id, stock_qty')
+          .in('product_id', productCodes);
+
+        (productsStock || []).forEach(p => {
+          stockByProduct[p.product_id] = parseFloat(p.stock_qty) || 0;
+        });
+
+        // Aussi vérifier non_inventory_items
+        const { data: nonInvStock } = await supabase
+          .from('non_inventory_items')
+          .select('product_id, stock_qty')
+          .in('product_id', productCodes);
+
+        (nonInvStock || []).forEach(p => {
+          if (!(p.product_id in stockByProduct)) {
+            stockByProduct[p.product_id] = parseFloat(p.stock_qty) || 0;
           }
         });
       }
@@ -140,6 +185,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
           unit: item.unit || 'unité',
           unit_price: unitPrice,
           line_price: qtyCmd * unitPrice,
+          qty_in_stock: stockByProduct[code] || 0,
           qty_backorder: qtyBackorder,
           qty_delivered: qtyDelivered,
           delivery_estimate: '',
@@ -246,6 +292,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
             unit: item.unit,
             unit_price: item.unit_price,
             line_price: item.line_price,
+            qty_in_stock: item.qty_in_stock,
             qty_backorder: item.qty_backorder,
             qty_delivered: item.qty_delivered,
             delivery_estimate: item.delivery_estimate,
@@ -429,6 +476,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">Qte Cmd</th>
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">Prix Unit.</th>
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">Prix Ligne</th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">En Main</th>
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">B/O</th>
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">Livree</th>
                         <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">Delai</th>
@@ -459,6 +507,13 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                           </td>
                           <td className="px-2 py-2 text-center text-xs font-medium text-green-700">
                             {fmt(item.line_price)}
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            {item.qty_in_stock > 0 ? (
+                              <span className="text-xs font-medium text-emerald-700">{item.qty_in_stock}</span>
+                            ) : (
+                              <span className="text-xs text-gray-400">0</span>
+                            )}
                           </td>
                           <td className="px-2 py-2 text-center">
                             {item.qty_backorder > 0 ? (
@@ -521,6 +576,9 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                             </span>
                             <span className="bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded">
                               {fmt(item.unit_price)}/u
+                            </span>
+                            <span className={`px-1.5 py-0.5 rounded ${item.qty_in_stock > 0 ? 'bg-emerald-50 text-emerald-700 font-medium' : 'bg-gray-50 text-gray-400'}`}>
+                              Main: {item.qty_in_stock}
                             </span>
                             {item.qty_backorder > 0 && (
                               <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-medium">

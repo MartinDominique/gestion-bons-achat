@@ -4,9 +4,10 @@
  *              - Génère un PDF avec en-tête standardisé (pdf-common.js)
  *              - Envoie par email au client via Resend
  *              - CC au bureau (info.servicestmt@gmail.com)
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-02-12
  * @changelog
+ *   1.2.0 - Ajout colonne "En Main" (stock) dans le PDF BCC
  *   1.1.0 - Ajout suivi BCC: sauvegarde historique (bcc_history, bcc_sent_count) + PDF dans files
  *   1.0.0 - Version initiale - Génération PDF BCC + envoi email
  */
@@ -251,6 +252,7 @@ function generateBCCPDF(data) {
     { header: 'Qte Cmd', dataKey: 'qty_ordered' },
     { header: 'Prix Unit.', dataKey: 'unit_price' },
     { header: 'Prix Ligne', dataKey: 'line_price' },
+    { header: 'En Main', dataKey: 'qty_in_stock' },
     { header: 'B/O', dataKey: 'qty_backorder' },
     { header: 'Livree', dataKey: 'qty_delivered' },
     { header: 'Delai', dataKey: 'delivery_estimate' },
@@ -262,6 +264,7 @@ function generateBCCPDF(data) {
     qty_ordered: item.qty_ordered || 0,
     unit_price: formatCurrency(item.unit_price),
     line_price: formatCurrency(item.line_price),
+    qty_in_stock: item.qty_in_stock || 0,
     qty_backorder: item.qty_backorder || 0,
     qty_delivered: item.qty_delivered || 0,
     delivery_estimate: item.delivery_estimate || '-',
@@ -295,6 +298,7 @@ function generateBCCPDF(data) {
       qty_ordered: { cellWidth: 16, halign: 'center' },
       unit_price: { cellWidth: 22, halign: 'right' },
       line_price: { cellWidth: 22, halign: 'right' },
+      qty_in_stock: { cellWidth: 16, halign: 'center' },
       qty_backorder: { cellWidth: 14, halign: 'center' },
       qty_delivered: { cellWidth: 16, halign: 'center' },
       delivery_estimate: { cellWidth: 24, halign: 'center' },
@@ -302,6 +306,14 @@ function generateBCCPDF(data) {
     margin: { left: PAGE.margin.left, right: PAGE.margin.right },
     showHead: 'everyPage',
     didParseCell: function (data) {
+      // Mettre en évidence le stock en main
+      if (data.column.dataKey === 'qty_in_stock' && data.section === 'body') {
+        const val = parseFloat(data.cell.raw);
+        if (val > 0) {
+          data.cell.styles.textColor = [0, 128, 0];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
       // Mettre en évidence les backorders
       if (data.column.dataKey === 'qty_backorder' && data.section === 'body') {
         const val = parseFloat(data.cell.raw);
