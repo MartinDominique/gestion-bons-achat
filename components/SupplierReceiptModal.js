@@ -1,5 +1,19 @@
+/**
+ * @file components/SupplierReceiptModal.js
+ * @description Modal de réception d'un achat fournisseur (AF).
+ *              - Permet de recevoir partiellement ou totalement les items
+ *              - Met à jour le stock (products / non_inventory_items)
+ *              - Crée les mouvements d'inventaire (IN)
+ *              - Décale l'historique des prix (shift) si le cost_price change
+ * @version 1.1.0
+ * @date 2026-02-11
+ * @changelog
+ *   1.1.0 - Ajout décalage historique prix (price shift) lors de la réception AF
+ *   1.0.0 - Version initiale
+ */
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import { Package, Check, X, Truck, AlertCircle, History } from 'lucide-react';
 
 // Formatage monétaire
@@ -269,27 +283,37 @@ export default function SupplierReceiptModal({
         // Continuer quand même, les mouvements peuvent échouer si le produit n'existe pas
       }
       
-      // 3. Mettre à jour le stock dans la bonne table (products ou non_inventory_items)
+      // 3. Mettre à jour le stock + décalage prix dans la bonne table (products ou non_inventory_items)
       for (const item of itemsToReceive) {
         const tableName = item.is_non_inventory ? 'non_inventory_items' : 'products';
-        
-        // D'abord récupérer le stock actuel
+
+        // Récupérer le produit actuel (stock + prix pour le shift)
         const { data: product, error: productError } = await supabase
           .from(tableName)
-          .select('stock_qty')
+          .select('stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd')
           .eq('product_id', item.product_id)
           .single();
-        
+
         if (!productError && product) {
           const currentStock = parseFloat(product.stock_qty) || 0;
           const newStock = currentStock + item.quantity_to_receive;
-          
+
+          // Construire l'update de base (stock)
+          const updates = { stock_qty: newStock.toString() };
+
+          // Décalage des prix si le cost_price de l'AF est différent du cost_price actuel
+          const priceShiftUpdates = buildPriceShiftUpdates(product, {
+            cost_price: item.cost_price,
+          });
+          Object.assign(updates, priceShiftUpdates);
+
           await supabase
             .from(tableName)
-            .update({ stock_qty: newStock.toString() })
+            .update(updates)
             .eq('product_id', item.product_id);
-          
-          console.log(`Stock mis à jour: ${item.product_id} (${tableName}): ${currentStock} → ${newStock}`);
+
+          const priceChanged = Object.keys(priceShiftUpdates).length > 0;
+          console.log(`Stock mis à jour: ${item.product_id} (${tableName}): ${currentStock} → ${newStock}${priceChanged ? ' + prix décalé' : ''}`);
         }
       }
       
