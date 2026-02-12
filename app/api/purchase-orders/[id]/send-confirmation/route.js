@@ -4,9 +4,10 @@
  *              - Génère un PDF avec en-tête standardisé (pdf-common.js)
  *              - Envoie par email au client via Resend
  *              - CC au bureau (info.servicestmt@gmail.com)
- * @version 1.0.0
- * @date 2026-02-09
+ * @version 1.1.0
+ * @date 2026-02-12
  * @changelog
+ *   1.1.0 - Ajout suivi BCC: sauvegarde historique (bcc_history, bcc_sent_count) + PDF dans files
  *   1.0.0 - Version initiale - Génération PDF BCC + envoi email
  */
 
@@ -15,6 +16,7 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import fs from 'fs';
 import path from 'path';
+import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -515,10 +517,70 @@ export async function POST(request, { params }) {
 
     console.log(`BCC envoye avec succes pour BA #${poNumber}, messageId: ${data.id}`);
 
+    // Sauvegarder le suivi BCC dans la base de données
+    const sentAt = new Date().toISOString();
+    try {
+      // 1. Charger les données actuelles du BA
+      const { data: currentPO } = await supabaseAdmin
+        .from('purchase_orders')
+        .select('files, bcc_sent_count, bcc_history')
+        .eq('id', id)
+        .single();
+
+      // 2. Ajouter le PDF BCC dans le tableau files
+      const currentFiles = currentPO?.files || [];
+      const bccFileEntry = {
+        id: 'bcc-' + Date.now(),
+        name: `BCC-${poNumber}.pdf`,
+        type: 'application/pdf',
+        is_bcc: true,
+        bcc_date: sentAt,
+        bcc_recipients: recipient_emails,
+        bcc_items_count: bcc_items.length,
+        bcc_total: totals.total,
+        size: Math.round(pdfBase64.length * 0.75), // Taille approximative du PDF
+        uploadDate: sentAt,
+        data: `data:application/pdf;base64,${pdfBase64}`
+      };
+      const updatedFiles = [...currentFiles, bccFileEntry];
+
+      // 3. Ajouter l'entrée dans bcc_history
+      const currentHistory = currentPO?.bcc_history || [];
+      const bccHistoryEntry = {
+        sent_at: sentAt,
+        recipients: recipient_emails,
+        items_count: bcc_items.length,
+        total: totals.total,
+        notes: notes || '',
+        message_id: data.id
+      };
+      const updatedHistory = [...currentHistory, bccHistoryEntry];
+
+      // 4. Mettre à jour le BA
+      const { error: updateError } = await supabaseAdmin
+        .from('purchase_orders')
+        .update({
+          files: updatedFiles,
+          bcc_sent_count: (currentPO?.bcc_sent_count || 0) + 1,
+          bcc_history: updatedHistory,
+          updated_at: sentAt
+        })
+        .eq('id', id);
+
+      if (updateError) {
+        console.error('Erreur sauvegarde suivi BCC (non-bloquant):', updateError.message);
+        // Non-bloquant: l'email a déjà été envoyé avec succès
+      } else {
+        console.log(`Suivi BCC sauvegarde: ${updatedHistory.length} envoi(s) total pour BA #${poNumber}`);
+      }
+    } catch (trackingError) {
+      console.error('Erreur suivi BCC (non-bloquant):', trackingError.message);
+    }
+
     return Response.json({
       success: true,
       messageId: data.id,
-      sent_at: new Date().toISOString(),
+      sent_at: sentAt,
     });
 
   } catch (error) {

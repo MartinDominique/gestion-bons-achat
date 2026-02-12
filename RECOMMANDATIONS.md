@@ -480,13 +480,16 @@ const getQuebecHolidays = (year) => {
 
 **Demande (2026-02-07):** Envoyer au client une confirmation que le materiel demande par son BA est bien en commande.
 
-**Implementation completee (2026-02-09) - Option A retenue (module dans BA):**
-- `app/api/purchase-orders/[id]/send-confirmation/route.js` (v1.0.0) - API envoi email + PDF BCC
-- `components/PurchaseOrder/BCCConfirmationModal.js` (v1.0.0) - Modal BCC avec selection items, calcul B/O, taxes TPS/TVQ
-- `components/PurchaseOrderModal.js` - Bouton "Confirmation commande" integre dans l'onglet BA
+**Implementation completee (2026-02-09, mis a jour 2026-02-12) - Option A retenue (module dans BA):**
+- `app/api/purchase-orders/[id]/send-confirmation/route.js` (v1.1.0) - API envoi email + PDF BCC + suivi historique
+- `components/PurchaseOrder/BCCConfirmationModal.js` (v1.1.0) - Modal BCC avec selection items, calcul B/O, taxes TPS/TVQ, historique envois
+- `components/PurchaseOrderModal.js` - Bouton "Confirmation commande" integre dans l'onglet BA + badge compteur BCC
+- `components/PurchaseOrderManager.js` - Indicateur BCC dans la liste des BA
 - PDF genere avec en-tete standardise, tableau items (Code, Description, Qte Cmd, Prix, B/O, Livree, Delai)
 - Gestion multi-destinataires, CC bureau, validation email
 - Design responsive mobile/tablette
+- **Suivi BCC (2026-02-12):** Chaque envoi BCC est trace (historique, compteur, PDF sauvegarde dans Docs)
+- **Migration requise:** `supabase/migrations/add_bcc_tracking.sql` (colonnes `bcc_sent_count`, `bcc_history`)
 
 **Contexte:**
 Quand un client envoie un BA, Martin cree un ou plusieurs AF pour commander le materiel. Le client n'a actuellement aucune visibilite sur l'etat de sa commande. Le BCC permet de lui envoyer un recapitulatif.
@@ -915,12 +918,16 @@ Pas de tests automatises detectes.
 - [ ] #3: Ajouter champ `linked_po_numbers` dans table `submissions`
 - [ ] #4: Afficher BA associe(s) dans le formulaire soumission
 
-### Phase 6 - BCC Confirmation de commande client (Section 3) ✅ COMPLETE (2026-02-09)
+### Phase 6 - BCC Confirmation de commande client (Section 3) ✅ COMPLETE (2026-02-09, mis a jour 2026-02-12)
 - [x] #1: Bouton "Confirmation commande" dans PurchaseOrderModal
 - [x] #2: Modal/formulaire BCC avec import items depuis BA + AF
 - [x] #3: Calcul B/O, qte livree, delai par item
 - [x] #4: Generation PDF BCC (en-tete standardise)
 - [x] #5: API envoi email confirmation au client
+- [x] #6: Suivi BCC - Indicateur dans liste BA + badge onglet BCC (2026-02-12)
+- [x] #7: Historique envois BCC dans modal BCC (date, destinataires, montant) (2026-02-12)
+- [x] #8: PDF BCC sauvegarde dans onglet Docs du BA (2026-02-12)
+- [x] #9: Migration `bcc_sent_count` + `bcc_history` sur `purchase_orders` (2026-02-12)
 
 ### Phase 7 - Standardisation PDF (Section 4)
 - [ ] #1: Creer module partage `lib/services/pdf-common.js`

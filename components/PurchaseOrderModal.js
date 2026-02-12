@@ -1651,6 +1651,11 @@ setTimeout(() => {
                 >
                   <span>📧</span>
                   <span>BCC</span>
+                  {(formData.bcc_sent_count || 0) > 0 && (
+                    <span className="bg-emerald-100 text-emerald-800 text-xs px-1 sm:px-2 py-0.5 rounded-full font-bold">
+                      {formData.bcc_sent_count}
+                    </span>
+                  )}
                 </button>
               )}
             </nav>
@@ -2160,15 +2165,65 @@ setTimeout(() => {
                     <strong>Types acceptés:</strong> PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG (Max: 10MB par fichier)           ''Voir = Tablette, Télécharger = Ordinateur''
                   </div>
 
-                  {/* Liste des documents */}
-                  {attachedFiles.length === 0 ? (
+                  {/* Section BCC envoyés */}
+                  {attachedFiles.filter(f => f.is_bcc).length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold text-emerald-700 mb-2 flex items-center gap-2">
+                        📧 Confirmations de Commande (BCC) envoyées
+                      </h4>
+                      <div className="grid gap-2">
+                        {attachedFiles.filter(f => f.is_bcc).map((file) => (
+                          <div key={file.id} className="border border-emerald-200 bg-emerald-50 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-shrink-0 bg-emerald-100 w-8 h-8 rounded-full flex items-center justify-center text-sm">📧</div>
+                              <div>
+                                <p className="font-medium text-emerald-900">{file.name}</p>
+                                <p className="text-xs text-emerald-700">
+                                  {new Date(file.bcc_date || file.uploadDate).toLocaleDateString('fr-CA', {
+                                    timeZone: 'America/Toronto', day: 'numeric', month: 'short', year: 'numeric',
+                                    hour: '2-digit', minute: '2-digit'
+                                  })}
+                                  {file.bcc_items_count && ` • ${file.bcc_items_count} article(s)`}
+                                  {file.bcc_total && ` • $${parseFloat(file.bcc_total).toFixed(2)}`}
+                                </p>
+                                {file.bcc_recipients && (
+                                  <p className="text-xs text-emerald-600 truncate max-w-[300px]" title={file.bcc_recipients.join(', ')}>
+                                    Envoyé à: {file.bcc_recipients.join(', ')}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => viewFile(file)}
+                                className="text-emerald-600 hover:text-emerald-800 px-3 py-1 border border-emerald-300 rounded text-sm md:hidden"
+                                title="Voir"
+                              >
+                                Voir
+                              </button>
+                              <button
+                                onClick={() => downloadFile(file)}
+                                className="text-emerald-600 hover:text-emerald-800 px-3 py-1 border border-emerald-300 rounded text-sm"
+                                title="Télécharger"
+                              >
+                                Télécharger
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Liste des documents manuels */}
+                  {attachedFiles.filter(f => !f.is_bcc).length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                       <p className="text-gray-500 mb-2">Aucun document joint</p>
                       <p className="text-sm text-gray-400">Glissez des fichiers ici ou cliquez sur "Choisir Fichiers"</p>
                     </div>
                   ) : (
                     <div className="grid gap-3">
-                      {attachedFiles.map((file) => (
+                      {attachedFiles.filter(f => !f.is_bcc).map((file) => (
                         <div key={file.id} className="border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-50">
                           <div className="flex items-center gap-3">
                             <div className="flex-shrink-0">
@@ -2959,6 +3014,10 @@ setTimeout(() => {
           purchaseOrder={{ ...formData, id: editingPO.id }}
           items={items}
           supplierPurchases={supplierPurchases}
+          onBCCSent={() => {
+            // Rafraîchir les données du BA pour mettre à jour le compteur BCC et les fichiers
+            loadPOData(editingPO.id);
+          }}
         />
       )}
     </>
