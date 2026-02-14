@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export default function DeliveryNoteForm({
