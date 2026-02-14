@@ -302,22 +302,11 @@ export default function BonsTravailPage() {
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 via-orange-400 to-gray-500 rounded-2xl shadow-xl p-3 sm:p-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-            <div className="flex items-center gap-4">
-              <h1 className="text-xl sm:text-2xl font-bold text-white">BT & BL</h1>
-              {/* Stats compactes sur une ligne */}
-              <div className="hidden sm:flex items-center gap-3 text-sm text-white/90">
-                <span className="font-medium">{totalAll} total</span>
-                <span className="text-white/50">|</span>
-                <span>{totalDrafts} brouillons</span>
-                <span className="text-white/50">|</span>
-                <span>{totalSigned} signés</span>
-                <span className="text-white/50">|</span>
-                <span>{totalSent} envoyés</span>
-              </div>
-            </div>
-            <div className="flex gap-2 flex-wrap">
+        <div className="bg-gradient-to-r from-orange-500 via-orange-400 to-gray-500 rounded-2xl shadow-xl p-4 sm:p-5 mb-6">
+          {/* Ligne 1: Titre + Boutons */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Bons de Travail & Livraison</h1>
+            <div className="flex gap-2 flex-wrap items-center">
               <Link
                 href="/bons-travail/nouveau"
                 className="bg-white text-teal-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-200 flex items-center font-semibold shadow-lg text-sm whitespace-nowrap"
@@ -334,6 +323,17 @@ export default function BonsTravailPage() {
               </Link>
               <ConnectionStatus className="hidden sm:flex" />
             </div>
+          </div>
+
+          {/* Ligne 2: Résumé compact */}
+          <div className="flex items-center gap-4 mt-3 text-sm text-white/90 flex-wrap">
+            <span className="font-semibold text-white">{totalAll} total <span className="font-normal text-white/70">({totalBT} BT + {totalBL} BL)</span></span>
+            <span className="text-white/40">|</span>
+            <span>{totalDrafts} brouillons</span>
+            <span className="text-white/40">|</span>
+            <span>{totalSigned} signés</span>
+            <span className="text-white/40">|</span>
+            <span>{totalSent} envoyés</span>
           </div>
         </div>
 
