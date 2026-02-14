@@ -302,13 +302,11 @@ export default function BonsTravailPage() {
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 via-orange-400 to-gray-500 rounded-2xl shadow-xl p-4 sm:p-6 mb-6">
+        <div className="bg-gradient-to-r from-orange-500 via-orange-400 to-gray-500 rounded-2xl shadow-xl p-4 sm:p-5 mb-6">
+          {/* Ligne 1: Titre + Boutons */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Bons de Travail & Livraison</h1>
-              <p className="text-blue-100 text-sm">BT + BL - Vue unifiee</p>
-            </div>
-            <div className="flex gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Bons de Travail & Livraison</h1>
+            <div className="flex gap-2 flex-wrap items-center">
               <Link
                 href="/bons-travail/nouveau"
                 className="bg-white text-teal-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-all duration-200 flex items-center font-semibold shadow-lg text-sm whitespace-nowrap"
@@ -327,48 +325,15 @@ export default function BonsTravailPage() {
             </div>
           </div>
 
-          {/* Statistiques */}
-          <div className="hidden sm:grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-              <div className="flex items-center">
-                <div className="bg-white/30 p-2 rounded-full"><FileText className="w-5 h-5 text-white" /></div>
-                <div className="ml-2">
-                  <p className="text-blue-100 text-xs font-medium">Total</p>
-                  <p className="text-2xl font-bold text-white">{totalAll}</p>
-                  <p className="text-blue-200 text-xs">{totalBT} BT + {totalBL} BL</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-              <div className="flex items-center">
-                <div className="bg-yellow-400/80 p-2 rounded-full"><Clock className="w-5 h-5 text-white" /></div>
-                <div className="ml-2">
-                  <p className="text-blue-100 text-xs font-medium">Brouillons</p>
-                  <p className="text-2xl font-bold text-white">{totalDrafts}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-              <div className="flex items-center">
-                <div className="bg-green-400/80 p-2 rounded-full"><FileText className="w-5 h-5 text-white" /></div>
-                <div className="ml-2">
-                  <p className="text-blue-100 text-xs font-medium">Signes/Termines</p>
-                  <p className="text-2xl font-bold text-white">{totalSigned}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
-              <div className="flex items-center">
-                <div className="bg-purple-400/80 p-2 rounded-full"><Send className="w-5 h-5 text-white" /></div>
-                <div className="ml-2">
-                  <p className="text-blue-100 text-xs font-medium">Envoyes</p>
-                  <p className="text-2xl font-bold text-white">{totalSent}</p>
-                </div>
-              </div>
-            </div>
+          {/* Ligne 2: Résumé compact */}
+          <div className="flex items-center gap-4 mt-3 text-sm text-white/90 flex-wrap">
+            <span className="font-semibold text-white">{totalAll} total <span className="font-normal text-white/70">({totalBT} BT + {totalBL} BL)</span></span>
+            <span className="text-white/40">|</span>
+            <span>{totalDrafts} brouillons</span>
+            <span className="text-white/40">|</span>
+            <span>{totalSigned} signés</span>
+            <span className="text-white/40">|</span>
+            <span>{totalSent} envoyés</span>
           </div>
         </div>
 
