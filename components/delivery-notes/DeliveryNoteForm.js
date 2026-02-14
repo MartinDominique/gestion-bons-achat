@@ -8,9 +8,12 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.1.0
+ * @version 2.2.0
  * @date 2026-02-14
  * @changelog
+ *   2.2.0 - Boutons bas identiques au haut (vert/bleu/rouge)
+ *           Fix chargement BA: par client_name (comme BT) au lieu de client_id
+ *           Ajout description + montant au dropdown BA
  *   2.1.0 - Ajout boutons Sauvegarder/Présenter/Annuler en haut du formulaire
  *           (disposition identique au BT: vert/bleu/rouge)
  *   2.0.0 - Refonte sélection client (copie BT), uppercase BA/description,
@@ -29,6 +32,7 @@ import {
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export default function DeliveryNoteForm({
@@ -152,21 +156,23 @@ export default function DeliveryNoteForm({
   // =============================================
 
   useEffect(() => {
-    if (clientId) {
-      loadPurchaseOrders(clientId);
+    if (selectedClient?.name) {
+      loadPurchaseOrders(selectedClient.name);
     } else {
       setPurchaseOrders([]);
     }
-  }, [clientId]);
+  }, [selectedClient]);
 
-  const loadPurchaseOrders = async (cid) => {
+  const loadPurchaseOrders = async (clientName) => {
     try {
-      const response = await fetch(`/api/purchase-orders?client_id=${cid}`);
-      if (response.ok) {
-        const data = await response.json();
-        const pos = data.data || data || [];
-        setPurchaseOrders(Array.isArray(pos) ? pos : []);
-      }
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .select('id, po_number, description, amount, date, created_at')
+        .eq('client_name', clientName)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPurchaseOrders(data || []);
     } catch (err) {
       console.error('Erreur chargement POs:', err);
       setPurchaseOrders([]);
@@ -612,7 +618,7 @@ export default function DeliveryNoteForm({
                 <option value="">-- Aucun BA --</option>
                 {purchaseOrders.map(po => (
                   <option key={po.id} value={po.id}>
-                    {po.po_number} {po.description ? `- ${po.description.substring(0, 20)}...` : ''}
+                    {po.po_number} - {po.description ? po.description.substring(0, 20) + '...' : 'Sans desc.'} - {new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(po.amount || 0)}
                   </option>
                 ))}
               </select>
@@ -665,54 +671,54 @@ export default function DeliveryNoteForm({
       </div>
 
       {/* ==========================================
-          SECTION 4: BOUTONS D'ACTION
+          SECTION 4: BOUTONS D'ACTION (identiques au haut)
           ========================================== */}
       <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Annuler */}
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
-            style={{ minHeight: '44px' }}
-          >
-            <X className="inline mr-2" size={18} />
-            Annuler
-          </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          {(deliveryNote?.status === 'signed' || deliveryNote?.status === 'sent' || deliveryNote?.status === 'pending_send') ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center justify-center font-medium"
+              style={{ minHeight: '44px' }}
+            >
+              <Check className="mr-2" size={16} />
+              Terminer
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={saving || !clientId}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center font-medium"
+                style={{ minHeight: '44px' }}
+              >
+                <Save className="mr-2" size={16} />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              </button>
 
-          {/* Sauvegarder brouillon */}
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={saving || !clientId}
-            className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ minHeight: '44px' }}
-          >
-            {saving ? (
-              <span className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Sauvegarde...
-              </span>
-            ) : (
-              <>
-                <Save className="inline mr-2" size={18} />
-                Sauvegarder brouillon
-              </>
-            )}
-          </button>
+              <button
+                type="button"
+                onClick={handlePresentToClient}
+                disabled={saving || !clientId || materials.length === 0}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium"
+                style={{ minHeight: '44px' }}
+              >
+                <FileText className="mr-2" size={16} />
+                {saving ? 'Préparation...' : 'Présenter au client'}
+              </button>
 
-          {/* Présenter au client */}
-          <button
-            type="button"
-            onClick={handlePresentToClient}
-            disabled={saving || !clientId || materials.length === 0}
-            className="flex-1 px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ minHeight: '44px' }}
-          >
-            <Eye className="inline mr-2" size={18} />
-            Présenter au client
-          </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-white border border-red-300 text-red-600 px-6 py-3 rounded-lg hover:bg-red-50 font-medium"
+                style={{ minHeight: '44px' }}
+              >
+                Annuler
+              </button>
+            </>
+          )}
         </div>
 
         {/* Indicateurs */}
