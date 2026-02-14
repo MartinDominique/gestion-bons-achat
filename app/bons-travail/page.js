@@ -5,9 +5,10 @@
  *              - Filtre par type (BT/BL), statut, recherche
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
- * @version 2.0.0
- * @date 2026-02-12
+ * @version 2.1.0
+ * @date 2026-02-14
  * @changelog
+ *   2.1.0 - Fix filtre type multi-select + restauration layout tablette style main
  *   2.0.0 - Ajout support BL dans la liste unifiée
  *   1.0.0 - Version initiale (BT seulement)
  */
@@ -27,7 +28,7 @@ export default function BonsTravailPage() {
   const [actionLoading, setActionLoading] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('client');
-  const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'bt', 'bl'
+  const [typeFilter, setTypeFilter] = useState([]); // [] = tous, ['bt'], ['bl'], ['bt','bl'] = tous
   const [statusFilter, setStatusFilter] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -105,6 +106,13 @@ export default function BonsTravailPage() {
     });
   };
 
+  const toggleTypeFilter = (type) => {
+    setTypeFilter(prev => {
+      if (prev.includes(type)) return prev.filter(t => t !== type);
+      return [...prev, type];
+    });
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -146,11 +154,9 @@ export default function BonsTravailPage() {
   const filteredItems = useMemo(() => {
     let filtered = combinedList;
 
-    // 1. Filtre par type
-    if (typeFilter === 'bt') {
-      filtered = filtered.filter(item => item._type === 'bt');
-    } else if (typeFilter === 'bl') {
-      filtered = filtered.filter(item => item._type === 'bl');
+    // 1. Filtre par type (multi-select)
+    if (typeFilter.length > 0 && typeFilter.length < 2) {
+      filtered = filtered.filter(item => typeFilter.includes(item._type));
     }
 
     // 2. Filtre par statut
@@ -371,9 +377,9 @@ export default function BonsTravailPage() {
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Filtrer par type:</h3>
           <div className="flex gap-2 mb-4">
             <button
-              onClick={() => setTypeFilter('all')}
+              onClick={() => setTypeFilter([])}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                typeFilter === 'all'
+                typeFilter.length === 0
                   ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white shadow-md'
                   : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}
@@ -381,20 +387,20 @@ export default function BonsTravailPage() {
               Tous ({totalAll})
             </button>
             <button
-              onClick={() => setTypeFilter('bt')}
+              onClick={() => toggleTypeFilter('bt')}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${
-                typeFilter === 'bt'
-                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md'
+                typeFilter.includes('bt')
+                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md ring-2 ring-teal-400 ring-offset-1'
                   : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}
             >
               <FileText size={14} /> BT ({totalBT})
             </button>
             <button
-              onClick={() => setTypeFilter('bl')}
+              onClick={() => toggleTypeFilter('bl')}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${
-                typeFilter === 'bl'
-                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md'
+                typeFilter.includes('bl')
+                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md ring-2 ring-orange-400 ring-offset-1'
                   : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}
             >
@@ -537,8 +543,8 @@ export default function BonsTravailPage() {
             </div>
           ) : (
             <>
-              {/* Version MOBILE */}
-              <div className="md:hidden">
+              {/* Version MOBILE / TABLETTE - Cartes compactes (style main) */}
+              <div className="lg:hidden">
                 {filteredItems.map((item) => {
                   const key = `${item._type}-${item.id}`;
                   const isBL = item._type === 'bl';
@@ -553,21 +559,14 @@ export default function BonsTravailPage() {
                         isOld ? 'bg-red-50 border-l-4 border-l-red-500' : ''
                       }`}
                     >
-                      {/* Ligne 1: # + Type badge + Statut */}
+                      {/* Ligne 1: BT/BL# + Statut */}
                       <div className="flex items-center justify-between mb-2">
-                        <span className="flex items-center gap-1.5">
-                          {isBL ? (
-                            <Truck size={14} className="text-orange-500" />
-                          ) : (
-                            <FileText size={14} className="text-teal-500" />
-                          )}
-                          <span className={`font-mono text-sm font-bold ${
-                            isBL
-                              ? 'text-orange-600'
-                              : 'bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent'
-                          }`}>
-                            {item._number}
-                          </span>
+                        <span className={`font-mono text-sm font-bold flex items-center gap-1.5 ${
+                          isBL
+                            ? 'text-orange-600'
+                            : 'bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent'
+                        }`}>
+                          {item._number}
                           {!isBL && item.has_active_session && (
                             <span className="relative flex h-2.5 w-2.5" title="Session en cours">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
@@ -575,16 +574,9 @@ export default function BonsTravailPage() {
                             </span>
                           )}
                         </span>
-                        <div className="flex items-center gap-1.5">
-                          <span className={`inline-flex px-1.5 py-0.5 text-[10px] font-bold rounded ${
-                            isBL ? 'bg-orange-100 text-orange-700' : 'bg-teal-100 text-teal-700'
-                          }`}>
-                            {isBL ? 'BL' : 'BT'}
-                          </span>
-                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
-                            {getStatusLabel(item.status)}
-                          </span>
-                        </div>
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
+                          {getStatusLabel(item.status)}
+                        </span>
                       </div>
 
                       {/* Ligne 2: Client */}
@@ -593,19 +585,18 @@ export default function BonsTravailPage() {
                         <span className="truncate font-medium">{item._clientName}</span>
                       </div>
 
-                      {/* Ligne 3: Date + Heures (BT) ou Materiaux (BL) */}
+                      {/* Ligne 3: Date + Heures (BT) ou Livraison (BL) */}
                       <div className="flex items-center justify-between text-xs text-gray-500">
                         <div className="flex items-center">
                           <Calendar className="mr-1" size={12} />
                           {formatDate(dateStr)}
                         </div>
-                        {!isBL && (
+                        {!isBL ? (
                           <div className="flex items-center">
                             <Clock className="mr-1" size={12} />
                             {formatHoursToHM(item.total_hours)}
                           </div>
-                        )}
-                        {isBL && (
+                        ) : (
                           <div className="flex items-center text-orange-600">
                             <Package className="mr-1" size={12} />
                             Livraison
@@ -624,19 +615,18 @@ export default function BonsTravailPage() {
                 })}
               </div>
 
-              {/* Version DESKTOP */}
-              <div className="hidden md:block overflow-x-auto">
+              {/* Version DESKTOP - Tableau (style main avec px-6) */}
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
                     <tr>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Type</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">#</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Client</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Date</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Info</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Statut</th>
-                      <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700">Description</th>
-                      <th className="px-4 py-4 text-right text-sm font-semibold text-gray-700">Actions</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">BT/BL #</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Client</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Date</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Heures</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Statut</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Description</th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -650,18 +640,7 @@ export default function BonsTravailPage() {
                         <tr key={key} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${
                           isOld ? 'bg-red-100 border-l-4 border-l-red-500' : index % 2 === 0 ? 'bg-white/50' : 'bg-gray-50/50'
                         }`}>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-bold rounded ${
-                              isBL ? 'bg-orange-100 text-orange-700' : 'bg-teal-100 text-teal-700'
-                            }`}>
-                              {isBL ? (
-                                <><Truck size={12} className="mr-1" /> BL</>
-                              ) : (
-                                <><FileText size={12} className="mr-1" /> BT</>
-                              )}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`font-mono text-sm font-bold flex items-center gap-2 ${
                               isBL ? 'text-orange-600' : 'bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent'
                             }`}>
@@ -674,16 +653,16 @@ export default function BonsTravailPage() {
                               )}
                             </span>
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-6 py-4">
                             <span className="text-gray-900 font-medium">{item._clientName}</span>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center text-sm">
                               <Calendar className="mr-2 text-teal-500" size={14} />
                               <span className="font-medium">{formatDate(dateStr)}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
                             {!isBL ? (
                               <span className="bg-gradient-to-r from-green-400 to-teal-500 bg-clip-text text-transparent font-bold">
                                 {formatHoursToHM(item.total_hours)}
@@ -694,17 +673,17 @@ export default function BonsTravailPage() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
                               {getStatusLabel(item.status)}
                             </span>
                           </td>
-                          <td className="px-4 py-4 text-sm text-gray-600 w-48">
+                          <td className="px-6 py-4 text-sm text-gray-600 w-48">
                             <div title={item._description || 'Aucune description'} className="cursor-help">
-                              {truncateText(item._description, 50)}
+                              {truncateText(item._description, 60)}
                             </div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center justify-end space-x-2">
                               <button
                                 onClick={() => handleEdit(item)}

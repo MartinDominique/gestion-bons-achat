@@ -7,9 +7,10 @@
  *              - Prix Jobé toggle
  *              - Emails destinataires + actions
  *              Mobile-first: 95% usage tablette/mobile
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.1.0
+ * @date 2026-02-14
  * @changelog
+ *   1.1.0 - Fix props ClientSelect (selectedClient + onClientSelect)
  *   1.0.0 - Version initiale
  */
 
@@ -271,8 +272,9 @@ export default function DeliveryNoteForm({
         </h2>
 
         <ClientSelect
-          selectedClientId={clientId}
-          onClientChange={handleClientChange}
+          selectedClient={selectedClient}
+          onClientSelect={handleClientChange}
+          required={true}
         />
       </div>
 
