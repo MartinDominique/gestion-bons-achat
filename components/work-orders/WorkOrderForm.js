@@ -1238,12 +1238,12 @@ const getFilteredSupplierPurchases = () => {
                 type="button"
                 onClick={() => handleSubmit('draft')}
                 disabled={saving || isSubmitting}
-                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
               >
                 <Save className="mr-2" size={16} />
                 {(saving || isSubmitting) ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
-        
+
               <button
                 type="button"
                 onClick={() => handleSubmit('ready_for_signature')}
@@ -1253,11 +1253,11 @@ const getFilteredSupplierPurchases = () => {
                 <FileText className="mr-2" size={16} />
                 {(saving || isSubmitting) ? 'Préparation...' : 'Présenter'}
               </button>
-        
+
               <button
                 type="button"
                 onClick={onCancel}
-                className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium text-sm"
+                className="bg-white border border-red-300 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 font-medium text-sm"
               >
                 Annuler
               </button>
@@ -1493,7 +1493,7 @@ const getFilteredSupplierPurchases = () => {
                     </option>
                     {clientPurchaseOrders.map(po => (
                       <option key={po.id} value={po.id}>
-                        {po.po_number} - {po.description ? po.description.substring(0, 50) : 'Sans description'} - {new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(po.amount || 0)} ({new Date(po.date).toLocaleDateString('fr-CA')})
+                        {po.po_number} - {po.description ? po.description.substring(0, 20) + '...' : 'Sans desc.'} - {new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(po.amount || 0)}
                       </option>
                     ))}
                   </select>
@@ -1740,12 +1740,12 @@ const getFilteredSupplierPurchases = () => {
                 type="button"
                 onClick={() => handleSubmit('draft')}
                 disabled={saving}
-                className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center font-medium"
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center font-medium"
               >
                 <Save className="mr-2" size={16} />
                 {saving ? 'Sauvegarde...' : 'Sauvegarder pour plus tard'}
               </button>
-        
+
               <button
                 type="button"
                 onClick={() => handleSubmit('ready_for_signature')}
@@ -1755,11 +1755,11 @@ const getFilteredSupplierPurchases = () => {
                 <FileText className="mr-2" size={16} />
                 {saving ? 'Préparation...' : 'Présenter au client'}
               </button>
-        
+
               <button
                 type="button"
                 onClick={onCancel}
-                className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-50 font-medium"
+                className="bg-white border border-red-300 text-red-600 px-6 py-3 rounded-lg hover:bg-red-50 font-medium"
               >
                 Annuler
               </button>
