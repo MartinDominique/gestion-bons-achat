@@ -4,9 +4,10 @@
  *              - POST: Créer un nouveau BL
  *              - GET: Lister les BL avec filtres et pagination
  *              - DELETE: Supprimer un BL
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.1.0
+ * @date 2026-02-14
  * @changelog
+ *   1.1.0 - Fix: utiliser supabaseAdmin directement (supabase n'était pas importé)
  *   1.0.0 - Version initiale
  */
 
@@ -33,8 +34,6 @@ export async function POST(request) {
       );
     }
 
-    const client = supabaseAdmin || supabase;
-
     // Gérer la création automatique de purchase_order si nécessaire
     let finalLinkedPoId = null;
 
@@ -45,7 +44,7 @@ export async function POST(request) {
       if (shouldCreatePO) {
         console.log('Création automatique purchase_order pour:', linked_po_id);
 
-        const { data: existingPO } = await client
+        const { data: existingPO } = await supabaseAdmin
           .from('purchase_orders')
           .select('id')
           .eq('po_number', linked_po_id.trim())
@@ -54,7 +53,7 @@ export async function POST(request) {
         if (existingPO) {
           finalLinkedPoId = existingPO.id;
         } else {
-          const { data: clientData } = await client
+          const { data: clientData } = await supabaseAdmin
             .from('clients')
             .select('name')
             .eq('id', client_id)
@@ -62,7 +61,7 @@ export async function POST(request) {
 
           const clientName = clientData?.name || 'Client inconnu';
 
-          const { data: newPO, error: poError } = await client
+          const { data: newPO, error: poError } = await supabaseAdmin
             .from('purchase_orders')
             .insert({
               po_number: linked_po_id.trim(),
@@ -103,7 +102,7 @@ export async function POST(request) {
       is_prix_jobe: body.is_prix_jobe || false,
     };
 
-    const { data: deliveryNote, error: deliveryNoteError } = await client
+    const { data: deliveryNote, error: deliveryNoteError } = await supabaseAdmin
       .from('delivery_notes')
       .insert([deliveryNoteData])
       .select()
@@ -143,7 +142,7 @@ export async function POST(request) {
         };
       });
 
-      const { data: materialsResult, error: materialsError } = await client
+      const { data: materialsResult, error: materialsError } = await supabaseAdmin
         .from('delivery_note_materials')
         .insert(materialsData)
         .select();
@@ -156,7 +155,7 @@ export async function POST(request) {
     }
 
     // 3. Récupérer le delivery_note complet
-    const { data: completeDeliveryNote, error: fetchError } = await client
+    const { data: completeDeliveryNote, error: fetchError } = await supabaseAdmin
       .from('delivery_notes')
       .select(`
         *,
