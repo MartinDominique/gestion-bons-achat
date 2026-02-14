@@ -8,9 +8,11 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.0.0
+ * @version 2.1.0
  * @date 2026-02-14
  * @changelog
+ *   2.1.0 - Ajout boutons Sauvegarder/Présenter/Annuler en haut du formulaire
+ *           (disposition identique au BT: vert/bleu/rouge)
  *   2.0.0 - Refonte sélection client (copie BT), uppercase BA/description,
  *           réorganisation sections, boutons modifier/ajouter client
  *   1.1.0 - Fix props ClientSelect (selectedClient + onClientSelect)
@@ -23,7 +25,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Package, Calendar, FileText, User, Mail,
-  Save, Eye, X, Plus, Truck, PenTool
+  Save, Eye, X, Plus, Truck, PenTool, Check
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
@@ -321,7 +323,60 @@ export default function DeliveryNoteForm({
   // =============================================
 
   return (
-    <div className="space-y-4">
+    <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
+
+      {/* Header avec boutons - identique au BT */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h2 className="text-xl font-bold text-gray-900">
+          {mode === 'create' ? 'Nouveau Bon de Livraison' : `Édition ${deliveryNote?.bl_number}`}
+        </h2>
+
+        {/* Boutons workflow - en haut (colonne sur mobile, ligne sur tablet/PC) */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          {(deliveryNote?.status === 'signed' || deliveryNote?.status === 'sent' || deliveryNote?.status === 'pending_send') ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center font-medium text-sm"
+            >
+              <Check className="mr-2" size={16} />
+              Terminer
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={saving || !clientId}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
+              >
+                <Save className="mr-2" size={16} />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePresentToClient}
+                disabled={saving || !clientId || materials.length === 0}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center font-medium text-sm"
+              >
+                <FileText className="mr-2" size={16} />
+                {saving ? 'Préparation...' : 'Présenter'}
+              </button>
+
+              <button
+                type="button"
+                onClick={onCancel}
+                className="bg-white border border-red-300 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 font-medium text-sm"
+              >
+                Annuler
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-4">
       {/* ==========================================
           SECTION 1: CLIENT + EMAILS (copie du BT)
           ========================================== */}
@@ -684,6 +739,7 @@ export default function DeliveryNoteForm({
           client={editingClient}
         />
       )}
+      </div>
     </div>
   );
 }
