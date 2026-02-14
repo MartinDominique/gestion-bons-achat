@@ -8,9 +8,11 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.2.0
+ * @version 2.3.0
  * @date 2026-02-14
  * @changelog
+ *   2.3.0 - Ajout bouton "Ajout de soumission" + modal import soumissions
+ *           Import sélectif d'articles depuis soumissions acceptées du client
  *   2.2.0 - Boutons bas identiques au haut (vert/bleu/rouge)
  *           Fix chargement BA: par client_name (comme BT) au lieu de client_id
  *           Ajout description + montant au dropdown BA
@@ -87,6 +89,13 @@ export default function DeliveryNoteForm({
 
   // UI
   const [savedId, setSavedId] = useState(null);
+
+  // Soumissions import
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [submissions, setSubmissions] = useState([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
+  const [selectedSubmissionItems, setSelectedSubmissionItems] = useState([]);
 
   // =============================================
   // LOAD CLIENTS (identique au BT)
@@ -288,6 +297,120 @@ export default function DeliveryNoteForm({
       is_prix_jobe: isPrixJobe,
       recipient_emails: getSelectedEmailAddresses(),
     };
+  };
+
+  // =============================================
+  // FONCTIONS IMPORT SOUMISSIONS
+  // =============================================
+
+  const loadClientSubmissions = async () => {
+    if (!selectedClient) {
+      toast.error('Veuillez d\'abord sélectionner un client');
+      return;
+    }
+
+    setIsLoadingSubmissions(true);
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('client_name', selectedClient.name)
+        .eq('status', 'accepted')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast.error('Aucune soumission acceptée trouvée pour ce client');
+        setIsLoadingSubmissions(false);
+        return;
+      }
+
+      setSubmissions(data);
+      setShowSubmissionModal(true);
+    } catch (error) {
+      console.error('Erreur chargement soumissions:', error);
+      toast.error('Erreur lors du chargement des soumissions');
+    } finally {
+      setIsLoadingSubmissions(false);
+    }
+  };
+
+  const selectSubmissionForImport = (submission) => {
+    setSelectedSubmissionForImport(submission);
+    setSelectedSubmissionItems([]);
+  };
+
+  const toggleSubmissionItemSelection = (itemIndex) => {
+    setSelectedSubmissionItems(prev => {
+      const newSelection = [...prev];
+      const existingIndex = newSelection.indexOf(itemIndex);
+      if (existingIndex > -1) {
+        newSelection.splice(existingIndex, 1);
+      } else {
+        newSelection.push(itemIndex);
+      }
+      return newSelection;
+    });
+  };
+
+  const toggleAllSubmissionItemsSelection = () => {
+    if (!selectedSubmissionForImport?.items) return;
+    if (selectedSubmissionItems.length === selectedSubmissionForImport.items.length) {
+      setSelectedSubmissionItems([]);
+    } else {
+      setSelectedSubmissionItems(selectedSubmissionForImport.items.map((_, index) => index));
+    }
+  };
+
+  const importSelectedSubmissionItems = () => {
+    if (!selectedSubmissionForImport || selectedSubmissionItems.length === 0) {
+      toast.error('Veuillez sélectionner au moins un article');
+      return;
+    }
+
+    try {
+      const itemsToImport = selectedSubmissionItems.map((itemIndex, arrayIndex) => {
+        const item = selectedSubmissionForImport.items[itemIndex];
+        const sourceCode = item.product_id || item.code || '';
+        const description = item.name || item.description || 'Article importé depuis soumission';
+
+        return {
+          id: 'sub-' + Date.now() + '-' + arrayIndex,
+          product_id: sourceCode || null,
+          code: sourceCode,
+          description: sourceCode ? `[${sourceCode}] ${description}` : description,
+          product: {
+            id: sourceCode || 'temp-prod-' + Date.now() + '-' + arrayIndex,
+            product_id: sourceCode,
+            description: description,
+            selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
+            unit: item.unit || 'UN',
+          },
+          quantity: parseFloat(item.quantity || 0),
+          unit: item.unit || 'UN',
+          unit_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
+          showPrice: false,
+          show_price: false,
+          notes: `Importé de soumission #${selectedSubmissionForImport.submission_number}`,
+          from_submission: true,
+          submission_number: selectedSubmissionForImport.submission_number
+        };
+      });
+
+      const updatedMaterials = [...materials, ...itemsToImport];
+      setMaterials(updatedMaterials);
+      onFormChange?.();
+
+      setShowSubmissionModal(false);
+      setSelectedSubmissionForImport(null);
+      setSelectedSubmissionItems([]);
+
+      toast.success(`${itemsToImport.length} matériaux importés de la soumission #${selectedSubmissionForImport.submission_number}`);
+    } catch (error) {
+      console.error('Erreur import articles soumission:', error);
+      toast.error('Erreur lors de l\'import des articles');
+    }
   };
 
   // =============================================
@@ -664,6 +787,20 @@ export default function DeliveryNoteForm({
           )}
         </h2>
 
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            type="button"
+            onClick={loadClientSubmissions}
+            disabled={!selectedClient || isLoadingSubmissions}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            title={!selectedClient ? "Sélectionnez d'abord un client" : "Importer depuis une soumission"}
+            style={{ minHeight: '44px' }}
+          >
+            <FileText size={16} />
+            {isLoadingSubmissions ? 'Chargement...' : 'Ajout de soumission'}
+          </button>
+        </div>
+
         <MaterialSelector
           materials={materials}
           onMaterialsChange={(newMaterials) => { setMaterials(newMaterials); onFormChange?.(); }}
@@ -744,6 +881,171 @@ export default function DeliveryNoteForm({
           onSaved={handleClientSaved}
           client={editingClient}
         />
+      )}
+
+      {/* ==========================================
+          MODAL IMPORT SOUMISSIONS
+          ========================================== */}
+      {showSubmissionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <FileText className="text-blue-600" size={24} />
+                Import depuis Soumissions
+              </h2>
+              <button
+                onClick={() => {
+                  setShowSubmissionModal(false);
+                  setSelectedSubmissionForImport(null);
+                  setSelectedSubmissionItems([]);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {!selectedSubmissionForImport ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Sélectionnez une soumission pour voir ses articles
+                  </p>
+                  {submissions.map((submission) => (
+                    <div
+                      key={submission.id}
+                      onClick={() => selectSubmissionForImport(submission)}
+                      className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            Soumission #{submission.submission_number}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {new Date(submission.created_at).toLocaleDateString('fr-CA')}
+                          </p>
+                          {submission.description && (
+                            <p className="text-sm text-gray-500 mt-1">{submission.description}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-gray-500">
+                            {submission.items?.length || 0} articles
+                          </div>
+                          <div className="text-lg font-bold text-gray-900 mt-1">
+                            {new Intl.NumberFormat('fr-CA', {
+                              style: 'currency',
+                              currency: 'CAD'
+                            }).format(submission.total || 0)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => {
+                        setSelectedSubmissionForImport(null);
+                        setSelectedSubmissionItems([]);
+                      }}
+                      className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
+                    >
+                      &larr; Retour aux soumissions
+                    </button>
+                    <button
+                      onClick={toggleAllSubmissionItemsSelection}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      {selectedSubmissionItems.length === selectedSubmissionForImport.items.length
+                        ? 'Tout désélectionner'
+                        : 'Tout sélectionner'}
+                    </button>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-900">
+                      Soumission #{selectedSubmissionForImport.submission_number}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {selectedSubmissionItems.length} / {selectedSubmissionForImport.items?.length || 0} articles sélectionnés
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {selectedSubmissionForImport.items?.map((item, index) => (
+                      <label
+                        key={index}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
+                          selectedSubmissionItems.includes(index)
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedSubmissionItems.includes(index)}
+                          onChange={() => toggleSubmissionItemSelection(index)}
+                          className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">
+                                {item.product_id || item.code ? `[${item.product_id || item.code}] ` : ''}
+                                {item.name || item.description}
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                Qté: {item.quantity} {item.unit || 'UN'}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-gray-900">
+                                {new Intl.NumberFormat('fr-CA', {
+                                  style: 'currency',
+                                  currency: 'CAD'
+                                }).format(item.price || item.selling_price || item.unit_price || 0)}
+                              </div>
+                              <div className="text-xs text-gray-500">par {item.unit || 'UN'}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowSubmissionModal(false);
+                  setSelectedSubmissionForImport(null);
+                  setSelectedSubmissionItems([]);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                style={{ minHeight: '44px' }}
+              >
+                Annuler
+              </button>
+              {selectedSubmissionForImport && (
+                <button
+                  onClick={importSelectedSubmissionItems}
+                  disabled={selectedSubmissionItems.length === 0}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  style={{ minHeight: '44px' }}
+                >
+                  Importer {selectedSubmissionItems.length} article{selectedSubmissionItems.length > 1 ? 's' : ''}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
       </div>
     </div>
