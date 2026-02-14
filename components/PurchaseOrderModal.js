@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import DeliverySlipModal from './DeliverySlipModal';
 import BCCConfirmationModal from './PurchaseOrder/BCCConfirmationModal';
 
-const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) => {
+const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, panelMode = false, prefillData = null, keepOpenAfterCreate = false }) => {
   // État principal du formulaire
   const [formData, setFormData] = useState({
     po_number: '',
@@ -56,6 +56,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   // États pour upload de fichiers
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  // État pour le mode "Créer et laisser ouvert" - tracks the PO after save
+  const [stayOpenEditingPO, setStayOpenEditingPO] = useState(null);
+
   // États pour l'édition mobile
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [editingItemData, setEditingItemData] = useState(null);
@@ -284,6 +287,16 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
     } else if (isOpen) {
       resetForm();
       loadClients();
+      // Prefill data from split view panel (e.g., client info from AF form)
+      if (prefillData) {
+        setFormData(prev => ({
+          ...prev,
+          client_name: prefillData.client_name || prev.client_name,
+          client_email: prefillData.client_email || prev.client_email,
+          client_phone: prefillData.client_phone || prev.client_phone,
+          client_address: prefillData.client_address || prev.client_address,
+        }));
+      }
     }
   }, [isOpen, editingPO]);
 
@@ -1029,7 +1042,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
   };
 
   // Sauvegarder le BA
-  const savePurchaseOrder = async () => {
+  // stayOpen: if true, keep the form open after creation (switch to edit mode)
+  const savePurchaseOrder = async (stayOpen = false) => {
     try {
       setIsLoading(true);
       setError('');
@@ -1147,9 +1161,19 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh }) =>
       }
       
       console.log('BA ' + poData.po_number + ' sauvegardé avec succès');
-      
+
       if (onRefresh) onRefresh();
-      onClose();
+
+      if (stayOpen && !editingPO && !stayOpenEditingPO) {
+        // "Créer et laisser ouvert" - reload the created PO in edit mode
+        setStayOpenEditingPO(poData);
+        loadPOData(poData.id);
+        loadSupplierPurchases(poData.id);
+        checkExistingSubmission(poData.id);
+        console.log('BA créé et gardé ouvert en mode édition');
+      } else {
+        onClose();
+      }
       
     } catch (err) {
       console.error('Erreur sauvegarde BA:', err);
@@ -1555,17 +1579,20 @@ setTimeout(() => {
 
   const deliveryStatus = getDeliveryStatus();
 
+  // effectiveEditingPO: use stayOpenEditingPO if the BA was created with "Créer et laisser ouvert"
+  const effectiveEditingPO = editingPO || stayOpenEditingPO;
+
   return (
     <>
-      {/* Modal principal adapté mobile */}
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-2 sm:p-4">
-        <div className="bg-white rounded-xl w-full h-[98vh] sm:max-w-6xl sm:h-[95vh] flex flex-col overflow-hidden">
+      {/* Modal principal adapté mobile - or inline panel */}
+      <div className={panelMode ? '' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-2 sm:p-4'}>
+        <div className={panelMode ? 'bg-white flex flex-col overflow-hidden h-full' : 'bg-white rounded-xl w-full h-[98vh] sm:max-w-6xl sm:h-[95vh] flex flex-col overflow-hidden'}>
           {/* Header adapté mobile */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 sm:p-6 flex-shrink-0">
+          <div className={`bg-gradient-to-r from-blue-600 to-purple-600 text-white ${panelMode ? 'p-3' : 'p-4 sm:p-6'} flex-shrink-0`}>
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-lg sm:text-2xl font-bold">
-                  {editingPO ? `BA #${editingPO.po_number}` : 'Nouveau BA Client'}
+                <h2 className={`${panelMode ? 'text-base' : 'text-lg sm:text-2xl'} font-bold`}>
+                  {effectiveEditingPO ? `BA #${effectiveEditingPO.po_number || formData.po_number}` : 'Nouveau BA Client'}
                 </h2>
                 <p className="text-blue-100 mt-1 text-sm hidden sm:block">
                   Gestion complète des bons d'achat clients
@@ -1610,7 +1637,7 @@ setTimeout(() => {
                   </span>
                 )}
               </button>
-              {editingPO && (
+              {effectiveEditingPO && (
                 <button
                   onClick={() => setActiveTab('livraisons')}
                   className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
@@ -1644,7 +1671,7 @@ setTimeout(() => {
                   </span>
                 )}
               </button>
-              {editingPO && items.length > 0 && (
+              {effectiveEditingPO && items.length > 0 && (
                 <button
                   onClick={() => setShowBCCModal(true)}
                   className="px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap border-transparent text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
@@ -2035,7 +2062,7 @@ setTimeout(() => {
             )}
 
             {/* ONGLET LIVRAISONS */}
-            {activeTab === 'livraisons' && editingPO && (
+            {activeTab === 'livraisons' && effectiveEditingPO && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                   <h3 className="text-lg font-semibold">
@@ -2376,7 +2403,7 @@ setTimeout(() => {
 
               {/* Tous les boutons regroupés */}
               <div className="flex gap-2 flex-1 sm:flex-initial justify-end">
-                {editingPO && (
+                {effectiveEditingPO && (
                   <button
                     onClick={deletePurchaseOrder}
                     disabled={isLoading}
@@ -2395,12 +2422,24 @@ setTimeout(() => {
                   Fermer
                 </button>
                 
+                {/* Bouton "Créer et laisser ouvert" - seulement en mode création */}
+                {!effectiveEditingPO && (
+                  <button
+                    onClick={() => savePurchaseOrder(true)}
+                    disabled={isLoading || !formData.client_name || !formData.po_number}
+                    className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 text-xs sm:text-sm whitespace-nowrap"
+                    title="Sauvegarder le BA et garder le formulaire ouvert pour composer le BCC"
+                  >
+                    {isLoading ? '...' : 'Créer et laisser ouvert'}
+                  </button>
+                )}
+
                 <button
-                  onClick={savePurchaseOrder}
+                  onClick={() => savePurchaseOrder(false)}
                   disabled={isLoading || !formData.client_name || !formData.po_number}
                   className="px-3 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-xs sm:text-sm"
                 >
-                  {isLoading ? 'Sauvegarde...' : (editingPO ? 'Mettre à jour' : 'Créer BA')}
+                  {isLoading ? 'Sauvegarde...' : (effectiveEditingPO ? 'Mettre à jour' : 'Créer BA')}
                 </button>
               </div>
             </div>
@@ -2816,15 +2855,15 @@ setTimeout(() => {
           isOpen={showDeliveryModal}
           onClose={() => {
             setShowDeliveryModal(false);
-            if (editingPO) {
-              loadPOData(editingPO.id);
+            if (effectiveEditingPO) {
+              loadPOData(effectiveEditingPO.id);
             }
           }}
-          purchaseOrder={editingPO}
+          purchaseOrder={effectiveEditingPO}
           onRefresh={() => {
             if (onRefresh) onRefresh();
-            if (editingPO) {
-              loadPOData(editingPO.id);
+            if (effectiveEditingPO) {
+              loadPOData(effectiveEditingPO.id);
             }
           }}
         />
@@ -3007,16 +3046,16 @@ setTimeout(() => {
       )}
 
       {/* Modal BCC - Confirmation de Commande */}
-      {showBCCModal && editingPO && (
+      {showBCCModal && effectiveEditingPO && (
         <BCCConfirmationModal
           isOpen={showBCCModal}
           onClose={() => setShowBCCModal(false)}
-          purchaseOrder={{ ...formData, id: editingPO.id }}
+          purchaseOrder={{ ...formData, id: effectiveEditingPO.id }}
           items={items}
           supplierPurchases={supplierPurchases}
           onBCCSent={() => {
             // Rafraîchir les données du BA pour mettre à jour le compteur BCC et les fichiers
-            loadPOData(editingPO.id);
+            loadPOData(effectiveEditingPO.id);
           }}
         />
       )}

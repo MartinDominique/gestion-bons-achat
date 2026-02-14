@@ -1,6 +1,7 @@
 // app/layout.js
 import './globals.css';
 import Navigation from '../components/Navigation';
+import ClientSplitViewWrapper from '../components/SplitView/ClientSplitViewWrapper';
 
 export const metadata = {
   title: 'Gestion Bons d\'Achat',
@@ -53,9 +54,9 @@ export default function RootLayout({ children }) {
       </head>
       <body className="bg-gray-100">
         <Navigation />
-        <main className="max-w-6xl mx-auto p-6 bg-white rounded-lg shadow">
+        <ClientSplitViewWrapper>
           {children}
-        </main>
+        </ClientSplitViewWrapper>
       </body>
     </html>
   );

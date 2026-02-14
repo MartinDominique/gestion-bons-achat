@@ -1,9 +1,10 @@
 import React from 'react';
-import { 
-  MoreVertical, Eye, Edit, Trash2, FileText, Download, Search, 
+import {
+  MoreVertical, Eye, Edit, Trash2, FileText, Download, Search,
   Plus, Upload, X, ChevronDown, ShoppingCart, Building2, Truck,
   MapPin, Calendar, Package, DollarSign, Printer, Wrench, MessageSquare, Calculator
 } from 'lucide-react';
+import { useSplitView } from './SplitView/SplitViewContext';
 
 import { 
   CARRIERS,
@@ -402,32 +403,12 @@ Merci!`;
                   </div>
                 </div>
 
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <label className="block text-sm font-semibold text-green-800 mb-2">
-                    Bon d'achat client lié
-                  </label>
-                  <select
-                    value={purchaseForm.linked_po_id}
-                    onChange={(e) => {
-                      const selectedPoId = e.target.value;
-                      const po = purchaseOrders.find(p => p.id === selectedPoId);
-                      
-                      setPurchaseForm({
-                        ...purchaseForm, 
-                        linked_po_id: selectedPoId,
-                        linked_po_number: po?.po_number || '',
-                      });
-                    }}
-                    className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
-                  >
-                    <option value="">Aucun (optionnel)</option>
-                    {purchaseOrders.map((po) => (
-                      <option key={po.id} value={po.id}>
-                        {po.po_number} - {po.client_name} - {po.description ? (po.description.length > 20 ? po.description.substring(0, 20) + '...' : po.description) : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <LinkedPOSection
+                  purchaseForm={purchaseForm}
+                  setPurchaseForm={setPurchaseForm}
+                  purchaseOrders={purchaseOrders}
+                  suppliers={suppliers}
+                />
               </div>
 
               {/* NOUVEAU - BA Acomba et Soumission fournisseur */}
@@ -1908,6 +1889,88 @@ export const SupplierFormSimpleModal = ({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+// ===== SECTION BA LIÉ AVEC BOUTON +BA =====
+const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppliers }) => {
+  let splitView;
+  try {
+    splitView = useSplitView();
+  } catch {
+    // SplitView not available (shouldn't happen but safe fallback)
+    splitView = null;
+  }
+
+  const selectedSupplier = suppliers?.find(s => s.id === purchaseForm.supplier_id);
+  const hasSupplier = !!purchaseForm.supplier_id;
+
+  const handleOpenNewBA = () => {
+    if (!splitView) return;
+
+    // Get client info from the selected linked PO or supplier for prefill
+    const prefill = {};
+    if (selectedSupplier) {
+      // We don't know the client from supplier, but the user will fill it in
+    }
+
+    splitView.openPanel('purchase-order', {
+      editingPO: null,
+      keepOpenAfterCreate: true,
+      prefill: prefill
+    });
+
+    // Listen for BA creation events to update the dropdown
+    splitView.registerPanelEventHandler((eventName, eventData) => {
+      if (eventName === 'ba-updated') {
+        // The parent hook will need to refetch purchase orders
+        // We trigger this via a custom event on the window
+        window.dispatchEvent(new CustomEvent('ba-list-updated'));
+      }
+    });
+  };
+
+  return (
+    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+      <label className="block text-sm font-semibold text-green-800 mb-2">
+        Bon d&apos;achat client lié
+      </label>
+      <div className="flex gap-2">
+        <select
+          value={purchaseForm.linked_po_id}
+          onChange={(e) => {
+            const selectedPoId = e.target.value;
+            const po = purchaseOrders.find(p => p.id === selectedPoId);
+
+            setPurchaseForm({
+              ...purchaseForm,
+              linked_po_id: selectedPoId,
+              linked_po_number: po?.po_number || '',
+            });
+          }}
+          className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+        >
+          <option value="">Aucun (optionnel)</option>
+          {purchaseOrders.map((po) => (
+            <option key={po.id} value={po.id}>
+              {po.po_number} - {po.client_name} - {po.description ? (po.description.length > 20 ? po.description.substring(0, 20) + '...' : po.description) : ''}
+            </option>
+          ))}
+        </select>
+
+        {/* Bouton +BA - ouvre le formulaire de création de BA dans le panneau latéral */}
+        {splitView && hasSupplier && (
+          <button
+            type="button"
+            onClick={handleOpenNewBA}
+            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex-shrink-0 font-medium text-sm"
+            title="Créer un nouveau Bon d'Achat Client dans le panneau latéral"
+          >
+            +BA
+          </button>
+        )}
       </div>
     </div>
   );

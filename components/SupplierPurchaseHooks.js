@@ -224,6 +224,35 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     initializeData();
   }, []);
 
+  // ===== ÉCOUTER LES ÉVÉNEMENTS DU PANNEAU LATÉRAL (SPLIT VIEW) =====
+  useEffect(() => {
+    const handleBAListUpdated = async () => {
+      console.log('BA list updated event received, refreshing purchase orders...');
+      const prevCount = purchaseOrders.length;
+      try {
+        const data = await fetchPurchaseOrders();
+        setPurchaseOrders(data);
+        // If a new BA was created, auto-select it in the form
+        if (data.length > prevCount && showForm) {
+          const newestBA = data[0]; // fetchPurchaseOrders returns ordered by created_at desc
+          if (newestBA) {
+            setPurchaseForm(prev => ({
+              ...prev,
+              linked_po_id: newestBA.id,
+              linked_po_number: newestBA.po_number || '',
+            }));
+            console.log('Auto-selected new BA:', newestBA.po_number);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur refresh purchase orders:', error);
+      }
+    };
+
+    window.addEventListener('ba-list-updated', handleBAListUpdated);
+    return () => window.removeEventListener('ba-list-updated', handleBAListUpdated);
+  }, [purchaseOrders.length, showForm]);
+
   // ===== RECHERCHE PRODUITS AVEC DEBOUNCE =====
   useEffect(() => {
     const timeoutId = setTimeout(() => {

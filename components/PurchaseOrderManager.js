@@ -7,6 +7,7 @@ import PurchaseOrderModal from './PurchaseOrderModal';
 
 // Utiliser vos utilitaires existants
 import { formatCurrency, formatDate, getStatusEmoji } from './PurchaseOrder/utils/formatting';
+import ReferenceLink from './SplitView/ReferenceLink';
 
 const PurchaseOrderManager = () => {
   const [activeTab, setActiveTab] = useState('list');
@@ -449,9 +450,17 @@ const PurchaseOrderManager = () => {
                 </div>
 
                 {/* LIGNE 2: Description + Soumission */}
-                <div className="text-xs text-gray-600 pl-2 truncate">
+                <div className="text-xs text-gray-600 pl-2 truncate" onClick={(e) => { if (po.submission_no) e.stopPropagation(); }}>
                   {po.submission_no && (
-                    <span className="text-purple-600 font-medium">#{po.submission_no} • </span>
+                    <>
+                      <ReferenceLink
+                        type="soumission"
+                        label={`#${po.submission_no}`}
+                        data={{ submissionNumber: po.submission_no }}
+                        variant="purple"
+                      />
+                      <span> • </span>
+                    </>
                   )}
                   {po.description || 'Aucune description'}
                 </div>
