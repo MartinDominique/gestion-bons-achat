@@ -552,7 +552,7 @@ export default function DeliveryNoteForm({
           Détails de la livraison
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-4">
           {/* Date de livraison */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -563,12 +563,12 @@ export default function DeliveryNoteForm({
               type="date"
               value={deliveryDate}
               onChange={(e) => { setDeliveryDate(e.target.value); onFormChange?.(); }}
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base"
+              className="w-full sm:w-64 px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base"
               style={{ minHeight: '44px' }}
             />
           </div>
 
-          {/* BA lié */}
+          {/* BA lié (sous la date) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <FileText className="inline mr-1" size={14} />
@@ -612,7 +612,7 @@ export default function DeliveryNoteForm({
                 <option value="">-- Aucun BA --</option>
                 {purchaseOrders.map(po => (
                   <option key={po.id} value={po.id}>
-                    {po.po_number} {po.description ? `- ${po.description.substring(0, 40)}` : ''}
+                    {po.po_number} {po.description ? `- ${po.description.substring(0, 20)}...` : ''}
                   </option>
                 ))}
               </select>
