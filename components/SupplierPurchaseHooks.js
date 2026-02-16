@@ -224,6 +224,35 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     initializeData();
   }, []);
 
+  // ===== ÉCOUTER LES ÉVÉNEMENTS DU PANNEAU LATÉRAL (SPLIT VIEW) =====
+  useEffect(() => {
+    const handleBAListUpdated = async () => {
+      console.log('BA list updated event received, refreshing purchase orders...');
+      const prevCount = purchaseOrders.length;
+      try {
+        const data = await fetchPurchaseOrders();
+        setPurchaseOrders(data);
+        // If a new BA was created, auto-select it in the form
+        if (data.length > prevCount && showForm) {
+          const newestBA = data[0]; // fetchPurchaseOrders returns ordered by created_at desc
+          if (newestBA) {
+            setPurchaseForm(prev => ({
+              ...prev,
+              linked_po_id: newestBA.id,
+              linked_po_number: newestBA.po_number || '',
+            }));
+            console.log('Auto-selected new BA:', newestBA.po_number);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur refresh purchase orders:', error);
+      }
+    };
+
+    window.addEventListener('ba-list-updated', handleBAListUpdated);
+    return () => window.removeEventListener('ba-list-updated', handleBAListUpdated);
+  }, [purchaseOrders.length, showForm]);
+
   // ===== RECHERCHE PRODUITS AVEC DEBOUNCE =====
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -897,10 +926,85 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       
       await loadSupplierPurchases();
       resetForm();
-      
+
+      // Notifier le panneau latéral qu'un AF a été sauvegardé (pour rafraîchir le BA ouvert)
+      window.dispatchEvent(new CustomEvent('af-saved', {
+        detail: { linkedPoId: purchaseData.linked_po_id }
+      }));
+
     } catch (error) {
       console.error('Erreur sauvegarde achat:', error);
       alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));
+    }
+  };
+
+  // ===== SAUVEGARDE SILENCIEUSE (sans reset ni email) =====
+  // Utilisé par imprimerEtEnvoyerFournisseur pour sauvegarder avant d'ouvrir le mail
+  const savePurchaseOnly = async () => {
+    try {
+      let purchaseNumber = purchaseForm.purchase_number;
+
+      if (!editingPurchase) {
+        purchaseNumber = await generatePurchaseNumber();
+      }
+
+      const purchaseData = {
+        supplier_id: purchaseForm.supplier_id,
+        supplier_name: purchaseForm.supplier_name,
+        linked_po_id: purchaseForm.linked_po_id || null,
+        linked_po_number: purchaseForm.linked_po_number,
+        linked_submission_id: purchaseForm.linked_submission_id || null,
+        supplier_quote_reference: purchaseForm.supplier_quote_reference,
+        ba_acomba: purchaseForm.ba_acomba,
+        shipping_address_id: purchaseForm.shipping_address_id,
+        shipping_company: purchaseForm.shipping_company,
+        shipping_account: purchaseForm.shipping_account,
+        delivery_date: purchaseForm.delivery_date,
+        items: selectedItems.map(item => ({
+          product_id: item.product_id,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          cost_price: item.cost_price,
+          selling_price: item.selling_price,
+          notes: item.notes || '',
+          is_non_inventory: item.is_non_inventory || false
+        })),
+        subtotal: purchaseForm.subtotal,
+        tps: purchaseForm.tps,
+        tvq: purchaseForm.tvq,
+        shipping_cost: parseFloat(purchaseForm.shipping_cost || 0),
+        total_amount: purchaseForm.total_amount,
+        status: purchaseForm.status,
+        notes: purchaseForm.notes,
+        purchase_number: purchaseNumber
+      };
+
+      let savedPurchase;
+      if (editingPurchase) {
+        savedPurchase = await updateSupplierPurchase(editingPurchase.id, purchaseData);
+      } else {
+        savedPurchase = await createSupplierPurchase(purchaseData);
+        // Passer en mode édition avec le nouvel achat
+        setEditingPurchase(savedPurchase);
+      }
+
+      // Mettre à jour le numéro dans le formulaire si nouvelle création
+      if (!editingPurchase) {
+        setPurchaseForm(prev => ({ ...prev, purchase_number: purchaseNumber }));
+      }
+
+      console.log('AF sauvegardé silencieusement:', savedPurchase.purchase_number);
+
+      // Notifier pour rafraîchir le BA ouvert dans le panneau
+      window.dispatchEvent(new CustomEvent('af-saved', {
+        detail: { linkedPoId: purchaseData.linked_po_id }
+      }));
+
+      return savedPurchase;
+    } catch (error) {
+      console.error('Erreur sauvegarde silencieuse:', error);
+      throw error;
     }
   };
 
@@ -1348,6 +1452,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     
     // Handlers principaux
     handlePurchaseSubmit,
+    savePurchaseOnly,
     handleDeletePurchase,
     handleEditPurchase,
     handleQuickStatusUpdate, // NOUVELLE FONCTION

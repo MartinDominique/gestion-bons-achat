@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
 import SupplierReceiptModal from './SupplierReceiptModal';
-import { 
+import {
   MoreVertical, Edit, Trash2, Search, Plus, ShoppingCart, Building2, Wrench, Calendar, Truck
 } from 'lucide-react';
 
 // Imports des autres fichiers
 import { useSupplierPurchase } from './SupplierPurchaseHooks';
-import { 
-  PurchaseForm, 
-  SupplierModal, 
+import {
+  PurchaseForm,
+  SupplierModal,
   SupplierFormModal,
-  SupplierFormSimpleModal 
+  SupplierFormSimpleModal
 } from './SupplierPurchaseForms';
-import { 
-  formatCurrency, 
-  formatDate, 
+import {
+  formatCurrency,
+  formatDate,
   generatePurchaseNumber,
   PURCHASE_STATUSES,
   getPONumber
 } from './SupplierPurchaseServices';
+import ReferenceLink from './SplitView/ReferenceLink';
 
 export default function SupplierPurchaseManager() {
   // Utilisation du hook principal
@@ -104,9 +105,10 @@ export default function SupplierPurchaseManager() {
     
     // Handlers principaux
     handlePurchaseSubmit,
+    savePurchaseOnly,
     handleDeletePurchase,
     handleEditPurchase,
-    handleQuickStatusUpdate, // NOUVELLE FONCTION
+    handleQuickStatusUpdate,
     handleSupplierSubmit,
     handleSupplierFormSubmit,
     handleDeleteSupplier,
@@ -213,6 +215,7 @@ export default function SupplierPurchaseManager() {
           
           // Handlers
           handlePurchaseSubmit={handlePurchaseSubmit}
+          savePurchaseOnly={savePurchaseOnly}
           resetForm={resetForm}
           shouldShowBilingual={shouldShowBilingual}
           isCanadianSupplier={isCanadianSupplier}
@@ -669,9 +672,12 @@ export default function SupplierPurchaseManager() {
                     </td>
                     <td className="px-3 py-4 text-center">
                       {poNumber ? (
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                          {poNumber}
-                        </span>
+                        <ReferenceLink
+                          type="purchase-order"
+                          label={poNumber}
+                          data={{ editingPO: { id: purchase.linked_po_id, po_number: poNumber } }}
+                          variant="blue"
+                        />
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
@@ -854,14 +860,19 @@ export default function SupplierPurchaseManager() {
 
                   {/* LIGNE 2: BA Acomba + PO Client */}
                   <div className="flex items-center justify-between gap-2 text-xs text-gray-600 pl-2">
-                    <div className="flex items-center gap-2 truncate flex-1 min-w-0">
+                    <div className="flex items-center gap-2 truncate flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                       {purchase.ba_acomba && (
                         <span className="text-purple-600 font-medium">BA: {purchase.ba_acomba}</span>
                       )}
                       {poNumber && (
                         <>
                           {purchase.ba_acomba && <span className="text-gray-400">•</span>}
-                          <span className="text-blue-600 font-medium">PO: {poNumber}</span>
+                          <ReferenceLink
+                            type="purchase-order"
+                            label={`PO: ${poNumber}`}
+                            data={{ editingPO: { id: purchase.linked_po_id, po_number: poNumber } }}
+                            variant="blue"
+                          />
                         </>
                       )}
                       {!purchase.ba_acomba && !poNumber && (
