@@ -926,7 +926,12 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       
       await loadSupplierPurchases();
       resetForm();
-      
+
+      // Notifier le panneau latéral qu'un AF a été sauvegardé (pour rafraîchir le BA ouvert)
+      window.dispatchEvent(new CustomEvent('af-saved', {
+        detail: { linkedPoId: purchaseData.linked_po_id }
+      }));
+
     } catch (error) {
       console.error('Erreur sauvegarde achat:', error);
       alert('Erreur lors de la sauvegarde: ' + (error.message || 'Erreur inconnue'));

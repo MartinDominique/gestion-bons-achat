@@ -300,6 +300,33 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
     }
   }, [isOpen, editingPO]);
 
+  // Écouter les événements quand un AF est sauvegardé (pour rafraîchir les achats fournisseurs liés)
+  useEffect(() => {
+    const currentPOId = editingPO?.id || stayOpenEditingPO?.id;
+    if (!isOpen || !currentPOId) return;
+
+    const handleAFSaved = (event) => {
+      const linkedPoId = event.detail?.linkedPoId;
+      // Rafraîchir si l'AF est lié à CE BA, ou si aucun filtre (rafraîchir par précaution)
+      if (!linkedPoId || String(linkedPoId) === String(currentPOId)) {
+        console.log('AF sauvegardé lié à ce BA, rafraîchissement des achats fournisseurs pour BA', currentPOId);
+        loadSupplierPurchases(currentPOId);
+      }
+    };
+
+    // Écouter aussi ba-list-updated au cas où
+    const handleBAUpdated = () => {
+      loadSupplierPurchases(currentPOId);
+    };
+
+    window.addEventListener('af-saved', handleAFSaved);
+    window.addEventListener('ba-list-updated', handleBAUpdated);
+    return () => {
+      window.removeEventListener('af-saved', handleAFSaved);
+      window.removeEventListener('ba-list-updated', handleBAUpdated);
+    };
+  }, [isOpen, editingPO?.id, stayOpenEditingPO?.id]);
+
   // Charger les données complètes d'un BA existant
   const loadPOData = async (poId) => {
     try {
@@ -1671,7 +1698,7 @@ setTimeout(() => {
                   </span>
                 )}
               </button>
-              {effectiveEditingPO && items.length > 0 && (
+              {effectiveEditingPO && (items.length > 0 || supplierPurchases.length > 0) && (
                 <button
                   onClick={() => setShowBCCModal(true)}
                   className="px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap border-transparent text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
