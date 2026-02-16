@@ -105,9 +105,10 @@ export default function SupplierPurchaseManager() {
     
     // Handlers principaux
     handlePurchaseSubmit,
+    savePurchaseOnly,
     handleDeletePurchase,
     handleEditPurchase,
-    handleQuickStatusUpdate, // NOUVELLE FONCTION
+    handleQuickStatusUpdate,
     handleSupplierSubmit,
     handleSupplierFormSubmit,
     handleDeleteSupplier,
@@ -214,6 +215,7 @@ export default function SupplierPurchaseManager() {
           
           // Handlers
           handlePurchaseSubmit={handlePurchaseSubmit}
+          savePurchaseOnly={savePurchaseOnly}
           resetForm={resetForm}
           shouldShowBilingual={shouldShowBilingual}
           isCanadianSupplier={isCanadianSupplier}

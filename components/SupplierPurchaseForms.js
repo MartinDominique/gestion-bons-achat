@@ -33,6 +33,7 @@ export const PurchaseForm = ({
   
   // Handlers
   handlePurchaseSubmit,
+  savePurchaseOnly,
   resetForm,
   shouldShowBilingual,
   isCanadianSupplier,
@@ -163,6 +164,12 @@ export const PurchaseForm = ({
     }
 
     try {
+      // Sauvegarder l'AF avant de générer le PDF
+      if (savePurchaseOnly) {
+        await savePurchaseOnly();
+        console.log('AF sauvegardé avant envoi email fournisseur');
+      }
+
       // Générer et sauvegarder le PDF via jsPDF (inclure selectedItems actuels)
       const formWithItems = { ...purchaseForm, items: selectedItems };
       await exportPDF('download', editingPurchase, formWithItems, {
@@ -171,7 +178,7 @@ export const PurchaseForm = ({
       });
 
       const confirmation = confirm(
-        `✅ PDF sauvegardé : ${purchaseForm.purchase_number}.pdf\n\n` +
+        `✅ AF sauvegardé + PDF : ${purchaseForm.purchase_number}.pdf\n\n` +
         `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${selectedSupplier.email} ?`
       );
 
@@ -1894,7 +1901,7 @@ export const SupplierFormSimpleModal = ({
   );
 };
 
-// ===== SECTION BA LIÉ AVEC BOUTON +BA =====
+// ===== SECTION BA LIÉ AVEC BOUTON +BA ET LIEN CLIQUABLE =====
 const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppliers }) => {
   let splitView;
   try {
@@ -1906,15 +1913,12 @@ const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppli
 
   const selectedSupplier = suppliers?.find(s => s.id === purchaseForm.supplier_id);
   const hasSupplier = !!purchaseForm.supplier_id;
+  const selectedPO = purchaseOrders.find(p => String(p.id) === String(purchaseForm.linked_po_id));
 
   const handleOpenNewBA = () => {
     if (!splitView) return;
 
-    // Get client info from the selected linked PO or supplier for prefill
     const prefill = {};
-    if (selectedSupplier) {
-      // We don't know the client from supplier, but the user will fill it in
-    }
 
     splitView.openPanel('purchase-order', {
       editingPO: null,
@@ -1925,10 +1929,15 @@ const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppli
     // Listen for BA creation events to update the dropdown
     splitView.registerPanelEventHandler((eventName, eventData) => {
       if (eventName === 'ba-updated') {
-        // The parent hook will need to refetch purchase orders
-        // We trigger this via a custom event on the window
         window.dispatchEvent(new CustomEvent('ba-list-updated'));
       }
+    });
+  };
+
+  const handleOpenLinkedBA = () => {
+    if (!splitView || !selectedPO) return;
+    splitView.openPanel('purchase-order', {
+      editingPO: { id: selectedPO.id, po_number: selectedPO.po_number }
     });
   };
 
@@ -1959,6 +1968,18 @@ const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppli
             </option>
           ))}
         </select>
+
+        {/* Bouton ouvrir le BA lié dans le panneau latéral */}
+        {splitView && selectedPO && (
+          <button
+            type="button"
+            onClick={handleOpenLinkedBA}
+            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0 font-medium text-sm"
+            title={`Ouvrir ${selectedPO.po_number} dans le panneau latéral`}
+          >
+            Ouvrir
+          </button>
+        )}
 
         {/* Bouton +BA - ouvre le formulaire de création de BA dans le panneau latéral */}
         {splitView && hasSupplier && (
