@@ -5,9 +5,10 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.3.0
+ * @version 1.4.0
  * @date 2026-02-17
  * @changelog
+ *   1.4.0 - Ajout comptabilisation des BL (delivery_note_materials) dans colonne "Livrée"
  *   1.3.0 - Historique BCC détaillé: articles dépliables (code, qté, délai) + bouton "Renvoyer" orange
  *   1.2.0 - Fix B/O: lecture vraies réceptions (supplier_purchase_receipts) + ajout colonne "En Main" (stock)
  *   1.1.0 - Ajout affichage historique des envois BCC precedents
@@ -90,6 +91,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
       // 2. Charger les livraisons pour connaître les quantités déjà livrées
       let deliveredQuantities = {};
       if (purchaseOrder.id) {
+        // 2a. Depuis les delivery_slips (ancien système)
         const { data: slips } = await supabase
           .from('delivery_slips')
           .select('id')
@@ -106,6 +108,30 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
             slipItems.forEach(si => {
               const key = si.product_id;
               deliveredQuantities[key] = (deliveredQuantities[key] || 0) + parseFloat(si.quantity || 0);
+            });
+          }
+        }
+
+        // 2b. Depuis les BL (delivery_notes) liés à ce BA
+        const { data: linkedBLs } = await supabase
+          .from('delivery_notes')
+          .select('id')
+          .eq('linked_po_id', purchaseOrder.id)
+          .eq('status', 'sent');
+
+        if (linkedBLs && linkedBLs.length > 0) {
+          const blIds = linkedBLs.map(bl => bl.id);
+          const { data: blMaterials } = await supabase
+            .from('delivery_note_materials')
+            .select('product_id, quantity')
+            .in('delivery_note_id', blIds);
+
+          if (blMaterials) {
+            blMaterials.forEach(bm => {
+              const key = bm.product_id;
+              if (key) {
+                deliveredQuantities[key] = (deliveredQuantities[key] || 0) + parseFloat(bm.quantity || 0);
+              }
             });
           }
         }

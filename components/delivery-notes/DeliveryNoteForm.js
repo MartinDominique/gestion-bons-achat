@@ -8,9 +8,11 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.3.0
- * @date 2026-02-14
+ * @version 2.4.0
+ * @date 2026-02-17
  * @changelog
+ *   2.4.0 - Ajout bouton "Ajout de fournisseur" + modal import achats fournisseurs
+ *           Import sélectif d'articles depuis achats fournisseurs liés au client
  *   2.3.0 - Ajout bouton "Ajout de soumission" + modal import soumissions
  *           Import sélectif d'articles depuis soumissions acceptées du client
  *   2.2.0 - Boutons bas identiques au haut (vert/bleu/rouge)
@@ -96,6 +98,13 @@ export default function DeliveryNoteForm({
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [selectedSubmissionForImport, setSelectedSubmissionForImport] = useState(null);
   const [selectedSubmissionItems, setSelectedSubmissionItems] = useState([]);
+
+  // Achats fournisseurs import
+  const [showSupplierImportModal, setShowSupplierImportModal] = useState(false);
+  const [clientSupplierPurchases, setClientSupplierPurchases] = useState([]);
+  const [selectedPurchaseForImport, setSelectedPurchaseForImport] = useState(null);
+  const [selectedItemsForImport, setSelectedItemsForImport] = useState([]);
+  const [isLoadingSupplierPurchases, setIsLoadingSupplierPurchases] = useState(false);
 
   // =============================================
   // LOAD CLIENTS (identique au BT)
@@ -409,6 +418,144 @@ export default function DeliveryNoteForm({
       toast.success(`${itemsToImport.length} matériaux importés de la soumission #${selectedSubmissionForImport.submission_number}`);
     } catch (error) {
       console.error('Erreur import articles soumission:', error);
+      toast.error('Erreur lors de l\'import des articles');
+    }
+  };
+
+  // =============================================
+  // FONCTIONS IMPORT ACHATS FOURNISSEURS
+  // =============================================
+
+  const loadClientSupplierPurchases = async () => {
+    if (!selectedClient) {
+      toast.error('Veuillez d\'abord sélectionner un client');
+      return;
+    }
+
+    setIsLoadingSupplierPurchases(true);
+    try {
+      // Rechercher tous les BAs de ce client pour trouver les achats fournisseurs liés
+      const { data: clientPOs, error: clientPOsError } = await supabase
+        .from('purchase_orders')
+        .select('id, po_number')
+        .eq('client_name', selectedClient.name);
+
+      if (clientPOsError) {
+        console.error('Erreur chargement BAs client:', clientPOsError);
+        throw clientPOsError;
+      }
+
+      const clientPOIds = clientPOs?.map(po => po.id) || [];
+
+      // Charger tous les achats fournisseurs liés à ce client
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .select('*')
+        .or(
+          clientPOIds.length > 0
+            ? `linked_po_id.in.(${clientPOIds.join(',')}),supplier_name.ilike.%${selectedClient.name}%`
+            : `supplier_name.ilike.%${selectedClient.name}%`
+        )
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Filtrer pour ne garder que ceux avec des items
+      const uniquePurchases = (data || []).filter((purchase, index, self) =>
+        purchase.items &&
+        purchase.items.length > 0 &&
+        self.findIndex(p => p.id === purchase.id) === index
+      );
+
+      if (uniquePurchases.length === 0) {
+        toast.error('Aucun achat fournisseur avec articles trouvé pour ce client');
+        setIsLoadingSupplierPurchases(false);
+        return;
+      }
+
+      setClientSupplierPurchases(uniquePurchases);
+      setShowSupplierImportModal(true);
+    } catch (error) {
+      console.error('Erreur chargement achats fournisseurs:', error);
+      toast.error('Erreur lors du chargement des achats fournisseurs');
+    } finally {
+      setIsLoadingSupplierPurchases(false);
+    }
+  };
+
+  const selectPurchaseForImport = (purchase) => {
+    setSelectedPurchaseForImport(purchase);
+    setSelectedItemsForImport([]);
+  };
+
+  const toggleItemSelection = (itemIndex) => {
+    setSelectedItemsForImport(prev => {
+      const newSelection = [...prev];
+      const existingIndex = newSelection.indexOf(itemIndex);
+      if (existingIndex > -1) {
+        newSelection.splice(existingIndex, 1);
+      } else {
+        newSelection.push(itemIndex);
+      }
+      return newSelection;
+    });
+  };
+
+  const toggleAllItemsSelection = () => {
+    if (!selectedPurchaseForImport?.items) return;
+    if (selectedItemsForImport.length === selectedPurchaseForImport.items.length) {
+      setSelectedItemsForImport([]);
+    } else {
+      setSelectedItemsForImport(selectedPurchaseForImport.items.map((_, index) => index));
+    }
+  };
+
+  const importSelectedSupplierItems = () => {
+    if (!selectedPurchaseForImport || selectedItemsForImport.length === 0) {
+      toast.error('Veuillez sélectionner au moins un article');
+      return;
+    }
+
+    try {
+      const itemsToImport = selectedItemsForImport.map((itemIndex, arrayIndex) => {
+        const supplierItem = selectedPurchaseForImport.items[itemIndex];
+        const sourceCode = supplierItem.product_id || supplierItem.code || supplierItem.sku || '';
+        const description = supplierItem.description || supplierItem.name || supplierItem.product_name || 'Article importé';
+
+        return {
+          id: 'supplier-' + Date.now() + '-' + arrayIndex,
+          product_id: sourceCode || null,
+          code: sourceCode,
+          description: sourceCode ? `[${sourceCode}] ${description}` : description,
+          product: {
+            id: sourceCode || 'temp-prod-' + Date.now() + '-' + arrayIndex,
+            product_id: sourceCode,
+            description: description,
+            selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
+            unit: supplierItem.unit || supplierItem.unity || 'UN',
+          },
+          quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
+          unit: supplierItem.unit || supplierItem.unity || 'UN',
+          unit_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
+          showPrice: false,
+          show_price: false,
+          notes: `Importé de AF #${selectedPurchaseForImport.purchase_number}`,
+          from_supplier_purchase: true,
+          supplier_purchase_number: selectedPurchaseForImport.purchase_number
+        };
+      });
+
+      const updatedMaterials = [...materials, ...itemsToImport];
+      setMaterials(updatedMaterials);
+      onFormChange?.();
+
+      setShowSupplierImportModal(false);
+      setSelectedPurchaseForImport(null);
+      setSelectedItemsForImport([]);
+
+      toast.success(`${itemsToImport.length} matériaux importés de l'AF #${selectedPurchaseForImport.purchase_number}`);
+    } catch (error) {
+      console.error('Erreur import articles fournisseur:', error);
       toast.error('Erreur lors de l\'import des articles');
     }
   };
@@ -799,6 +946,17 @@ export default function DeliveryNoteForm({
             <FileText size={16} />
             {isLoadingSubmissions ? 'Chargement...' : 'Ajout de soumission'}
           </button>
+          <button
+            type="button"
+            onClick={loadClientSupplierPurchases}
+            disabled={!selectedClient || isLoadingSupplierPurchases}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            title={!selectedClient ? "Sélectionnez d'abord un client" : "Importer depuis un achat fournisseur"}
+            style={{ minHeight: '44px' }}
+          >
+            <Package size={16} />
+            {isLoadingSupplierPurchases ? 'Chargement...' : 'Ajout de fournisseur'}
+          </button>
         </div>
 
         <MaterialSelector
@@ -1041,6 +1199,176 @@ export default function DeliveryNoteForm({
                   style={{ minHeight: '44px' }}
                 >
                   Importer {selectedSubmissionItems.length} article{selectedSubmissionItems.length > 1 ? 's' : ''}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          MODAL IMPORT ACHATS FOURNISSEURS
+          ========================================== */}
+      {showSupplierImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="bg-purple-600 text-white p-6 rounded-t-lg flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Package size={24} />
+                Import Achats Fournisseurs - {selectedClient?.name}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowSupplierImportModal(false);
+                  setSelectedPurchaseForImport(null);
+                  setSelectedItemsForImport([]);
+                }}
+                className="text-white hover:bg-white/20 rounded-lg p-2"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {!selectedPurchaseForImport ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Sélectionnez un achat fournisseur pour voir ses articles
+                  </p>
+                  {clientSupplierPurchases.map((purchase) => (
+                    <div
+                      key={purchase.id}
+                      onClick={() => selectPurchaseForImport(purchase)}
+                      className="p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            AF #{purchase.purchase_number}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {purchase.supplier_name}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {new Date(purchase.created_at).toLocaleDateString('fr-CA')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-gray-500">
+                            {purchase.items?.length || 0} articles
+                          </div>
+                          <div className="text-lg font-bold text-gray-900 mt-1">
+                            {new Intl.NumberFormat('fr-CA', {
+                              style: 'currency',
+                              currency: 'CAD'
+                            }).format(purchase.total_amount || 0)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => {
+                        setSelectedPurchaseForImport(null);
+                        setSelectedItemsForImport([]);
+                      }}
+                      className="text-purple-600 hover:text-purple-700 flex items-center gap-2"
+                    >
+                      &larr; Retour aux achats fournisseurs
+                    </button>
+                    <button
+                      onClick={toggleAllItemsSelection}
+                      className="text-sm text-purple-600 hover:text-purple-700"
+                    >
+                      {selectedItemsForImport.length === selectedPurchaseForImport.items.length
+                        ? 'Tout désélectionner'
+                        : 'Tout sélectionner'}
+                    </button>
+                  </div>
+
+                  <div className="bg-purple-50 p-4 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-900">
+                      AF #{selectedPurchaseForImport.purchase_number} - {selectedPurchaseForImport.supplier_name}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {selectedItemsForImport.length} / {selectedPurchaseForImport.items?.length || 0} articles sélectionnés
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {selectedPurchaseForImport.items?.map((item, index) => {
+                      const quantity = parseFloat(item.quantity || item.qty || 1);
+                      const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
+
+                      return (
+                        <label
+                          key={index}
+                          className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
+                            selectedItemsForImport.includes(index)
+                              ? 'border-purple-500 bg-purple-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedItemsForImport.includes(index)}
+                            onChange={() => toggleItemSelection(index)}
+                            className="mt-1 w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">
+                                  {item.product_id || item.code || item.sku ? `[${item.product_id || item.code || item.sku}] ` : ''}
+                                  {item.description || item.name || item.product_name}
+                                </div>
+                                <div className="text-sm text-gray-600 mt-1">
+                                  Qté: {quantity} {item.unit || item.unity || 'UN'}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold text-gray-900">
+                                  {new Intl.NumberFormat('fr-CA', {
+                                    style: 'currency',
+                                    currency: 'CAD'
+                                  }).format(unitPrice)}
+                                </div>
+                                <div className="text-xs text-gray-500">par {item.unit || item.unity || 'UN'}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowSupplierImportModal(false);
+                  setSelectedPurchaseForImport(null);
+                  setSelectedItemsForImport([]);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                style={{ minHeight: '44px' }}
+              >
+                Annuler
+              </button>
+              {selectedPurchaseForImport && (
+                <button
+                  onClick={importSelectedSupplierItems}
+                  disabled={selectedItemsForImport.length === 0}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  style={{ minHeight: '44px' }}
+                >
+                  Importer {selectedItemsForImport.length} article{selectedItemsForImport.length > 1 ? 's' : ''}
                 </button>
               )}
             </div>
