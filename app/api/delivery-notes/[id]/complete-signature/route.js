@@ -1,9 +1,11 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.0.1
+ * @date 2026-02-17
  * @changelog
+ *   1.0.1 - Fix: vérification erreur sur toutes les mises à jour DB,
+ *           fallback sans colonnes optionnelles si update échoue
  *   1.0.0 - Version initiale
  */
 
@@ -115,13 +117,13 @@ export async function POST(request, { params }) {
     const autoSendCheck = checkCanAutoSend(deliveryNote);
 
     if (!autoSendCheck.canSend) {
-      await supabaseAdmin
+      const { error: pendErr1 } = await supabaseAdmin
         .from('delivery_notes')
-        .update({
-          status: 'pending_send',
-          auto_send_success: false
-        })
+        .update({ status: 'pending_send', auto_send_success: false })
         .eq('id', deliveryNoteId);
+      if (pendErr1) {
+        await supabaseAdmin.from('delivery_notes').update({ status: 'pending_send' }).eq('id', deliveryNoteId);
+      }
 
       return NextResponse.json({
         signatureSaved: true,
@@ -148,13 +150,13 @@ export async function POST(request, { params }) {
     }
 
     if (recipientEmails.length === 0) {
-      await supabaseAdmin
+      const { error: pendErr2 } = await supabaseAdmin
         .from('delivery_notes')
-        .update({
-          status: 'pending_send',
-          auto_send_success: false
-        })
+        .update({ status: 'pending_send', auto_send_success: false })
         .eq('id', deliveryNoteId);
+      if (pendErr2) {
+        await supabaseAdmin.from('delivery_notes').update({ status: 'pending_send' }).eq('id', deliveryNoteId);
+      }
 
       return NextResponse.json({
         signatureSaved: true,
@@ -176,7 +178,7 @@ export async function POST(request, { params }) {
 
     if (result.success) {
       // 6. Mettre à jour statut vers "sent"
-      await supabaseAdmin
+      const { error: updateSentError } = await supabaseAdmin
         .from('delivery_notes')
         .update({
           status: 'sent',
@@ -186,6 +188,19 @@ export async function POST(request, { params }) {
           auto_send_success: true
         })
         .eq('id', deliveryNoteId);
+
+      // Fallback: si l'update échoue (colonnes manquantes), mettre au moins le statut à jour
+      if (updateSentError) {
+        console.error('Erreur update complet vers sent:', updateSentError.message);
+        const { error: fallbackError } = await supabaseAdmin
+          .from('delivery_notes')
+          .update({ status: 'sent' })
+          .eq('id', deliveryNoteId);
+
+        if (fallbackError) {
+          console.error('Erreur fallback update statut sent:', fallbackError.message);
+        }
+      }
 
       // 7. Déduire l'inventaire
       if (deliveryNote.materials && deliveryNote.materials.length > 0) {
@@ -286,13 +301,13 @@ export async function POST(request, { params }) {
         status: 'sent'
       });
     } else {
-      await supabaseAdmin
+      const { error: pendErr3 } = await supabaseAdmin
         .from('delivery_notes')
-        .update({
-          status: 'pending_send',
-          auto_send_success: false
-        })
+        .update({ status: 'pending_send', auto_send_success: false })
         .eq('id', deliveryNoteId);
+      if (pendErr3) {
+        await supabaseAdmin.from('delivery_notes').update({ status: 'pending_send' }).eq('id', deliveryNoteId);
+      }
 
       return NextResponse.json({
         signatureSaved: true,
@@ -309,10 +324,13 @@ export async function POST(request, { params }) {
     console.error('Erreur API signature + envoi auto BL:', error);
 
     try {
-      await supabaseAdmin
+      const { error: pendErrCatch } = await supabaseAdmin
         .from('delivery_notes')
         .update({ status: 'pending_send', auto_send_success: false })
         .eq('id', parseInt(params.id));
+      if (pendErrCatch) {
+        await supabaseAdmin.from('delivery_notes').update({ status: 'pending_send' }).eq('id', parseInt(params.id));
+      }
     } catch (updateError) {
       console.error('Erreur mise à jour statut:', updateError);
     }

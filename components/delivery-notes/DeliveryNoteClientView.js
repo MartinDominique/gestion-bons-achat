@@ -7,9 +7,11 @@
  *              - Zone de signature tactile
  *              - Envoi automatique après signature
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.0.0
- * @date 2026-02-14
+ * @version 2.0.1
+ * @date 2026-02-17
  * @changelog
+ *   2.0.1 - Fix: fallback window.close(), reset isSubmitting dans branche succès,
+ *           alerte succès quand fermeture auto impossible
  *   2.0.0 - Refonte: structure identique au BT (WorkOrderClientView)
  *           Ajout bouton Fermer, en-tête professionnel BON DE LIVRAISON
  *   1.0.0 - Version initiale
@@ -179,7 +181,15 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
 
         if (result.autoSendResult?.success && result.deliveryNoteStatus === 'sent') {
           onStatusUpdate?.('sent');
-          setTimeout(() => { window.close(); }, 500);
+          setIsSubmitting(false);
+          // Tenter de fermer la fenêtre, sinon afficher succès
+          setTimeout(() => {
+            window.close();
+            // Fallback si window.close() ne fonctionne pas (page non ouverte via JS)
+            setTimeout(() => {
+              alert('✅ Livraison signée et email envoyé avec succès!');
+            }, 200);
+          }, 500);
         } else if (result.autoSendResult?.needsManualSend) {
           onStatusUpdate?.(result.deliveryNoteStatus || 'pending_send');
           alert(`✅ Livraison signée avec succès!\n\n${result.autoSendResult.reason}`);
