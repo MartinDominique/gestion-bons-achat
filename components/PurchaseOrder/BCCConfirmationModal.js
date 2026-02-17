@@ -5,10 +5,11 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.3.0
+ * @version 1.4.0
  * @date 2026-02-17
  * @changelog
- *   1.3.0 - Ajout comptabilisation des BL (delivery_note_materials) dans colonne "Livrée"
+ *   1.4.0 - Ajout comptabilisation des BL (delivery_note_materials) dans colonne "Livrée"
+ *   1.3.0 - Historique BCC détaillé: articles dépliables (code, qté, délai) + bouton "Renvoyer" orange
  *   1.2.0 - Fix B/O: lecture vraies réceptions (supplier_purchase_receipts) + ajout colonne "En Main" (stock)
  *   1.1.0 - Ajout affichage historique des envois BCC precedents
  *   1.0.0 - Version initiale - Création du modal BCC
@@ -16,7 +17,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { X, Send, Loader2, Mail, Package, AlertCircle, FileText, Plus, Trash2, Clock, CheckCircle } from 'lucide-react';
+import { X, Send, Loader2, Mail, Package, AlertCircle, FileText, Plus, Trash2, Clock, CheckCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 
 const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, supplierPurchases, onBCCSent }) => {
   // États du formulaire BCC
@@ -28,6 +29,9 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
   const [sendResult, setSendResult] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  // État pour déplier/replier l'historique BCC
+  const [expandedHistory, setExpandedHistory] = useState({});
 
   // Données du client
   const [clientData, setClientData] = useState(null);
@@ -440,30 +444,85 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
 
           {/* Historique des envois BCC précédents */}
           {purchaseOrder?.bcc_history && purchaseOrder.bcc_history.length > 0 && !sendResult?.success && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-              <h4 className="text-sm font-semibold text-emerald-800 flex items-center gap-2 mb-2">
-                <CheckCircle className="w-4 h-4" />
-                {purchaseOrder.bcc_history.length} BCC envoyé(s) précédemment
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3">
+              <h4 className="text-sm font-semibold text-amber-800 flex items-center gap-2 mb-2">
+                <AlertCircle className="w-4 h-4" />
+                {purchaseOrder.bcc_history.length} BCC déjà envoyé(s)
               </h4>
-              <div className="space-y-1">
-                {purchaseOrder.bcc_history.map((entry, idx) => (
-                  <div key={idx} className="flex flex-wrap items-center gap-2 text-xs text-emerald-700">
-                    <Clock className="w-3 h-3 flex-shrink-0" />
-                    <span className="font-medium">
-                      {new Date(entry.sent_at).toLocaleDateString('fr-CA', {
-                        timeZone: 'America/Toronto', day: 'numeric', month: 'short', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                      })}
-                    </span>
-                    <span>-</span>
-                    <span>{entry.items_count} article(s)</span>
-                    <span>-</span>
-                    <span className="font-medium">${(parseFloat(entry.total) || 0).toFixed(2)}</span>
-                    <span className="text-emerald-600 truncate max-w-[200px]" title={entry.recipients?.join(', ')}>
-                      → {entry.recipients?.join(', ')}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                {purchaseOrder.bcc_history.map((entry, idx) => {
+                  const isExpanded = expandedHistory[idx];
+                  const hasItems = entry.items && entry.items.length > 0;
+                  return (
+                    <div key={idx} className="bg-white border border-amber-200 rounded-lg overflow-hidden">
+                      {/* Ligne résumé - cliquable pour déplier */}
+                      <button
+                        onClick={() => setExpandedHistory(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                        className="w-full flex flex-wrap items-center gap-2 px-3 py-2 text-xs text-amber-800 hover:bg-amber-50 transition-colors text-left"
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5 flex-shrink-0 text-amber-600" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-amber-600" />
+                        )}
+                        <span className="font-bold text-amber-900">BCC #{idx + 1}</span>
+                        <Clock className="w-3 h-3 flex-shrink-0 ml-1" />
+                        <span className="font-medium">
+                          {new Date(entry.sent_at).toLocaleDateString('fr-CA', {
+                            timeZone: 'America/Toronto', day: 'numeric', month: 'short', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
+                        </span>
+                        <span className="text-amber-600">—</span>
+                        <span>{entry.items_count} article(s)</span>
+                        <span className="text-amber-600">—</span>
+                        <span className="font-medium">${(parseFloat(entry.total) || 0).toFixed(2)}</span>
+                        <span className="text-amber-600 truncate max-w-[200px]" title={entry.recipients?.join(', ')}>
+                          → {entry.recipients?.join(', ')}
+                        </span>
+                      </button>
+
+                      {/* Détail déplié */}
+                      {isExpanded && (
+                        <div className="border-t border-amber-200 px-3 py-2 bg-amber-50/50">
+                          {hasItems ? (
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-amber-700">
+                                  <th className="text-left py-1 pr-2 font-semibold"># Item</th>
+                                  <th className="text-left py-1 pr-2 font-semibold hidden sm:table-cell">Description</th>
+                                  <th className="text-center py-1 pr-2 font-semibold">Qté Cmd</th>
+                                  <th className="text-left py-1 font-semibold">Délai</th>
+                                </tr>
+                              </thead>
+                              <tbody className="text-gray-700">
+                                {entry.items.map((item, itemIdx) => (
+                                  <tr key={itemIdx} className="border-t border-amber-100">
+                                    <td className="py-1 pr-2 font-mono font-medium text-gray-900">{item.code}</td>
+                                    <td className="py-1 pr-2 hidden sm:table-cell truncate max-w-[180px]" title={item.description}>{item.description}</td>
+                                    <td className="py-1 pr-2 text-center font-medium">{item.qty_ordered}</td>
+                                    <td className="py-1">{item.delivery_estimate || <span className="text-gray-400 italic">non spécifié</span>}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <p className="text-xs text-amber-600 italic">Détail des articles non disponible (envoi antérieur à la mise à jour).</p>
+                          )}
+                          {/* Destinataires */}
+                          <div className="mt-2 pt-2 border-t border-amber-100 text-xs text-amber-700">
+                            <span className="font-semibold">Envoyé à:</span> {entry.recipients?.join(', ')}
+                          </div>
+                          {entry.notes && (
+                            <div className="mt-1 text-xs text-gray-600">
+                              <span className="font-semibold">Notes:</span> {entry.notes}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -782,12 +841,21 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                 <button
                   onClick={sendBCC}
                   disabled={isSending || recipientEmails.length === 0 || bccItems.filter(i => i.include).length === 0}
-                  className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium transition-colors min-h-[44px]"
+                  className={`flex-1 sm:flex-none px-5 py-2.5 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium transition-colors min-h-[44px] ${
+                    purchaseOrder?.bcc_sent_count > 0
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
                 >
                   {isSending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Envoi en cours...
+                    </>
+                  ) : purchaseOrder?.bcc_sent_count > 0 ? (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      Renvoyer la confirmation
                     </>
                   ) : (
                     <>

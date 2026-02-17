@@ -4,9 +4,10 @@
  *              - Génère un PDF avec en-tête standardisé (pdf-common.js)
  *              - Envoie par email au client via Resend
  *              - CC au bureau (info.servicestmt@gmail.com)
- * @version 1.2.0
- * @date 2026-02-12
+ * @version 1.3.0
+ * @date 2026-02-17
  * @changelog
+ *   1.3.0 - Sauvegarde détail articles (code, description, qté, délai) dans bcc_history
  *   1.2.0 - Ajout colonne "En Main" (stock) dans le PDF BCC
  *   1.1.0 - Ajout suivi BCC: sauvegarde historique (bcc_history, bcc_sent_count) + PDF dans files
  *   1.0.0 - Version initiale - Génération PDF BCC + envoi email
@@ -562,6 +563,12 @@ export async function POST(request, { params }) {
         sent_at: sentAt,
         recipients: recipient_emails,
         items_count: bcc_items.length,
+        items: bcc_items.map(item => ({
+          code: item.code || '',
+          description: item.description || '',
+          qty_ordered: item.qty_ordered || 0,
+          delivery_estimate: item.delivery_estimate || '',
+        })),
         total: totals.total,
         notes: notes || '',
         message_id: data.id
