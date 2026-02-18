@@ -8,9 +8,12 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.5.3
+ * @version 2.6.0
  * @date 2026-02-18
  * @changelog
+ *   2.6.0 - Fix: sélection emails par noms de champs (__fields: metadata dans
+ *           recipient_emails) au lieu de matching par adresses. Résout le cas
+ *           où un client a la même adresse dans plusieurs champs (Principal/Admin).
  *   2.5.3 - Fix: initialiser selectedEmails depuis deliveryNote.recipient_emails
  *           dès le useState (pas seulement dans useEffect) pour éviter race condition.
  *           Re-appliquer aussi après loadClients comme safety net.
@@ -93,30 +96,40 @@ export default function DeliveryNoteForm({
   // Options
   const [isPrixJobe, setIsPrixJobe] = useState(false);
 
-  // Emails - initialiser depuis deliveryNote.recipient_emails en mode édition
+  // =============================================
+  // HELPERS: Sélection emails par noms de champs
+  // Stocke "__fields:email,email_admin" dans recipient_emails pour
+  // distinguer quels champs sont cochés (résout le cas où un client
+  // a la même adresse email dans plusieurs champs).
+  // =============================================
+  const parseFieldSelection = (recipientEmails) => {
+    if (!Array.isArray(recipientEmails)) return null;
+    const entry = recipientEmails.find(e => typeof e === 'string' && e.startsWith('__fields:'));
+    if (!entry) return null;
+    const fields = entry.replace('__fields:', '').split(',').filter(Boolean);
+    return {
+      email: fields.includes('email'),
+      email_2: fields.includes('email_2'),
+      email_admin: fields.includes('email_admin'),
+    };
+  };
+
+  // Emails - initialiser depuis __fields: metadata ou fallback adresses
   const [selectedEmails, setSelectedEmails] = useState(() => {
-    if (isEdit && deliveryNote?.client && Array.isArray(deliveryNote?.recipient_emails)) {
-      const saved = deliveryNote.recipient_emails;
-      console.log('[BL-DEBUG] useState init - recipient_emails:', JSON.stringify(saved));
-      console.log('[BL-DEBUG] useState init - client emails:', {
-        email: deliveryNote.client.email,
-        email_2: deliveryNote.client.email_2,
-        email_admin: deliveryNote.client.email_admin
-      });
-      const result = {
-        email: !!(deliveryNote.client.email && saved.includes(deliveryNote.client.email)),
-        email_2: !!(deliveryNote.client.email_2 && saved.includes(deliveryNote.client.email_2)),
-        email_admin: !!(deliveryNote.client.email_admin && saved.includes(deliveryNote.client.email_admin)),
-      };
-      console.log('[BL-DEBUG] useState init - result:', result);
-      return result;
+    if (isEdit && Array.isArray(deliveryNote?.recipient_emails)) {
+      // Priorité 1: metadata __fields: (fiable même si mêmes adresses)
+      const fromFields = parseFieldSelection(deliveryNote.recipient_emails);
+      if (fromFields) return fromFields;
+      // Priorité 2: fallback matching par adresses (ancien format)
+      if (deliveryNote?.client) {
+        const saved = deliveryNote.recipient_emails;
+        return {
+          email: !!(deliveryNote.client.email && saved.includes(deliveryNote.client.email)),
+          email_2: !!(deliveryNote.client.email_2 && saved.includes(deliveryNote.client.email_2)),
+          email_admin: !!(deliveryNote.client.email_admin && saved.includes(deliveryNote.client.email_admin)),
+        };
+      }
     }
-    console.log('[BL-DEBUG] useState init - DEFAULTS (no recipient_emails or not edit)', {
-      isEdit,
-      hasClient: !!deliveryNote?.client,
-      recipientEmails: deliveryNote?.recipient_emails,
-      isArray: Array.isArray(deliveryNote?.recipient_emails)
-    });
     return { email: true, email_2: false, email_admin: true };
   });
 
@@ -155,15 +168,19 @@ export default function DeliveryNoteForm({
           const client = data.find(c => c.id === deliveryNote.client_id);
           if (client) {
             setSelectedClient(client);
-            // Re-appliquer la sélection emails depuis recipient_emails sauvegardés
-            // (safety net après chargement async des clients)
-            const saved = Array.isArray(deliveryNote.recipient_emails) ? deliveryNote.recipient_emails : [];
-            if (saved.length > 0 || Array.isArray(deliveryNote.recipient_emails)) {
-              setSelectedEmails({
-                email: !!(client.email && saved.includes(client.email)),
-                email_2: !!(client.email_2 && saved.includes(client.email_2)),
-                email_admin: !!(client.email_admin && saved.includes(client.email_admin)),
-              });
+            // Re-appliquer la sélection emails (safety net après chargement async)
+            if (Array.isArray(deliveryNote.recipient_emails)) {
+              const fromFields = parseFieldSelection(deliveryNote.recipient_emails);
+              if (fromFields) {
+                setSelectedEmails(fromFields);
+              } else {
+                const saved = deliveryNote.recipient_emails;
+                setSelectedEmails({
+                  email: !!(client.email && saved.includes(client.email)),
+                  email_2: !!(client.email_2 && saved.includes(client.email_2)),
+                  email_admin: !!(client.email_admin && saved.includes(client.email_admin)),
+                });
+              }
             }
           }
         }
@@ -191,14 +208,19 @@ export default function DeliveryNoteForm({
       setIsPrixJobe(deliveryNote.is_prix_jobe || false);
       setSavedId(deliveryNote.id);
 
-      // Restaurer les emails sélectionnés depuis recipient_emails sauvegardés
-      if (deliveryNote.client) {
-        const savedEmails = Array.isArray(deliveryNote.recipient_emails) ? deliveryNote.recipient_emails : [];
-        setSelectedEmails({
-          email: !!(deliveryNote.client.email && savedEmails.includes(deliveryNote.client.email)),
-          email_2: !!(deliveryNote.client.email_2 && savedEmails.includes(deliveryNote.client.email_2)),
-          email_admin: !!(deliveryNote.client.email_admin && savedEmails.includes(deliveryNote.client.email_admin)),
-        });
+      // Restaurer les emails sélectionnés
+      if (Array.isArray(deliveryNote.recipient_emails)) {
+        const fromFields = parseFieldSelection(deliveryNote.recipient_emails);
+        if (fromFields) {
+          setSelectedEmails(fromFields);
+        } else if (deliveryNote.client) {
+          const savedEmails = deliveryNote.recipient_emails;
+          setSelectedEmails({
+            email: !!(deliveryNote.client.email && savedEmails.includes(deliveryNote.client.email)),
+            email_2: !!(deliveryNote.client.email_2 && savedEmails.includes(deliveryNote.client.email_2)),
+            email_admin: !!(deliveryNote.client.email_admin && savedEmails.includes(deliveryNote.client.email_admin)),
+          });
+        }
       }
 
       // Charger les matériaux
@@ -403,11 +425,10 @@ export default function DeliveryNoteForm({
   // =============================================
 
   const handleEmailSelection = (emailField) => {
-    setSelectedEmails(prev => {
-      const next = { ...prev, [emailField]: !prev[emailField] };
-      console.log('[BL-DEBUG] handleEmailSelection:', emailField, 'prev:', prev, 'next:', next);
-      return next;
-    });
+    setSelectedEmails(prev => ({
+      ...prev,
+      [emailField]: !prev[emailField]
+    }));
     onFormChange?.();
   };
 
@@ -417,7 +438,14 @@ export default function DeliveryNoteForm({
     if (selectedEmails.email && selectedClient.email) emails.push(selectedClient.email);
     if (selectedEmails.email_2 && selectedClient.email_2) emails.push(selectedClient.email_2);
     if (selectedEmails.email_admin && selectedClient.email_admin) emails.push(selectedClient.email_admin);
-    console.log('[BL-DEBUG] getSelectedEmailAddresses:', { selectedEmails, emails });
+    // Ajouter metadata __fields: pour restauration fiable (même si adresses identiques)
+    const selectedFields = Object.entries(selectedEmails)
+      .filter(([_, v]) => v)
+      .map(([k]) => k)
+      .join(',');
+    if (selectedFields) {
+      emails.push(`__fields:${selectedFields}`);
+    }
     return emails;
   };
 
@@ -937,10 +965,6 @@ export default function DeliveryNoteForm({
             <div className="mt-3 pt-3 border-t border-blue-200">
               <p className="text-xs text-blue-700">
                 {Object.values(selectedEmails).filter(Boolean).length} email(s) sélectionné(s) pour l&apos;envoi
-              </p>
-              {/* DEBUG TEMPORAIRE - à retirer après correction */}
-              <p className="text-xs text-gray-400 mt-1">
-                [DEBUG] State: {JSON.stringify(selectedEmails)} | DB: {JSON.stringify(deliveryNote?.recipient_emails || 'N/A')}
               </p>
             </div>
           </div>

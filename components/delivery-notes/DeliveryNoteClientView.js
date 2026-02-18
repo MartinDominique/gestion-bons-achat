@@ -8,9 +8,10 @@
  *              - Envoi automatique après signature
  *              - Auto-fermeture après signature + envoi email
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.1.0
+ * @version 2.1.1
  * @date 2026-02-18
  * @changelog
+ *   2.1.1 - Filtrer metadata __fields: dans l'affichage des emails destinataires
  *   2.1.0 - Fix workflow fermeture: window.close() avec fallback navigation,
  *           auto-fermeture après signature+envoi, bouton Fermer retourne au
  *           formulaire (window.close) ou à la liste (fallback navigation)
@@ -375,15 +376,15 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
           </div>
         </div>
 
-        {/* Emails destinataires */}
-        {deliveryNote.recipient_emails && deliveryNote.recipient_emails.length > 0 && (
+        {/* Emails destinataires (filtrer metadata __fields:) */}
+        {deliveryNote.recipient_emails && deliveryNote.recipient_emails.filter(e => !e.startsWith('__fields:')).length > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
             <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center">
               <Mail className="mr-2" size={16} />
               Email(s) destinataire(s) du bon de livraison
             </h3>
             <div className="space-y-1">
-              {deliveryNote.recipient_emails.map((email, index) => (
+              {deliveryNote.recipient_emails.filter(e => !e.startsWith('__fields:')).map((email, index) => (
                 <div key={index} className="text-sm text-blue-800 flex items-center">
                   <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
                   {email}
@@ -391,7 +392,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
               ))}
             </div>
             <p className="text-xs text-blue-600 mt-2">
-              {deliveryNote.recipient_emails.length} email(s) recevront ce bon de livraison une fois signé
+              {deliveryNote.recipient_emails.filter(e => !e.startsWith('__fields:')).length} email(s) recevront ce bon de livraison une fois signé
             </p>
           </div>
         )}
