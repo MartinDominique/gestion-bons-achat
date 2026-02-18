@@ -97,12 +97,26 @@ export default function DeliveryNoteForm({
   const [selectedEmails, setSelectedEmails] = useState(() => {
     if (isEdit && deliveryNote?.client && Array.isArray(deliveryNote?.recipient_emails)) {
       const saved = deliveryNote.recipient_emails;
-      return {
+      console.log('[BL-DEBUG] useState init - recipient_emails:', JSON.stringify(saved));
+      console.log('[BL-DEBUG] useState init - client emails:', {
+        email: deliveryNote.client.email,
+        email_2: deliveryNote.client.email_2,
+        email_admin: deliveryNote.client.email_admin
+      });
+      const result = {
         email: !!(deliveryNote.client.email && saved.includes(deliveryNote.client.email)),
         email_2: !!(deliveryNote.client.email_2 && saved.includes(deliveryNote.client.email_2)),
         email_admin: !!(deliveryNote.client.email_admin && saved.includes(deliveryNote.client.email_admin)),
       };
+      console.log('[BL-DEBUG] useState init - result:', result);
+      return result;
     }
+    console.log('[BL-DEBUG] useState init - DEFAULTS (no recipient_emails or not edit)', {
+      isEdit,
+      hasClient: !!deliveryNote?.client,
+      recipientEmails: deliveryNote?.recipient_emails,
+      isArray: Array.isArray(deliveryNote?.recipient_emails)
+    });
     return { email: true, email_2: false, email_admin: true };
   });
 
@@ -389,10 +403,11 @@ export default function DeliveryNoteForm({
   // =============================================
 
   const handleEmailSelection = (emailField) => {
-    setSelectedEmails(prev => ({
-      ...prev,
-      [emailField]: !prev[emailField]
-    }));
+    setSelectedEmails(prev => {
+      const next = { ...prev, [emailField]: !prev[emailField] };
+      console.log('[BL-DEBUG] handleEmailSelection:', emailField, 'prev:', prev, 'next:', next);
+      return next;
+    });
     onFormChange?.();
   };
 
@@ -402,6 +417,7 @@ export default function DeliveryNoteForm({
     if (selectedEmails.email && selectedClient.email) emails.push(selectedClient.email);
     if (selectedEmails.email_2 && selectedClient.email_2) emails.push(selectedClient.email_2);
     if (selectedEmails.email_admin && selectedClient.email_admin) emails.push(selectedClient.email_admin);
+    console.log('[BL-DEBUG] getSelectedEmailAddresses:', { selectedEmails, emails });
     return emails;
   };
 
@@ -921,6 +937,10 @@ export default function DeliveryNoteForm({
             <div className="mt-3 pt-3 border-t border-blue-200">
               <p className="text-xs text-blue-700">
                 {Object.values(selectedEmails).filter(Boolean).length} email(s) sélectionné(s) pour l&apos;envoi
+              </p>
+              {/* DEBUG TEMPORAIRE - à retirer après correction */}
+              <p className="text-xs text-gray-400 mt-1">
+                [DEBUG] State: {JSON.stringify(selectedEmails)} | DB: {JSON.stringify(deliveryNote?.recipient_emails || 'N/A')}
               </p>
             </div>
           </div>
