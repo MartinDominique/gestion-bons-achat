@@ -8,9 +8,12 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.5.1
+ * @version 2.5.2
  * @date 2026-02-18
  * @changelog
+ *   2.5.2 - Fix: réutilisation même onglet client via clientWindowRef (évite
+ *           onglets multiples avec données périmées lors de re-présentation).
+ *           Fix: restauration emails robuste (gère null/undefined recipient_emails)
  *   2.5.1 - Fix: restauration état checkboxes emails en mode édition depuis
  *           recipient_emails sauvegardés (ne plus afficher par défaut tous cochés)
  *   2.5.0 - Fix workflow signature: window.open() au lieu de router.push()
@@ -33,7 +36,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Package, Calendar, FileText, User, Mail,
@@ -97,6 +100,8 @@ export default function DeliveryNoteForm({
   // UI
   const [savedId, setSavedId] = useState(null);
   const [currentBLStatus, setCurrentBLStatus] = useState(null);
+  // Ref pour réutiliser le même onglet client (éviter onglets multiples)
+  const clientWindowRef = useRef(null);
 
   // Soumissions import
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
@@ -152,12 +157,12 @@ export default function DeliveryNoteForm({
       setSavedId(deliveryNote.id);
 
       // Restaurer les emails sélectionnés depuis recipient_emails sauvegardés
-      if (deliveryNote.client && deliveryNote.recipient_emails) {
-        const savedEmails = deliveryNote.recipient_emails || [];
+      if (deliveryNote.client) {
+        const savedEmails = Array.isArray(deliveryNote.recipient_emails) ? deliveryNote.recipient_emails : [];
         setSelectedEmails({
-          email: savedEmails.includes(deliveryNote.client.email),
-          email_2: savedEmails.includes(deliveryNote.client.email_2),
-          email_admin: savedEmails.includes(deliveryNote.client.email_admin),
+          email: !!(deliveryNote.client.email && savedEmails.includes(deliveryNote.client.email)),
+          email_2: !!(deliveryNote.client.email_2 && savedEmails.includes(deliveryNote.client.email_2)),
+          email_admin: !!(deliveryNote.client.email_admin && savedEmails.includes(deliveryNote.client.email_admin)),
         });
       }
 
@@ -688,7 +693,15 @@ export default function DeliveryNoteForm({
       if (blId) {
         setSavedId(blId);
         setCurrentBLStatus('ready_for_signature');
-        window.open(`/bons-travail/bl/${blId}/client`, '_blank');
+
+        // Réutiliser le même onglet client (éviter multiples onglets avec données périmées)
+        const clientUrl = `/bons-travail/bl/${blId}/client?t=${Date.now()}`;
+        if (clientWindowRef.current && !clientWindowRef.current.closed) {
+          clientWindowRef.current.location.href = clientUrl;
+          clientWindowRef.current.focus();
+        } else {
+          clientWindowRef.current = window.open(clientUrl, '_blank');
+        }
       }
     }
   };
