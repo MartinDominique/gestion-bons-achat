@@ -8,9 +8,12 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.5.2
+ * @version 2.5.3
  * @date 2026-02-18
  * @changelog
+ *   2.5.3 - Fix: initialiser selectedEmails depuis deliveryNote.recipient_emails
+ *           dès le useState (pas seulement dans useEffect) pour éviter race condition.
+ *           Re-appliquer aussi après loadClients comme safety net.
  *   2.5.2 - Fix: réutilisation même onglet client via clientWindowRef (évite
  *           onglets multiples avec données périmées lors de re-présentation).
  *           Fix: restauration emails robuste (gère null/undefined recipient_emails)
@@ -90,11 +93,17 @@ export default function DeliveryNoteForm({
   // Options
   const [isPrixJobe, setIsPrixJobe] = useState(false);
 
-  // Emails
-  const [selectedEmails, setSelectedEmails] = useState({
-    email: true,
-    email_2: false,
-    email_admin: true
+  // Emails - initialiser depuis deliveryNote.recipient_emails en mode édition
+  const [selectedEmails, setSelectedEmails] = useState(() => {
+    if (isEdit && deliveryNote?.client && Array.isArray(deliveryNote?.recipient_emails)) {
+      const saved = deliveryNote.recipient_emails;
+      return {
+        email: !!(deliveryNote.client.email && saved.includes(deliveryNote.client.email)),
+        email_2: !!(deliveryNote.client.email_2 && saved.includes(deliveryNote.client.email_2)),
+        email_admin: !!(deliveryNote.client.email_admin && saved.includes(deliveryNote.client.email_admin)),
+      };
+    }
+    return { email: true, email_2: false, email_admin: true };
   });
 
   // UI
@@ -130,7 +139,19 @@ export default function DeliveryNoteForm({
 
         if (isEdit && deliveryNote?.client_id) {
           const client = data.find(c => c.id === deliveryNote.client_id);
-          if (client) setSelectedClient(client);
+          if (client) {
+            setSelectedClient(client);
+            // Re-appliquer la sélection emails depuis recipient_emails sauvegardés
+            // (safety net après chargement async des clients)
+            const saved = Array.isArray(deliveryNote.recipient_emails) ? deliveryNote.recipient_emails : [];
+            if (saved.length > 0 || Array.isArray(deliveryNote.recipient_emails)) {
+              setSelectedEmails({
+                email: !!(client.email && saved.includes(client.email)),
+                email_2: !!(client.email_2 && saved.includes(client.email_2)),
+                email_admin: !!(client.email_admin && saved.includes(client.email_admin)),
+              });
+            }
+          }
         }
       }
     } catch (error) {
