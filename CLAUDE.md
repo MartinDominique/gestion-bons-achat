@@ -273,23 +273,28 @@ const total = subtotal + tps + tvq;
 /api/work-orders                       → CRUD BT
 /api/work-orders/[id]/send-email       → Envoi email BT
 /api/work-orders/[id]/signature        → Capture signature BT
-/api/delivery-notes                    → CRUD BL
-/api/delivery-notes/[id]              → GET/PUT/DELETE BL
-/api/delivery-notes/[id]/send-email    → Envoi email BL + inventaire OUT
+/api/delivery-notes                    → CRUD BL (GET liste + POST création)
+/api/delivery-notes/[id]              → GET/PUT/DELETE BL individuel
+/api/delivery-notes/[id]/send-email    → Envoi email BL + inventaire OUT + suivi BA
 /api/delivery-notes/[id]/signature     → Capture signature BL
+/api/delivery-notes/[id]/complete-signature → Complétion signature + changement statut
+/api/delivery-notes/[id]/public        → Accès public BL (vue client sans auth)
 /api/purchase-orders                   → CRUD BA Client
 /api/purchase-orders/[id]/send-confirmation → Envoi BCC (confirmation commande)
 /api/clients                           → CRUD clients
 /api/products                          → CRUD produits
+/api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
+/api/products/groups                   → Groupes de produits distincts
 /api/cron/backup                       → Backup quotidien
 ```
 
 ### Services Importants
 ```
-lib/services/email-service.js       → Génération PDF + envoi email (800+ lignes)
-lib/services/pdf-common.js          → En-tête/footer PDF standardisé (à créer)
-lib/services/client-signature.js    → Gestion signatures
-lib/utils/holidays.js               → Jours fériés Québec (à créer)
+lib/services/email-service.js       → Génération PDF + envoi email (BT + BL + rapports)
+lib/services/pdf-common.js          → En-tête/footer PDF standardisé
+lib/services/client-signature.js    → Gestion signatures (BT + BL)
+lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique)
+lib/utils/priceShift.js             → Décalage historique prix (3 niveaux)
 lib/supabase.js                     → Client Supabase (browser)
 lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
 ```
@@ -297,13 +302,17 @@ lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
 ### Composants Principaux
 ```
 components/work-orders/WorkOrderForm.js       → Formulaire BT complet
-components/work-orders/TimeTracker.js         → Suivi temps (arrondi quart heure)
+components/work-orders/TimeTracker.js         → Suivi temps (arrondi quart heure + surcharges)
 components/work-orders/MaterialSelector.js    → Sélection matériaux (partagé BT+BL)
 components/delivery-notes/DeliveryNoteForm.js → Formulaire BL (livraison matériels)
-components/delivery-notes/DeliveryNotePDF.js  → Génération PDF BL
-components/SupplierPurchaseManager.js         → Gestion AF
+components/delivery-notes/DeliveryNoteClientView.js → Vue client + signature BL (page publique)
+components/SupplierPurchaseManager.js         → Gestion AF + bouton Réception directe
+components/SupplierPurchaseServices.js        → Services recherche produits, hooks AF
 components/SupplierReceiptModal.js            → Réception AF (partielle/complète)
 components/DirectReceiptModal.js              → Réception directe sans AF + ajustement inventaire
+components/InventoryManager.js                → Gestion inventaire (recherche serveur, modal unifié)
+components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation commande client)
+components/SplitView/                         → Panneau latéral (BA/AF/Soumission inline)
 components/ClientManager.js                   → Gestion clients
 ```
 
@@ -356,8 +365,12 @@ user_id, created_at, updated_at
 
 ### products / non_inventory_items
 ```sql
-product_id, description, unit, cost_price, selling_price, stock_qty
+product_id, description, unit, cost_price, selling_price, stock_qty,
+cost_price_1st, cost_price_2nd, cost_price_3rd,
+selling_price_1st, selling_price_2nd, selling_price_3rd,
+supplier, product_group
 ```
+**Historique des prix:** Lors d'une réception (AF ou directe), si le cost_price change, les anciens prix sont décalés (shift) dans les colonnes `_1st`, `_2nd`, `_3rd`. Voir `lib/utils/priceShift.js`.
 
 ---
 
@@ -388,7 +401,7 @@ Arrondi au quart d'heure SUPÉRIEUR avec règles:
 
 Code: `lib/services/email-service.js` fonction `toQuarterHourUp()`
 
-### Tarifs spéciaux (soirs/fins de semaine/fériés) - À implémenter
+### Tarifs spéciaux (soirs/fins de semaine/fériés) - ✅ Implémenté (2026-02-10)
 
 | Situation | Minimum | Taux | Mention |
 |-----------|---------|------|---------|
@@ -429,22 +442,31 @@ CRON_SECRET                   # Auth pour cron jobs
 
 ## Points d'Attention / Roadmap
 
-### À faire (priorité utilisateur - décisions 2026-02-07)
-1. **Bon de Livraison (BL)** - Intégré dans l'app BT (Option A)
+### Complété
+1. ~~**Bon de Livraison (BL)**~~ - ✅ QUASI-COMPLÉTÉ 2026-02-17 (PR #42-#51) - reste bandeau alertes
 2. ~~**TimeTracker surcharges**~~ - ✅ COMPLÉTÉ 2026-02-10 (holidays.js, TimeTracker v2.0.0, PDF, API)
-3. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
-4. ~~**BCC Confirmation commande**~~ - ✅ COMPLÉTÉ 2026-02-09, mis à jour 2026-02-12 (suivi BCC: indicateurs liste/onglet, historique, PDFs dans Docs)
-5. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
-6. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
-7. **Optimisation mobile BT/BL** - 95% usage mobile
-8. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
-9. **Multi-utilisateurs** - Préparer système permissions/RLS
+3. ~~**BCC Confirmation commande**~~ - ✅ COMPLÉTÉ 2026-02-09, mis à jour 2026-02-16 (historique détaillé articles, bouton Renvoyer)
+4. ~~**Panneau latéral Split View**~~ - ✅ COMPLÉTÉ 2026-02-16 (PR #48) - BA/AF/Soumission inline
+5. ~~**Réception directe + Ajustement inventaire**~~ - ✅ COMPLÉTÉ 2026-02-18 (PR #52) - DirectReceiptModal
+6. ~~**Historique des prix produits**~~ - ✅ COMPLÉTÉ 2026-02-11 (PR #36-#39) - 3 niveaux prix + fournisseur
+7. ~~**Recherche serveur inventaire**~~ - ✅ COMPLÉTÉ 2026-02-12 (PR #37) - max 50 résultats, par groupe
 
-### Bugs connus (corrigés 2026-02-07)
-- ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé
-- ~~Champs redondants non synchronisés (client_name + client_id)~~ → Sync automatique ajoutée
-- ~~Bug `COMPANY_EMAIL` dans send-inventory-report~~ → Corrigé
-- ~~Code mort dans work-orders GET (double return)~~ → Supprimé
+### À faire (priorité utilisateur)
+1. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
+2. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
+3. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
+4. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
+5. **Optimisation mobile BT/BL** - 95% usage mobile
+6. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
+7. **Multi-utilisateurs** - Préparer système permissions/RLS
+
+### Bugs connus (corrigés)
+- ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé (2026-02-07)
+- ~~Champs redondants non synchronisés (client_name + client_id)~~ → Sync automatique ajoutée (2026-02-07)
+- ~~Bug `COMPANY_EMAIL` dans send-inventory-report~~ → Corrigé (2026-02-07)
+- ~~Code mort dans work-orders GET (double return)~~ → Supprimé (2026-02-07)
+- ~~Statut BL reste 'signed' au lieu de 'sent' après envoi email~~ → Corrigé (2026-02-17, PR #51)
+- ~~Caractères Unicode échappés dans DirectReceiptModal~~ → Corrigé (2026-02-18)
 
 ### Backup/Restauration
 - `/api/admin/restore` existe mais jamais testé
