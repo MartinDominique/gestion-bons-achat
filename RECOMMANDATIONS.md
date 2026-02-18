@@ -889,20 +889,30 @@ Pas de tests automatises detectes.
 - [ ] Ajouter validation emails cotes serveur
 - [ ] Standardiser gestion erreurs API pour routes retournant arrays bruts (purchase-orders, clients, products)
 
-### Phase 3 - Bon de Livraison (BL) - Fonctionnalite principale (Section 1)
-- [ ] Creer table `delivery_notes` + `delivery_note_materials` (SQL + RLS)
-- [ ] Creer API CRUD `/api/delivery-notes` + `/api/delivery-notes/[id]`
-- [ ] Creer composant `DeliveryNoteForm.js` (formulaire BL)
-- [ ] Integrer import materiaux depuis BA (client_po_items)
-- [ ] Integrer import materiaux depuis soumission
-- [ ] Modifier la page liste `/bons-travail` (bouton +Nouveau BL, filtre type, icones)
-- [ ] Creer pages: `/bons-travail/nouveau-bl`, `/bons-travail/bl/[id]/modifier`
-- [ ] Creer API signature: `/api/delivery-notes/[id]/signature`
-- [ ] Creer page publique signature: `/bons-travail/bl/[id]/client`
-- [ ] Creer API envoi email + PDF + inventaire OUT: `/api/delivery-notes/[id]/send-email`
-- [ ] Generer PDF bon de livraison (format specifique BL)
+### ~~Phase 3 - Bon de Livraison (BL) - Fonctionnalite principale (Section 1)~~ ✅ QUASI-COMPLETE (2026-02-17)
+- [x] Creer table `delivery_notes` + `delivery_note_materials` (SQL + RLS) - PR #42 (2026-02-13)
+- [x] Creer API CRUD `/api/delivery-notes` + `/api/delivery-notes/[id]` - PR #42
+- [x] Creer composant `DeliveryNoteForm.js` (formulaire BL) - PR #42-#47 (iterations multiples)
+- [x] Integrer import materiaux depuis BA (client_po_items) - PR #42
+- [x] Integrer import materiaux depuis soumission - PR #47 (bouton "Ajout de soumission" avec checkboxes selectifs)
+- [x] Modifier la page liste `/bons-travail` (bouton +Nouveau BL, filtre type, icones) - PR #42, #45
+- [x] Creer pages: `/bons-travail/nouveau-bl`, `/bons-travail/bl/[id]/modifier` - PR #42
+- [x] Creer API signature: `/api/delivery-notes/[id]/signature` + `/complete-signature` - PR #42
+- [x] Creer page publique signature: `/bons-travail/bl/[id]/client` - PR #42, #43 (refonte vue client), #51 (fix)
+- [x] Creer API envoi email + PDF + inventaire OUT: `/api/delivery-notes/[id]/send-email` - PR #42, #50 (suivi BA)
+- [x] Generer PDF bon de livraison (format specifique BL) - PR #42 (via `email-service.js`)
 - [ ] Ajouter bandeau alertes (BA orphelins, AF recus sans livraison)
-- [ ] Tester sur tablette et mobile (responsive critique)
+- [x] Tester sur tablette et mobile (responsive critique) - PR #44, #45, #46 (corrections UI multiples)
+
+**Fonctionnalites BL supplementaires implementees:**
+- Bouton "Ajout de fournisseur" dans BL pour lier un AF - PR #50
+- Suivi livraison BL→BA: quantites livrees remontent dans le BA - PR #50
+- Fix statut BL `signed`→`sent` apres envoi email - PR #51
+- Fix formulaire BL ne ferme plus automatiquement apres signature - PR #51
+- Refonte vue client BL identique au BT (en-tete BON DE LIVRAISON, bouton Fermer) - PR #43
+- Boutons Sauvegarder/Presenter/Annuler en haut + bas du formulaire BL - PR #44
+- Header orange compact liste BT/BL sur une seule ligne - PR #45
+- Dropdown client par `client_name`, description suggestions - PR #46
 
 ### Phase 4 - TimeTracker surcharges (Section 2) ✅ COMPLETE (2026-02-10)
 - [x] #1: Ajouter checkbox "Appliquer tarifs speciaux" dans TimeTracker
@@ -918,16 +928,18 @@ Pas de tests automatises detectes.
 - [ ] #3: Ajouter champ `linked_po_numbers` dans table `submissions`
 - [ ] #4: Afficher BA associe(s) dans le formulaire soumission
 
-### Phase 6 - BCC Confirmation de commande client (Section 3) ✅ COMPLETE (2026-02-09, mis a jour 2026-02-12)
+### Phase 6 - BCC Confirmation de commande client (Section 3) ✅ COMPLETE (2026-02-09, mis a jour 2026-02-16)
 - [x] #1: Bouton "Confirmation commande" dans PurchaseOrderModal
 - [x] #2: Modal/formulaire BCC avec import items depuis BA + AF
-- [x] #3: Calcul B/O, qte livree, delai par item
+- [x] #3: Calcul B/O, qte livree, delai par item + colonne "En Main" (stock) (2026-02-12)
 - [x] #4: Generation PDF BCC (en-tete standardise)
 - [x] #5: API envoi email confirmation au client
 - [x] #6: Suivi BCC - Indicateur dans liste BA + badge onglet BCC (2026-02-12)
 - [x] #7: Historique envois BCC dans modal BCC (date, destinataires, montant) (2026-02-12)
 - [x] #8: PDF BCC sauvegarde dans onglet Docs du BA (2026-02-12)
 - [x] #9: Migration `bcc_sent_count` + `bcc_history` sur `purchase_orders` (2026-02-12)
+- [x] #10: Historique detaille des articles envoyes par BCC + bouton Renvoyer (2026-02-16, PR #49)
+- [x] #11: Indicateur BCC repositionne a gauche de la date dans la liste BA (2026-02-12, PR #41)
 
 ### Phase 7 - Standardisation PDF (Section 4)
 - [ ] #1: Creer module partage `lib/services/pdf-common.js`
@@ -937,12 +949,56 @@ Pas de tests automatises detectes.
 - [ ] #5: Migrer Soumission HTML→jsPDF
 - [ ] #6: Migrer AF HTML→jsPDF
 
-### Phase 8 - Ameliorations post
+### Phase 8 - Panneau lateral Split View ✅ COMPLETE (2026-02-16)
+- [x] #1: Creer composants `SplitView/` (Context, Layout, Panel) - PR #48
+- [x] #2: Panneau BA inline (voir BA depuis AF sans quitter la page) - PR #48
+- [x] #3: Panneau AF inline - PR #48
+- [x] #4: Panneau Soumission inline - PR #48
+- [x] #5: Lien BA dans formulaire AF ouvre le panneau lateral - PR #48
+- [x] #6: Sauvegarde AF avant envoi email BCC depuis panneau - PR #48
+- [x] #7: Rafraichissement auto du BA dans le panneau apres envoi BCC - PR #48
+
+**Implementation (2026-02-16):**
+- `components/SplitView/SplitViewContext.js` - Context React (openPanel, closePanel, replacePanel, emitPanelEvent)
+- `components/SplitView/SplitViewLayout.js` - Layout principal (main + panneau cote a cote)
+- `components/SplitView/SplitViewPanel.js` - Panneau droit glissant
+- `components/SplitView/PanelPurchaseOrder.js` - BA dans le panneau
+- `components/SplitView/PanelSupplierPurchase.js` - AF dans le panneau
+- `components/SplitView/PanelSoumission.js` - Soumission dans le panneau
+- `components/SplitView/ReferenceLink.js` - Composant lien reference cliquable
+- `components/SplitView/ClientSplitViewWrapper.js` - Wrapper client
+- `app/layout.js` modifie pour ajouter `SplitViewProvider` global
+
+### Phase 9 - Reception directe + Ajustement inventaire ✅ COMPLETE (2026-02-18)
+- [x] #1: Modal reception directe sans AF (`DirectReceiptModal.js`) - PR #52
+- [x] #2: Mode "Ajustement" (+/-) pour corrections d'inventaire (prise d'inventaire) - PR #52
+- [x] #3: Recherche produits existants + creation nouveaux produits depuis le modal - PR #52
+- [x] #4: Mouvements inventaire avec `reference_type = 'direct_receipt'` - PR #52
+- [x] #5: Decalage historique des prix (price shift) lors de la reception - PR #52
+- [x] #6: Traduction 'direct_receipt' dans historique des mouvements - PR #52
+- [x] #7: Fix caracteres Unicode echappes dans le modal - PR #52
+
+**Implementation (2026-02-18):**
+- `components/DirectReceiptModal.js` (v1.1.0) - Modal complet avec recherche, creation produit, reception/ajustement
+- `components/SupplierPurchaseManager.js` - Bouton "Reception directe" remplace "Test Email Quotidien"
+
+### Phase 10 - Historique des prix produits ✅ COMPLETE (2026-02-11)
+- [x] #1: Utilitaire decalage prix `lib/utils/priceShift.js` - PR #36
+- [x] #2: 3 niveaux historiques: `cost_price_1st/2nd/3rd`, `selling_price_1st/2nd/3rd` - PR #36
+- [x] #3: Modal inventaire unifie (clic sur ligne ouvre le modal) - PR #36
+- [x] #4: Description produit modifiable depuis le modal - PR #36
+- [x] #5: Champ "Fournisseur" (supplier) ajoute dans produits - PR #37
+- [x] #6: "Dernier fournisseur" affiche automatiquement lors de la reception AF - PR #37
+- [x] #7: Quantites en main/commande/reservee dans recherche produits AF - PR #39
+- [x] #8: Migration `add_price_history_columns.sql` (6 colonnes par table) - PR #36
+
+### Phase 11 - Ameliorations post
 - [ ] Deprecier l'ancien modal `DeliverySlipModal.js` dans BA
 - [ ] Page admin backup/restore
 - [ ] Dashboard complet (si le bandeau alertes ne suffit pas)
+- [ ] Bandeau alertes BA orphelins / AF recus sans livraison (reste de Phase 3)
 
-### Phase 9 - Qualite Long Terme (ongoing)
+### Phase 12 - Qualite Long Terme (ongoing)
 - [ ] Migration progressive vers TypeScript
 - [ ] Ajout de tests automatises
 - [ ] Documentation API (Swagger/OpenAPI)
@@ -999,16 +1055,19 @@ Priorite a l'optimisation responsive pour:
 
 ## Prochaines Actions Prioritaires
 
-Basees sur les reponses et decisions (2026-02-07):
+Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-18:
 
-1. **Bon de Livraison (BL) integre dans BT** - Phase 3 (decision 2026-02-07, Option A)
+1. ~~**Bon de Livraison (BL) integre dans BT**~~ - ✅ Phase 3 QUASI-COMPLETE (2026-02-17, PR #42-#51) - reste bandeau alertes
 2. ~~**TimeTracker surcharges soir/weekend/ferie**~~ - ✅ Phase 4 COMPLETE (2026-02-10)
-3. **Statut soumissions + import partiel** - Phase 5 (demande 2026-02-07)
-4. ~~**BCC Confirmation de commande client**~~ - ✅ Phase 6 COMPLETE (2026-02-09)
-5. **Standardisation PDF** - Phase 7 (demande 2026-02-07)
-6. **Optimisation mobile BT/BL** - Continue (95% mobile)
-7. **Systeme permissions** - Futur (multi-utilisateurs)
-8. **Revoir rapport hebdomadaire** - Futur
+3. **Statut soumissions + import partiel** - Phase 5 (demande 2026-02-07) - EN ATTENTE
+4. ~~**BCC Confirmation de commande client**~~ - ✅ Phase 6 COMPLETE (2026-02-09, mis a jour 2026-02-16)
+5. **Standardisation PDF** - Phase 7 (demande 2026-02-07) - EN ATTENTE
+6. ~~**Panneau lateral Split View**~~ - ✅ Phase 8 COMPLETE (2026-02-16, PR #48)
+7. ~~**Reception directe + Ajustement inventaire**~~ - ✅ Phase 9 COMPLETE (2026-02-18, PR #52)
+8. ~~**Historique des prix produits**~~ - ✅ Phase 10 COMPLETE (2026-02-11, PR #36-#39)
+9. **Optimisation mobile BT/BL** - Continue (95% mobile)
+10. **Systeme permissions** - Futur (multi-utilisateurs)
+11. **Revoir rapport hebdomadaire** - Futur
 
 ---
 
@@ -1035,6 +1094,26 @@ Basees sur les reponses et decisions (2026-02-07):
 - **PDF standardise:** Module partage `pdf-common.js`, migration progressive vers jsPDF
 - **Statut soumissions:** Import partiel, changement auto "Acceptee", reference croisee BA
 
+### 2026-02-13 a 2026-02-17 - Module BL complet (PR #42-#51)
+- **BL complet:** Tables, API CRUD, formulaire, signature, envoi email, PDF, inventaire OUT
+- **Vue client BL:** Refonte identique au BT avec en-tete BON DE LIVRAISON
+- **Import soumission dans BL:** Bouton "Ajout de soumission" avec selection par checkboxes
+- **Bouton AF dans BL:** Lier un AF depuis le formulaire BL
+- **Suivi livraison BL→BA:** Quantites livrees remontent dans le BA lie
+- **Fix:** Statut BL `signed`→`sent`, formulaire ne ferme plus apres signature
+
+### 2026-02-16 - Panneau lateral Split View (PR #48)
+- **Decision:** Panneau lateral droit pour voir BA/AF/Soumission sans quitter la page en cours
+- **Raison:** Permettre de naviguer entre documents lies sans perdre le contexte (ex: depuis AF, voir le BA lie)
+- **Architecture:** `SplitViewContext` global dans `app/layout.js` + composants `SplitView/`
+- **Usage:** Depuis AF, clic sur lien BA ouvre le panneau lateral
+
+### 2026-02-18 - Reception directe + Ajustement inventaire (PR #52)
+- **Decision:** Modal de reception directe integre dans la page Achats
+- **Raison:** Permettre de recevoir du materiel achete directement (comptoir, sans AF) et d'ajuster l'inventaire
+- **Architecture:** `DirectReceiptModal.js` avec 2 modes: Reception (IN) et Ajustement (+/-)
+- **Flux inventaire:** Mouvements `direct_receipt` + decalage historique prix
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-02-12 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-02-18 par Claude AI*
