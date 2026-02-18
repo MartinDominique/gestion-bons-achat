@@ -1,12 +1,12 @@
 /**
  * @file components/DirectReceiptModal.js
- * @description Modal de r\u00e9ception directe de marchandises (sans AF).
- *              - Recherche et s\u00e9lection de produits existants
- *              - Cr\u00e9ation de nouveaux produits dans l'inventaire
- *              - Mode R\u00e9ception (IN) et mode Ajustement (+/-)
- *              - Met \u00e0 jour le stock (products / non_inventory_items)
- *              - Cr\u00e9e les mouvements d'inventaire
- *              - D\u00e9calage historique prix (price shift) si cost_price change
+ * @description Modal de réception directe de marchandises (sans AF).
+ *              - Recherche et sélection de produits existants
+ *              - Création de nouveaux produits dans l'inventaire
+ *              - Mode Réception (IN) et mode Ajustement (+/-)
+ *              - Met à jour le stock (products / non_inventory_items)
+ *              - Crée les mouvements d'inventaire
+ *              - Décalage historique prix (price shift) si cost_price change
  * @version 1.1.0
  * @date 2026-02-18
  * @changelog
@@ -21,7 +21,7 @@ import {
   Package, Check, X, Truck, AlertCircle, Search, Plus, Trash2, ToggleLeft, ToggleRight
 } from 'lucide-react';
 
-// Formatage mon\u00e9taire
+// Formatage monétaire
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('fr-CA', {
     style: 'currency',
@@ -30,7 +30,7 @@ const formatCurrency = (amount) => {
 };
 
 export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete }) {
-  // \u00c9tats principaux
+  // États principaux
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -38,7 +38,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
   // Mode ajustement (prise d'inventaire)
   const [isAdjustment, setIsAdjustment] = useState(false);
 
-  // Items s\u00e9lectionn\u00e9s pour r\u00e9ception
+  // Items sélectionnés pour réception
   const [receiptItems, setReceiptItems] = useState([]);
 
   // Recherche de produits
@@ -48,7 +48,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const searchInputRef = useRef(null);
 
-  // Cr\u00e9ation nouvel item
+  // Création nouvel item
   const [showNewItemForm, setShowNewItemForm] = useState(false);
   const [newItemForm, setNewItemForm] = useState({
     product_id: '',
@@ -115,12 +115,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
     });
   };
 
-  // Ajouter un produit existant \u00e0 la liste
+  // Ajouter un produit existant à la liste
   const addProductToReceipt = (product) => {
-    // V\u00e9rifier doublon
+    // Vérifier doublon
     const existing = receiptItems.find(i => i.product_id === product.product_id);
     if (existing) {
-      setError(`Le produit ${product.product_id} est d\u00e9j\u00e0 dans la liste.`);
+      setError(`Le produit ${product.product_id} est déjà dans la liste.`);
       return;
     }
 
@@ -143,31 +143,31 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
     setTimeout(() => searchInputRef.current?.focus(), 100);
   };
 
-  // Cr\u00e9er un nouvel item et l'ajouter
+  // Créer un nouvel item et l'ajouter
   const handleCreateNewItem = async () => {
     const { product_id, description, cost_price, selling_price } = newItemForm;
 
     if (!product_id || !description || !cost_price || !selling_price) {
-      setError('Veuillez remplir tous les champs obligatoires (code, description, prix co\u00fbtant, prix vente).');
+      setError('Veuillez remplir tous les champs obligatoires (code, description, prix coûtant, prix vente).');
       return;
     }
 
-    // V\u00e9rifier doublon dans la liste
+    // Vérifier doublon dans la liste
     const existingInList = receiptItems.find(i => i.product_id === product_id);
     if (existingInList) {
-      setError(`Le produit ${product_id} est d\u00e9j\u00e0 dans la liste.`);
+      setError(`Le produit ${product_id} est déjà dans la liste.`);
       return;
     }
 
     try {
-      // V\u00e9rifier si le produit existe d\u00e9j\u00e0 dans products
+      // Vérifier si le produit existe déjà dans products
       const { data: existingProduct } = await supabase
         .from('products')
         .select('product_id')
         .eq('product_id', product_id)
         .single();
 
-      // V\u00e9rifier aussi dans non_inventory_items
+      // Vérifier aussi dans non_inventory_items
       if (!existingProduct) {
         const { data: existingInNonInv } = await supabase
           .from('non_inventory_items')
@@ -176,12 +176,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
           .single();
 
         if (existingInNonInv) {
-          setError(`Le code ${product_id} existe d\u00e9j\u00e0 dans les items non-inventaire. Utilisez la recherche.`);
+          setError(`Le code ${product_id} existe déjà dans les items non-inventaire. Utilisez la recherche.`);
           return;
         }
       }
 
-      // Cr\u00e9er le produit s'il n'existe pas (toujours dans products)
+      // Créer le produit s'il n'existe pas (toujours dans products)
       if (!existingProduct) {
         const { error: insertError } = await supabase
           .from('products')
@@ -196,12 +196,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
           });
 
         if (insertError) {
-          setError('Erreur lors de la cr\u00e9ation du produit: ' + insertError.message);
+          setError('Erreur lors de la création du produit: ' + insertError.message);
           return;
         }
       }
 
-      // Ajouter \u00e0 la liste de r\u00e9ception
+      // Ajouter à la liste de réception
       setReceiptItems(prev => [...prev, {
         product_id,
         description,
@@ -217,12 +217,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       resetNewItemForm();
       setError('');
     } catch (err) {
-      console.error('Erreur cr\u00e9ation produit:', err);
+      console.error('Erreur création produit:', err);
       setError('Erreur: ' + err.message);
     }
   };
 
-  // Mettre \u00e0 jour la quantit\u00e9 d'un item
+  // Mettre à jour la quantité d'un item
   const updateItemQuantity = (productId, value) => {
     const qty = parseFloat(value);
     if (isNaN(qty)) return;
@@ -234,7 +234,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
     ));
   };
 
-  // Mettre \u00e0 jour le prix co\u00fbtant d'un item
+  // Mettre à jour le prix coûtant d'un item
   const updateItemCostPrice = (productId, value) => {
     const price = parseFloat(value);
     if (isNaN(price)) return;
@@ -271,7 +271,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
     }
   };
 
-  // Sauvegarder la r\u00e9ception
+  // Sauvegarder la réception
   const handleSaveReceipt = async (closeAfter = false) => {
     try {
       setSaving(true);
@@ -281,25 +281,25 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       const validItems = receiptItems.filter(item => item.quantity !== 0);
 
       if (validItems.length === 0) {
-        setError('Veuillez ajouter au moins un article avec une quantit\u00e9.');
+        setError('Veuillez ajouter au moins un article avec une quantité.');
         setSaving(false);
         return;
       }
 
-      // En mode r\u00e9ception (non-ajustement), les quantit\u00e9s doivent \u00eatre positives
+      // En mode réception (non-ajustement), les quantités doivent être positives
       if (!isAdjustment) {
         const negativeItems = validItems.filter(i => i.quantity < 0);
         if (negativeItems.length > 0) {
-          setError('En mode R\u00e9ception, les quantit\u00e9s doivent \u00eatre positives. Activez le mode Ajustement pour les corrections n\u00e9gatives.');
+          setError('En mode Réception, les quantités doivent être positives. Activez le mode Ajustement pour les corrections négatives.');
           setSaving(false);
           return;
         }
       }
 
-      // G\u00e9n\u00e9rer un num\u00e9ro de r\u00e9f\u00e9rence pour le lot
+      // Générer un numéro de référence pour le lot
       const refNumber = `RD-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
 
-      // 1. Cr\u00e9er les mouvements d'inventaire
+      // 1. Créer les mouvements d'inventaire
       const movements = validItems.map(item => ({
         product_id: item.product_id,
         product_description: item.description,
@@ -314,7 +314,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
         reference_number: refNumber,
         notes: isAdjustment
           ? `Ajustement inventaire${supplierName ? ` - ${supplierName}` : ''}${receiptNotes ? ` - ${receiptNotes}` : ''}`
-          : `R\u00e9ception directe${supplierName ? ` de ${supplierName}` : ''}${supplierDeliveryNumber ? ` (BL: ${supplierDeliveryNumber})` : ''}${receiptNotes ? ` - ${receiptNotes}` : ''}`,
+          : `Réception directe${supplierName ? ` de ${supplierName}` : ''}${supplierDeliveryNumber ? ` (BL: ${supplierDeliveryNumber})` : ''}${receiptNotes ? ` - ${receiptNotes}` : ''}`,
         created_at: new Date().toISOString()
       }));
 
@@ -326,7 +326,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
         console.error('Erreur mouvements:', movementError);
       }
 
-      // 2. Mettre \u00e0 jour le stock + d\u00e9calage prix
+      // 2. Mettre à jour le stock + décalage prix
       for (const item of validItems) {
         const tableName = item.is_non_inventory ? 'non_inventory_items' : 'products';
 
@@ -338,11 +338,11 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
         if (!productError && product) {
           const currentStock = parseFloat(product.stock_qty) || 0;
-          const newStock = currentStock + item.quantity; // quantity peut \u00eatre n\u00e9gatif en ajustement
+          const newStock = currentStock + item.quantity; // quantity peut être négatif en ajustement
 
           const updates = { stock_qty: Math.max(0, newStock).toString() };
 
-          // D\u00e9calage prix seulement pour les r\u00e9ceptions (pas les ajustements n\u00e9gatifs)
+          // Décalage prix seulement pour les réceptions (pas les ajustements négatifs)
           if (item.quantity > 0) {
             const priceShiftUpdates = buildPriceShiftUpdates(product, {
               cost_price: item.cost_price,
@@ -355,14 +355,14 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
             .update(updates)
             .eq('product_id', item.product_id);
 
-          console.log(`Stock mis \u00e0 jour: ${item.product_id} (${tableName}): ${currentStock} \u2192 ${Math.max(0, newStock)}`);
+          console.log(`Stock mis à jour: ${item.product_id} (${tableName}): ${currentStock} → ${Math.max(0, newStock)}`);
         }
       }
 
-      const actionLabel = isAdjustment ? 'Ajustement' : 'R\u00e9ception';
-      setSuccess(`${actionLabel} enregistr\u00e9(e)! ${validItems.length} article(s) trait\u00e9(s). R\u00e9f: ${refNumber}`);
+      const actionLabel = isAdjustment ? 'Ajustement' : 'Réception';
+      setSuccess(`${actionLabel} enregistré(e)! ${validItems.length} article(s) traité(s). Réf: ${refNumber}`);
 
-      // Reset les items apr\u00e8s sauvegarde
+      // Reset les items après sauvegarde
       setReceiptItems([]);
       setSupplierDeliveryNumber('');
       setReceiptNotes('');
@@ -376,7 +376,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       }
 
     } catch (err) {
-      console.error('Erreur sauvegarde r\u00e9ception:', err);
+      console.error('Erreur sauvegarde réception:', err);
       setError('Erreur lors de la sauvegarde: ' + err.message);
     } finally {
       setSaving(false);
@@ -403,13 +403,13 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                 {isAdjustment ? (
                   <><Package className="w-6 h-6" /> Ajustement d'inventaire</>
                 ) : (
-                  <><Truck className="w-6 h-6" /> R\u00e9ception directe</>
+                  <><Truck className="w-6 h-6" /> Réception directe</>
                 )}
               </h2>
               <p className="text-white/80 text-sm mt-1">
                 {isAdjustment
-                  ? 'Correction de stock suite \u00e0 une prise d\'inventaire'
-                  : 'R\u00e9ceptionner du mat\u00e9riel achet\u00e9 directement (sans AF)'}
+                  ? 'Correction de stock suite à une prise d\'inventaire'
+                  : 'Réceptionner du matériel acheté directement (sans AF)'}
               </p>
             </div>
             <button
@@ -494,7 +494,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
               )}
             </div>
 
-            {/* R\u00e9sultats de recherche */}
+            {/* Résultats de recherche */}
             {searchResults.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                 {searchResults.map((product, index) => (
@@ -527,10 +527,10 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
               </div>
             )}
 
-            {/* Pas de r\u00e9sultats */}
+            {/* Pas de résultats */}
             {productSearchTerm.length >= 2 && !searching && searchResults.length === 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center">
-                <p className="text-gray-500 text-sm mb-2">Aucun produit trouv\u00e9</p>
+                <p className="text-gray-500 text-sm mb-2">Aucun produit trouvé</p>
                 <button
                   onClick={() => {
                     setShowNewItemForm(true);
@@ -541,20 +541,20 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                   className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 inline-flex items-center gap-1"
                 >
                   <Plus className="w-4 h-4" />
-                  Cr\u00e9er un nouveau produit
+                  Créer un nouveau produit
                 </button>
               </div>
             )}
           </div>
 
-          {/* Bouton cr\u00e9er nouveau produit */}
+          {/* Bouton créer nouveau produit */}
           {!showNewItemForm && (
             <button
               onClick={() => setShowNewItemForm(true)}
               className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-teal-400 hover:text-teal-600 text-sm flex items-center justify-center gap-2 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Cr\u00e9er un nouveau produit
+              Créer un nouveau produit
             </button>
           )}
 
@@ -593,7 +593,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Prix co\u00fbtant *</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Prix coûtant *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -619,16 +619,16 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Unit\u00e9</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Unité</label>
                   <select
                     value={newItemForm.unit}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, unit: e.target.value }))}
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   >
                     <option value="Un">Un</option>
-                    <option value="M">M (m\u00e8tre)</option>
+                    <option value="M">M (mètre)</option>
                     <option value="Pi">Pi (pied)</option>
-                    <option value="Bte">Bte (bo\u00eete)</option>
+                    <option value="Bte">Bte (boîte)</option>
                     <option value="Rl">Rl (rouleau)</option>
                     <option value="Kg">Kg</option>
                     <option value="Lb">Lb (livre)</option>
@@ -642,7 +642,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     type="text"
                     value={newItemForm.product_group}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, product_group: e.target.value }))}
-                    placeholder="Ex: \u00c9lectrique, Plomberie..."
+                    placeholder="Ex: Électrique, Plomberie..."
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   />
                 </div>
@@ -660,17 +660,17 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                   className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 flex items-center gap-1"
                 >
                   <Plus className="w-4 h-4" />
-                  Cr\u00e9er et ajouter
+                  Créer et ajouter
                 </button>
               </div>
             </div>
           )}
 
-          {/* Liste des items s\u00e9lectionn\u00e9s */}
+          {/* Liste des items sélectionnés */}
           {receiptItems.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">
-                Articles \u00e0 {isAdjustment ? 'ajuster' : 'r\u00e9ceptionner'}
+                Articles à {isAdjustment ? 'ajuster' : 'réceptionner'}
               </h3>
               <div className="space-y-2">
                 {receiptItems.map((item) => (
@@ -708,9 +708,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                         )}
                       </div>
 
-                      {/* Prix co\u00fbtant */}
+                      {/* Prix coûtant */}
                       <div className="w-24">
-                        <label className="text-xs text-gray-500 block mb-0.5">Prix co\u00fbt.</label>
+                        <label className="text-xs text-gray-500 block mb-0.5">Prix coût.</label>
                         <input
                           type="number"
                           step="0.01"
@@ -722,10 +722,10 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                         />
                       </div>
 
-                      {/* Quantit\u00e9 */}
+                      {/* Quantité */}
                       <div className="w-24">
                         <label className="text-xs text-gray-500 block mb-0.5">
-                          {isAdjustment ? 'Ajust. (+/-)' : 'Qt\u00e9'}
+                          {isAdjustment ? 'Ajust. (+/-)' : 'Qté'}
                         </label>
                         <input
                           type="number"
@@ -774,7 +774,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    N\u00b0 BL fournisseur (optionnel)
+                    N° BL fournisseur (optionnel)
                   </label>
                   <input
                     type="text"
@@ -793,7 +793,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
               <textarea
                 value={receiptNotes}
                 onChange={(e) => setReceiptNotes(e.target.value)}
-                placeholder={isAdjustment ? 'Ex: Prise d\'inventaire f\u00e9vrier 2026' : 'Ex: Achat direct au comptoir...'}
+                placeholder={isAdjustment ? 'Ex: Prise d\'inventaire février 2026' : 'Ex: Achat direct au comptoir...'}
                 className="w-full px-3 py-2 border rounded-lg resize-none text-sm"
                 rows={2}
               />
