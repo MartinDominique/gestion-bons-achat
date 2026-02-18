@@ -2,14 +2,15 @@
  * @file components/DirectReceiptModal.js
  * @description Modal de r\u00e9ception directe de marchandises (sans AF).
  *              - Recherche et s\u00e9lection de produits existants
- *              - Cr\u00e9ation de nouveaux produits (inventaire ou non-inventaire)
+ *              - Cr\u00e9ation de nouveaux produits dans l'inventaire
  *              - Mode R\u00e9ception (IN) et mode Ajustement (+/-)
  *              - Met \u00e0 jour le stock (products / non_inventory_items)
  *              - Cr\u00e9e les mouvements d'inventaire
  *              - D\u00e9calage historique prix (price shift) si cost_price change
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-02-18
  * @changelog
+ *   1.1.0 - Retrait checkbox non-inventaire du formulaire création (items toujours dans products)
  *   1.0.0 - Version initiale
  */
 import React, { useState, useEffect, useRef } from 'react';
@@ -55,8 +56,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
     cost_price: '',
     selling_price: '',
     unit: 'Un',
-    product_group: '',
-    is_non_inventory: false
+    product_group: ''
   });
 
   // Champs optionnels
@@ -111,8 +111,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       cost_price: '',
       selling_price: '',
       unit: 'Un',
-      product_group: '',
-      is_non_inventory: false
+      product_group: ''
     });
   };
 
@@ -161,49 +160,40 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
     }
 
     try {
-      const tableName = newItemForm.is_non_inventory ? 'non_inventory_items' : 'products';
-
-      // V\u00e9rifier si le produit existe d\u00e9j\u00e0 en BD
+      // V\u00e9rifier si le produit existe d\u00e9j\u00e0 dans products
       const { data: existingProduct } = await supabase
-        .from(tableName)
+        .from('products')
         .select('product_id')
         .eq('product_id', product_id)
         .single();
 
-      // V\u00e9rifier aussi dans l'autre table
+      // V\u00e9rifier aussi dans non_inventory_items
       if (!existingProduct) {
-        const otherTable = newItemForm.is_non_inventory ? 'products' : 'non_inventory_items';
-        const { data: existingInOther } = await supabase
-          .from(otherTable)
+        const { data: existingInNonInv } = await supabase
+          .from('non_inventory_items')
           .select('product_id')
           .eq('product_id', product_id)
           .single();
 
-        if (existingInOther) {
-          setError(`Le code ${product_id} existe d\u00e9j\u00e0 dans ${otherTable === 'products' ? 'l\'inventaire' : 'les items non-inventaire'}. Utilisez la recherche.`);
+        if (existingInNonInv) {
+          setError(`Le code ${product_id} existe d\u00e9j\u00e0 dans les items non-inventaire. Utilisez la recherche.`);
           return;
         }
       }
 
-      // Cr\u00e9er le produit s'il n'existe pas
+      // Cr\u00e9er le produit s'il n'existe pas (toujours dans products)
       if (!existingProduct) {
-        const insertData = {
-          product_id,
-          description,
-          cost_price: parseFloat(cost_price),
-          selling_price: parseFloat(selling_price),
-          unit: newItemForm.unit || 'Un',
-          product_group: newItemForm.product_group || (newItemForm.is_non_inventory ? 'Non-Inventaire' : ''),
-          stock_qty: 0
-        };
-
-        if (newItemForm.is_non_inventory) {
-          insertData.is_non_inventory = true;
-        }
-
         const { error: insertError } = await supabase
-          .from(tableName)
-          .insert(insertData);
+          .from('products')
+          .insert({
+            product_id,
+            description,
+            cost_price: parseFloat(cost_price),
+            selling_price: parseFloat(selling_price),
+            unit: newItemForm.unit || 'Un',
+            product_group: newItemForm.product_group || '',
+            stock_qty: 0
+          });
 
         if (insertError) {
           setError('Erreur lors de la cr\u00e9ation du produit: ' + insertError.message);
@@ -217,9 +207,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
         description,
         unit: newItemForm.unit || 'Un',
         cost_price: parseFloat(cost_price),
-        current_stock: existingProduct ? 0 : 0, // Nouveau produit = stock 0
+        current_stock: 0,
         quantity: 1,
-        is_non_inventory: newItemForm.is_non_inventory,
+        is_non_inventory: false,
         product_group: newItemForm.product_group || ''
       }]);
 
@@ -655,17 +645,6 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     placeholder="Ex: \u00c9lectrique, Plomberie..."
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   />
-                </div>
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 pb-2">
-                    <input
-                      type="checkbox"
-                      checked={newItemForm.is_non_inventory}
-                      onChange={(e) => setNewItemForm(prev => ({ ...prev, is_non_inventory: e.target.checked }))}
-                      className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                    />
-                    <span className="text-sm text-gray-700">Non-inventaire</span>
-                  </label>
                 </div>
               </div>
 
