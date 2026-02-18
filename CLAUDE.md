@@ -302,6 +302,8 @@ components/work-orders/MaterialSelector.js    → Sélection matériaux (partag�
 components/delivery-notes/DeliveryNoteForm.js → Formulaire BL (livraison matériels)
 components/delivery-notes/DeliveryNotePDF.js  → Génération PDF BL
 components/SupplierPurchaseManager.js         → Gestion AF
+components/SupplierReceiptModal.js            → Réception AF (partielle/complète)
+components/DirectReceiptModal.js              → Réception directe sans AF + ajustement inventaire
 components/ClientManager.js                   → Gestion clients
 ```
 
@@ -580,16 +582,18 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
 
 ---
 
-## Flux Inventaire (BT et BL)
+## Flux Inventaire (BT, BL, AF et Réception directe)
 
 ```
-AF Réception    → stock_qty += quantité reçue     (mouvement IN)
-BT Envoi email  → stock_qty -= quantité matériaux  (mouvement OUT)
-BL Envoi email  → stock_qty -= quantité livrée     (mouvement OUT)
+AF Réception       → stock_qty += quantité reçue     (mouvement IN)
+Réception directe  → stock_qty += quantité reçue     (mouvement IN, sans AF)
+Ajustement inv.    → stock_qty += ou -= quantité      (mouvement IN ou OUT, prise d'inventaire)
+BT Envoi email     → stock_qty -= quantité matériaux  (mouvement OUT)
+BL Envoi email     → stock_qty -= quantité livrée     (mouvement OUT)
 ```
 
 Les mouvements sont enregistrés dans `inventory_movements`:
-- `reference_type`: 'work_order', 'delivery_note', ou 'supplier_purchase'
+- `reference_type`: 'work_order', 'delivery_note', 'supplier_purchase', ou 'direct_receipt'
 - `movement_type`: 'IN' ou 'OUT'
 
 ---

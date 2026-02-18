@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import SupplierReceiptModal from './SupplierReceiptModal';
+import DirectReceiptModal from './DirectReceiptModal';
 import {
-  MoreVertical, Edit, Trash2, Search, Plus, ShoppingCart, Building2, Wrench, Calendar, Truck
+  MoreVertical, Edit, Trash2, Search, Plus, ShoppingCart, Building2, Calendar, Truck, PackagePlus
 } from 'lucide-react';
 
 // Imports des autres fichiers
@@ -157,36 +158,19 @@ export default function SupplierPurchaseManager() {
     closePriceUpdateModal
   } = hookData;
 
-  // États pour le modal de réception
+  // États pour le modal de réception AF
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedPurchaseForReceipt, setSelectedPurchaseForReceipt] = useState(null);
 
-  // Handler pour ouvrir le modal de réception
+  // État pour le modal de réception directe
+  const [showDirectReceiptModal, setShowDirectReceiptModal] = useState(false);
+
+  // Handler pour ouvrir le modal de réception AF
   const openReceiptModal = (purchase) => {
   console.log('openReceiptModal appelé avec:', purchase);
   setSelectedPurchaseForReceipt(purchase);
   setShowReceiptModal(true);
 };
-
-  // Fonction pour tester l'email quotidien
-  const testDailyEmail = async () => {
-    try {
-      setEmailStatus('📤 Envoi de l\'email de test en cours...');
-      
-      const response = await fetch('/api/send-daily-report', {
-        method: 'POST'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setEmailStatus(`✅ Email envoyé avec succès! ${data.message}`);
-      } else {
-        setEmailStatus('❌ Erreur lors de l\'envoi de l\'email de test');
-      }
-    } catch (error) {
-      setEmailStatus('❌ Erreur: ' + error.message);
-    }
-  };
   
   // Loading state
   if (loading) {
@@ -365,26 +349,12 @@ export default function SupplierPurchaseManager() {
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
-              onClick={handleFixExistingPurchases}
-              disabled={isFixingPOs}
-              className={`w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium ${
-                isFixingPOs 
-                  ? 'bg-yellow-400 text-yellow-800 cursor-not-allowed' 
-                  : 'bg-yellow-600 text-white hover:bg-yellow-700'
-              }`}
-              title="Corriger les PO manquants dans les achats existants"
+              onClick={() => setShowDirectReceiptModal(true)}
+              className="w-full sm:w-auto px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm font-medium"
+              title="Réceptionner du matériel sans AF ou ajuster l'inventaire"
             >
-              {isFixingPOs ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-800 inline mr-2"></div>
-                  Correction...
-                </>
-              ) : (
-                <>
-                  <Wrench className="w-4 h-4 inline mr-2" />
-                  Corriger POs
-                </>
-              )}
+              <PackagePlus className="w-4 h-4 inline mr-2" />
+              Réception directe
             </button>
             <button
               onClick={() => setShowSupplierModal(true)}
@@ -406,25 +376,6 @@ export default function SupplierPurchaseManager() {
             >
               Nouvel Achat Fourn.
             </button>
-            <button
-              onClick={testDailyEmail}
-              disabled={isLoadingEmail}
-              className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50"
-              title="Tester l'email quotidien des achats en cours"
-            >
-              {isLoadingEmail ? 'Envoi...' : '📧 Test Email Quotidien'}
-            </button>
-            {/* Bouton test email en développement */}
-            {process.env.NODE_ENV === 'development' && (
-              <button
-                onClick={handleTestEmail}
-                disabled={isLoadingEmail}
-                className="w-full sm:w-auto px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm font-medium disabled:opacity-50"
-                title="Tester l'envoi d'email à Dominique"
-              >
-                {isLoadingEmail ? 'Test...' : '🧪 Test Email'}
-              </button>
-            )}
           </div>
         </div>
 
@@ -902,7 +853,7 @@ export default function SupplierPurchaseManager() {
         handleDeleteSupplier={handleDeleteSupplier}
         resetSupplierForm={resetSupplierForm}
       />
-      {/* Modal de Réception */}
+      {/* Modal de Réception AF */}
       <SupplierReceiptModal
         isOpen={showReceiptModal}
         onClose={() => {
@@ -910,6 +861,14 @@ export default function SupplierPurchaseManager() {
           setSelectedPurchaseForReceipt(null);
         }}
         purchase={selectedPurchaseForReceipt}
+        onReceiptComplete={() => {
+          loadSupplierPurchases();
+        }}
+      />
+      {/* Modal de Réception Directe (sans AF) */}
+      <DirectReceiptModal
+        isOpen={showDirectReceiptModal}
+        onClose={() => setShowDirectReceiptModal(false)}
         onReceiptComplete={() => {
           loadSupplierPurchases();
         }}
