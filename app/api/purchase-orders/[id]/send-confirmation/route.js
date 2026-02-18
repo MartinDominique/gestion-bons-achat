@@ -3,10 +3,11 @@
  * @description API endpoint pour générer et envoyer un BCC (Bon de Confirmation de Commande)
  *              - Génère un PDF avec en-tête standardisé (pdf-common.js)
  *              - Envoie par email au client via Resend
- *              - CC au bureau (info.servicestmt@gmail.com)
- * @version 1.3.0
- * @date 2026-02-17
+ *              - Envoi direct au client (sans CC bureau)
+ * @version 1.4.0
+ * @date 2026-02-18
  * @changelog
+ *   1.4.0 - Email client affiche destinataires réels, titre sur une ligne, Réf.: au lieu de Ref. BA:, retrait CC bureau
  *   1.3.0 - Sauvegarde détail articles (code, description, qté, délai) dans bcc_history
  *   1.2.0 - Ajout colonne "En Main" (stock) dans le PDF BCC
  *   1.1.0 - Ajout suivi BCC: sauvegarde historique (bcc_history, bcc_sent_count) + PDF dans files
@@ -179,7 +180,7 @@ function drawFooter(doc) {
  * Génère le PDF BCC
  */
 function generateBCCPDF(data) {
-  const { purchase_order, client, bcc_items, totals, notes } = data;
+  const { purchase_order, client, bcc_items, totals, notes, recipient_emails } = data;
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -190,10 +191,9 @@ function generateBCCPDF(data) {
   // En-tête
   const today = new Date().toISOString().split('T')[0];
   let y = drawHeader(doc, {
-    title: 'CONFIRMATION DE',
+    title: 'CONFIRMATION DE COMMANDE',
     fields: [
-      { value: 'COMMANDE', bold: true },
-      { label: 'Ref. BA:', value: purchase_order.po_number || 'N/A' },
+      { label: 'Réf.:', value: purchase_order.po_number || 'N/A' },
       { label: 'Date:', value: formatDate(today) },
     ],
   });
@@ -221,7 +221,10 @@ function generateBCCPDF(data) {
       doc.text('Tel: ' + client.phone, PAGE.margin.left, y);
       y += 5;
     }
-    if (client.email) {
+    if (recipient_emails && recipient_emails.length > 0) {
+      doc.text('Email: ' + recipient_emails.join(', '), PAGE.margin.left, y);
+      y += 5;
+    } else if (client.email) {
       doc.text('Email: ' + client.email, PAGE.margin.left, y);
       y += 5;
     }
@@ -443,14 +446,13 @@ export async function POST(request, { params }) {
 
     // Générer le PDF
     console.log(`Generation PDF BCC pour BA #${purchase_order.po_number}...`);
-    const doc = generateBCCPDF({ purchase_order, client, bcc_items, totals, notes });
+    const doc = generateBCCPDF({ purchase_order, client, bcc_items, totals, notes, recipient_emails });
 
     // Convertir en base64
     const pdfOutput = doc.output('arraybuffer');
     const pdfBase64 = Buffer.from(pdfOutput).toString('base64');
 
     // Construire l'email
-    const companyEmail = process.env.COMPANY_EMAIL || 'info.servicestmt@gmail.com';
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@servicestmt.ca';
     const clientName = client?.name || purchase_order.client_name || 'Client';
     const poNumber = purchase_order.po_number || 'N/A';
@@ -458,7 +460,6 @@ export async function POST(request, { params }) {
     const emailData = {
       from: fromEmail,
       to: recipient_emails,
-      cc: [companyEmail],
       subject: `Confirmation de commande - BA #${poNumber} - ${COMPANY.name}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -517,7 +518,7 @@ export async function POST(request, { params }) {
     };
 
     // Envoyer l'email
-    console.log(`Envoi BCC a ${recipient_emails.join(', ')} (CC: ${companyEmail})...`);
+    console.log(`Envoi BCC a ${recipient_emails.join(', ')}...`);
     const { data, error } = await resend.emails.send(emailData);
 
     if (error) {
