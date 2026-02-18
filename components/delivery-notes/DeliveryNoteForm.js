@@ -8,9 +8,12 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.4.0
- * @date 2026-02-17
+ * @version 2.5.0
+ * @date 2026-02-18
  * @changelog
+ *   2.5.0 - Fix workflow signature: window.open() au lieu de router.push()
+ *           pour page client (identique au BT). Ajout polling statut +
+ *           focus listener pour auto-fermeture après signature.
  *   2.4.0 - Ajout bouton "Ajout de fournisseur" + modal import achats fournisseurs
  *           Import sélectif d'articles depuis achats fournisseurs liés au client
  *   2.3.0 - Ajout bouton "Ajout de soumission" + modal import soumissions
@@ -91,6 +94,7 @@ export default function DeliveryNoteForm({
 
   // UI
   const [savedId, setSavedId] = useState(null);
+  const [currentBLStatus, setCurrentBLStatus] = useState(null);
 
   // Soumissions import
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
@@ -196,6 +200,89 @@ export default function DeliveryNoteForm({
       setPurchaseOrders([]);
     }
   };
+
+  // =============================================
+  // SURVEILLANCE STATUT BL (identique au BT)
+  // Polling toutes les 3 sec quand status = ready_for_signature
+  // =============================================
+
+  useEffect(() => {
+    const blId = savedId || deliveryNote?.id;
+
+    if (currentBLStatus === 'ready_for_signature' && blId) {
+      let intervalId = null;
+
+      const checkStatus = async () => {
+        try {
+          const response = await fetch(`/api/delivery-notes/${blId}?t=${Date.now()}`, {
+            cache: 'no-store'
+          });
+          if (response.ok) {
+            const responseData = await response.json();
+            const currentStatus = responseData.data?.status || responseData.status;
+
+            if (['signed', 'sent', 'pending_send'].includes(currentStatus)) {
+              if (intervalId) clearInterval(intervalId);
+
+              toast.success('Le client a signé le bon de livraison!', { duration: 2000 });
+
+              setTimeout(() => {
+                router.push('/bons-travail');
+              }, 2000);
+            }
+          }
+        } catch (error) {
+          console.error('Erreur vérification statut BL:', error);
+        }
+      };
+
+      checkStatus();
+      intervalId = setInterval(checkStatus, 3000);
+
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+      };
+    }
+  }, [currentBLStatus, savedId, deliveryNote?.id, router]);
+
+  // Focus listener: vérifier statut quand l'onglet reprend le focus
+  useEffect(() => {
+    const blId = savedId || deliveryNote?.id;
+
+    if (blId) {
+      const handleFocus = async () => {
+        try {
+          const response = await fetch(`/api/delivery-notes/${blId}?t=${Date.now()}`, {
+            cache: 'no-store'
+          });
+          if (response.ok) {
+            const responseData = await response.json();
+            const updatedStatus = responseData.data?.status || responseData.status;
+
+            if (updatedStatus && updatedStatus !== currentBLStatus) {
+              setCurrentBLStatus(updatedStatus);
+
+              if (['signed', 'sent', 'pending_send'].includes(updatedStatus)) {
+                toast.success('Le bon de livraison a été traité avec succès!', { duration: 2000 });
+
+                setTimeout(() => {
+                  router.push('/bons-travail');
+                }, 2000);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erreur rechargement statut BL:', error);
+        }
+      };
+
+      window.addEventListener('focus', handleFocus);
+
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+      };
+    }
+  }, [savedId, deliveryNote?.id, currentBLStatus, router]);
 
   // =============================================
   // HANDLE CLIENT SELECT (identique au BT)
@@ -587,9 +674,9 @@ export default function DeliveryNoteForm({
     if (result) {
       const blId = result.id || savedId;
       if (blId) {
-        setTimeout(() => {
-          router.push(`/bons-travail/bl/${blId}/client`);
-        }, 500);
+        setSavedId(blId);
+        setCurrentBLStatus('ready_for_signature');
+        window.open(`/bons-travail/bl/${blId}/client`, '_blank');
       }
     }
   };

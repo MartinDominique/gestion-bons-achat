@@ -6,10 +6,14 @@
  *              - Bouton Fermer pour revenir en arrière
  *              - Zone de signature tactile
  *              - Envoi automatique après signature
+ *              - Auto-fermeture après signature + envoi email
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.0.1
- * @date 2026-02-17
+ * @version 2.1.0
+ * @date 2026-02-18
  * @changelog
+ *   2.1.0 - Fix workflow fermeture: window.close() avec fallback navigation,
+ *           auto-fermeture après signature+envoi, bouton Fermer retourne au
+ *           formulaire (window.close) ou à la liste (fallback navigation)
  *   2.0.1 - Fix: fallback window.close(), reset isSubmitting dans branche succès,
  *           alerte succès quand fermeture auto impossible
  *   2.0.0 - Refonte: structure identique au BT (WorkOrderClientView)
@@ -182,22 +186,34 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
         if (result.autoSendResult?.success && result.deliveryNoteStatus === 'sent') {
           onStatusUpdate?.('sent');
           setIsSubmitting(false);
-          // Tenter de fermer la fenêtre, sinon afficher succès
+          // Fermer l'onglet après un bref délai (ouvert via window.open)
           setTimeout(() => {
             window.close();
-            // Fallback si window.close() ne fonctionne pas (page non ouverte via JS)
+            // Fallback si window.close() ne fonctionne pas
             setTimeout(() => {
-              alert('✅ Livraison signée et email envoyé avec succès!');
-            }, 200);
-          }, 500);
+              window.location.href = '/bons-travail';
+            }, 300);
+          }, 800);
         } else if (result.autoSendResult?.needsManualSend) {
           onStatusUpdate?.(result.deliveryNoteStatus || 'pending_send');
-          alert(`✅ Livraison signée avec succès!\n\n${result.autoSendResult.reason}`);
           setIsSubmitting(false);
+          // Fermer l'onglet après message
+          setTimeout(() => {
+            window.close();
+            setTimeout(() => {
+              window.location.href = '/bons-travail';
+            }, 300);
+          }, 1500);
         } else {
           onStatusUpdate?.(result.deliveryNoteStatus || 'pending_send');
-          alert('✅ Livraison signée avec succès!\n\nL\'email sera envoyé depuis le bureau.');
           setIsSubmitting(false);
+          // Fermer l'onglet après message
+          setTimeout(() => {
+            window.close();
+            setTimeout(() => {
+              window.location.href = '/bons-travail';
+            }, 300);
+          }, 1500);
         }
       } else {
         throw new Error(result.error || 'Erreur lors de la signature');
@@ -544,9 +560,12 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                       <button
                         onClick={() => {
                           window.close();
+                          // Fallback si window.close() ne fonctionne pas
                           setTimeout(() => {
-                            window.location.href = `/bons-travail`;
-                          }, 100);
+                            window.history.length > 1
+                              ? window.history.back()
+                              : window.location.href = '/bons-travail';
+                          }, 300);
                         }}
                         className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all font-bold text-base flex items-center justify-center shadow-lg"
                       >
@@ -818,7 +837,12 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                 </p>
               </div>
               <button
-                onClick={() => window.close()}
+                onClick={() => {
+                  window.close();
+                  setTimeout(() => {
+                    window.location.href = '/bons-travail';
+                  }, 300);
+                }}
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
               >
                 Fermer
@@ -830,29 +854,52 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
         {/* Statut d'attente envoi */}
         {deliveryNote.status === 'pending_send' && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
-            <h3 className="text-lg font-semibold text-orange-800 mb-2">
-              ⏳ En Attente d'Envoi
-            </h3>
-            <p className="text-orange-700 mb-3">
-              Livraison signée - Envoi automatique en cours de traitement par le système
-            </p>
-            <p className="text-sm text-orange-600">
-              L'email sera envoyé automatiquement depuis le bureau
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-orange-800 mb-2">
+                  ✅ Livraison Signée
+                </h3>
+                <p className="text-orange-700 mb-1">
+                  L'email sera envoyé depuis le bureau
+                </p>
+                <p className="text-sm text-orange-600">
+                  Cette page va se fermer automatiquement...
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  window.close();
+                  setTimeout(() => {
+                    window.location.href = '/bons-travail';
+                  }, 300);
+                }}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         )}
 
         {/* Livraison envoyée */}
         {deliveryNote.status === 'sent' && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6 text-center">
-            <h3 className="text-lg font-semibold text-orange-800 mb-2">
-              📧 Bon de Livraison Envoyé avec Succès
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6 text-center">
+            <h3 className="text-lg font-semibold text-green-800 mb-2">
+              ✅ Bon de Livraison Envoyé avec Succès
             </h3>
-            <p className="text-orange-700">
+            <p className="text-green-700">
               Envoyé le {deliveryNote.sent_at ? new Date(deliveryNote.sent_at).toLocaleString('fr-CA') : 'maintenant'}
             </p>
+            <p className="text-sm text-green-600 mt-2">
+              Cette page va se fermer automatiquement...
+            </p>
             <button
-              onClick={() => window.close()}
+              onClick={() => {
+                window.close();
+                setTimeout(() => {
+                  window.location.href = '/bons-travail';
+                }, 300);
+              }}
               className="mt-3 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
             >
               Fermer
