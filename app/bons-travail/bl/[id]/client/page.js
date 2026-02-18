@@ -1,9 +1,10 @@
 /**
  * @file app/bons-travail/bl/[id]/client/page.js
  * @description Page de signature client pour un BL (accès public)
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.1.0
+ * @date 2026-02-17
  * @changelog
+ *   1.1.0 - Ajout onStatusUpdate pour mise à jour statut après signature
  *   1.0.0 - Version initiale
  */
 
@@ -82,5 +83,12 @@ export default function ClientViewBLPage() {
     );
   }
 
-  return <DeliveryNoteClientView deliveryNote={deliveryNote} />;
+  return (
+    <DeliveryNoteClientView
+      deliveryNote={deliveryNote}
+      onStatusUpdate={(newStatus) => {
+        setDeliveryNote(prev => prev ? { ...prev, status: newStatus } : prev);
+      }}
+    />
+  );
 }
