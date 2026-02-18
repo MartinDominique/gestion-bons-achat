@@ -1,15 +1,18 @@
 /**
  * @file app/bons-travail/nouveau-bl/page.js
  * @description Page de création d'un nouveau Bon de Livraison (BL)
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.1.0
+ * @date 2026-02-18
  * @changelog
+ *   1.1.0 - Fix: utiliser PUT après première sauvegarde pour éviter les doublons.
+ *           Quand le BL est déjà créé (savedBlId), les sauvegardes suivantes
+ *           font un PUT au lieu d'un POST.
  *   1.0.0 - Version initiale
  */
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import DeliveryNoteForm from '../../../components/delivery-notes/DeliveryNoteForm';
@@ -20,6 +23,8 @@ export default function NouveauBonLivraisonPage() {
   const [saving, setSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  // Ref pour éviter les doublons: après le premier POST, on fait des PUT
+  const savedBlIdRef = useRef(null);
 
   const handleSave = async (deliveryNoteData, status) => {
     if (saving) {
@@ -50,8 +55,15 @@ export default function NouveauBonLivraisonPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch('/api/delivery-notes', {
-        method: 'POST',
+      // Si déjà sauvegardé une fois, utiliser PUT pour mettre à jour (pas de doublon)
+      const isUpdate = !!savedBlIdRef.current;
+      const url = isUpdate
+        ? `/api/delivery-notes/${savedBlIdRef.current}`
+        : '/api/delivery-notes';
+      const method = isUpdate ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: controller.signal
@@ -63,6 +75,11 @@ export default function NouveauBonLivraisonPage() {
       if (response.ok) {
         const responseData = await response.json();
         const savedDeliveryNote = responseData.success ? responseData.data : responseData;
+
+        // Sauvegarder l'ID pour les prochaines sauvegardes (PUT au lieu de POST)
+        if (savedDeliveryNote?.id) {
+          savedBlIdRef.current = savedDeliveryNote.id;
+        }
 
         setHasSaved(true);
         setHasChanges(false);

@@ -8,9 +8,11 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.5.0
+ * @version 2.5.1
  * @date 2026-02-18
  * @changelog
+ *   2.5.1 - Fix: restauration état checkboxes emails en mode édition depuis
+ *           recipient_emails sauvegardés (ne plus afficher par défaut tous cochés)
  *   2.5.0 - Fix workflow signature: window.open() au lieu de router.push()
  *           pour page client (identique au BT). Ajout polling statut +
  *           focus listener pour auto-fermeture après signature.
@@ -148,6 +150,16 @@ export default function DeliveryNoteForm({
       setDeliveryDescription(deliveryNote.delivery_description || '');
       setIsPrixJobe(deliveryNote.is_prix_jobe || false);
       setSavedId(deliveryNote.id);
+
+      // Restaurer les emails sélectionnés depuis recipient_emails sauvegardés
+      if (deliveryNote.client && deliveryNote.recipient_emails) {
+        const savedEmails = deliveryNote.recipient_emails || [];
+        setSelectedEmails({
+          email: savedEmails.includes(deliveryNote.client.email),
+          email_2: savedEmails.includes(deliveryNote.client.email_2),
+          email_admin: savedEmails.includes(deliveryNote.client.email_admin),
+        });
+      }
 
       // Charger les matériaux
       if (deliveryNote.materials && deliveryNote.materials.length > 0) {
