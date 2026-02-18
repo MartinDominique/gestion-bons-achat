@@ -9,7 +9,7 @@ Cette application gère le cycle complet des opérations:
 - **Bons d'Achat Client (BA)** - Commandes/PO reçus des clients
 - **Achats Fournisseurs (AF)** - Commandes auprès des fournisseurs
 - **Inventaire** - Gestion des produits et matériaux
-- **Soumissions** - Devis et propositions clients
+- **Soumissions** - Devis et propositions client
 
 ---
 
