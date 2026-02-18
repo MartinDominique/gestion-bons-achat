@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.2.0
- * @date 2026-02-12
+ * @version 3.2.1
+ * @date 2026-02-18
  * @changelog
+ *   3.2.1 - Ajout traduction 'direct_receipt' → 'Réception directe' dans historique mouvements
  *   3.2.0 - Toast 2s au lieu de alert(), majuscules Description + Fournisseur,
  *         - Renommé "Fournisseur" en "Dernier fournisseur"
  *   3.1.0 - Ajout champ Fournisseur (supplier) dans l'édition + sauvegarde
@@ -1084,8 +1085,9 @@ export default function InventoryManager() {
                                       {movement.reference_type === 'work_order' && 'Bon de travail'}
                                       {movement.reference_type === 'delivery_note' && 'Bon de livraison'}
                                       {movement.reference_type === 'delivery_slip' && 'Bon de livraison'}
+                                      {movement.reference_type === 'direct_receipt' && 'Réception directe'}
                                       {movement.reference_type === 'adjustment' && 'Ajustement'}
-                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'adjustment'].includes(movement.reference_type) && movement.reference_type}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment'].includes(movement.reference_type) && movement.reference_type}
                                     </span>
                                   )}
                                 </div>
