@@ -452,13 +452,14 @@ CRON_SECRET                   # Auth pour cron jobs
 7. ~~**Recherche serveur inventaire**~~ - ✅ COMPLÉTÉ 2026-02-12 (PR #37) - max 50 résultats, par groupe
 
 ### À faire (priorité utilisateur)
-1. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
-2. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
-3. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
-4. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
-5. **Optimisation mobile BT/BL** - 95% usage mobile
-6. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
-7. **Multi-utilisateurs** - Préparer système permissions/RLS
+1. **Rapports & Statistiques de Ventes** - Nouveau module: coûts, ventes, marges par BT/BL/Soumission (voir `Rapports_Statistiques.md`)
+2. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
+3. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
+4. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
+5. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
+6. **Optimisation mobile BT/BL** - 95% usage mobile
+7. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
+8. **Multi-utilisateurs** - Préparer système permissions/RLS
 
 ### Bugs connus (corrigés)
 - ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé (2026-02-07)
