@@ -1,9 +1,10 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL
- * @version 1.0.1
- * @date 2026-02-17
+ * @version 1.0.2
+ * @date 2026-02-18
  * @changelog
+ *   1.0.2 - Filtrer metadata __fields: dans recipient_emails (sélection checkboxes)
  *   1.0.1 - Fix: vérification erreur sur toutes les mises à jour DB,
  *           fallback sans colonnes optionnelles si update échoue
  *   1.0.0 - Version initiale
@@ -140,7 +141,8 @@ export async function POST(request, { params }) {
     let recipientEmails = [];
 
     if (deliveryNote.recipient_emails && Array.isArray(deliveryNote.recipient_emails) && deliveryNote.recipient_emails.length > 0) {
-      recipientEmails = [...deliveryNote.recipient_emails];
+      // Filtrer metadata __fields: (utilisé pour restauration checkboxes côté client)
+      recipientEmails = deliveryNote.recipient_emails.filter(e => !e.startsWith('__fields:'));
     }
 
     if (process.env.COMPANY_EMAIL) {
@@ -347,7 +349,9 @@ export async function POST(request, { params }) {
 }
 
 function checkCanAutoSend(deliveryNote) {
-  const hasClientEmails = (deliveryNote.recipient_emails && deliveryNote.recipient_emails.length > 0);
+  // Filtrer metadata __fields: avant validation
+  const cleanEmails = (deliveryNote.recipient_emails || []).filter(e => !e.startsWith('__fields:'));
+  const hasClientEmails = cleanEmails.length > 0;
   const hasBureauEmail = !!process.env.COMPANY_EMAIL;
 
   if (!hasClientEmails && !hasBureauEmail) {
@@ -356,7 +360,7 @@ function checkCanAutoSend(deliveryNote) {
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   let emailsToValidate = [];
-  if (hasClientEmails) emailsToValidate = [...deliveryNote.recipient_emails];
+  if (hasClientEmails) emailsToValidate = [...cleanEmails];
   if (hasBureauEmail) emailsToValidate.push(process.env.COMPANY_EMAIL);
 
   if (!emailsToValidate.some(email => email && emailRegex.test(email))) {

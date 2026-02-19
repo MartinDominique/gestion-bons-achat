@@ -8,9 +8,23 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.4.0
- * @date 2026-02-17
+ * @version 2.6.0
+ * @date 2026-02-18
  * @changelog
+ *   2.6.0 - Fix: sélection emails par noms de champs (__fields: metadata dans
+ *           recipient_emails) au lieu de matching par adresses. Résout le cas
+ *           où un client a la même adresse dans plusieurs champs (Principal/Admin).
+ *   2.5.3 - Fix: initialiser selectedEmails depuis deliveryNote.recipient_emails
+ *           dès le useState (pas seulement dans useEffect) pour éviter race condition.
+ *           Re-appliquer aussi après loadClients comme safety net.
+ *   2.5.2 - Fix: réutilisation même onglet client via clientWindowRef (évite
+ *           onglets multiples avec données périmées lors de re-présentation).
+ *           Fix: restauration emails robuste (gère null/undefined recipient_emails)
+ *   2.5.1 - Fix: restauration état checkboxes emails en mode édition depuis
+ *           recipient_emails sauvegardés (ne plus afficher par défaut tous cochés)
+ *   2.5.0 - Fix workflow signature: window.open() au lieu de router.push()
+ *           pour page client (identique au BT). Ajout polling statut +
+ *           focus listener pour auto-fermeture après signature.
  *   2.4.0 - Ajout bouton "Ajout de fournisseur" + modal import achats fournisseurs
  *           Import sélectif d'articles depuis achats fournisseurs liés au client
  *   2.3.0 - Ajout bouton "Ajout de soumission" + modal import soumissions
@@ -28,7 +42,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Package, Calendar, FileText, User, Mail,
@@ -82,15 +96,48 @@ export default function DeliveryNoteForm({
   // Options
   const [isPrixJobe, setIsPrixJobe] = useState(false);
 
-  // Emails
-  const [selectedEmails, setSelectedEmails] = useState({
-    email: true,
-    email_2: false,
-    email_admin: true
+  // =============================================
+  // HELPERS: Sélection emails par noms de champs
+  // Stocke "__fields:email,email_admin" dans recipient_emails pour
+  // distinguer quels champs sont cochés (résout le cas où un client
+  // a la même adresse email dans plusieurs champs).
+  // =============================================
+  const parseFieldSelection = (recipientEmails) => {
+    if (!Array.isArray(recipientEmails)) return null;
+    const entry = recipientEmails.find(e => typeof e === 'string' && e.startsWith('__fields:'));
+    if (!entry) return null;
+    const fields = entry.replace('__fields:', '').split(',').filter(Boolean);
+    return {
+      email: fields.includes('email'),
+      email_2: fields.includes('email_2'),
+      email_admin: fields.includes('email_admin'),
+    };
+  };
+
+  // Emails - initialiser depuis __fields: metadata ou fallback adresses
+  const [selectedEmails, setSelectedEmails] = useState(() => {
+    if (isEdit && Array.isArray(deliveryNote?.recipient_emails)) {
+      // Priorité 1: metadata __fields: (fiable même si mêmes adresses)
+      const fromFields = parseFieldSelection(deliveryNote.recipient_emails);
+      if (fromFields) return fromFields;
+      // Priorité 2: fallback matching par adresses (ancien format)
+      if (deliveryNote?.client) {
+        const saved = deliveryNote.recipient_emails;
+        return {
+          email: !!(deliveryNote.client.email && saved.includes(deliveryNote.client.email)),
+          email_2: !!(deliveryNote.client.email_2 && saved.includes(deliveryNote.client.email_2)),
+          email_admin: !!(deliveryNote.client.email_admin && saved.includes(deliveryNote.client.email_admin)),
+        };
+      }
+    }
+    return { email: true, email_2: false, email_admin: true };
   });
 
   // UI
   const [savedId, setSavedId] = useState(null);
+  const [currentBLStatus, setCurrentBLStatus] = useState(null);
+  // Ref pour réutiliser le même onglet client (éviter onglets multiples)
+  const clientWindowRef = useRef(null);
 
   // Soumissions import
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
@@ -119,7 +166,23 @@ export default function DeliveryNoteForm({
 
         if (isEdit && deliveryNote?.client_id) {
           const client = data.find(c => c.id === deliveryNote.client_id);
-          if (client) setSelectedClient(client);
+          if (client) {
+            setSelectedClient(client);
+            // Re-appliquer la sélection emails (safety net après chargement async)
+            if (Array.isArray(deliveryNote.recipient_emails)) {
+              const fromFields = parseFieldSelection(deliveryNote.recipient_emails);
+              if (fromFields) {
+                setSelectedEmails(fromFields);
+              } else {
+                const saved = deliveryNote.recipient_emails;
+                setSelectedEmails({
+                  email: !!(client.email && saved.includes(client.email)),
+                  email_2: !!(client.email_2 && saved.includes(client.email_2)),
+                  email_admin: !!(client.email_admin && saved.includes(client.email_admin)),
+                });
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -144,6 +207,21 @@ export default function DeliveryNoteForm({
       setDeliveryDescription(deliveryNote.delivery_description || '');
       setIsPrixJobe(deliveryNote.is_prix_jobe || false);
       setSavedId(deliveryNote.id);
+
+      // Restaurer les emails sélectionnés
+      if (Array.isArray(deliveryNote.recipient_emails)) {
+        const fromFields = parseFieldSelection(deliveryNote.recipient_emails);
+        if (fromFields) {
+          setSelectedEmails(fromFields);
+        } else if (deliveryNote.client) {
+          const savedEmails = deliveryNote.recipient_emails;
+          setSelectedEmails({
+            email: !!(deliveryNote.client.email && savedEmails.includes(deliveryNote.client.email)),
+            email_2: !!(deliveryNote.client.email_2 && savedEmails.includes(deliveryNote.client.email_2)),
+            email_admin: !!(deliveryNote.client.email_admin && savedEmails.includes(deliveryNote.client.email_admin)),
+          });
+        }
+      }
 
       // Charger les matériaux
       if (deliveryNote.materials && deliveryNote.materials.length > 0) {
@@ -196,6 +274,89 @@ export default function DeliveryNoteForm({
       setPurchaseOrders([]);
     }
   };
+
+  // =============================================
+  // SURVEILLANCE STATUT BL (identique au BT)
+  // Polling toutes les 3 sec quand status = ready_for_signature
+  // =============================================
+
+  useEffect(() => {
+    const blId = savedId || deliveryNote?.id;
+
+    if (currentBLStatus === 'ready_for_signature' && blId) {
+      let intervalId = null;
+
+      const checkStatus = async () => {
+        try {
+          const response = await fetch(`/api/delivery-notes/${blId}?t=${Date.now()}`, {
+            cache: 'no-store'
+          });
+          if (response.ok) {
+            const responseData = await response.json();
+            const currentStatus = responseData.data?.status || responseData.status;
+
+            if (['signed', 'sent', 'pending_send'].includes(currentStatus)) {
+              if (intervalId) clearInterval(intervalId);
+
+              toast.success('Le client a signé le bon de livraison!', { duration: 2000 });
+
+              setTimeout(() => {
+                router.push('/bons-travail');
+              }, 2000);
+            }
+          }
+        } catch (error) {
+          console.error('Erreur vérification statut BL:', error);
+        }
+      };
+
+      checkStatus();
+      intervalId = setInterval(checkStatus, 3000);
+
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+      };
+    }
+  }, [currentBLStatus, savedId, deliveryNote?.id, router]);
+
+  // Focus listener: vérifier statut quand l'onglet reprend le focus
+  useEffect(() => {
+    const blId = savedId || deliveryNote?.id;
+
+    if (blId) {
+      const handleFocus = async () => {
+        try {
+          const response = await fetch(`/api/delivery-notes/${blId}?t=${Date.now()}`, {
+            cache: 'no-store'
+          });
+          if (response.ok) {
+            const responseData = await response.json();
+            const updatedStatus = responseData.data?.status || responseData.status;
+
+            if (updatedStatus && updatedStatus !== currentBLStatus) {
+              setCurrentBLStatus(updatedStatus);
+
+              if (['signed', 'sent', 'pending_send'].includes(updatedStatus)) {
+                toast.success('Le bon de livraison a été traité avec succès!', { duration: 2000 });
+
+                setTimeout(() => {
+                  router.push('/bons-travail');
+                }, 2000);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erreur rechargement statut BL:', error);
+        }
+      };
+
+      window.addEventListener('focus', handleFocus);
+
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+      };
+    }
+  }, [savedId, deliveryNote?.id, currentBLStatus, router]);
 
   // =============================================
   // HANDLE CLIENT SELECT (identique au BT)
@@ -277,6 +438,14 @@ export default function DeliveryNoteForm({
     if (selectedEmails.email && selectedClient.email) emails.push(selectedClient.email);
     if (selectedEmails.email_2 && selectedClient.email_2) emails.push(selectedClient.email_2);
     if (selectedEmails.email_admin && selectedClient.email_admin) emails.push(selectedClient.email_admin);
+    // Ajouter metadata __fields: pour restauration fiable (même si adresses identiques)
+    const selectedFields = Object.entries(selectedEmails)
+      .filter(([_, v]) => v)
+      .map(([k]) => k)
+      .join(',');
+    if (selectedFields) {
+      emails.push(`__fields:${selectedFields}`);
+    }
     return emails;
   };
 
@@ -587,9 +756,17 @@ export default function DeliveryNoteForm({
     if (result) {
       const blId = result.id || savedId;
       if (blId) {
-        setTimeout(() => {
-          router.push(`/bons-travail/bl/${blId}/client`);
-        }, 500);
+        setSavedId(blId);
+        setCurrentBLStatus('ready_for_signature');
+
+        // Réutiliser le même onglet client (éviter multiples onglets avec données périmées)
+        const clientUrl = `/bons-travail/bl/${blId}/client?t=${Date.now()}`;
+        if (clientWindowRef.current && !clientWindowRef.current.closed) {
+          clientWindowRef.current.location.href = clientUrl;
+          clientWindowRef.current.focus();
+        } else {
+          clientWindowRef.current = window.open(clientUrl, '_blank');
+        }
       }
     }
   };

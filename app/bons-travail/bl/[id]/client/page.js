@@ -1,9 +1,11 @@
 /**
  * @file app/bons-travail/bl/[id]/client/page.js
  * @description Page de signature client pour un BL (accès public)
- * @version 1.1.0
- * @date 2026-02-17
+ * @version 1.2.0
+ * @date 2026-02-18
  * @changelog
+ *   1.2.0 - Fix: fetch avec cache: 'no-store' pour toujours charger les
+ *           données à jour (quantités, emails) lors de re-présentation
  *   1.1.0 - Ajout onStatusUpdate pour mise à jour statut après signature
  *   1.0.0 - Version initiale
  */
@@ -30,7 +32,9 @@ export default function ClientViewBLPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/delivery-notes/${params.id}/public`);
+      const response = await fetch(`/api/delivery-notes/${params.id}/public`, {
+        cache: 'no-store'
+      });
 
       if (!response.ok) {
         const errorData = await response.json();

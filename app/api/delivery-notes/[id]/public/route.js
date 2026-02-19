@@ -2,14 +2,19 @@
  * @file app/api/delivery-notes/[id]/public/route.js
  * @description Route publique pour accès client au BL (page signature)
  *              Bypass auth - accessible sans connexion
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.1.0
+ * @date 2026-02-18
  * @changelog
+ *   1.1.0 - Fix: ajout force-dynamic + revalidate=0 pour éviter le cache
+ *           Next.js qui retournait des données périmées (quantités, emails)
  *   1.0.0 - Version initiale
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request, { params }) {
   try {
