@@ -7,9 +7,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.1.0
- * @date 2026-02-18
+ * @version 1.2.0
+ * @date 2026-02-19
  * @changelog
+ *   1.2.0 - Ajout prix vendant + % marge par article (calcul auto), auto-sélection champs numériques
  *   1.1.0 - Retrait checkbox non-inventaire du formulaire création (items toujours dans products)
  *   1.0.0 - Version initiale
  */
@@ -129,10 +130,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       description: product.description,
       unit: product.unit || 'Un',
       cost_price: parseFloat(product.cost_price) || 0,
+      selling_price: parseFloat(product.selling_price) || 0,
       current_stock: parseFloat(product.stock_qty) || 0,
       quantity: 1,
       is_non_inventory: product.is_non_inventory || false,
-      product_group: product.product_group || ''
+      product_group: product.product_group || '',
+      _margin_percent: ''
     }]);
 
     setProductSearchTerm('');
@@ -207,10 +210,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
         description,
         unit: newItemForm.unit || 'Un',
         cost_price: parseFloat(cost_price),
+        selling_price: parseFloat(selling_price),
         current_stock: 0,
         quantity: 1,
         is_non_inventory: false,
-        product_group: newItemForm.product_group || ''
+        product_group: newItemForm.product_group || '',
+        _margin_percent: ''
       }]);
 
       setShowNewItemForm(false);
@@ -234,14 +239,30 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
     ));
   };
 
-  // Mettre à jour le prix coûtant d'un item
+  // Mettre à jour le prix coûtant d'un item (recalcule vendant si % marge actif)
   const updateItemCostPrice = (productId, value) => {
+    const price = parseFloat(value);
+    if (isNaN(price)) return;
+
+    setReceiptItems(prev => prev.map(item => {
+      if (item.product_id !== productId) return item;
+      const updated = { ...item, cost_price: price };
+      const margin = parseFloat(item._margin_percent) || 0;
+      if (price > 0 && margin > 0) {
+        updated.selling_price = parseFloat((price * (1 + margin / 100)).toFixed(2));
+      }
+      return updated;
+    }));
+  };
+
+  // Mettre à jour le prix vendant d'un item
+  const updateItemSellingPrice = (productId, value) => {
     const price = parseFloat(value);
     if (isNaN(price)) return;
 
     setReceiptItems(prev => prev.map(item =>
       item.product_id === productId
-        ? { ...item, cost_price: price }
+        ? { ...item, selling_price: price, _margin_percent: '' }
         : item
     ));
   };
@@ -332,7 +353,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
         const { data: product, error: productError } = await supabase
           .from(tableName)
-          .select('stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd')
+          .select('stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price, selling_price_1st, selling_price_2nd, selling_price_3rd')
           .eq('product_id', item.product_id)
           .single();
 
@@ -342,12 +363,19 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
           const updates = { stock_qty: Math.max(0, newStock).toString() };
 
-          // Décalage prix seulement pour les réceptions (pas les ajustements négatifs)
+          // Décalage prix pour les réceptions
           if (item.quantity > 0) {
             const priceShiftUpdates = buildPriceShiftUpdates(product, {
               cost_price: item.cost_price,
+              selling_price: item.selling_price,
             });
             Object.assign(updates, priceShiftUpdates);
+          } else if (item.selling_price > 0) {
+            // En ajustement négatif, mettre à jour le selling_price si changé
+            const sellingUpdates = buildPriceShiftUpdates(product, {
+              selling_price: item.selling_price,
+            });
+            Object.assign(updates, sellingUpdates);
           }
 
           await supabase
@@ -601,6 +629,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     inputMode="decimal"
                     value={newItemForm.cost_price}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, cost_price: e.target.value }))}
+                    onFocus={(e) => e.target.select()}
                     placeholder="0.00"
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   />
@@ -614,6 +643,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     inputMode="decimal"
                     value={newItemForm.selling_price}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, selling_price: e.target.value }))}
+                    onFocus={(e) => e.target.select()}
                     placeholder="0.00"
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   />
@@ -678,8 +708,8 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     key={item.product_id}
                     className="border rounded-lg p-3 bg-white hover:bg-gray-50"
                   >
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {/* Info produit */}
+                    {/* Row 1: Info produit + stock + supprimer */}
+                    <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">
@@ -694,7 +724,6 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                         <p className="text-sm text-gray-600 truncate mt-0.5">{item.description}</p>
                       </div>
 
-                      {/* Stock actuel */}
                       <div className="text-right text-sm min-w-[80px]">
                         <div className="text-blue-600 text-xs">
                           Stock: <span className="font-bold">{item.current_stock}</span>
@@ -708,9 +737,19 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                         )}
                       </div>
 
-                      {/* Prix coûtant */}
-                      <div className="w-24">
-                        <label className="text-xs text-gray-500 block mb-0.5">Prix coût.</label>
+                      <button
+                        onClick={() => removeItem(item.product_id)}
+                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                        title="Retirer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Row 2: Coûtant + % + Vendant + Qté */}
+                    <div className="flex items-end gap-2 mt-2 flex-wrap">
+                      <div className="w-[90px]">
+                        <label className="text-xs text-gray-500 block mb-0.5">Coûtant</label>
                         <input
                           type="number"
                           step="0.01"
@@ -718,12 +757,53 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                           inputMode="decimal"
                           value={item.cost_price || ''}
                           onChange={(e) => updateItemCostPrice(item.product_id, e.target.value)}
-                          className="w-full px-2 py-1 border rounded text-center text-sm"
+                          onFocus={(e) => e.target.select()}
+                          className="w-full px-2 py-1.5 border rounded text-center text-sm"
                         />
                       </div>
 
-                      {/* Quantité */}
-                      <div className="w-24">
+                      <div className="w-16">
+                        <label className="text-xs text-gray-500 block mb-0.5">%</label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          inputMode="numeric"
+                          value={item._margin_percent || ''}
+                          onChange={(e) => {
+                            const pct = e.target.value;
+                            const cost = parseFloat(item.cost_price) || 0;
+                            const margin = parseFloat(pct) || 0;
+                            const newSelling = cost > 0 && margin > 0
+                              ? parseFloat((cost * (1 + margin / 100)).toFixed(2))
+                              : item.selling_price;
+                            setReceiptItems(prev => prev.map(i =>
+                              i.product_id === item.product_id
+                                ? { ...i, _margin_percent: pct, selling_price: newSelling }
+                                : i
+                            ));
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          className="w-full px-2 py-1.5 border rounded text-center text-sm bg-green-50"
+                          placeholder="%"
+                        />
+                      </div>
+
+                      <div className="w-[90px]">
+                        <label className="text-xs text-gray-500 block mb-0.5">Vendant</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          inputMode="decimal"
+                          value={item.selling_price || ''}
+                          onChange={(e) => updateItemSellingPrice(item.product_id, e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          className="w-full px-2 py-1.5 border rounded text-center text-sm"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-[80px]">
                         <label className="text-xs text-gray-500 block mb-0.5">
                           {isAdjustment ? 'Ajust. (+/-)' : 'Qté'}
                         </label>
@@ -734,21 +814,13 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                           inputMode="numeric"
                           value={item.quantity || ''}
                           onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
-                          className={`w-full px-2 py-1 border rounded text-center font-medium text-sm ${
+                          onFocus={(e) => e.target.select()}
+                          className={`w-full px-2 py-1.5 border rounded text-center font-medium text-sm ${
                             item.quantity < 0 ? 'border-red-300 bg-red-50 text-red-700' : ''
                           }`}
                           placeholder="0"
                         />
                       </div>
-
-                      {/* Supprimer */}
-                      <button
-                        onClick={() => removeItem(item.product_id)}
-                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
-                        title="Retirer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 ))}
