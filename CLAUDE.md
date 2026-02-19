@@ -221,6 +221,30 @@ Les modules Bons de Travail et Bons de Livraison sont utilisés à 95% sur table
 - `MaterialSelector.js`
 - Pages signature client (BT et BL)
 
+### Auto-sélection des champs numériques (OBLIGATOIRE)
+
+Tous les champs `<input>` de type nombre (prix, quantités, pourcentages) DOIVENT sélectionner automatiquement leur contenu au clic/focus pour faciliter la saisie, surtout sur mobile/tablette.
+
+```javascript
+// Pattern obligatoire pour tout input numérique éditable
+<input
+  type="number"
+  onFocus={(e) => e.target.select()}
+  // ... autres props
+/>
+```
+
+**Déjà appliqué dans:**
+- `DirectReceiptModal.js` (coûtant, vendant, %, quantité)
+- `InventoryManager.js` (coûtant, vendant, %, quantité en stock)
+
+**À appliquer progressivement dans:**
+- `WorkOrderForm.js` / `TimeTracker.js`
+- `DeliveryNoteForm.js`
+- `MaterialSelector.js`
+- `SupplierPurchaseManager.js` / `SupplierReceiptModal.js`
+- Tout autre formulaire avec des champs numériques
+
 ### Gestion d'Erreurs
 
 Pattern standard pour les réponses API:

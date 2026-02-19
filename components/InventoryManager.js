@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.2.1
- * @date 2026-02-18
+ * @version 3.3.0
+ * @date 2026-02-19
  * @changelog
+ *   3.3.0 - Prix coûtant et vendant côte à côte, auto-sélection champs numériques au focus
  *   3.2.1 - Ajout traduction 'direct_receipt' → 'Réception directe' dans historique mouvements
  *   3.2.0 - Toast 2s au lieu de alert(), majuscules Description + Fournisseur,
  *         - Renommé "Fournisseur" en "Dernier fournisseur"
@@ -885,20 +886,41 @@ export default function InventoryManager() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Prix coût
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
-                      value={editForm.cost_price}
-                      onChange={(e) => setEditForm({...editForm, cost_price: e.target.value})}
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                      placeholder="0.00"
-                    />
+                  {/* Prix coûtant + vendant côte à côte */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Prix coûtant
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={editForm.cost_price}
+                        onChange={(e) => setEditForm({...editForm, cost_price: e.target.value})}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Prix vendant *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={editForm.selling_price}
+                        onChange={(e) => setEditForm({...editForm, selling_price: e.target.value})}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
                   </div>
 
                   {/* Calcul automatique de marge */}
@@ -915,6 +937,7 @@ export default function InventoryManager() {
                           inputMode="numeric"
                           value={marginPercent}
                           onChange={(e) => setMarginPercent(e.target.value)}
+                          onFocus={(e) => e.target.select()}
                           className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2"
                           placeholder="Ex: 25"
                         />
@@ -942,23 +965,6 @@ export default function InventoryManager() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Prix de vente *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
-                      value={editForm.selling_price}
-                      onChange={(e) => setEditForm({...editForm, selling_price: e.target.value})}
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Quantité en stock
                     </label>
                     <input
@@ -967,6 +973,7 @@ export default function InventoryManager() {
                       inputMode="numeric"
                       value={editForm.stock_qty}
                       onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
+                      onFocus={(e) => e.target.select()}
                       className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="0"
                     />
