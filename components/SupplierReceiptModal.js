@@ -5,9 +5,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire (IN)
  *              - Décale l'historique des prix (shift) si le cost_price change
- * @version 1.1.0
- * @date 2026-02-11
+ * @version 1.2.0
+ * @date 2026-02-22
  * @changelog
+ *   1.2.0 - Ajout support dark mode
  *   1.1.0 - Ajout décalage historique prix (price shift) lors de la réception AF
  *   1.0.0 - Version initiale
  */
@@ -361,7 +362,7 @@ export default function SupplierReceiptModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl">
+      <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 rounded-t-xl">
@@ -403,13 +404,13 @@ export default function SupplierReceiptModal({
         </div>
 
         {/* Onglets */}
-        <div className="flex border-b">
+        <div className="flex border-b border-gray-200 dark:border-gray-700">
           <button
             onClick={() => setActiveTab('receive')}
             className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
               activeTab === 'receive'
-                ? 'text-green-600 border-b-2 border-green-600 bg-green-50'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/20'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             <Package className="w-4 h-4 inline mr-2" />
@@ -419,8 +420,8 @@ export default function SupplierReceiptModal({
             onClick={() => setActiveTab('history')}
             className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
               activeTab === 'history'
-                ? 'text-green-600 border-b-2 border-green-600 bg-green-50'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-900/20'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             <History className="w-4 h-4 inline mr-2" />
@@ -430,13 +431,13 @@ export default function SupplierReceiptModal({
 
         {/* Messages */}
         {error && (
-          <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center gap-2">
+          <div className="mx-4 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-400 flex items-center gap-2">
             <AlertCircle className="w-5 h-5" />
             {error}
           </div>
         )}
         {success && (
-          <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 flex items-center gap-2">
+          <div className="mx-4 mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg text-green-700 dark:text-green-300 flex items-center gap-2">
             <Check className="w-5 h-5" />
             {success}
           </div>
@@ -447,7 +448,7 @@ export default function SupplierReceiptModal({
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-              <span className="ml-3 text-gray-600">Chargement...</span>
+              <span className="ml-3 text-gray-600 dark:text-gray-400">Chargement...</span>
             </div>
           ) : activeTab === 'receive' ? (
             <>
@@ -455,18 +456,18 @@ export default function SupplierReceiptModal({
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={selectAll}
-                  className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200"
+                  className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-900/50"
                 >
                   ✓ Tout sélectionner
                 </button>
                 <button
                   onClick={deselectAll}
-                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200"
+                  className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
                   ✕ Tout désélectionner
                 </button>
                 {itemsToReceiveCount > 0 && (
-                  <span className="ml-auto px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm">
+                  <span className="ml-auto px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-sm">
                     {itemsToReceiveCount} article(s) sélectionné(s)
                   </span>
                 )}
@@ -475,10 +476,10 @@ export default function SupplierReceiptModal({
               {/* Liste des items */}
               <div className="space-y-2">
                 {receiptItems.filter(item => item.quantity_remaining > 0).length === 0 ? (
-                  <div className="text-center py-8 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-center py-8 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
                     <Check className="w-12 h-12 mx-auto mb-3 text-green-500" />
-                    <p className="text-green-700 font-medium">Tous les articles ont été reçus!</p>
-                    <p className="text-green-600 text-sm mt-1">Cette commande est complète.</p>
+                    <p className="text-green-700 dark:text-green-300 font-medium">Tous les articles ont été reçus!</p>
+                    <p className="text-green-600 dark:text-green-400 text-sm mt-1">Cette commande est complète.</p>
                   </div>
                 ) : (
                   receiptItems.filter(item => item.quantity_remaining > 0).map((item) => (
@@ -486,10 +487,10 @@ export default function SupplierReceiptModal({
                     key={item.index}
                     className={`border rounded-lg p-3 transition-colors ${
                       item.quantity_remaining === 0
-                        ? 'bg-green-50 border-green-200'
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
                         : item.selected
-                          ? 'bg-blue-50 border-blue-300'
-                          : 'bg-white hover:bg-gray-50'
+                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600'
+                          : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 border-gray-200 dark:border-gray-700'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -499,17 +500,17 @@ export default function SupplierReceiptModal({
                         checked={item.selected}
                         onChange={() => toggleItemSelection(item.index)}
                         disabled={item.quantity_remaining === 0}
-                        className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500"
                       />
                       
                       {/* Info produit */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-sm bg-gray-100 px-2 py-0.5 rounded">
+                          <span className="font-mono text-sm bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-0.5 rounded">
                             {item.product_id}
                           </span>
                           {item.is_non_inventory && (
-                            <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full">
+                            <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs px-2 py-0.5 rounded-full">
                               Non-inv.
                             </span>
                           )}
@@ -519,31 +520,31 @@ export default function SupplierReceiptModal({
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 truncate mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-1">
                           {item.description}
                         </p>
                       </div>
                       
                       {/* Quantités */}
                       <div className="text-right text-sm space-y-1 min-w-[140px]">
-                        <div className="text-gray-500">
-                          Commandé: <span className="font-medium text-gray-900">{item.quantity_ordered}</span> {item.unit}
+                        <div className="text-gray-500 dark:text-gray-400">
+                          Commandé: <span className="font-medium text-gray-900 dark:text-gray-100">{item.quantity_ordered}</span> {item.unit}
                         </div>
-                        <div className="text-green-600">
+                        <div className="text-green-600 dark:text-green-400">
                           Déjà reçu: <span className="font-medium">{item.quantity_received_before}</span>
                         </div>
-                        <div className="text-orange-600">
+                        <div className="text-orange-600 dark:text-orange-400">
                           Reste: <span className="font-medium">{item.quantity_remaining}</span>
                         </div>
                       </div>
                       
                       {/* Stock actuel et nouveau */}
-                      <div className="text-right text-sm space-y-1 min-w-[120px] border-l pl-3">
-                        <div className="text-blue-600">
+                      <div className="text-right text-sm space-y-1 min-w-[120px] border-l border-gray-200 dark:border-gray-700 pl-3">
+                        <div className="text-blue-600 dark:text-blue-400">
                           Stock actuel: <span className="font-bold">{item.current_stock}</span>
                         </div>
                         {item.quantity_to_receive > 0 && (
-                          <div className="text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                          <div className="text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded">
                             Nouveau: <span className="font-bold">{item.current_stock + item.quantity_to_receive}</span>
                           </div>
                         )}
@@ -551,7 +552,7 @@ export default function SupplierReceiptModal({
                       
                       {/* Input quantité */}
                       <div className="w-24">
-                        <label className="text-xs text-gray-500 block mb-1">À recevoir</label>
+                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">À recevoir</label>
                         <input
                           type="number"
                           min="0"
@@ -559,7 +560,7 @@ export default function SupplierReceiptModal({
                           value={item.quantity_to_receive || ''}
                           onChange={(e) => updateQuantityToReceive(item.index, e.target.value)}
                           disabled={item.quantity_remaining === 0}
-                          className="w-full px-2 py-1 border rounded text-center font-medium disabled:bg-gray-100 disabled:text-gray-400"
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-center font-medium disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           placeholder="0"
                         />
                       </div>
@@ -571,7 +572,7 @@ export default function SupplierReceiptModal({
 
              {/* Numéro bon de livraison fournisseur */}
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   N° Bon de livraison fournisseur (optionnel)
                 </label>
                 <input
@@ -579,20 +580,20 @@ export default function SupplierReceiptModal({
                   value={supplierDeliveryNumber}
                   onChange={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
                   placeholder="Ex: BL-12345, 987654..."
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
 
               {/* Notes */}
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Notes de réception (optionnel)
                 </label>
                 <textarea
                   value={receiptNotes}
                   onChange={(e) => setReceiptNotes(e.target.value)}
                   placeholder="Ex: Colis endommagé, manque 2 pièces, etc."
-                  className="w-full px-3 py-2 border rounded-lg resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   rows={2}
                 />
               </div>
@@ -601,42 +602,42 @@ export default function SupplierReceiptModal({
             /* Onglet Historique */
             <div className="space-y-4">
               {previousReceipts.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                   <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>Aucune réception enregistrée</p>
                 </div>
               ) : (
                 previousReceipts.map((receipt, index) => (
-                  <div key={receipt.id} className="border rounded-lg p-4 bg-gray-50">
+                  <div key={receipt.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           Réception #{previousReceipts.length - index}
                         </span>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {formatDate(receipt.received_at)}
                         </p>
                         {receipt.supplier_delivery_number && (
-                          <p className="text-xs text-blue-600 font-medium mt-1">
+                          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1">
                             📦 BL: {receipt.supplier_delivery_number}
                           </p>
                         )}
                       </div>
-                      <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">
+                      <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded-full">
                         {receipt.items_received?.length || 0} article(s)
                       </span>
                     </div>
                     
                     <div className="space-y-1">
                       {(receipt.items_received || []).map((item, i) => (
-                        <div key={i} className="flex justify-between text-sm bg-white p-2 rounded">
-                          <span className="text-gray-600">
-                            <span className="font-mono text-xs bg-gray-100 px-1 rounded mr-2">
+                        <div key={i} className="flex justify-between text-sm bg-white dark:bg-gray-900 p-2 rounded">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            <span className="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-1 rounded mr-2">
                               {item.product_id}
                             </span>
                             {item.description}
                           </span>
-                          <span className="font-medium text-green-600">
+                          <span className="font-medium text-green-600 dark:text-green-400">
                             +{item.quantity_received} {item.unit}
                           </span>
                         </div>
@@ -644,7 +645,7 @@ export default function SupplierReceiptModal({
                     </div>
                     
                     {receipt.notes && (
-                      <p className="mt-2 text-sm text-gray-500 italic">
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 italic">
                         Note: {receipt.notes}
                       </p>
                     )}
@@ -657,10 +658,10 @@ export default function SupplierReceiptModal({
 
         {/* Footer */}
         {activeTab === 'receive' && (
-          <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-between items-center">
+          <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-800 rounded-b-xl flex justify-between items-center">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             >
               Fermer
             </button>

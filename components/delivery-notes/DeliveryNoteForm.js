@@ -8,9 +8,10 @@
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.6.0
- * @date 2026-02-18
+ * @version 2.7.0
+ * @date 2026-02-22
  * @changelog
+ *   2.7.0 - Ajout support dark mode (Tailwind dark: variants)
  *   2.6.0 - Fix: sélection emails par noms de champs (__fields: metadata dans
  *           recipient_emails) au lieu de matching par adresses. Résout le cas
  *           où un client a la même adresse dans plusieurs champs (Principal/Admin).
@@ -776,11 +777,11 @@ export default function DeliveryNoteForm({
   // =============================================
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 max-w-4xl mx-auto">
 
       {/* Header avec boutons - identique au BT */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
           {mode === 'create' ? 'Nouveau Bon de Livraison' : `Édition ${deliveryNote?.bl_number}`}
         </h2>
 
@@ -820,7 +821,7 @@ export default function DeliveryNoteForm({
               <button
                 type="button"
                 onClick={onCancel}
-                className="bg-white border border-red-300 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 font-medium text-sm"
+                className="bg-white dark:bg-gray-800 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 font-medium text-sm"
               >
                 Annuler
               </button>
@@ -833,9 +834,9 @@ export default function DeliveryNoteForm({
       {/* ==========================================
           SECTION 1: CLIENT + EMAILS (copie du BT)
           ========================================== */}
-      <div className="bg-blue-50 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 space-y-4">
+      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <User className="inline mr-2" size={16} />
             Client *
           </label>
@@ -843,7 +844,7 @@ export default function DeliveryNoteForm({
           <div className="flex gap-2">
             <select
               className={`flex-1 min-w-0 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                isEdit ? 'bg-gray-100 cursor-not-allowed border-gray-300' : 'border-gray-300'
+                isEdit ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed border-gray-300 dark:border-gray-600' : 'border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
               }`}
               style={{ maxWidth: 'calc(100vw - 240px)' }}
               value={clientId}
@@ -864,7 +865,7 @@ export default function DeliveryNoteForm({
                 loadClients();
                 toast.success('Liste des clients actualisée');
               }}
-              className="flex-shrink-0 w-12 h-12 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center"
+              className="flex-shrink-0 w-12 h-12 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center"
               title="Actualiser la liste des clients"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -880,7 +881,7 @@ export default function DeliveryNoteForm({
               className={`flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center ${
                 selectedClient
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
               }`}
               title={selectedClient ? 'Modifier le client sélectionné' : 'Sélectionnez un client d\'abord'}
             >
@@ -898,7 +899,7 @@ export default function DeliveryNoteForm({
           </div>
 
           {selectedClient && (
-            <div className="mt-2 p-2 bg-white rounded text-sm text-blue-800">
+            <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded text-sm text-blue-800 dark:text-blue-200">
               {selectedClient.address && <div>{selectedClient.address}</div>}
               {selectedClient.email && <div>{selectedClient.email}</div>}
             </div>
@@ -907,14 +908,14 @@ export default function DeliveryNoteForm({
 
         {/* Emails destinataires (sous le client) */}
         {selectedClient && (selectedClient.email || selectedClient.email_2 || selectedClient.email_admin) && (
-          <div className="bg-white border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
+          <div className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center">
               <Mail className="mr-2" size={16} />
               Emails pour envoi du bon de livraison
             </h3>
             <div className="space-y-2">
               {selectedClient.email && (
-                <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition"
+                <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded transition"
                   style={{ minHeight: '44px' }}>
                   <input
                     type="checkbox"
@@ -923,8 +924,8 @@ export default function DeliveryNoteForm({
                     className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                   />
                   <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-900">Principal</span>
-                    <span className="text-sm text-gray-600 ml-2">{selectedClient.email}</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Principal</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{selectedClient.email}</span>
                   </div>
                 </label>
               )}
@@ -939,8 +940,8 @@ export default function DeliveryNoteForm({
                     className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                   />
                   <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-900">Secondaire</span>
-                    <span className="text-sm text-gray-600 ml-2">{selectedClient.email_2}</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Secondaire</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{selectedClient.email_2}</span>
                   </div>
                 </label>
               )}
@@ -955,15 +956,15 @@ export default function DeliveryNoteForm({
                     className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                   />
                   <div className="flex-1">
-                    <span className="text-sm font-medium text-gray-900">Administration</span>
-                    <span className="text-sm text-gray-600 ml-2">{selectedClient.email_admin}</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Administration</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{selectedClient.email_admin}</span>
                   </div>
                 </label>
               )}
             </div>
 
-            <div className="mt-3 pt-3 border-t border-blue-200">
-              <p className="text-xs text-blue-700">
+            <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
                 {Object.values(selectedEmails).filter(Boolean).length} email(s) sélectionné(s) pour l&apos;envoi
               </p>
             </div>
@@ -972,7 +973,7 @@ export default function DeliveryNoteForm({
 
         {/* Prix Jobé (sous les emails, dans la section client) */}
         {selectedClient && (
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-4">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -981,13 +982,13 @@ export default function DeliveryNoteForm({
                 className="mt-1 w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
               />
               <div className="flex-1">
-                <div className="font-semibold text-amber-900 flex items-center gap-2">
+                <div className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-2">
                   Prix Jobé
                 </div>
-                <p className="text-sm text-amber-700 mt-1">
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                   Le client recevra un BL simplifié (sans prix des matériels).
                 </p>
-                <p className="text-xs text-amber-600 mt-1">
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                   Le bureau recevra les 2 versions: simplifiée + complète
                 </p>
               </div>
@@ -999,8 +1000,8 @@ export default function DeliveryNoteForm({
       {/* ==========================================
           SECTION 2: DÉTAILS LIVRAISON
           ========================================== */}
-      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
           <Truck className="mr-2 text-orange-500" size={20} />
           Détails de la livraison
         </h2>
@@ -1008,7 +1009,7 @@ export default function DeliveryNoteForm({
         <div className="space-y-4">
           {/* Date de livraison */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               <Calendar className="inline mr-1" size={14} />
               Date de livraison
             </label>
@@ -1016,14 +1017,14 @@ export default function DeliveryNoteForm({
               type="date"
               value={deliveryDate}
               onChange={(e) => { setDeliveryDate(e.target.value); onFormChange?.(); }}
-              className="w-full sm:w-64 px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base"
+              className="w-full sm:w-64 px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               style={{ minHeight: '44px' }}
             />
           </div>
 
           {/* BA lié (sous la date) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               <FileText className="inline mr-1" size={14} />
               BA Client (optionnel)
             </label>
@@ -1034,8 +1035,8 @@ export default function DeliveryNoteForm({
                 onClick={() => { setLinkedPoMode('list'); setIsManualPo(false); onFormChange?.(); }}
                 className={`px-3 py-1 rounded text-xs font-medium ${
                   linkedPoMode === 'list'
-                    ? 'bg-teal-100 text-teal-700 border border-teal-300'
-                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                    ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 border border-teal-300 dark:border-teal-700'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
                 }`}
                 style={{ minHeight: '44px' }}
               >
@@ -1047,7 +1048,7 @@ export default function DeliveryNoteForm({
                 className={`px-3 py-1 rounded text-xs font-medium ${
                   linkedPoMode === 'manual'
                     ? 'bg-teal-100 text-teal-700 border border-teal-300'
-                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600'
                 }`}
                 style={{ minHeight: '44px' }}
               >
@@ -1059,7 +1060,7 @@ export default function DeliveryNoteForm({
               <select
                 value={linkedPoId}
                 onChange={(e) => { setLinkedPoId(e.target.value); onFormChange?.(); }}
-                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base"
+                className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 style={{ minHeight: '44px' }}
               >
                 <option value="">-- Aucun BA --</option>
@@ -1075,7 +1076,7 @@ export default function DeliveryNoteForm({
                 value={linkedPoId}
                 onChange={(e) => { setLinkedPoId(e.target.value.toUpperCase()); onFormChange?.(); }}
                 placeholder="Entrer le # BA ou Job client"
-                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base uppercase"
+                className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base uppercase bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 style={{ minHeight: '44px' }}
               />
             )}
@@ -1084,7 +1085,7 @@ export default function DeliveryNoteForm({
 
         {/* Description */}
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Description de la livraison
           </label>
           <textarea
@@ -1092,7 +1093,7 @@ export default function DeliveryNoteForm({
             onChange={(e) => { setDeliveryDescription(e.target.value.toUpperCase()); onFormChange?.(); }}
             placeholder="DESCRIPTION DU MATÉRIEL LIVRÉ..."
             rows={3}
-            className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base resize-none uppercase"
+            className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base resize-none uppercase bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
       </div>
@@ -1100,12 +1101,12 @@ export default function DeliveryNoteForm({
       {/* ==========================================
           SECTION 3: MATÉRIAUX
           ========================================== */}
-      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
           <Package className="mr-2 text-blue-600" size={20} />
           Matériaux livrés
           {materials.length > 0 && (
-            <span className="ml-2 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-sm">
+            <span className="ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full text-sm">
               {materials.length}
             </span>
           )}
@@ -1116,7 +1117,7 @@ export default function DeliveryNoteForm({
             type="button"
             onClick={loadClientSubmissions}
             disabled={!selectedClient || isLoadingSubmissions}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
             title={!selectedClient ? "Sélectionnez d'abord un client" : "Importer depuis une soumission"}
             style={{ minHeight: '44px' }}
           >
@@ -1127,7 +1128,7 @@ export default function DeliveryNoteForm({
             type="button"
             onClick={loadClientSupplierPurchases}
             disabled={!selectedClient || isLoadingSupplierPurchases}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            className="bg-purple-600 dark:bg-purple-700 text-white px-4 py-2 rounded-lg hover:bg-purple-700 dark:hover:bg-purple-800 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
             title={!selectedClient ? "Sélectionnez d'abord un client" : "Importer depuis un achat fournisseur"}
             style={{ minHeight: '44px' }}
           >
@@ -1145,7 +1146,7 @@ export default function DeliveryNoteForm({
       {/* ==========================================
           SECTION 4: BOUTONS D'ACTION (identiques au haut)
           ========================================== */}
-      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex flex-col sm:flex-row gap-2">
           {(deliveryNote?.status === 'signed' || deliveryNote?.status === 'sent' || deliveryNote?.status === 'pending_send') ? (
             <button
@@ -1184,7 +1185,7 @@ export default function DeliveryNoteForm({
               <button
                 type="button"
                 onClick={onCancel}
-                className="bg-white border border-red-300 text-red-600 px-6 py-3 rounded-lg hover:bg-red-50 font-medium"
+                className="bg-white dark:bg-gray-800 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-6 py-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 font-medium"
                 style={{ minHeight: '44px' }}
               >
                 Annuler
@@ -1195,7 +1196,7 @@ export default function DeliveryNoteForm({
 
         {/* Indicateurs */}
         {!clientId && (
-          <p className="mt-2 text-sm text-orange-600">
+          <p className="mt-2 text-sm text-orange-600 dark:text-orange-400">
             Sélectionnez un client pour activer les boutons
           </p>
         )}
@@ -1223,9 +1224,9 @@ export default function DeliveryNoteForm({
           ========================================== */}
       {showSubmissionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                 <FileText className="text-blue-600" size={24} />
                 Import depuis Soumissions
               </h2>
@@ -1235,7 +1236,7 @@ export default function DeliveryNoteForm({
                   setSelectedSubmissionForImport(null);
                   setSelectedSubmissionItems([]);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
               >
                 <X size={24} />
               </button>
@@ -1244,32 +1245,32 @@ export default function DeliveryNoteForm({
             <div className="flex-1 overflow-y-auto p-6">
               {!selectedSubmissionForImport ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Sélectionnez une soumission pour voir ses articles
                   </p>
                   {submissions.map((submission) => (
                     <div
                       key={submission.id}
                       onClick={() => selectSubmissionForImport(submission)}
-                      className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition"
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer transition bg-white dark:bg-gray-800"
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-semibold text-gray-900">
+                          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                             Soumission #{submission.submission_number}
                           </h3>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {new Date(submission.created_at).toLocaleDateString('fr-CA')}
                           </p>
                           {submission.description && (
-                            <p className="text-sm text-gray-500 mt-1">{submission.description}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{submission.description}</p>
                           )}
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
                             {submission.items?.length || 0} articles
                           </div>
-                          <div className="text-lg font-bold text-gray-900 mt-1">
+                          <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">
                             {new Intl.NumberFormat('fr-CA', {
                               style: 'currency',
                               currency: 'CAD'
@@ -1288,13 +1289,13 @@ export default function DeliveryNoteForm({
                         setSelectedSubmissionForImport(null);
                         setSelectedSubmissionItems([]);
                       }}
-                      className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-2"
                     >
                       &larr; Retour aux soumissions
                     </button>
                     <button
                       onClick={toggleAllSubmissionItemsSelection}
-                      className="text-sm text-blue-600 hover:text-blue-700"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                     >
                       {selectedSubmissionItems.length === selectedSubmissionForImport.items.length
                         ? 'Tout désélectionner'
@@ -1302,11 +1303,11 @@ export default function DeliveryNoteForm({
                     </button>
                   </div>
 
-                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                    <h3 className="font-semibold text-gray-900">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                       Soumission #{selectedSubmissionForImport.submission_number}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {selectedSubmissionItems.length} / {selectedSubmissionForImport.items?.length || 0} articles sélectionnés
                     </p>
                   </div>
@@ -1317,8 +1318,8 @@ export default function DeliveryNoteForm({
                         key={index}
                         className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
                           selectedSubmissionItems.includes(index)
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 dark:bg-gray-800'
                         }`}
                       >
                         <input
@@ -1330,22 +1331,22 @@ export default function DeliveryNoteForm({
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start gap-2">
                             <div className="flex-1">
-                              <div className="font-medium text-gray-900">
+                              <div className="font-medium text-gray-900 dark:text-gray-100">
                                 {item.product_id || item.code ? `[${item.product_id || item.code}] ` : ''}
                                 {item.name || item.description}
                               </div>
-                              <div className="text-sm text-gray-600 mt-1">
+                              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                 Qté: {item.quantity} {item.unit || 'UN'}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-semibold text-gray-900">
+                              <div className="font-semibold text-gray-900 dark:text-gray-100">
                                 {new Intl.NumberFormat('fr-CA', {
                                   style: 'currency',
                                   currency: 'CAD'
                                 }).format(item.price || item.selling_price || item.unit_price || 0)}
                               </div>
-                              <div className="text-xs text-gray-500">par {item.unit || 'UN'}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">par {item.unit || 'UN'}</div>
                             </div>
                           </div>
                         </div>
@@ -1356,14 +1357,14 @@ export default function DeliveryNoteForm({
               )}
             </div>
 
-            <div className="p-6 border-t flex justify-end gap-3">
+            <div className="p-6 border-t dark:border-gray-700 flex justify-end gap-3">
               <button
                 onClick={() => {
                   setShowSubmissionModal(false);
                   setSelectedSubmissionForImport(null);
                   setSelectedSubmissionItems([]);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300 dark:bg-gray-800"
                 style={{ minHeight: '44px' }}
               >
                 Annuler
@@ -1372,7 +1373,7 @@ export default function DeliveryNoteForm({
                 <button
                   onClick={importSelectedSubmissionItems}
                   disabled={selectedSubmissionItems.length === 0}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                   style={{ minHeight: '44px' }}
                 >
                   Importer {selectedSubmissionItems.length} article{selectedSubmissionItems.length > 1 ? 's' : ''}
@@ -1388,7 +1389,7 @@ export default function DeliveryNoteForm({
           ========================================== */}
       {showSupplierImportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
             <div className="bg-purple-600 text-white p-6 rounded-t-lg flex justify-between items-center">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Package size={24} />
@@ -1409,32 +1410,32 @@ export default function DeliveryNoteForm({
             <div className="flex-1 overflow-y-auto p-6">
               {!selectedPurchaseForImport ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Sélectionnez un achat fournisseur pour voir ses articles
                   </p>
                   {clientSupplierPurchases.map((purchase) => (
                     <div
                       key={purchase.id}
                       onClick={() => selectPurchaseForImport(purchase)}
-                      className="p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition"
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer transition bg-white dark:bg-gray-800"
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-semibold text-gray-900">
+                          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                             AF #{purchase.purchase_number}
                           </h3>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {purchase.supplier_name}
                           </p>
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             {new Date(purchase.created_at).toLocaleDateString('fr-CA')}
                           </p>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
                             {purchase.items?.length || 0} articles
                           </div>
-                          <div className="text-lg font-bold text-gray-900 mt-1">
+                          <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">
                             {new Intl.NumberFormat('fr-CA', {
                               style: 'currency',
                               currency: 'CAD'
@@ -1453,13 +1454,13 @@ export default function DeliveryNoteForm({
                         setSelectedPurchaseForImport(null);
                         setSelectedItemsForImport([]);
                       }}
-                      className="text-purple-600 hover:text-purple-700 flex items-center gap-2"
+                      className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 flex items-center gap-2"
                     >
                       &larr; Retour aux achats fournisseurs
                     </button>
                     <button
                       onClick={toggleAllItemsSelection}
-                      className="text-sm text-purple-600 hover:text-purple-700"
+                      className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
                     >
                       {selectedItemsForImport.length === selectedPurchaseForImport.items.length
                         ? 'Tout désélectionner'
@@ -1467,11 +1468,11 @@ export default function DeliveryNoteForm({
                     </button>
                   </div>
 
-                  <div className="bg-purple-50 p-4 rounded-lg mb-4">
-                    <h3 className="font-semibold text-gray-900">
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                       AF #{selectedPurchaseForImport.purchase_number} - {selectedPurchaseForImport.supplier_name}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {selectedItemsForImport.length} / {selectedPurchaseForImport.items?.length || 0} articles sélectionnés
                     </p>
                   </div>
@@ -1486,7 +1487,7 @@ export default function DeliveryNoteForm({
                           key={index}
                           className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
                             selectedItemsForImport.includes(index)
-                              ? 'border-purple-500 bg-purple-50'
+                              ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
@@ -1499,22 +1500,22 @@ export default function DeliveryNoteForm({
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
-                                <div className="font-medium text-gray-900">
+                                <div className="font-medium text-gray-900 dark:text-gray-100">
                                   {item.product_id || item.code || item.sku ? `[${item.product_id || item.code || item.sku}] ` : ''}
                                   {item.description || item.name || item.product_name}
                                 </div>
-                                <div className="text-sm text-gray-600 mt-1">
+                                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                   Qté: {quantity} {item.unit || item.unity || 'UN'}
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="font-semibold text-gray-900">
+                                <div className="font-semibold text-gray-900 dark:text-gray-100">
                                   {new Intl.NumberFormat('fr-CA', {
                                     style: 'currency',
                                     currency: 'CAD'
                                   }).format(unitPrice)}
                                 </div>
-                                <div className="text-xs text-gray-500">par {item.unit || item.unity || 'UN'}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">par {item.unit || item.unity || 'UN'}</div>
                               </div>
                             </div>
                           </div>
@@ -1533,7 +1534,7 @@ export default function DeliveryNoteForm({
                   setSelectedPurchaseForImport(null);
                   setSelectedItemsForImport([]);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300 dark:bg-gray-800"
                 style={{ minHeight: '44px' }}
               >
                 Annuler
@@ -1542,7 +1543,7 @@ export default function DeliveryNoteForm({
                 <button
                   onClick={importSelectedSupplierItems}
                   disabled={selectedItemsForImport.length === 0}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-800 disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                   style={{ minHeight: '44px' }}
                 >
                   Importer {selectedItemsForImport.length} article{selectedItemsForImport.length > 1 ? 's' : ''}

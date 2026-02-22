@@ -1,3 +1,15 @@
+/**
+ * @file components/ClientPOManager.js
+ * @description Gestionnaire des bons d'achat client (BA)
+ *              - Création, édition, conversion depuis soumissions
+ *              - Gestion des livraisons par BA
+ *              - Interface desktop et mobile
+ * @version 1.1.0
+ * @date 2026-02-22
+ * @changelog
+ *   1.1.0 - Ajout classes dark mode Tailwind CSS
+ *   1.0.0 - Version initiale
+ */
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MoreVertical, Eye, Edit, Trash2, FileText, Download, ChevronDown, X, Upload, Search, Plus, Minus, Truck, Package, CheckCircle, Calendar, DollarSign, Building2, FileUp, ShoppingCart } from 'lucide-react';
@@ -373,7 +385,7 @@ export default function ClientPOManager() {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-        <p className="ml-4 text-indigo-600 font-medium">Chargement des bons d'achat client...</p>
+        <p className="ml-4 text-indigo-600 dark:text-indigo-400 font-medium">Chargement des bons d'achat client...</p>
       </div>
     );
   }
@@ -381,7 +393,7 @@ export default function ClientPOManager() {
   if (showForm) {
     return (
       <div className="max-w-6xl mx-auto p-4">
-        <div className="bg-white rounded-xl shadow-lg border border-indigo-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden">
           
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -422,14 +434,14 @@ export default function ClientPOManager() {
               
               {/* Informations de base */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <label className="block text-sm font-semibold text-blue-800 mb-2">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <label className="block text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">
                     👤 Client *
                   </label>
                   <select
                     value={formData.client_name}
                     onChange={(e) => setFormData({...formData, client_name: e.target.value})}
-                    className="block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+                    className="block w-full rounded-lg border-blue-300 dark:border-blue-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                     required
                   >
                     <option value="">Sélectionner un client...</option>
@@ -441,15 +453,15 @@ export default function ClientPOManager() {
                   </select>
                 </div>
 
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <label className="block text-sm font-semibold text-green-800 mb-2">
+                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                  <label className="block text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
                     📝 Description *
                   </label>
                   <input
                     type="text"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+                    className="block w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Description du bon d'achat..."
                     required
                   />
@@ -457,8 +469,8 @@ export default function ClientPOManager() {
               </div>
 
               {/* Soumission liée */}
-              <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-200">
-                <label className="block text-sm font-semibold text-cyan-800 mb-2">
+              <div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-lg border border-cyan-200 dark:border-cyan-800">
+                <label className="block text-sm font-semibold text-cyan-800 dark:text-cyan-300 mb-2">
                   📋 Soumission Liée (optionnel)
                 </label>
                 <select
@@ -483,7 +495,7 @@ export default function ClientPOManager() {
                       });
                     }
                   }}
-                  className="block w-full rounded-lg border-cyan-300 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3"
+                  className="block w-full rounded-lg border-cyan-300 dark:border-cyan-700 shadow-sm focus:border-cyan-500 focus:ring-cyan-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                 >
                   <option value="">Aucune soumission...</option>
                   {submissions.map((submission) => (
@@ -495,8 +507,8 @@ export default function ClientPOManager() {
               </div>
 
               {/* Montant */}
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                <label className="block text-sm font-semibold text-yellow-800 mb-2">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <label className="block text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">
                   💰 Montant Total *
                 </label>
                 <input
@@ -504,22 +516,22 @@ export default function ClientPOManager() {
                   step="0.01"
                   value={formData.total_amount}
                   onChange={(e) => setFormData({...formData, total_amount: e.target.value})}
-                  className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
+                  className="block w-full rounded-lg border-yellow-300 dark:border-yellow-700 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="0.00"
                   required
                 />
-                <p className="text-sm text-yellow-700 mt-2">
+                <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-2">
                   💡 Montant calculé automatiquement si soumission sélectionnée
                 </p>
               </div>
 
               {/* Adresse de livraison */}
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <h3 className="text-lg font-semibold text-purple-800 mb-4">🏠 Adresse de Livraison</h3>
+              <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+                <h3 className="text-lg font-semibold text-purple-800 dark:text-purple-300 mb-4">🏠 Adresse de Livraison</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Rue *</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Rue *</label>
                     <input
                       type="text"
                       value={formData.delivery_address.street}
@@ -527,14 +539,14 @@ export default function ClientPOManager() {
                         ...formData, 
                         delivery_address: {...formData.delivery_address, street: e.target.value}
                       })}
-                      className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                      className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="123 Rue Principale"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Ville *</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Ville *</label>
                     <input
                       type="text"
                       value={formData.delivery_address.city}
@@ -542,14 +554,14 @@ export default function ClientPOManager() {
                         ...formData, 
                         delivery_address: {...formData.delivery_address, city: e.target.value}
                       })}
-                      className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                      className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Saint-Georges"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Contact Livraison *</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Contact Livraison *</label>
                     <input
                       type="text"
                       value={formData.delivery_address.contact_name}
@@ -557,14 +569,14 @@ export default function ClientPOManager() {
                         ...formData, 
                         delivery_address: {...formData.delivery_address, contact_name: e.target.value}
                       })}
-                      className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                      className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Nom du contact"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Téléphone</label>
                     <input
                       type="tel"
                       value={formData.delivery_address.phone}
@@ -572,21 +584,21 @@ export default function ClientPOManager() {
                         ...formData, 
                         delivery_address: {...formData.delivery_address, phone: e.target.value}
                       })}
-                      className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                      className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="(418) 555-0199"
                     />
                   </div>
                 </div>
 
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Instructions Spéciales</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Instructions Spéciales</label>
                   <textarea
                     value={formData.delivery_address.special_instructions}
                     onChange={(e) => setFormData({
                       ...formData, 
                       delivery_address: {...formData.delivery_address, special_instructions: e.target.value}
                     })}
-                    className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                    className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Instructions pour la livraison..."
                     rows="3"
                   />
@@ -595,14 +607,14 @@ export default function ClientPOManager() {
 
               {/* Articles */}
               {formData.items && formData.items.length > 0 && (
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                  <h3 className="text-lg font-semibold text-yellow-800 mb-4">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                  <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-300 mb-4">
                     📦 Articles ({formData.items.length})
                   </h3>
                   
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-yellow-100">
+                      <thead className="bg-yellow-100 dark:bg-yellow-900/30">
                         <tr>
                           <th className="text-left p-2 font-semibold">Code</th>
                           <th className="text-left p-2 font-semibold">Description</th>
@@ -613,7 +625,7 @@ export default function ClientPOManager() {
                       </thead>
                       <tbody>
                         {formData.items.map((item, index) => (
-                          <tr key={index} className="border-b border-yellow-100">
+                          <tr key={index} className="border-b border-yellow-100 dark:border-yellow-900/30 dark:bg-gray-900">
                             <td className="p-2 font-mono text-xs">{item.product_id}</td>
                             <td className="p-2">{item.description}</td>
                             <td className="p-2 text-center">{item.quantity}</td>
@@ -708,7 +720,7 @@ export default function ClientPOManager() {
       </div>
 
       {/* Filtres */}
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -718,7 +730,7 @@ export default function ClientPOManager() {
                 placeholder="🔍 Rechercher par N° BA, client, description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
           </div>
@@ -726,7 +738,7 @@ export default function ClientPOManager() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+              className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="all">Tous les statuts</option>
               <option value="in_progress">🔵 En cours</option>
@@ -739,18 +751,18 @@ export default function ClientPOManager() {
 
       {/* Section Conversion depuis Soumissions */}
       {submissions.length > 0 && (
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 sm:p-6 border border-green-200">
-          <h3 className="text-lg font-semibold text-green-800 mb-4">
+        <div className="bg-gradient-to-r from-green-50 dark:from-green-900/10 to-blue-50 dark:to-blue-900/10 rounded-lg p-4 sm:p-6 border border-green-200 dark:border-green-800">
+          <h3 className="text-lg font-semibold text-green-800 dark:text-green-300 mb-4">
             🔄 Convertir Soumissions Acceptées en BA Client
           </h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {submissions.slice(0, 6).map((submission) => (
-              <div key={submission.id} className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
+              <div key={submission.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-200 dark:border-green-800 shadow-sm">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <h4 className="font-medium text-gray-900">{submission.submission_number}</h4>
-                    <p className="text-sm text-gray-600">{submission.client_name}</p>
-                    <p className="text-xs text-gray-500 truncate">{submission.description}</p>
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">{submission.submission_number}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{submission.client_name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{submission.description}</p>
                   </div>
                   <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
                     ✅ Acceptée
@@ -774,11 +786,11 @@ export default function ClientPOManager() {
       )}
 
       {/* Liste des BA Client */}
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+      <div className="bg-white dark:bg-gray-900 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
         {filteredPOs.length === 0 ? (
           <div className="text-center py-12">
             <span className="text-6xl mb-4 block">📋</span>
-            <p className="text-gray-500 text-lg">
+            <p className="text-gray-500 dark:text-gray-400 text-lg">
               {clientPOs.length === 0 ? 'Aucun bon d\'achat client créé' : 'Aucun bon d\'achat trouvé avec ces filtres'}
             </p>
             {clientPOs.length === 0 && (
@@ -793,32 +805,32 @@ export default function ClientPOManager() {
         ) : (
           <div className="hidden lg:block">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Bon d'Achat
                   </th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Client & Description
                   </th>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Montant
                   </th>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Livraison
                   </th>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredPOs.map((po) => {
                   return (
-                    <tr key={po.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={po.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm space-y-1">
                           <div className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-medium inline-block">
@@ -833,8 +845,8 @@ export default function ClientPOManager() {
                       </td>
                       <td className="px-3 py-4">
                         <div className="text-sm">
-                          <div className="font-medium text-gray-900">{po.client_name}</div>
-                          <div className="text-gray-500 truncate max-w-xs" title={po.description}>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">{po.client_name}</div>
+                          <div className="text-gray-500 dark:text-gray-400 truncate max-w-xs" title={po.description}>
                             {po.description}
                           </div>
                         </div>
@@ -849,7 +861,7 @@ export default function ClientPOManager() {
                           {getStatusLabel(po.status)}
                         </span>
                       </td>
-                      <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                      <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
                         {formatDate(po.created_at)}
                       </td>
                       <td className="px-3 py-4 whitespace-nowrap text-center">
@@ -906,14 +918,14 @@ export default function ClientPOManager() {
         <div className="lg:hidden space-y-4 p-4">
           {filteredPOs.map((po) => {
             return (
-              <div key={po.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
+              <div key={po.id} className="bg-white dark:bg-gray-900 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-50 dark:from-blue-900/20 to-indigo-50 dark:to-indigo-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-gray-900 text-base">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base">
                         📄 {po.ba_number}
                       </h3>
-                      <p className="text-sm text-gray-600">{po.client_name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{po.client_name}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-green-600">{formatCurrency(po.total_amount)}</p>
@@ -927,7 +939,7 @@ export default function ClientPOManager() {
                 </div>
 
                 <div className="p-4">
-                  <p className="text-sm text-gray-700 mb-3">{po.description}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{po.description}</p>
                   
                   {po.submission_number && (
                     <div className="mb-3">
@@ -943,7 +955,7 @@ export default function ClientPOManager() {
                         <span>Progression livraison</span>
                         <span>{deliveryStatus.percentage}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div 
                           className="bg-yellow-600 h-2 rounded-full" 
                           style={{width: `${deliveryStatus.percentage}%`}}
@@ -998,8 +1010,8 @@ export default function ClientPOManager() {
       </div>
 
       {/* Info footer */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-700">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <p className="text-sm text-blue-700 dark:text-blue-300">
           📊 {clientPOs.length} bon(s) d'achat client • {submissions.length} soumission(s) disponible(s) pour conversion
         </p>
       </div>

@@ -1,3 +1,16 @@
+/**
+ * @file components/work-orders/MaterialSelector.js
+ * @description Composant de sélection et gestion des matériaux pour les BT et BL
+ *              - Recherche et ajout de produits depuis l'inventaire
+ *              - Ajout rapide de produits non-inventaire
+ *              - Clavier numérique pour saisie quantités (optimisé tablette)
+ *              - Affichage/masquage prix par article
+ * @version 1.1.0
+ * @date 2026-02-22
+ * @changelog
+ *   1.1.0 - Ajout support dark mode
+ *   1.0.0 - Version initiale
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Package, Plus, Minus, X, Edit, Save, 
@@ -48,14 +61,14 @@ function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
   };
 
   return (
-    <div className="grid grid-cols-3 gap-3 p-4 bg-gray-100 rounded-lg">
+    <div className="grid grid-cols-3 gap-3 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
       {/* Chiffres 1-9 */}
       {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
         <button
           key={num}
           type="button"
           onClick={() => handleClick(num.toString())}
-          className="bg-white hover:bg-blue-50 active:bg-blue-100 text-2xl font-bold py-4 rounded-lg shadow-sm border border-gray-300 transition-colors"
+          className="bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:bg-blue-100 dark:active:bg-blue-900/50 text-2xl font-bold dark:text-gray-100 py-4 rounded-lg shadow-sm border border-gray-300 dark:border-gray-600 transition-colors"
         >
           {num}
         </button>
@@ -65,7 +78,7 @@ function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
       <button
         type="button"
         onClick={handleDecimal}
-        className="bg-white hover:bg-blue-50 active:bg-blue-100 text-2xl font-bold py-4 rounded-lg shadow-sm border border-gray-300"
+        className="bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:bg-blue-100 dark:active:bg-blue-900/50 text-2xl font-bold dark:text-gray-100 py-4 rounded-lg shadow-sm border border-gray-300 dark:border-gray-600"
       >
         .
       </button>
@@ -73,7 +86,7 @@ function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
       <button
         type="button"
         onClick={() => handleClick('0')}
-        className="bg-white hover:bg-blue-50 active:bg-blue-100 text-2xl font-bold py-4 rounded-lg shadow-sm border border-gray-300"
+        className="bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:bg-blue-100 dark:active:bg-blue-900/50 text-2xl font-bold dark:text-gray-100 py-4 rounded-lg shadow-sm border border-gray-300 dark:border-gray-600"
       >
         0
       </button>
@@ -513,7 +526,7 @@ const deleteMaterialFromModal = () => {
   <div className="space-y-4">
     {/* Header avec boutons d'ajout */}
     <div className="flex items-center justify-between">
-      <h3 className="text-lg font-medium text-gray-900">
+      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
         Matériaux utilisés ({(materials || []).length})
       </h3>
       
@@ -550,20 +563,20 @@ const deleteMaterialFromModal = () => {
 
       {/* Liste des matériaux ajoutés - VERSION COMPACTE */}
       {(!materials || materials.length === 0) ? (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
           <Package className="mx-auto mb-2 text-gray-300" size={32} />
-          <p className="text-gray-500 mb-2">Aucun matériau ajouté</p>
-          <p className="text-sm text-gray-400">
+          <p className="text-gray-500 dark:text-gray-400 mb-2">Aucun matériau ajouté</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">
             Cliquez sur "Ajouter matériau" pour commencer
           </p>
         </div>
       ) : (
-        <div className="bg-white border rounded-lg divide-y">
+        <div className="bg-white dark:bg-gray-900 border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
           {(materials || []).map((material) => (
             <div 
               key={material.id} 
               onClick={() => startEditMaterial(material)}
-              className="p-3 hover:bg-blue-50 cursor-pointer active:bg-blue-100 transition-colors"
+              className="p-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer active:bg-blue-100 dark:active:bg-blue-900/50 transition-colors"
             >
               {/* Vue compacte - 2 lignes max */}
               <div className="flex items-start justify-between gap-2">
@@ -571,35 +584,35 @@ const deleteMaterialFromModal = () => {
                   {/* Ligne 1: Code + Quantité */}
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-mono font-semibold">
+                      <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-mono font-semibold">
                         {material.product?.product_id || 'N/A'}
                       </span>
                       {material.showPrice && (
-                        <span className="text-green-600 text-xs font-semibold">
+                        <span className="text-green-600 dark:text-green-400 text-xs font-semibold">
                           {formatCurrency(material.product?.selling_price || 0)}
                         </span>
                       )}
                     </div>
-                    <span className="text-sm font-bold text-gray-900">
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                       Qté: {material.quantity}
                     </span>
                   </div>
                   
                   {/* Ligne 2: Description (tronquée) */}
-                  <p className="text-sm text-gray-700 truncate">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
                     {material.product?.description || 'Sans description'}
                   </p>
                   
                   {/* Notes si présentes */}
                   {material.notes && (
-                    <p className="text-xs text-blue-600 mt-1 truncate">
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 truncate">
                       📝 {material.notes}
                     </p>
                   )}
                 </div>
                 
                 {/* Icône de menu */}
-                <div className="text-gray-400 mt-1">
+                <div className="text-gray-400 dark:text-gray-500 mt-1">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -610,10 +623,10 @@ const deleteMaterialFromModal = () => {
           
           {/* Total si prix affichés */}
           {materials && materials.some(m => m.showPrice && m.product?.selling_price) && (
-            <div className="p-3 bg-green-50 border-t-2">
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border-t-2 dark:border-green-800">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-green-900">Total matériaux:</span>
-                <span className="text-lg font-bold text-green-900">
+                <span className="text-sm font-medium text-green-900 dark:text-green-300">Total matériaux:</span>
+                <span className="text-lg font-bold text-green-900 dark:text-green-300">
                   {formatCurrency(
                     materials
                       .filter(m => m.showPrice && m.product?.selling_price)
@@ -631,16 +644,16 @@ const deleteMaterialFromModal = () => {
       {/* Modal de recherche de produits */}
       {showProductSearch && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Rechercher un produit</h3>
+            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+              <h3 className="text-lg font-semibold dark:text-gray-100">Rechercher un produit</h3>
               
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => loadProducts(true)}
                   disabled={loading}
-                  className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
                   title="Actualiser"
                 >
                   <RotateCcw size={16} />
@@ -650,7 +663,7 @@ const deleteMaterialFromModal = () => {
                     setShowProductSearch(false);
                     setSearchTerm('');
                   }}
-                  className="p-2 text-gray-400 hover:text-gray-600"
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X size={20} />
                 </button>
@@ -658,7 +671,7 @@ const deleteMaterialFromModal = () => {
             </div>
 
             {/* Recherche */}
-            <div className="p-4 border-b">
+            <div className="p-4 border-b dark:border-gray-700">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                 <input
@@ -667,11 +680,11 @@ const deleteMaterialFromModal = () => {
                   placeholder="Rechercher par code, description ou groupe..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
               {!searchTerm && (
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                   💡 Tapez au moins 2 caractères pour rechercher dans vos {(products || []).length} produits
                 </p>
               )}
@@ -682,36 +695,36 @@ const deleteMaterialFromModal = () => {
               {loading ? (
                 <div className="flex justify-center items-center h-32">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                  <p className="ml-2 text-gray-600">Chargement produits...</p>
+                  <p className="ml-2 text-gray-600 dark:text-gray-400">Chargement produits...</p>
                 </div>
               ) : (filteredProducts || []).length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                   <Package className="mx-auto mb-4 text-gray-300" size={48} />
-                  <p className="text-lg font-medium">
+                  <p className="text-lg font-medium dark:text-gray-300">
                     {searchTerm ? `Aucun produit trouvé pour "${searchTerm}"` : 'Commencez à taper pour rechercher'}
                   </p>
                   {searchTerm && (
-                    <p className="text-sm mt-1">
+                    <p className="text-sm mt-1 dark:text-gray-400">
                       Essayez avec un code produit ou une description différente
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="divide-y">
+                <div className="divide-y dark:divide-gray-700">
                   {(filteredProducts || []).map((product) => (
                     <div
                       key={product.id}
-                      className="p-4 hover:bg-gray-50 cursor-pointer"
+                      className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                       onClick={() => addMaterial(product)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
-                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
+                            <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-1 rounded text-xs font-mono">
                               {product.product_id}
                             </span>
                             {product.product_group && (
-                              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                              <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded text-xs">
                                 {product.product_group}
                               </span>
                             )}
@@ -722,11 +735,11 @@ const deleteMaterialFromModal = () => {
                             )}
                           </div>
                           
-                          <h4 className="text-sm font-medium text-gray-900 mb-1">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                             {product.description}
                           </h4>
                           
-                          <div className="flex gap-4 text-xs text-gray-600">
+                          <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
                             {product.unit && <span>Unité: {product.unit}</span>}
                             <span>Stock: {product.stock_qty || 0}</span>
                             {/* SUPPRIMÉ: Plus de coûts affichés dans la recherche */}
@@ -739,8 +752,8 @@ const deleteMaterialFromModal = () => {
                   ))}
                   
                   {(filteredProducts || []).length >= 100 && (
-                    <div className="p-4 bg-blue-50 text-center">
-                      <p className="text-sm text-blue-600">
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-center">
+                      <p className="text-sm text-blue-600 dark:text-blue-400">
                         Plus de 100 résultats. Affinez votre recherche pour voir plus de produits.
                       </p>
                     </div>
@@ -750,7 +763,7 @@ const deleteMaterialFromModal = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t bg-gray-50 text-sm text-gray-600">
+            <div className="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-400">
               {searchTerm && (
                 <span>{(filteredProducts || []).length} produit(s) trouvé(s) pour "{searchTerm}"</span>
               )}
@@ -763,10 +776,10 @@ const deleteMaterialFromModal = () => {
         {/* Modal d'édition matériau - ADAPTÉ TABLETTE */}
       {editingMaterial && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-[60] overflow-y-auto">
-          <div className="bg-white rounded-lg w-full max-w-md my-4 max-h-[calc(100vh-2rem)] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md my-4 max-h-[calc(100vh-2rem)] flex flex-col">
             {/* Header - Fixe */}
             <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0">
-              <h3 className="text-lg font-semibold">Modifier matériau</h3>
+              <h3 className="text-lg font-semibold dark:text-gray-100">Modifier matériau</h3>
             </div>
             
             {/* Contenu - Scrollable */}
@@ -778,22 +791,22 @@ const deleteMaterialFromModal = () => {
               
               return (
                 <>
-                  <div className="p-4 bg-gray-50 border-b">
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
                     <div className="flex items-center space-x-2 mb-2">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
+                      <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-1 rounded text-sm font-mono">
                         {material.product?.product_id}
                       </span>
                       {material.product?.product_group && (
-                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded text-xs">
                           {material.product.product_group}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {material.product?.description}
                     </p>
                     {material.product?.selling_price && (
-                      <p className="text-xs text-green-600 mt-1">
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                         Prix: {formatCurrency(material.product.selling_price)} / {material.product?.unit || 'UN'}
                       </p>
                     )}
@@ -803,7 +816,7 @@ const deleteMaterialFromModal = () => {
                   <div className="p-6 space-y-6">
                     {/* Quantité */}
                     <div>
-                      <label className="block text-center text-sm font-medium text-gray-700 mb-3">
+                      <label className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                         Quantité
                       </label>
                       <input
@@ -812,10 +825,10 @@ const deleteMaterialFromModal = () => {
                         inputMode="none"
                         value={editForm.quantity}
                         onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
-                        className="w-full text-center text-4xl font-bold border-2 border-blue-500 rounded-lg py-4 px-4 focus:ring-4 focus:ring-blue-300 bg-white"
+                        className="w-full text-center text-4xl font-bold border-2 border-blue-500 rounded-lg py-4 px-4 focus:ring-4 focus:ring-blue-300 bg-white dark:bg-gray-800 dark:text-gray-100"
                         readOnly
                       />
-                      <p className="text-center text-xs text-gray-500 mt-2 mb-4">
+                      <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-2 mb-4">
                         Unité: {material.product?.unit || 'UN'}
                       </p>
                       
@@ -830,7 +843,7 @@ const deleteMaterialFromModal = () => {
                     
                     {/* Notes */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Notes (optionnel)
                       </label>
                       <textarea
@@ -838,16 +851,16 @@ const deleteMaterialFromModal = () => {
                         value={editForm.notes}
                         onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
                         placeholder="Ex: Installé dans le corridor, remplacer en mars..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 text-sm"
                       />
                     </div>
                     
                     {/* Toggle prix */}
                     {material.product?.selling_price && (
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">Afficher le prix au client</p>
-                          <p className="text-xs text-gray-600 mt-0.5">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Afficher le prix au client</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                             {editForm.showPrice 
                               ? `Visible: ${formatCurrency(material.product.selling_price * parseFloat(editForm.quantity || 0))}`
                               : 'Prix masqué'
@@ -876,7 +889,7 @@ const deleteMaterialFromModal = () => {
             </div>
             
             {/* Actions - Fixes en bas */}
-            <div className="p-4 bg-gray-50 border-t space-y-2 flex-shrink-0">
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700 space-y-2 flex-shrink-0">
               {/* Bouton Supprimer */}
               <button
                 type="button"
@@ -892,7 +905,7 @@ const deleteMaterialFromModal = () => {
                 <button
                   type="button"
                   onClick={cancelEditMaterial}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-4 rounded-lg text-lg"
+                  className="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-3 px-4 rounded-lg text-lg"
                 >
                   Annuler
                 </button>
@@ -913,34 +926,34 @@ const deleteMaterialFromModal = () => {
         {/* Modal de quantité - ADAPTÉ TABLETTE + TOGGLE PRIX */}
       {pendingProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-[60] overflow-y-auto">
-          <div className="bg-white rounded-lg w-full max-w-md my-4 max-h-[calc(100vh-2rem)] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md my-4 max-h-[calc(100vh-2rem)] flex flex-col">
             {/* Header - Fixe */}
             <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0">
-              <h3 className="text-lg font-semibold">Quantité</h3>
+              <h3 className="text-lg font-semibold dark:text-gray-100">Quantité</h3>
             </div>
             
             {/* Contenu - Scrollable */}
             <div className="flex-1 overflow-y-auto">
               {/* Produit info */}
-              <div className="p-4 bg-gray-50 border-b">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700">
                 <div className="flex items-center space-x-2 mb-2">
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
+                  <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-1 rounded text-sm font-mono">
                     {pendingProduct.product_id}
                   </span>
                   {pendingProduct.product_group && (
-                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                    <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded text-xs">
                       {pendingProduct.product_group}
                     </span>
                   )}
                 </div>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {pendingProduct.description}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Unité: {pendingProduct.unit || 'pcs'}
                 </p>
                 {pendingProduct.selling_price && (
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                     Prix: {formatCurrency(pendingProduct.selling_price)} / {pendingProduct.unit || 'UN'}
                   </p>
                 )}
@@ -949,7 +962,7 @@ const deleteMaterialFromModal = () => {
               {/* Input quantité */}
               <div className="p-6">
                 <div className="flex items-center justify-center gap-4 mb-4">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Quantité
                   </label>
                   <button
@@ -973,8 +986,8 @@ const deleteMaterialFromModal = () => {
                   onChange={(e) => setPendingQuantity(e.target.value)}
                   className={`w-full text-center text-5xl font-bold border-4 rounded-lg py-6 px-4 focus:ring-4 ${
                     isNegativeQuantity
-                      ? 'border-red-500 focus:ring-red-300 focus:border-red-600 text-red-600 bg-red-50'
-                      : 'border-blue-500 focus:ring-blue-300 focus:border-blue-600 bg-white'
+                      ? 'border-red-500 focus:ring-red-300 focus:border-red-600 text-red-600 bg-red-50 dark:bg-red-900/30'
+                      : 'border-blue-500 focus:ring-blue-300 focus:border-blue-600 bg-white dark:bg-gray-800 dark:text-gray-100'
                   }`}
                   placeholder="0"
                   readOnly
@@ -994,10 +1007,10 @@ const deleteMaterialFromModal = () => {
               {/* Toggle prix - NOUVEAU */}
               {pendingProduct.selling_price && (
                 <div className="px-8 pb-6">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Afficher le prix au client</p>
-                      <p className="text-xs text-gray-600 mt-0.5">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Afficher le prix au client</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                         {pendingShowPrice 
                           ? `Visible: ${formatCurrency(pendingProduct.selling_price * parseFloat(pendingQuantity || 0))}`
                           : 'Prix masqué'
@@ -1023,11 +1036,11 @@ const deleteMaterialFromModal = () => {
             </div>
             
             {/* Actions - Fixes en bas */}
-            <div className="p-4 bg-gray-50 border-t flex gap-3 flex-shrink-0">
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700 flex gap-3 flex-shrink-0">
               <button
                 type="button"
                 onClick={cancelAddMaterial}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-4 px-4 rounded-lg text-lg"
+                className="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-4 px-4 rounded-lg text-lg"
               >
                 Annuler
               </button>
@@ -1046,10 +1059,10 @@ const deleteMaterialFromModal = () => {
       {/* 🆕 NOUVEAU MODAL - AJOUT RAPIDE PRODUIT NON-INVENTAIRE */}
       {showQuickAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70]">
-          <div className="bg-white rounded-lg w-full max-w-lg">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-lg">
             {/* Header */}
             <div className="bg-orange-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-              <h3 className="text-lg font-semibold">➕ Nouveau Produit Non-Inventaire</h3>
+              <h3 className="text-lg font-semibold dark:text-gray-100">➕ Nouveau Produit Non-Inventaire</h3>
               <button
                 onClick={() => {
                   setShowQuickAddModal(false);
@@ -1062,10 +1075,10 @@ const deleteMaterialFromModal = () => {
             </div>
             
             {/* Formulaire */}
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 dark:bg-gray-900">
               {/* Code Produit */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Code Produit / # Pièce *
                 </label>
                 <input
@@ -1076,18 +1089,18 @@ const deleteMaterialFromModal = () => {
                     product_id: e.target.value.toUpperCase()
                   })}
                   placeholder="Ex: TEMP-001, SERVICE-XYZ"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 uppercase"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100 uppercase"
                   maxLength={50}
                   autoFocus
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Identifiant unique pour ce produit/service
                 </p>
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Description *
                 </label>
                 <textarea
@@ -1098,17 +1111,17 @@ const deleteMaterialFromModal = () => {
                     description: e.target.value
                   })}
                   placeholder="Description détaillée du produit ou service..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100"
                   maxLength={200}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {quickAddForm.description.length}/200 caractères
                 </p>
               </div>
 
               {/* Unité */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Unité
                 </label>
                 <select
@@ -1117,7 +1130,7 @@ const deleteMaterialFromModal = () => {
                     ...quickAddForm, 
                     unit: e.target.value
                   })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100"
                 >
                   <option value="UN">UN - Unité</option>
                   <option value="M">M - Mètre</option>
@@ -1131,8 +1144,8 @@ const deleteMaterialFromModal = () => {
               </div>
 
               {/* Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
                   💡 Ce produit sera sauvegardé dans votre base de données et 
                   pourra être réutilisé pour d'autres bons de travail
                 </p>
@@ -1140,14 +1153,14 @@ const deleteMaterialFromModal = () => {
             </div>
             
             {/* Actions */}
-            <div className="p-4 bg-gray-50 border-t flex gap-3 rounded-b-lg">
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700 flex gap-3 rounded-b-lg">
               <button
                 type="button"
                 onClick={() => {
                   setShowQuickAddModal(false);
                   setQuickAddForm({ product_id: '', description: '', unit: 'UN' });
                 }}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-4 rounded-lg"
+                className="flex-1 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-3 px-4 rounded-lg"
               >
                 Annuler
               </button>

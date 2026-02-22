@@ -1,3 +1,16 @@
+/**
+ * @file components/work-orders/WorkOrderForm.js
+ * @description Formulaire complet pour créer et éditer les Bons de Travail (BT)
+ *              - Sélection client, bon d'achat, date de travail
+ *              - Intégration TimeTracker (suivi temps) et MaterialSelector (matériaux)
+ *              - Import depuis soumissions et achats fournisseurs
+ *              - Gestion emails et workflow signature client
+ * @version 1.1.0
+ * @date 2026-02-22
+ * @changelog
+ *   1.1.0 - Ajout support dark mode
+ *   1.0.0 - Version initiale
+ */
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -1213,11 +1226,11 @@ const getFilteredSupplierPurchases = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 max-w-4xl mx-auto">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 max-w-4xl mx-auto">
     
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-xl font-bold text-gray-900">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
           {mode === 'create' ? 'Nouveau Bon de Travail' : `Édition ${workOrder?.bt_number}`}
         </h2>
         
@@ -1257,7 +1270,7 @@ const getFilteredSupplierPurchases = () => {
               <button
                 type="button"
                 onClick={onCancel}
-                className="bg-white border border-red-300 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 font-medium text-sm"
+                className="bg-white dark:bg-gray-800 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-4 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 font-medium text-sm"
               >
                 Annuler
               </button>
@@ -1268,9 +1281,9 @@ const getFilteredSupplierPurchases = () => {
 
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
         {/* Section Client + Bon d'achat */}
-        <div className="bg-blue-50 p-4 rounded-lg space-y-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <User className="inline mr-2" size={16} />
               Client *
             </label>
@@ -1279,7 +1292,7 @@ const getFilteredSupplierPurchases = () => {
               <select
                 className={`flex-1 min-w-0 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
                   errors.client_id ? 'border-red-500' : 'border-gray-300'
-                } ${workOrder ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                } ${workOrder ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}`}
                 style={{ maxWidth: 'calc(100vw - 240px)' }}
                 value={formData.client_id}
                 onChange={(e) => handleClientSelect(e.target.value)}
@@ -1337,7 +1350,7 @@ const getFilteredSupplierPurchases = () => {
               <p className="text-red-500 text-sm mt-1">{errors.client_id}</p>
             )}
             {selectedClient && (
-              <div className="mt-2 p-2 bg-white rounded text-sm text-blue-800">
+              <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded text-sm text-blue-800 dark:text-blue-300">
                 {selectedClient.address && <div>{selectedClient.address}</div>}
                 {selectedClient.email && <div>{selectedClient.email}</div>}
               </div>
@@ -1345,14 +1358,14 @@ const getFilteredSupplierPurchases = () => {
           </div>
 
           {selectedClient && (selectedClient.email || selectedClient.email_2 || selectedClient.email_admin) && (
-            <div className="bg-white border border-blue-200 rounded-lg p-4">
-              <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
+            <div className="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3 flex items-center">
                 <Mail className="mr-2" size={16} />
                 Emails pour envoi du bon de travail
               </h3>
               <div className="space-y-2">
                 {selectedClient.email && (
-                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
+                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded transition">
                     <input
                       type="checkbox"
                       checked={selectedEmails.email}
@@ -1360,14 +1373,14 @@ const getFilteredSupplierPurchases = () => {
                       className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">Principal</span>
-                      <span className="text-sm text-gray-600 ml-2">{selectedClient.email}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Principal</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{selectedClient.email}</span>
                     </div>
                   </label>
                 )}
                 
                 {selectedClient.email_2 && (
-                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
+                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded transition">
                     <input
                       type="checkbox"
                       checked={selectedEmails.email_2}
@@ -1375,14 +1388,14 @@ const getFilteredSupplierPurchases = () => {
                       className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">Secondaire</span>
-                      <span className="text-sm text-gray-600 ml-2">{selectedClient.email_2}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Secondaire</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{selectedClient.email_2}</span>
                     </div>
                   </label>
                 )}
                 
                 {selectedClient.email_admin && (
-                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-2 rounded transition">
+                  <label className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 p-2 rounded transition">
                     <input
                       type="checkbox"
                       checked={selectedEmails.email_admin}
@@ -1390,15 +1403,15 @@ const getFilteredSupplierPurchases = () => {
                       className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex-1">
-                      <span className="text-sm font-medium text-gray-900">Administration</span>
-                      <span className="text-sm text-gray-600 ml-2">{selectedClient.email_admin}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Administration</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{selectedClient.email_admin}</span>
                     </div>
                   </label>
                 )}
               </div>
               
-              <div className="mt-3 pt-3 border-t border-blue-200">
-                <p className="text-xs text-blue-700">
+              <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                <p className="text-xs text-blue-700 dark:text-blue-400">
                   {Object.values(selectedEmails).filter(Boolean).length} email(s) sélectionné(s) pour l'envoi
                 </p>
               </div>
@@ -1407,7 +1420,7 @@ const getFilteredSupplierPurchases = () => {
 
             {/* ✅ NOUVEAU - Checkbox Prix Jobé */}
             {selectedClient && (
-              <div className="mt-4 bg-amber-50 border-2 border-amber-300 rounded-lg p-4">
+              <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-4">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1419,13 +1432,13 @@ const getFilteredSupplierPurchases = () => {
                     className="mt-1 w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
                   />
                   <div className="flex-1">
-                    <div className="font-semibold text-amber-900 flex items-center gap-2">
+                    <div className="font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-2">
                       💰 Prix Jobé
                     </div>
-                    <p className="text-sm text-amber-700 mt-1">
+                    <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
                       Le client recevra un BT simplifié (sans heures ni matériels).
                     </p>
-                    <p className="text-xs text-amber-600 mt-1">
+                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
                       Le bureau recevra les 2 versions: simplifiée + complète
                     </p>
                   </div>
@@ -1434,7 +1447,7 @@ const getFilteredSupplierPurchases = () => {
             )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               📋 Bon d'achat client (optionnel)
             </label>
             
@@ -1450,7 +1463,7 @@ const getFilteredSupplierPurchases = () => {
                   }}
                   className="w-4 h-4 text-blue-600"
                 />
-                <span className="text-sm text-gray-700">Sélectionner un BA</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">Sélectionner un BA</span>
               </label>
               
               <label className="flex items-center gap-2 cursor-pointer">
@@ -1463,7 +1476,7 @@ const getFilteredSupplierPurchases = () => {
                   }}
                   className="w-4 h-4 text-blue-600"
                 />
-                <span className="text-sm text-gray-700">Saisie manuelle</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">Saisie manuelle</span>
               </label>
             </div>
 
@@ -1472,7 +1485,7 @@ const getFilteredSupplierPurchases = () => {
                 // Mode sélection
                 <>
                   <select
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       value={formData.linked_po_id}
                       onChange={(e) => {
                         const poId = e.target.value;
@@ -1541,7 +1554,7 @@ const getFilteredSupplierPurchases = () => {
                 <input
                   type="text"
                   placeholder="Ex: BA-2025-001, Job#12345, PO-ABC-789..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   value={manualPOValue}
                   onChange={(e) => {
                     setManualPOValue(e.target.value);
@@ -1551,7 +1564,7 @@ const getFilteredSupplierPurchases = () => {
               )}
             </div>
             
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {useManualPO 
                 ? 'Saisissez une référence manuelle (pour les BAs externes)'
                 : 'Sélectionnez un BA existant ou créez-en un nouveau'
@@ -1561,14 +1574,14 @@ const getFilteredSupplierPurchases = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <Calendar className="inline mr-2" size={16} />
             Date de travail *
           </label>
           <input
             type="date"
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-              errors.work_date ? 'border-red-500' : 'border-gray-300'
+              errors.work_date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
             }`}
             value={formData.work_date}
             onChange={(e) => handleChange('work_date', e.target.value)}
@@ -1582,7 +1595,7 @@ const getFilteredSupplierPurchases = () => {
         {console.log('🕐 PROP initialTimeEntries pour TimeTracker:', JSON.stringify(workOrder?.time_entries || []))}
 
         {/* Checkbox surcharge (tarifs spéciaux soir/weekend/férié) */}
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3">
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
@@ -1591,8 +1604,8 @@ const getFilteredSupplierPurchases = () => {
               className="mr-3 h-5 w-5 text-amber-600 rounded"
             />
             <div>
-              <span className="font-medium text-amber-900">Appliquer tarifs spéciaux</span>
-              <span className="block text-xs text-amber-700 mt-0.5">
+              <span className="font-medium text-amber-900 dark:text-amber-300">Appliquer tarifs spéciaux</span>
+              <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">
                 Soir (min 2h, 1.5x) · Samedi/Dimanche/Férié (min 3h, 1.5x)
               </span>
             </div>
@@ -1608,9 +1621,9 @@ const getFilteredSupplierPurchases = () => {
           applySurcharge={formData.apply_surcharge}
         />
 
-        <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
           <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               <FileText className="inline mr-2" size={16} />
               Descriptions du travail
             </label>
@@ -1629,8 +1642,8 @@ const getFilteredSupplierPurchases = () => {
               <div className="flex-1">
                 <textarea
                   rows={2}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 uppercase ${
-                    errors.work_description && index === 0 ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 uppercase dark:bg-gray-800 dark:text-gray-100 ${
+                    errors.work_description && index === 0 ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                   placeholder={index === 0 ? "DESCRIPTION PRINCIPALE DES TRAVAUX EFFECTUÉS..." : "DESCRIPTION ADDITIONNELLE..."}
                   value={description}
@@ -1656,9 +1669,9 @@ const getFilteredSupplierPurchases = () => {
           )}
           
           {descriptions.some(d => d.trim()) && (
-            <div className="mt-3 p-3 bg-white border rounded-lg">
-              <div className="text-xs text-gray-500 mb-2">Aperçu final:</div>
-              <div className="text-sm text-gray-700 whitespace-pre-line">
+            <div className="mt-3 p-3 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Aperçu final:</div>
+              <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
                 {descriptions.filter(d => d.trim()).join('\n\n')}
               </div>
             </div>
@@ -1666,12 +1679,12 @@ const getFilteredSupplierPurchases = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Notes additionnelles
           </label>
           <textarea
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 uppercase"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 uppercase"
             placeholder="OBSERVATIONS, RECOMMANDATIONS, PROCHAINES ÉTAPES..."
             value={formData.additional_notes}
             onChange={(e) => handleChange('additional_notes', e.target.value.toUpperCase())}
@@ -1679,10 +1692,10 @@ const getFilteredSupplierPurchases = () => {
           />
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-lg font-medium text-gray-900 flex items-center mb-3">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2">
-              <span className="text-blue-600 font-bold text-sm">4</span>
+        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center mb-3">
+            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-2">
+              <span className="text-blue-600 dark:text-blue-400 font-bold text-sm">4</span>
             </div>
             Matériaux et Produits
           </h3>
@@ -1717,14 +1730,14 @@ const getFilteredSupplierPurchases = () => {
           />
           
           {errors.materials && (
-            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded flex items-center">
+            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded flex items-center">
               <AlertCircle className="text-yellow-600 mr-2" size={16} />
-              <p className="text-yellow-800 text-sm">{errors.materials}</p>
+              <p className="text-yellow-800 dark:text-yellow-200 text-sm">{errors.materials}</p>
             </div>
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t dark:border-gray-700">
           {(workOrder?.status === 'signed' || workOrder?.status === 'sent' || workOrder?.status === 'pending_send') ? (
             <button
               type="button"
@@ -1759,7 +1772,7 @@ const getFilteredSupplierPurchases = () => {
               <button
                 type="button"
                 onClick={onCancel}
-                className="bg-white border border-red-300 text-red-600 px-6 py-3 rounded-lg hover:bg-red-50 font-medium"
+                className="bg-white dark:bg-gray-800 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-6 py-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 font-medium"
               >
                 Annuler
               </button>
@@ -1767,9 +1780,9 @@ const getFilteredSupplierPurchases = () => {
           )}
         </div>
 
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h4 className="font-medium text-blue-900 mb-2">💡 Workflow Terrain</h4>
-          <div className="text-sm text-blue-800 space-y-1">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+          <h4 className="font-medium text-blue-900 dark:text-blue-300 mb-2">💡 Workflow Terrain</h4>
+          <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
             <p><strong>Sauvegarder pour plus tard:</strong> Garde le BT en brouillon, vous pourrez le reprendre</p>
             <p><strong>Présenter au client:</strong> Prépare le BT pour signature sur tablette</p>
             <p><strong>Emails:</strong> Sélectionnez les emails du client qui recevront le BT signé</p>
@@ -1782,9 +1795,9 @@ const getFilteredSupplierPurchases = () => {
           ======================================== */}
       {showSubmissionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                 <FileText className="text-blue-600" size={24} />
                 Import depuis Soumissions
               </h2>
@@ -1794,7 +1807,7 @@ const getFilteredSupplierPurchases = () => {
                   setSelectedSubmissionForImport(null);
                   setSelectedSubmissionItems([]);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X size={24} />
               </button>
@@ -1803,32 +1816,32 @@ const getFilteredSupplierPurchases = () => {
             <div className="flex-1 overflow-y-auto p-6">
               {!selectedSubmissionForImport ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Sélectionnez une soumission pour voir ses articles
                   </p>
                   {submissions.map((submission) => (
                     <div
                       key={submission.id}
                       onClick={() => selectSubmissionForImport(submission)}
-                      className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition"
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer transition"
                     >
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-semibold text-gray-900">
+                          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                             Soumission #{submission.submission_number}
                           </h3>
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {new Date(submission.created_at).toLocaleDateString('fr-CA')}
                           </p>
                           {submission.description && (
-                            <p className="text-sm text-gray-500 mt-1">{submission.description}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{submission.description}</p>
                           )}
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
                             {submission.items?.length || 0} articles
                           </div>
-                          <div className="text-lg font-bold text-gray-900 mt-1">
+                          <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">
                             {new Intl.NumberFormat('fr-CA', {
                               style: 'currency',
                               currency: 'CAD'
@@ -1861,11 +1874,11 @@ const getFilteredSupplierPurchases = () => {
                     </button>
                   </div>
 
-                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                    <h3 className="font-semibold text-gray-900">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                       Soumission #{selectedSubmissionForImport.submission_number}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {selectedSubmissionItems.length} / {selectedSubmissionForImport.items?.length || 0} articles sélectionnés
                     </p>
                   </div>
@@ -1876,8 +1889,8 @@ const getFilteredSupplierPurchases = () => {
                         key={index}
                         className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
                           selectedSubmissionItems.includes(index)
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500'
                         }`}
                       >
                         <input
@@ -1889,22 +1902,22 @@ const getFilteredSupplierPurchases = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start gap-2">
                             <div className="flex-1">
-                              <div className="font-medium text-gray-900">
+                              <div className="font-medium text-gray-900 dark:text-gray-100">
                                 {item.product_id || item.code ? `[${item.product_id || item.code}] ` : ''}
                                 {item.name || item.description}
                               </div>
-                              <div className="text-sm text-gray-600 mt-1">
+                              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                 Qté: {item.quantity} {item.unit || 'unité'}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-semibold text-gray-900">
+                              <div className="font-semibold text-gray-900 dark:text-gray-100">
                                 {new Intl.NumberFormat('fr-CA', {
                                   style: 'currency',
                                   currency: 'CAD'
                                 }).format(item.price || item.selling_price || item.unit_price || 0)}
                               </div>
-                              <div className="text-xs text-gray-500">par {item.unit || 'unité'}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">par {item.unit || 'unité'}</div>
                             </div>
                           </div>
                         </div>
@@ -1915,14 +1928,14 @@ const getFilteredSupplierPurchases = () => {
               )}
             </div>
 
-            <div className="p-6 border-t flex justify-end gap-3">
+            <div className="p-6 border-t dark:border-gray-700 flex justify-end gap-3">
               <button
                 onClick={() => {
                   setShowSubmissionModal(false);
                   setSelectedSubmissionForImport(null);
                   setSelectedSubmissionItems([]);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
               >
                 Annuler
               </button>
@@ -1945,9 +1958,9 @@ const getFilteredSupplierPurchases = () => {
           ======================================== */}
       {showSupplierImportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                 <Package className="text-purple-600" size={24} />
                 Import depuis Achats Fournisseurs
               </h2>
@@ -1957,7 +1970,7 @@ const getFilteredSupplierPurchases = () => {
                   setSelectedPurchaseForImport(null);
                   setSelectedItemsForImport([]);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X size={24} />
               </button>
@@ -1967,7 +1980,7 @@ const getFilteredSupplierPurchases = () => {
               {!selectedPurchaseForImport ? (
                 <div className="space-y-3">
                   {/* ✅ NOUVEAU: Barre de recherche et filtres */}
-                  <div className="sticky top-0 bg-white pb-4 space-y-3">
+                  <div className="sticky top-0 bg-white dark:bg-gray-900 pb-4 space-y-3">
                     {/* Recherche */}
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -1976,7 +1989,7 @@ const getFilteredSupplierPurchases = () => {
                         placeholder="Rechercher par # achat, fournisseur, produit..."
                         value={supplierSearchTerm}
                         onChange={(e) => setSupplierSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:text-gray-100"
                       />
                     </div>
                     
@@ -1989,14 +2002,14 @@ const getFilteredSupplierPurchases = () => {
                           onChange={(e) => setFilterByCurrentClient(e.target.checked)}
                           className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
                         />
-                        <span className="text-gray-700">
+                        <span className="text-gray-700 dark:text-gray-300">
                           Afficher seulement les achats liés à <strong>{selectedClient.name}</strong>
                         </span>
                       </label>
                     )}
                     
                     {/* Compteur résultats */}
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {getFilteredSupplierPurchases().length} achat(s) trouvé(s)
                       {filterByCurrentClient && ` pour ${selectedClient?.name}`}
                     </p>
@@ -2004,7 +2017,7 @@ const getFilteredSupplierPurchases = () => {
             
                   {/* Liste des achats */}
                   {getFilteredSupplierPurchases().length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                       <Package className="mx-auto mb-2 text-gray-300" size={48} />
                       <p>Aucun achat trouvé</p>
                       {filterByCurrentClient && (
@@ -2021,14 +2034,14 @@ const getFilteredSupplierPurchases = () => {
                       <div
                         key={purchase.id}
                         onClick={() => selectPurchaseForImport(purchase)}
-                        className="p-4 border border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 cursor-pointer transition"
+                        className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer transition"
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <h3 className="font-semibold text-gray-900">
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                               Achat #{purchase.purchase_number}
                             </h3>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {purchase.supplier_name}
                             </p>
                             {purchase.linked_po_number && (
@@ -2036,15 +2049,15 @@ const getFilteredSupplierPurchases = () => {
                                 🔗 PO: {purchase.linked_po_number}
                               </p>
                             )}
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                               {new Date(purchase.created_at).toLocaleDateString('fr-CA')}
                             </p>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
                               {purchase.items?.length || 0} articles
                             </div>
-                            <div className="text-lg font-bold text-gray-900 mt-1">
+                            <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">
                               {new Intl.NumberFormat('fr-CA', {
                                 style: 'currency',
                                 currency: purchase.currency || 'CAD'
@@ -2078,14 +2091,14 @@ const getFilteredSupplierPurchases = () => {
                     </button>
                   </div>
 
-                  <div className="bg-purple-50 p-4 rounded-lg mb-4">
-                    <h3 className="font-semibold text-gray-900">
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg mb-4">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                       Achat #{selectedPurchaseForImport.purchase_number}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {selectedPurchaseForImport.supplier_name}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {selectedItemsForImport.length} / {selectedPurchaseForImport.items?.length || 0} articles sélectionnés
                     </p>
                   </div>
@@ -2096,8 +2109,8 @@ const getFilteredSupplierPurchases = () => {
                         key={index}
                         className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
                           selectedItemsForImport.includes(index)
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500'
                         }`}
                       >
                         <input
@@ -2109,24 +2122,24 @@ const getFilteredSupplierPurchases = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start gap-2">
                             <div className="flex-1">
-                              <div className="font-medium text-gray-900">
+                              <div className="font-medium text-gray-900 dark:text-gray-100">
                                 {item.product_id || item.code || item.product_code || item.sku ? 
                                   `[${item.product_id || item.code || item.product_code || item.sku}] ` : 
                                   ''}
                                 {item.description || item.name || item.product_name}
                               </div>
-                              <div className="text-sm text-gray-600 mt-1">
+                              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                 Qté: {item.quantity || item.qty} {item.unit || item.unity || 'UN'}
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-semibold text-gray-900">
+                              <div className="font-semibold text-gray-900 dark:text-gray-100">
                                 {new Intl.NumberFormat('fr-CA', {
                                   style: 'currency',
                                   currency: selectedPurchaseForImport.currency || 'CAD'
                                 }).format(item.cost_price || item.price || 0)}
                               </div>
-                              <div className="text-xs text-gray-500">par {item.unit || item.unity || 'UN'}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">par {item.unit || item.unity || 'UN'}</div>
                             </div>
                           </div>
                         </div>
@@ -2137,14 +2150,14 @@ const getFilteredSupplierPurchases = () => {
               )}
             </div>
 
-            <div className="p-6 border-t flex justify-end gap-3">
+            <div className="p-6 border-t dark:border-gray-700 flex justify-end gap-3">
               <button
                 onClick={() => {
                   setShowSupplierImportModal(false);
                   setSelectedPurchaseForImport(null);
                   setSelectedItemsForImport([]);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
               >
                 Annuler
               </button>

@@ -5,9 +5,10 @@
  *              - Sessions manuelles (ajout, édition, suppression)
  *              - Détection automatique surcharges (soir, samedi, dimanche, jours fériés QC)
  *              - Application des minimums (2h soir, 3h weekend/férié)
- * @version 2.0.0
- * @date 2026-02-10
+ * @version 2.1.0
+ * @date 2026-02-22
  * @changelog
+ *   2.1.0 - Ajout support dark mode
  *   2.0.0 - Intégration surcharges: détection auto, minimums, badges, recalcul toggle
  *   1.2.0 - Fix UTC date (getLocalDateString), fix circular dependency
  *   1.0.0 - Version initiale multi-sessions
@@ -502,9 +503,9 @@ const formatDuration = (hours) => {
   // ========================================
 
   return (
-    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900 flex items-center">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center">
           <Clock className="mr-2" size={20} />
           Suivi du temps - Multi-journées
         </h3>
@@ -514,7 +515,7 @@ const formatDuration = (hours) => {
           disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
           className={`text-sm px-3 py-1 rounded flex items-center ${
             status === 'sent' || status === 'signed'
-              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+              ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed'
               : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
         >
@@ -525,9 +526,9 @@ const formatDuration = (hours) => {
 
       {/* Session en cours */}
       {currentSession && (
-        <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4">
+        <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-600 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="font-semibold text-green-900 flex items-center">
+            <h4 className="font-semibold text-green-900 dark:text-green-300 flex items-center">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-2"></div>
               Session en cours
             </h4>
@@ -543,15 +544,15 @@ const formatDuration = (hours) => {
 
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <div className="text-xs text-gray-600 mb-1">Date</div>
-              <div className="font-mono font-bold text-green-700">{currentSession.date}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Date</div>
+              <div className="font-mono font-bold text-green-700 dark:text-green-400">{currentSession.date}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-600 mb-1">Début</div>
-              <div className="font-mono font-bold text-green-700">{currentSession.start_time}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Début</div>
+              <div className="font-mono font-bold text-green-700 dark:text-green-400">{currentSession.start_time}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-600 mb-1">Pause (min)</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Pause (min)</div>
               <input
                 type="number"
                 min="0"
@@ -564,14 +565,14 @@ const formatDuration = (hours) => {
                 disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
                 className={`w-full text-center font-mono font-bold text-orange-700 border-2 rounded px-2 py-1 ${
                   status === 'sent' || status === 'signed' 
-                    ? 'border-gray-300 bg-gray-100 cursor-not-allowed' 
-                    : 'border-orange-300'
+                    ? 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 cursor-not-allowed' 
+                    : 'border-orange-300 dark:border-orange-600'
                 }`}
               />
             </div>
           </div>
 
-          <div className="mt-3 text-center text-lg font-bold text-green-700">
+          <div className="mt-3 text-center text-lg font-bold text-green-700 dark:text-green-400">
             Temps écoulé: {formatDuration(
               toQuarterHourUp(
                 currentSession.start_time,
@@ -586,21 +587,21 @@ const formatDuration = (hours) => {
       {/* Liste des sessions terminées */}
       {timeEntries.length > 0 && (
         <div className="space-y-2">
-          <h4 className="font-medium text-gray-700">Sessions enregistrées:</h4>
+          <h4 className="font-medium text-gray-700 dark:text-gray-300">Sessions enregistrées:</h4>
           {timeEntries.map((entry, index) => (
           <div 
             key={index} 
             className={`border rounded-lg p-3 ${
               entry.in_progress 
                 ? 'bg-green-50 border-green-500 border-2' 
-                : 'bg-white border-gray-300'
+                : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600'
             }`}
           >
             {/* VERSION MOBILE */}
             <div className="md:hidden space-y-2">
               {/* Ligne 1: Date + Badges */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center font-semibold">
+                <div className="flex items-center font-semibold dark:text-gray-200">
                   <Calendar size={14} className="mr-1 text-blue-600" />
                   {entry.date}
                 </div>
@@ -621,22 +622,22 @@ const formatDuration = (hours) => {
               {/* Ligne 2: Début - Fin - Pause */}
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-3">
-                  <span className="font-mono font-bold text-green-700">{entry.start_time}</span>
-                  <span className="text-gray-400">→</span>
-                  <span className="font-mono font-bold text-red-700">
+                  <span className="font-mono font-bold text-green-700 dark:text-green-400">{entry.start_time}</span>
+                  <span className="text-gray-400 dark:text-gray-500">→</span>
+                  <span className="font-mono font-bold text-red-700 dark:text-red-400">
                     {entry.end_time || (entry.in_progress ? '⏱️' : '--:--')}
                   </span>
                 </div>
-                <span className="text-orange-700 text-xs">Pause: {entry.pause_minutes || 0}min</span>
+                <span className="text-orange-700 dark:text-orange-400 text-xs">Pause: {entry.pause_minutes || 0}min</span>
               </div>
               
               {/* Ligne 3: Total + Checkboxes + Actions */}
               <div className="flex items-center justify-between">
-                <div className={`font-bold ${entry.in_progress ? 'text-green-700' : 'text-blue-700'}`}>
+                <div className={`font-bold ${entry.in_progress ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'}`}>
                   {formatDuration(entry.total_hours || 0)}
                   {entry.in_progress && ' ⏱️'}
                   {entry.surcharge_type && entry.actual_hours != null && entry.actual_hours !== entry.total_hours && (
-                    <span className="text-xs font-normal text-gray-500 ml-1">
+                    <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-1">
                       (réel: {formatDuration(entry.actual_hours)})
                     </span>
                   )}
@@ -667,7 +668,7 @@ const formatDuration = (hours) => {
                         }}
                         className="mr-1 h-4 w-4 text-orange-600"
                       />
-                      <span className="text-xs text-orange-600">{selectedClient.travel_minutes}m</span>
+                      <span className="text-xs text-orange-600 dark:text-orange-400">{selectedClient.travel_minutes}m</span>
                     </label>
                   )}
 
@@ -715,7 +716,7 @@ const formatDuration = (hours) => {
             <div className="hidden md:flex items-center justify-between">
               <div className="flex-1 grid grid-cols-6 gap-2 text-sm">
                 <div>
-                  <div className="text-xs text-gray-500">Date</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Date</div>
                   <div className="font-semibold flex items-center flex-wrap gap-1">
                     <Calendar size={12} className="mr-1 text-blue-600" />
                     {entry.date}
@@ -732,33 +733,33 @@ const formatDuration = (hours) => {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Début</div>
-                  <div className="font-mono font-bold text-green-700">{entry.start_time}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Début</div>
+                  <div className="font-mono font-bold text-green-700 dark:text-green-400">{entry.start_time}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Fin</div>
-                  <div className="font-mono font-bold text-red-700">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Fin</div>
+                  <div className="font-mono font-bold text-red-700 dark:text-red-400">
                     {entry.end_time || (entry.in_progress ? '⏱️ En cours' : '--:--')}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Pause</div>
-                  <div className="font-mono text-orange-700">{entry.pause_minutes || 0} min</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Pause</div>
+                  <div className="font-mono text-orange-700 dark:text-orange-400">{entry.pause_minutes || 0} min</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Total</div>
-                  <div className={`font-bold ${entry.in_progress ? 'text-green-700' : 'text-blue-700'}`}>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
+                  <div className={`font-bold ${entry.in_progress ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'}`}>
                     {formatDuration(entry.total_hours || 0)}
                     {entry.in_progress && ' ⏱️'}
                     {entry.surcharge_type && entry.actual_hours != null && entry.actual_hours !== entry.total_hours && (
-                      <div className="text-xs font-normal text-gray-500">
+                      <div className="text-xs font-normal text-gray-500 dark:text-gray-400">
                         (réel: {formatDuration(entry.actual_hours)})
                       </div>
                     )}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Retour</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Retour</div>
                   {!entry.in_progress && selectedClient?.travel_minutes > 0 ? (
                     <label className="flex items-center cursor-pointer">
                       <input
@@ -782,17 +783,17 @@ const formatDuration = (hours) => {
                         }}
                         className="mr-1 h-4 w-4 text-orange-600"
                       />
-                      <span className="text-xs text-orange-600">{selectedClient.travel_minutes}min</span>
+                      <span className="text-xs text-orange-600 dark:text-orange-400">{selectedClient.travel_minutes}min</span>
                     </label>
                   ) : (
-                    <span className="text-xs text-gray-400">-</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
                   )}
                 </div>
               </div>
         
               {/* Colonne: Frais transport */}
               <div className="ml-2">
-                <div className="text-xs text-gray-500">Transport</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Transport</div>
                 {!entry.in_progress ? (
                   <label className="flex items-center cursor-pointer">
                     <input
@@ -805,10 +806,10 @@ const formatDuration = (hours) => {
                       }}
                       className="mr-1 h-4 w-4 text-green-600"
                     />
-                    <span className="text-xs text-green-600">🚗</span>
+                    <span className="text-xs text-green-600 dark:text-green-400">🚗</span>
                   </label>
                 ) : (
-                  <span className="text-xs text-gray-400">-</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">-</span>
                 )}
               </div>
                   
@@ -840,12 +841,12 @@ const formatDuration = (hours) => {
 
       {/* Total général */}
       {timeEntries.length > 0 && (
-        <div className="bg-blue-100 border-2 border-blue-500 rounded-lg p-4">
+        <div className="bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500 dark:border-blue-600 rounded-lg p-4">
           <div className="flex justify-between items-center">
-            <span className="font-semibold text-blue-900">TOTAL TOUTES SESSIONS:</span>
-            <span className="text-2xl font-bold text-blue-900">{formatDuration(calculateGrandTotal())}</span>
+            <span className="font-semibold text-blue-900 dark:text-blue-300">TOTAL TOUTES SESSIONS:</span>
+            <span className="text-2xl font-bold text-blue-900 dark:text-blue-300">{formatDuration(calculateGrandTotal())}</span>
           </div>
-          <div className="text-sm text-blue-700 mt-1">
+          <div className="text-sm text-blue-700 dark:text-blue-400 mt-1">
             {timeEntries.length} session{timeEntries.length > 1 ? 's' : ''} enregistrée{timeEntries.length > 1 ? 's' : ''}
           </div>
         </div>
@@ -856,11 +857,11 @@ const formatDuration = (hours) => {
           <div className="text-center">
             {/* ⭐ NOUVEAU - Message si verrouillé */}
             {(status === 'sent' || status === 'signed') && (
-              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-4">
-                <p className="text-sm text-yellow-800">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4 mb-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   🔒 <strong>Bon de travail verrouillé</strong>
                 </p>
-                <p className="text-xs text-yellow-700 mt-1">
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
                   Ce BT a été envoyé au client. Vous ne pouvez plus ajouter de sessions.
                 </p>
               </div>
@@ -872,7 +873,7 @@ const formatDuration = (hours) => {
               disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
               className={`px-6 py-3 rounded-lg flex items-center mx-auto font-medium ${
                 status === 'sent' || status === 'signed'
-                  ? 'bg-gray-400 cursor-not-allowed text-gray-700'
+                  ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-gray-700 dark:text-gray-400'
                   : 'bg-green-600 hover:bg-green-700 text-white'
               }`}
             >
@@ -885,50 +886,50 @@ const formatDuration = (hours) => {
       {/* Modal édition manuelle */}
       {showManualEdit && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold mb-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4 dark:text-gray-100">
               {editingIndex !== null ? 'Modifier session' : 'Ajouter session manuellement'}
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Date de travail *
                 </label>
                 <input
                   type="date"
                   value={manualDate}
                   onChange={(e) => setManualDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Heure début *
                 </label>
                 <input
                   type="time"
                   value={manualStart}
                   onChange={(e) => setManualStart(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Heure fin
                 </label>
                 <input
                   type="time"
                   value={manualEnd}
                   onChange={(e) => setManualEnd(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Pause dîner (minutes)
                 </label>
                 <input
@@ -937,7 +938,7 @@ const formatDuration = (hours) => {
                   max="120"
                   value={manualPause}
                   onChange={(e) => setManualPause(Math.min(120, Math.max(0, parseInt(e.target.value) || 0)))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
 
@@ -949,10 +950,10 @@ const formatDuration = (hours) => {
                 const surchargeInfo = computeSurcharge(manualDate, manualStart, baseHours);
                 const hasSurcharge = surchargeInfo.surcharge_type && surchargeInfo.total_hours !== baseHours;
                 return (
-                  <div className="bg-blue-50 p-3 rounded text-sm space-y-1">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-sm space-y-1">
                     <div><strong>Aperçu:</strong> {formatDuration(surchargeInfo.total_hours)}</div>
                     {hasSurcharge && (
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
                         Heures réelles: {formatDuration(baseHours)} → Minimum {SURCHARGE_BADGES[surchargeInfo.surcharge_type]?.label || surchargeInfo.surcharge_type} appliqué
                       </div>
                     )}
@@ -978,7 +979,7 @@ const formatDuration = (hours) => {
               <button
                 type="button"
                 onClick={cancelManualEdit}
-                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
+                className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 Annuler
               </button>
