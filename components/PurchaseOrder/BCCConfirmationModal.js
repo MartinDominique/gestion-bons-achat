@@ -5,9 +5,10 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.4.0
- * @date 2026-02-17
+ * @version 1.5.0
+ * @date 2026-02-22
  * @changelog
+ *   1.5.0 - Ajout support dark mode
  *   1.4.0 - Ajout comptabilisation des BL (delivery_note_materials) dans colonne "Livrée"
  *   1.3.0 - Historique BCC détaillé: articles dépliables (code, qté, délai) + bouton "Renvoyer" orange
  *   1.2.0 - Fix B/O: lecture vraies réceptions (supplier_purchase_receipts) + ajout colonne "En Main" (stock)
@@ -393,7 +394,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-t-xl flex-shrink-0">
           <div className="flex justify-between items-center">
@@ -419,7 +420,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 min-h-0">
           {/* Message d'erreur */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg flex items-start gap-2">
               <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm">{error}</p>
@@ -430,7 +431,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
 
           {/* Message de succès */}
           {sendResult?.success && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg">
               <p className="font-medium">Confirmation envoyee avec succes!</p>
               <p className="text-sm mt-1">{sendResult.message}</p>
               <button
@@ -444,8 +445,8 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
 
           {/* Historique des envois BCC précédents */}
           {purchaseOrder?.bcc_history && purchaseOrder.bcc_history.length > 0 && !sendResult?.success && (
-            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3">
-              <h4 className="text-sm font-semibold text-amber-800 flex items-center gap-2 mb-2">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-3">
+              <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-2">
                 <AlertCircle className="w-4 h-4" />
                 {purchaseOrder.bcc_history.length} BCC déjà envoyé(s)
               </h4>
@@ -454,18 +455,18 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                   const isExpanded = expandedHistory[idx];
                   const hasItems = entry.items && entry.items.length > 0;
                   return (
-                    <div key={idx} className="bg-white border border-amber-200 rounded-lg overflow-hidden">
+                    <div key={idx} className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-lg overflow-hidden">
                       {/* Ligne résumé - cliquable pour déplier */}
                       <button
                         onClick={() => setExpandedHistory(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                        className="w-full flex flex-wrap items-center gap-2 px-3 py-2 text-xs text-amber-800 hover:bg-amber-50 transition-colors text-left"
+                        className="w-full flex flex-wrap items-center gap-2 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-left"
                       >
                         {isExpanded ? (
-                          <ChevronUp className="w-3.5 h-3.5 flex-shrink-0 text-amber-600" />
+                          <ChevronUp className="w-3.5 h-3.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
                         ) : (
-                          <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-amber-600" />
+                          <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
                         )}
-                        <span className="font-bold text-amber-900">BCC #{idx + 1}</span>
+                        <span className="font-bold text-amber-900 dark:text-amber-200">BCC #{idx + 1}</span>
                         <Clock className="w-3 h-3 flex-shrink-0 ml-1" />
                         <span className="font-medium">
                           {new Date(entry.sent_at).toLocaleDateString('fr-CA', {
@@ -473,48 +474,48 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                             hour: '2-digit', minute: '2-digit'
                           })}
                         </span>
-                        <span className="text-amber-600">—</span>
+                        <span className="text-amber-600 dark:text-amber-400">—</span>
                         <span>{entry.items_count} article(s)</span>
-                        <span className="text-amber-600">—</span>
+                        <span className="text-amber-600 dark:text-amber-400">—</span>
                         <span className="font-medium">${(parseFloat(entry.total) || 0).toFixed(2)}</span>
-                        <span className="text-amber-600 truncate max-w-[200px]" title={entry.recipients?.join(', ')}>
+                        <span className="text-amber-600 dark:text-amber-400 truncate max-w-[200px]" title={entry.recipients?.join(', ')}>
                           → {entry.recipients?.join(', ')}
                         </span>
                       </button>
 
                       {/* Détail déplié */}
                       {isExpanded && (
-                        <div className="border-t border-amber-200 px-3 py-2 bg-amber-50/50">
+                        <div className="border-t border-amber-200 dark:border-amber-700 px-3 py-2 bg-amber-50/50 dark:bg-amber-900/10">
                           {hasItems ? (
                             <table className="w-full text-xs">
                               <thead>
-                                <tr className="text-amber-700">
+                                <tr className="text-amber-700 dark:text-amber-300">
                                   <th className="text-left py-1 pr-2 font-semibold"># Item</th>
                                   <th className="text-left py-1 pr-2 font-semibold hidden sm:table-cell">Description</th>
                                   <th className="text-center py-1 pr-2 font-semibold">Qté Cmd</th>
                                   <th className="text-left py-1 font-semibold">Délai</th>
                                 </tr>
                               </thead>
-                              <tbody className="text-gray-700">
+                              <tbody className="text-gray-700 dark:text-gray-300">
                                 {entry.items.map((item, itemIdx) => (
-                                  <tr key={itemIdx} className="border-t border-amber-100">
-                                    <td className="py-1 pr-2 font-mono font-medium text-gray-900">{item.code}</td>
+                                  <tr key={itemIdx} className="border-t border-amber-100 dark:border-amber-800">
+                                    <td className="py-1 pr-2 font-mono font-medium text-gray-900 dark:text-gray-100">{item.code}</td>
                                     <td className="py-1 pr-2 hidden sm:table-cell truncate max-w-[180px]" title={item.description}>{item.description}</td>
                                     <td className="py-1 pr-2 text-center font-medium">{item.qty_ordered}</td>
-                                    <td className="py-1">{item.delivery_estimate || <span className="text-gray-400 italic">non spécifié</span>}</td>
+                                    <td className="py-1">{item.delivery_estimate || <span className="text-gray-400 dark:text-gray-500 italic">non spécifié</span>}</td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
                           ) : (
-                            <p className="text-xs text-amber-600 italic">Détail des articles non disponible (envoi antérieur à la mise à jour).</p>
+                            <p className="text-xs text-amber-600 dark:text-amber-400 italic">Détail des articles non disponible (envoi antérieur à la mise à jour).</p>
                           )}
                           {/* Destinataires */}
-                          <div className="mt-2 pt-2 border-t border-amber-100 text-xs text-amber-700">
+                          <div className="mt-2 pt-2 border-t border-amber-100 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
                             <span className="font-semibold">Envoyé à:</span> {entry.recipients?.join(', ')}
                           </div>
                           {entry.notes && (
-                            <div className="mt-1 text-xs text-gray-600">
+                            <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                               <span className="font-semibold">Notes:</span> {entry.notes}
                             </div>
                           )}
@@ -530,23 +531,23 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-              <span className="ml-3 text-gray-600">Chargement des donnees...</span>
+              <span className="ml-3 text-gray-600 dark:text-gray-400">Chargement des donnees...</span>
             </div>
           ) : !sendResult?.success && (
             <>
               {/* Section Articles */}
               <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                   <Package className="w-5 h-5 text-emerald-600" />
                   Articles de la commande
                 </h3>
 
                 {/* Table desktop */}
-                <div className="hidden sm:block overflow-x-auto border border-gray-200 rounded-lg">
+                <div className="hidden sm:block overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 w-8">
+                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 w-8">
                           <input
                             type="checkbox"
                             checked={bccItems.every(i => i.include)}
@@ -556,20 +557,20 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                             className="rounded"
                           />
                         </th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">Code</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">Description</th>
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">Qte Cmd</th>
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">Prix Unit.</th>
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">Prix Ligne</th>
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">En Main</th>
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">B/O</th>
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600">Livree</th>
-                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-600">Delai</th>
+                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Code</th>
+                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Description</th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">Qte Cmd</th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">Prix Unit.</th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">Prix Ligne</th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">En Main</th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">B/O</th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">Livree</th>
+                        <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Delai</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {bccItems.map((item, index) => (
-                        <tr key={index} className={`${item.include ? 'bg-white' : 'bg-gray-50 opacity-60'}`}>
+                        <tr key={index} className={`${item.include ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800 opacity-60'}`}>
                           <td className="px-2 py-2">
                             <input
                               type="checkbox"
@@ -578,44 +579,44 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                               className="rounded"
                             />
                           </td>
-                          <td className="px-2 py-2 text-xs font-mono font-medium text-gray-900">
+                          <td className="px-2 py-2 text-xs font-mono font-medium text-gray-900 dark:text-gray-100">
                             {item.code}
                           </td>
-                          <td className="px-2 py-2 text-xs text-gray-700 max-w-[200px] truncate" title={item.description}>
+                          <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[200px] truncate" title={item.description}>
                             {item.description}
                           </td>
-                          <td className="px-2 py-2 text-center text-xs font-medium">
+                          <td className="px-2 py-2 text-center text-xs font-medium text-gray-900 dark:text-gray-100">
                             {item.qty_ordered}
                           </td>
-                          <td className="px-2 py-2 text-center text-xs">
+                          <td className="px-2 py-2 text-center text-xs text-gray-700 dark:text-gray-300">
                             {fmt(item.unit_price)}
                           </td>
-                          <td className="px-2 py-2 text-center text-xs font-medium text-green-700">
+                          <td className="px-2 py-2 text-center text-xs font-medium text-green-700 dark:text-green-400">
                             {fmt(item.line_price)}
                           </td>
                           <td className="px-2 py-2 text-center">
                             {item.qty_in_stock > 0 ? (
-                              <span className="text-xs font-medium text-emerald-700">{item.qty_in_stock}</span>
+                              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{item.qty_in_stock}</span>
                             ) : (
-                              <span className="text-xs text-gray-400">0</span>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">0</span>
                             )}
                           </td>
                           <td className="px-2 py-2 text-center">
                             {item.qty_backorder > 0 ? (
-                              <span className="bg-orange-100 text-orange-800 text-xs px-1.5 py-0.5 rounded-full font-medium">
+                              <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 text-xs px-1.5 py-0.5 rounded-full font-medium">
                                 {item.qty_backorder}
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-400">0</span>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">0</span>
                             )}
                           </td>
                           <td className="px-2 py-2 text-center">
                             {item.qty_delivered > 0 ? (
-                              <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full font-medium">
+                              <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-1.5 py-0.5 rounded-full font-medium">
                                 {item.qty_delivered}
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-400">0</span>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">0</span>
                             )}
                           </td>
                           <td className="px-2 py-2">
@@ -624,7 +625,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                               value={item.delivery_estimate}
                               onChange={(e) => updateBccItem(index, 'delivery_estimate', e.target.value)}
                               placeholder="Ex: 2-3 sem."
-                              className="w-24 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                              className="w-24 px-2 py-1 text-xs border border-gray-200 dark:border-gray-600 rounded focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                               disabled={!item.include}
                             />
                           </td>
@@ -639,7 +640,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                   {bccItems.map((item, index) => (
                     <div
                       key={index}
-                      className={`border rounded-lg p-3 ${item.include ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}
+                      className={`border rounded-lg p-3 ${item.include ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800' : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 opacity-60'}`}
                     >
                       <div className="flex items-start gap-2">
                         <input
@@ -650,28 +651,28 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start">
-                            <div className="font-mono text-xs font-bold text-gray-900">{item.code}</div>
-                            <div className="text-xs font-bold text-green-700">{fmt(item.line_price)}</div>
+                            <div className="font-mono text-xs font-bold text-gray-900 dark:text-gray-100">{item.code}</div>
+                            <div className="text-xs font-bold text-green-700 dark:text-green-400">{fmt(item.line_price)}</div>
                           </div>
-                          <div className="text-xs text-gray-600 truncate mt-0.5">{item.description}</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5">{item.description}</div>
 
                           <div className="flex flex-wrap gap-2 mt-2 text-xs">
-                            <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">
+                            <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
                               Cmd: {item.qty_ordered}
                             </span>
-                            <span className="bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded">
+                            <span className="bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
                               {fmt(item.unit_price)}/u
                             </span>
-                            <span className={`px-1.5 py-0.5 rounded ${item.qty_in_stock > 0 ? 'bg-emerald-50 text-emerald-700 font-medium' : 'bg-gray-50 text-gray-400'}`}>
+                            <span className={`px-1.5 py-0.5 rounded ${item.qty_in_stock > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-medium' : 'bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}>
                               Main: {item.qty_in_stock}
                             </span>
                             {item.qty_backorder > 0 && (
-                              <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-medium">
+                              <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-1.5 py-0.5 rounded font-medium">
                                 B/O: {item.qty_backorder}
                               </span>
                             )}
                             {item.qty_delivered > 0 && (
-                              <span className="bg-green-100 text-green-800 px-1.5 py-0.5 rounded font-medium">
+                              <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-1.5 py-0.5 rounded font-medium">
                                 Livree: {item.qty_delivered}
                               </span>
                             )}
@@ -682,7 +683,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                             value={item.delivery_estimate}
                             onChange={(e) => updateBccItem(index, 'delivery_estimate', e.target.value)}
                             placeholder="Delai livraison (ex: 2-3 sem.)"
-                            className="mt-2 w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-emerald-500"
+                            className="mt-2 w-full px-2 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                             disabled={!item.include}
                           />
                         </div>
@@ -692,45 +693,45 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                 </div>
 
                 {bccItems.length === 0 && (
-                  <div className="text-center py-8 text-gray-500 text-sm">
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
                     Aucun article dans ce bon d'achat.
                   </div>
                 )}
               </div>
 
               {/* Section Totaux */}
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                 <div className="max-w-xs ml-auto space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Sous-total:</span>
-                    <span className="font-medium">{fmt(totals.subtotal)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">Sous-total:</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{fmt(totals.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">TPS (5%):</span>
-                    <span>{fmt(totals.tps)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">TPS (5%):</span>
+                    <span className="text-gray-900 dark:text-gray-100">{fmt(totals.tps)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">TVQ (9.975%):</span>
-                    <span>{fmt(totals.tvq)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">TVQ (9.975%):</span>
+                    <span className="text-gray-900 dark:text-gray-100">{fmt(totals.tvq)}</span>
                   </div>
-                  <div className="border-t border-gray-300 pt-1 mt-1 flex justify-between">
-                    <span className="font-bold text-gray-900">Total:</span>
-                    <span className="font-bold text-emerald-700 text-base">{fmt(totals.total)}</span>
+                  <div className="border-t border-gray-300 dark:border-gray-600 pt-1 mt-1 flex justify-between">
+                    <span className="font-bold text-gray-900 dark:text-gray-100">Total:</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400 text-base">{fmt(totals.total)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Section Destinataires */}
               <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                   <Mail className="w-5 h-5 text-emerald-600" />
                   Destinataires
                 </h3>
 
                 {/* Contacts du dossier client */}
                 {availableEmails.length > 0 && (
-                  <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-xs font-medium text-blue-700 mb-2">Emails du dossier client (cliquer pour selectionner):</p>
+                  <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">Emails du dossier client (cliquer pour selectionner):</p>
                     <div className="flex flex-wrap gap-2">
                       {availableEmails.map(({ email, label }) => (
                         <button
@@ -738,8 +739,8 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                           onClick={() => toggleClientEmail(email)}
                           className={`text-xs px-3 py-2 rounded-lg border-2 transition-all min-h-[44px] ${
                             recipientEmails.includes(email)
-                              ? 'bg-emerald-100 border-emerald-400 text-emerald-800 shadow-sm font-medium'
-                              : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:bg-emerald-50'
+                              ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-400 dark:border-emerald-600 text-emerald-800 dark:text-emerald-200 shadow-sm font-medium'
+                              : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
                           }`}
                         >
                           <span className="block font-medium">{recipientEmails.includes(email) ? '✓ ' : ''}{label}</span>
@@ -751,14 +752,14 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                 )}
 
                 {availableEmails.length === 0 && (
-                  <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <p className="text-xs text-yellow-700">Aucun email dans le dossier client. Ajoutez un email manuellement ci-dessous.</p>
+                  <div className="mb-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300">Aucun email dans le dossier client. Ajoutez un email manuellement ci-dessous.</p>
                   </div>
                 )}
 
                 {/* Ajouter un email manuellement */}
                 <div className="mt-2">
-                  <p className="text-xs text-gray-500 mb-1">Ajouter un autre email:</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Ajouter un autre email:</p>
                   <div className="flex gap-2">
                     <input
                       type="email"
@@ -766,13 +767,13 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                       onChange={(e) => setNewEmail(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && addEmail()}
                       placeholder="Entrer un email non dans le dossier..."
-                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 min-h-[44px]"
+                      className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 min-h-[44px] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       inputMode="email"
                     />
                     <button
                       onClick={addEmail}
                       disabled={!newEmail.trim()}
-                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 transition-colors min-h-[44px] text-sm"
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 transition-colors min-h-[44px] text-sm"
                     >
                       Ajouter
                     </button>
@@ -785,12 +786,12 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                     {recipientEmails.map(email => (
                       <span
                         key={email}
-                        className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-xs px-2 py-1 rounded-full"
+                        className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 text-xs px-2 py-1 rounded-full"
                       >
                         {email}
                         <button
                           onClick={() => removeEmail(email)}
-                          className="text-emerald-600 hover:text-red-600 ml-1"
+                          className="text-emerald-600 dark:text-emerald-400 hover:text-red-600 ml-1"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -800,7 +801,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                 )}
 
                 {recipientEmails.length === 0 && (
-                  <p className="text-xs text-orange-600 mt-2 flex items-center gap-1">
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-2 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
                     Au moins un destinataire est requis
                   </p>
@@ -809,7 +810,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
 
               {/* Notes */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Notes / Message (optionnel)
                 </label>
                 <textarea
@@ -817,7 +818,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Message additionnel pour le client..."
                   rows={3}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
             </>
@@ -826,15 +827,15 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
 
         {/* Footer avec bouton envoyer */}
         {!sendResult?.success && (
-          <div className="border-t border-gray-200 p-4 flex-shrink-0 bg-gray-50 rounded-b-xl">
+          <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 bg-gray-50 dark:bg-gray-800 rounded-b-xl">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Le PDF sera genere et envoye par email au(x) destinataire(s) selectionne(s), avec copie au bureau.
               </p>
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={onClose}
-                  className="flex-1 sm:flex-none px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 text-sm transition-colors"
+                  className="flex-1 sm:flex-none px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors"
                 >
                   Annuler
                 </button>
