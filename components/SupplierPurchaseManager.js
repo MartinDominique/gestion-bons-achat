@@ -465,7 +465,7 @@ export default function SupplierPurchaseManager() {
       )}
 
       {/* Filtres AMÉLIORÉS avec date de création */}
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4 sm:p-6">
         <div className="space-y-4">
           {/* Première ligne : Recherche et Statut */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -477,7 +477,7 @@ export default function SupplierPurchaseManager() {
                   placeholder="Rechercher par numéro, fournisseur, BA Acomba..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
+                  className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
                 />
               </div>
             </div>
@@ -485,7 +485,7 @@ export default function SupplierPurchaseManager() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
               >
                 <option value="all">Tous les statuts</option>
                 {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
@@ -496,8 +496,8 @@ export default function SupplierPurchaseManager() {
           </div>
 
           {/* NOUVELLE LIGNE : Filtres par date de création */}
-          <div className="border-t pt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+          <div className="border-t dark:border-gray-700 pt-4">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
               <Calendar className="w-4 h-4 mr-2" />
               Filtrer par date de création
             </h4>
@@ -508,7 +508,7 @@ export default function SupplierPurchaseManager() {
                 <select
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm p-2"
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm p-2"
                 >
                   <option value="all">Toutes les dates</option>
                   <option value="today">Aujourd'hui ({getDateFilterStats().todayCount})</option>
@@ -556,7 +556,7 @@ export default function SupplierPurchaseManager() {
               )}
 
               {/* Indicateur du nombre de résultats */}
-              <div className="flex items-center text-sm text-gray-600 lg:ml-auto">
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 lg:ml-auto">
                 <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded">
                   {filteredPurchases.length} résultat{filteredPurchases.length !== 1 ? 's' : ''}
                 </span>
@@ -567,32 +567,32 @@ export default function SupplierPurchaseManager() {
       </div>
 
       {/* Liste des achats - Desktop AVEC DATE DE CRÉATION */}
-      <div className="hidden md:block bg-white shadow-lg rounded-lg overflow-hidden">
+      <div className="hidden md:block bg-white dark:bg-gray-900 shadow-lg rounded-lg overflow-hidden">
         {filteredPurchases.length === 0 ? (
           <div className="text-center py-12">
-            <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500 text-lg">Aucun achat fournisseur trouvé</p>
+            <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+            <p className="text-gray-500 dark:text-gray-400 text-lg">Aucun achat fournisseur trouvé</p>
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date Création</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">BA Acomba</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO Client Lié</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date Livraison</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Montant</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">N° Achat</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Création</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">BA Acomba</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">PO Client Lié</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fournisseur</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Livraison</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Montant</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Statut</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredPurchases.map((purchase) => {
                 const poNumber = getPONumber(purchase, purchaseOrders);
                 return (
-                  <tr key={purchase.id} className="hover:bg-gray-50">
+                  <tr key={purchase.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td className="px-3 py-4 whitespace-nowrap">
                       <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
                         {purchase.purchase_number}
@@ -601,10 +601,10 @@ export default function SupplierPurchaseManager() {
                     {/* NOUVELLE COLONNE - DATE DE CRÉATION */}
                     <td className="px-3 py-4 whitespace-nowrap">
                       <div className="text-sm">
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-gray-900 dark:text-gray-100">
                           {formatDate(purchase.created_at)}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
                           {purchase.created_at && new Date(purchase.created_at).toLocaleTimeString('fr-FR', {
                             hour: '2-digit',
                             minute: '2-digit'
@@ -634,7 +634,7 @@ export default function SupplierPurchaseManager() {
                       )}
                     </td>
                     <td className="px-3 py-4">
-                      <div className="text-sm font-medium text-gray-900">{purchase.supplier_name}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{purchase.supplier_name}</div>
                     </td>
                     <td className={`px-3 py-4 text-center text-sm ${
                       purchase.delivery_date && 
@@ -707,20 +707,20 @@ export default function SupplierPurchaseManager() {
       {/* Liste mobile - Layout 2 lignes ULTRA-COMPACT */}
       <div className="md:hidden">
         {filteredPurchases.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">Aucun achat fournisseur trouvé</p>
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-8 text-center">
+            <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+            <p className="text-gray-500 dark:text-gray-400">Aucun achat fournisseur trouvé</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden divide-y divide-gray-100">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
             {filteredPurchases.map((purchase, index) => {
               const poNumber = getPONumber(purchase, purchaseOrders);
               return (
                 <div
                   key={purchase.id}
                   onClick={() => handleEditPurchase(purchase)}
-                  className={`p-2 sm:p-3 hover:bg-orange-50 active:bg-orange-100 transition-all duration-150 cursor-pointer touch-manipulation ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  className={`p-2 sm:p-3 hover:bg-orange-50 dark:hover:bg-gray-800 active:bg-orange-100 dark:active:bg-gray-700 transition-all duration-150 cursor-pointer touch-manipulation ${
+                    index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'
                   }`}
                 >
                   {/* LIGNE 1: Infos principales */}
@@ -731,7 +731,7 @@ export default function SupplierPurchaseManager() {
                     </div>
 
                     {/* Fournisseur */}
-                    <div className="font-semibold text-gray-900 text-sm truncate flex-1 min-w-0">
+                    <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate flex-1 min-w-0">
                       {purchase.supplier_name}
                     </div>
 
@@ -894,20 +894,20 @@ const ImportSubmissionModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+
         {/* En-tête */}
-        <div className="bg-green-50 p-6 border-b border-green-200">
+        <div className="bg-green-50 dark:bg-green-950 p-6 border-b border-green-200 dark:border-green-800">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-2xl font-bold text-green-600">Importer depuis une Soumission</h2>
-              <p className="text-green-700 text-sm mt-1">
+              <h2 className="text-2xl font-bold text-green-600 dark:text-green-400">Importer depuis une Soumission</h2>
+              <p className="text-green-700 dark:text-green-400 text-sm mt-1">
                 Sélectionnez une soumission acceptée et choisissez les items à commander
               </p>
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
             >
               Fermer
             </button>
@@ -917,7 +917,7 @@ const ImportSubmissionModal = ({
         <div className="flex-1 overflow-y-auto p-6">
           {/* Étape 1: Sélection de la soumission */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
               1. Sélectionnez une soumission acceptée
             </h3>
             
@@ -1127,9 +1127,9 @@ const AddressModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 50 }}>
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-        <div className="flex justify-between items-center p-6 border-b bg-purple-50">
-          <h2 className="text-2xl font-bold text-purple-600">Gestion des Adresses de Livraison</h2>
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 bg-purple-50 dark:bg-purple-950">
+          <h2 className="text-2xl font-bold text-purple-600 dark:text-purple-400">Gestion des Adresses de Livraison</h2>
           <div className="flex gap-3">
             <button
               type="button"
@@ -1146,7 +1146,7 @@ const AddressModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
             >
               Fermer
             </button>
@@ -1161,7 +1161,7 @@ const AddressModal = ({
           ) : (
             <div className="space-y-4">
               {addresses.map((address) => (
-                <div key={address.id} className="border rounded-lg p-4 hover:bg-gray-50 relative">
+                <div key={address.id} className="border dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 relative">
                   {address.is_default && (
                     <div className="absolute top-2 right-2">
                       <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
@@ -1172,8 +1172,8 @@ const AddressModal = ({
                   
                   <div className="flex justify-between">
                     <div className="flex-1 pr-4">
-                      <h3 className="font-semibold text-lg">{address.name}</h3>
-                      <div className="text-sm text-gray-600 mt-2 space-y-1">
+                      <h3 className="font-semibold text-lg dark:text-gray-100">{address.name}</h3>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1">
                         <p>{address.address}</p>
                         <p>{address.city}, {address.province} {address.postal_code}</p>
                         <p>{address.country}</p>
@@ -1223,62 +1223,62 @@ const AddressFormModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 60 }}>
-      <div className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <h3 className="text-xl font-bold text-purple-600 mb-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <h3 className="text-xl font-bold text-purple-600 dark:text-purple-400 mb-4">
           {editingAddress ? 'Modifier Adresse' : 'Nouvelle Adresse'}
         </h3>
         
         <form onSubmit={handleAddressSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nom de l'adresse *
               </label>
               <input
                 type="text"
                 value={addressForm.name}
                 onChange={(e) => setAddressForm({...addressForm, name: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="Ex: Bureau principal, Entrepôt..."
                 required
               />
             </div>
             
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Adresse complète *
               </label>
               <input
                 type="text"
                 value={addressForm.address}
                 onChange={(e) => setAddressForm({...addressForm, address: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="123 Rue Principale, App. 456"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Ville *
               </label>
               <input
                 type="text"
                 value={addressForm.city}
                 onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Province *
               </label>
               <select
                 value={addressForm.province}
                 onChange={(e) => setAddressForm({...addressForm, province: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 required
               >
                 <option value="QC">Québec</option>
@@ -1298,27 +1298,27 @@ const AddressFormModal = ({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Code postal
               </label>
               <input
                 type="text"
                 value={addressForm.postal_code}
                 onChange={(e) => setAddressForm({...addressForm, postal_code: e.target.value.toUpperCase()})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="H1A 1A1"
                 pattern="[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Pays
               </label>
               <select
                 value={addressForm.country}
                 onChange={(e) => setAddressForm({...addressForm, country: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
               >
                 <option value="Canada">Canada</option>
                 <option value="USA">USA</option>
@@ -1334,7 +1334,7 @@ const AddressFormModal = ({
                   onChange={(e) => setAddressForm({...addressForm, is_default: e.target.checked})}
                   className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                 />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Définir comme adresse par défaut
                 </span>
               </label>
@@ -1345,7 +1345,7 @@ const AddressFormModal = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
             >
               Annuler
             </button>

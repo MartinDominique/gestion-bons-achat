@@ -584,7 +584,7 @@ export default function InventoryManager() {
       </div>
 
       {/* Barre de recherche + Options de chargement */}
-      <div className="bg-white rounded-lg shadow-md p-3 space-y-3">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-3 space-y-3">
         {/* Recherche */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -593,7 +593,7 @@ export default function InventoryManager() {
             placeholder="Rechercher par code ou description (min. 2 caractères)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
+            className="w-full pl-10 pr-10 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
           />
           {searchLoading && (
             <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 w-5 h-5 animate-spin" />
@@ -615,7 +615,7 @@ export default function InventoryManager() {
             <select
               value=""
               onChange={(e) => { if (e.target.value) loadByGroup(e.target.value); }}
-              className="w-full px-3 py-3 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm appearance-none bg-white cursor-pointer"
+              className="w-full px-3 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm appearance-none bg-white dark:bg-gray-800 cursor-pointer"
               disabled={loading}
             >
               <option value="">Charger par groupe...</option>
@@ -630,7 +630,7 @@ export default function InventoryManager() {
           <button
             onClick={loadAll}
             disabled={loading}
-            className="px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center gap-2 min-w-[140px]"
+            className="px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 flex items-center justify-center gap-2 min-w-[140px]"
           >
             {loading && loadMode !== 'group' ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -644,7 +644,7 @@ export default function InventoryManager() {
         {/* Indicateur du mode actif + compteurs */}
         {loadMode !== 'idle' && (
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-sm text-gray-600 font-medium">
+            <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
               {getModeLabel()}
             </span>
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
@@ -662,12 +662,12 @@ export default function InventoryManager() {
 
       {/* État IDLE — Instructions */}
       {loadMode === 'idle' && !loading && (
-        <div className="bg-white rounded-lg shadow-md py-16 text-center">
-          <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-medium text-gray-600 mb-2">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md py-16 text-center">
+          <Search className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+          <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">
             Recherchez un produit pour commencer
           </h3>
-          <p className="text-sm text-gray-400 max-w-md mx-auto">
+          <p className="text-sm text-gray-400 dark:text-gray-500 max-w-md mx-auto">
             Tapez au moins 2 caractères dans la barre de recherche,
             ou utilisez les boutons ci-dessus pour charger les produits par groupe ou en totalité.
           </p>
@@ -676,7 +676,7 @@ export default function InventoryManager() {
 
       {/* Spinner de chargement (charger tout / par groupe) */}
       {loading && (
-        <div className="bg-white rounded-lg shadow-md py-16 text-center">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md py-16 text-center">
           <Loader2 className="w-12 h-12 mx-auto mb-4 text-blue-500 animate-spin" />
           <p className="text-blue-600 font-medium">
             {loadMode === 'all' || (!selectedLoadGroup && loadMode !== 'group')
@@ -692,21 +692,21 @@ export default function InventoryManager() {
 
       {/* Liste des produits */}
       {!loading && loadMode !== 'idle' && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden">
           {displayItems.length === 0 ? (
             <div className="text-center py-12">
-              <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500 text-lg">
+              <Package className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+              <p className="text-gray-500 dark:text-gray-400 text-lg">
                 Aucun produit trouvé
               </p>
               {loadMode === 'search' && (
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                   Essayez un autre terme de recherche
                 </p>
               )}
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {displayItems.map((item) => {
                 const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
                 const isProduct = item._source === 'products';
@@ -714,7 +714,7 @@ export default function InventoryManager() {
                 return (
                   <div
                     key={`${item._source}-${item.product_id}`}
-                    className="p-4 hover:bg-blue-50 cursor-pointer active:bg-blue-100 transition-colors"
+                    className="p-4 hover:bg-blue-50 dark:hover:bg-gray-800 cursor-pointer active:bg-blue-100 dark:active:bg-gray-700 transition-colors"
                     onClick={() => openEditModal(item)}
                   >
                     <div className="flex justify-between items-start">
@@ -745,11 +745,11 @@ export default function InventoryManager() {
                           )}
                         </div>
 
-                        <h3 className="text-sm font-medium text-gray-900 mb-1 pr-2">
+                        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 pr-2">
                           {item.description || 'Description non disponible'}
                         </h3>
 
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
                           {item.unit && <span>Unité: {item.unit}</span>}
                           {item.supplier && <span>Dern. fourn.: {item.supplier}</span>}
                         </div>
@@ -757,7 +757,7 @@ export default function InventoryManager() {
 
                       {/* Quantités */}
                       <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
-                        <div className={`font-semibold ${stockQty < 10 && isProduct ? 'text-red-600' : 'text-gray-900'}`}>
+                        <div className={`font-semibold ${stockQty < 10 && isProduct ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>
                           {stockQty}
                         </div>
                         <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>
@@ -774,10 +774,10 @@ export default function InventoryManager() {
                       {/* Prix et marge */}
                       <div className="flex flex-col items-end space-y-1 ml-3">
                         <div className="text-right">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             {formatCurrency(item.selling_price)}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
                             Coût: {formatCurrency(item.cost_price)}
                           </div>
                         </div>
@@ -798,32 +798,32 @@ export default function InventoryManager() {
       {/* Modal unifié : Édition + Historique + Prix */}
       {editingItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[95vh] flex flex-col shadow-xl">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl max-h-[95vh] flex flex-col shadow-xl">
             {/* Header */}
-            <div className="bg-blue-50 px-6 py-4 border-b">
+            <div className="bg-blue-50 dark:bg-blue-950 px-6 py-4 border-b dark:border-gray-700">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-semibold text-blue-900">
+                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-200">
                     {editingItem.product_id}
                   </h3>
-                  <p className="text-sm text-blue-700 mt-1">
+                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
                     {editingItem.description}
                   </p>
                 </div>
-                <button onClick={closeEditModal} className="p-1 hover:bg-blue-100 rounded">
-                  <X className="w-5 h-5 text-blue-800" />
+                <button onClick={closeEditModal} className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900 rounded">
+                  <X className="w-5 h-5 text-blue-800 dark:text-blue-300" />
                 </button>
               </div>
             </div>
 
             {/* Onglets */}
-            <div className="flex border-b">
+            <div className="flex border-b dark:border-gray-700">
               <button
                 onClick={() => setModalTab('edit')}
                 className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
                   modalTab === 'edit'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
                 <Edit className="w-4 h-4 inline mr-1" />
@@ -833,8 +833,8 @@ export default function InventoryManager() {
                 onClick={() => setModalTab('history')}
                 className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
                   modalTab === 'history'
-                    ? 'border-gray-700 text-gray-800 bg-gray-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-gray-700 dark:border-gray-300 text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
                 <History className="w-4 h-4 inline mr-1" />
@@ -844,8 +844,8 @@ export default function InventoryManager() {
                 onClick={() => setModalTab('prices')}
                 className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
                   modalTab === 'prices'
-                    ? 'border-green-500 text-green-700 bg-green-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-green-500 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
                 <DollarSign className="w-4 h-4 inline mr-1" />
@@ -861,27 +861,27 @@ export default function InventoryManager() {
                 <div className="space-y-4">
                   {/* Description (modifiable, majuscules) */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Description
                     </label>
                     <input
                       type="text"
                       value={editForm.description}
                       onChange={(e) => setEditForm({...editForm, description: e.target.value.toUpperCase()})}
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="Description du produit"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Dernier fournisseur
                     </label>
                     <input
                       type="text"
                       value={editForm.supplier}
                       onChange={(e) => setEditForm({...editForm, supplier: e.target.value.toUpperCase()})}
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="Mis à jour automatiquement lors d'un AF"
                     />
                   </div>
@@ -889,7 +889,7 @@ export default function InventoryManager() {
                   {/* Prix coûtant + vendant côte à côte */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Prix coûtant
                       </label>
                       <input
@@ -900,12 +900,12 @@ export default function InventoryManager() {
                         value={editForm.cost_price}
                         onChange={(e) => setEditForm({...editForm, cost_price: e.target.value})}
                         onFocus={(e) => e.target.select()}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                         placeholder="0.00"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Prix vendant *
                       </label>
                       <input
@@ -916,7 +916,7 @@ export default function InventoryManager() {
                         value={editForm.selling_price}
                         onChange={(e) => setEditForm({...editForm, selling_price: e.target.value})}
                         onFocus={(e) => e.target.select()}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                         placeholder="0.00"
                         required
                       />
@@ -964,7 +964,7 @@ export default function InventoryManager() {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Quantité en stock
                     </label>
                     <input
@@ -974,7 +974,7 @@ export default function InventoryManager() {
                       value={editForm.stock_qty}
                       onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
                       onFocus={(e) => e.target.select()}
-                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="0"
                     />
                   </div>
@@ -985,11 +985,11 @@ export default function InventoryManager() {
                     const stockVal = parseInt(editForm.stock_qty) || 0;
                     const dispo = stockVal - qty.reserved;
                     return (
-                      <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Détail quantités</div>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-1.5">
+                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Détail quantités</div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-700">En main (stock)</span>
-                          <span className="font-medium text-gray-900">{stockVal}</span>
+                          <span className="text-gray-700 dark:text-gray-300">En main (stock)</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{stockVal}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className={qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}>En commande (AF)</span>
@@ -1009,8 +1009,8 @@ export default function InventoryManager() {
 
                   {/* Aperçu de la marge */}
                   {editForm.cost_price && editForm.selling_price && (
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-sm text-gray-600 mb-1">Aperçu marge:</div>
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Aperçu marge:</div>
                       <div className={`text-lg font-medium ${getMarginColor(editForm.cost_price, editForm.selling_price)}`}>
                         {getMarginPercentage(editForm.cost_price, editForm.selling_price)}
                       </div>
@@ -1028,7 +1028,7 @@ export default function InventoryManager() {
                       <span className="ml-3 text-gray-600">Chargement...</span>
                     </div>
                   ) : historyMovements.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                       <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
                       <p>Aucun mouvement enregistré pour ce produit</p>
                     </div>
@@ -1122,16 +1122,16 @@ export default function InventoryManager() {
               {modalTab === 'prices' && (
                 <div className="space-y-4">
                   {/* Prix actuel */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="text-xs font-medium text-blue-500 uppercase tracking-wide mb-2">Prix actuel</div>
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wide mb-2">Prix actuel</div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-xs text-gray-500">Coûtant</div>
-                        <div className="text-lg font-bold text-gray-900">{formatCurrency(editingItem.cost_price)}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Coûtant</div>
+                        <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCurrency(editingItem.cost_price)}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-gray-500">Vendant</div>
-                        <div className="text-lg font-bold text-gray-900">{formatCurrency(editingItem.selling_price)}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Vendant</div>
+                        <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCurrency(editingItem.selling_price)}</div>
                       </div>
                     </div>
                     <div className={`text-sm font-medium mt-1 ${getMarginColor(editingItem.cost_price, editingItem.selling_price)}`}>
@@ -1142,11 +1142,11 @@ export default function InventoryManager() {
                   {/* Historique des prix */}
                   {(editingItem.cost_price_1st != null || editingItem.selling_price_1st != null) ? (
                     <div className="space-y-3">
-                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Historique (du plus récent au plus ancien)</div>
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Historique (du plus récent au plus ancien)</div>
 
                       {/* Prix précédent (1st) */}
                       {(editingItem.cost_price_1st != null || editingItem.selling_price_1st != null) && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                           <div className="text-xs font-medium text-gray-400 mb-1">Prix précédent (n-1)</div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -1167,7 +1167,7 @@ export default function InventoryManager() {
 
                       {/* Prix n-2 (2nd) */}
                       {(editingItem.cost_price_2nd != null || editingItem.selling_price_2nd != null) && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                           <div className="text-xs font-medium text-gray-400 mb-1">Avant-dernier (n-2)</div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -1188,7 +1188,7 @@ export default function InventoryManager() {
 
                       {/* Prix n-3 (3rd) */}
                       {(editingItem.cost_price_3rd != null || editingItem.selling_price_3rd != null) && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                           <div className="text-xs font-medium text-gray-400 mb-1">Plus ancien (n-3)</div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -1208,7 +1208,7 @@ export default function InventoryManager() {
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                       <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-30" />
                       <p>Aucun historique de prix enregistré</p>
                       <p className="text-xs mt-1">L'historique se remplira au prochain changement de prix</p>
@@ -1219,11 +1219,11 @@ export default function InventoryManager() {
             </div>
 
             {/* Footer avec boutons */}
-            <div className="bg-gray-50 px-6 py-4 flex gap-3 border-t">
+            <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex gap-3 border-t dark:border-gray-700">
               <button
                 onClick={closeEditModal}
                 disabled={saving}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 disabled:opacity-50"
               >
                 {modalTab === 'edit' ? 'Annuler' : 'Fermer'}
               </button>
@@ -1254,14 +1254,14 @@ export default function InventoryManager() {
       {/* Modal upload inventaire */}
       {showInventoryUpload && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md">
             <div className="p-4 sm:p-6">
-              <h3 className="text-lg font-semibold mb-4">
+              <h3 className="text-lg font-semibold dark:text-gray-100 mb-4">
                 <Upload className="w-5 h-5 inline mr-2 text-blue-600" />
                 Importer Inventaire
               </h3>
               <div className="space-y-4">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Sélectionnez votre fichier d'inventaire Excel (.xlsx, .xls) ou CSV
                 </p>
                 <input
@@ -1286,7 +1286,7 @@ export default function InventoryManager() {
                   <button
                     onClick={() => setShowInventoryUpload(false)}
                     disabled={uploadingInventory}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     Annuler
                   </button>

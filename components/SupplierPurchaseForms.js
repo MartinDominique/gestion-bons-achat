@@ -268,7 +268,7 @@ Merci!`;
     <>
       {/* FORMULAIRE */}
       <div className="max-w-6xl mx-auto p-4 no-print">
-        <div className="bg-white rounded-xl shadow-lg border border-orange-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-orange-200 dark:border-orange-800 overflow-hidden">
 
         {/* En-tête */}
         <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white p-4 sm:p-6">
@@ -333,11 +333,11 @@ Merci!`;
           {/* Affichage du statut email */}
           {emailStatus && (
             <div className={`mx-6 mt-4 p-4 rounded-lg border ${
-              emailStatus.includes('✅') 
-                ? 'bg-green-50 border-green-200 text-green-800' 
+              emailStatus.includes('✅')
+                ? 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200'
                 : emailStatus.includes('❌')
-                ? 'bg-red-50 border-red-200 text-red-800'
-                : 'bg-blue-50 border-blue-200 text-blue-800'
+                ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'
+                : 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200'
             }`}>
               {emailStatus}
             </div>
