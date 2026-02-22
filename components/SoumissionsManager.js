@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.7.1
- * @date 2026-02-11
+ * @version 1.8.0
+ * @date 2026-02-22
  * @changelog
+ *   1.8.0 - Ajout classes dark mode Tailwind CSS
  *   1.7.1 - Forcer majuscules sur code produit et description des items non-inventaire
  *   1.7.0 - Header répété sur pages 2+ dans le PDF jsPDF (version Client)
  *   1.6.0 - Footer fixe avec conditions+totaux au bas de chaque page + pagination
@@ -1959,7 +1960,7 @@ const cleanupFilesForSubmission = async (files) => {
           )}
 
           {/* FORMULAIRE SOUMISSION MOBILE-FRIENDLY */}
-          <div className="bg-white rounded-xl shadow-lg border border-purple-200 overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-purple-200 dark:border-purple-800 overflow-hidden">
             
             {/* En-tête du formulaire responsive */}
             <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-4 sm:p-6 no-print">
@@ -2042,7 +2043,7 @@ const cleanupFilesForSubmission = async (files) => {
             </div>
 
             {/* Suite du formulaire reste inchangée... */}
-            <div className="p-4 sm:p-6 no-print">
+            <div className="p-4 sm:p-6 no-print dark:bg-gray-900">
               <form 
                 id="submission-form" 
                 onSubmit={handleSubmissionSubmit} 
@@ -2056,15 +2057,15 @@ const cleanupFilesForSubmission = async (files) => {
                 
                 {/* Client et Description - Stack sur mobile */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <label className="block text-sm font-semibold text-blue-800 mb-2">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <label className="block text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">
                       👤 Client *
                     </label>
                     <select
                       value={submissionForm.client_name}
                       onChange={(e) => setSubmissionForm({...submissionForm, client_name: e.target.value})}
                       className={`block w-full rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 ${
-                        editingSubmission ? 'bg-gray-100 cursor-not-allowed' : ''
+                        editingSubmission ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'dark:bg-gray-800 dark:text-gray-100'
                       }`}
                       required
                       disabled={!!editingSubmission}
@@ -2078,15 +2079,15 @@ const cleanupFilesForSubmission = async (files) => {
                     </select>
                   </div>
 
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <label className="block text-sm font-semibold text-green-800 mb-2">
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                    <label className="block text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
                       📝 Description *
                     </label>
                     <input
                       type="text"
                       value={submissionForm.description}
                       onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value.toUpperCase()})}
-                      className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+                      className="block w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Description de la soumission..."
                       required
                     />
@@ -2095,14 +2096,14 @@ const cleanupFilesForSubmission = async (files) => {
 
                 {/* Statut pour édition */}
                 {editingSubmission && (
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
                       🏷️ Statut
                     </label>
                     <select
                       value={submissionForm.status}
                       onChange={(e) => setSubmissionForm({...submissionForm, status: e.target.value})}
-                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                      className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                     >
                       <option value="draft">📝 Brouillon</option>
                       <option value="sent">📤 Envoyée</option>
@@ -2112,8 +2113,8 @@ const cleanupFilesForSubmission = async (files) => {
                 )}
 
                 {/* Section recherche produits MOBILE-FRIENDLY */}
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                  <h3 className="text-base sm:text-lg font-semibold text-indigo-800 mb-4">
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                  <h3 className="text-base sm:text-lg font-semibold text-indigo-800 dark:text-indigo-300 mb-4">
                     🔍 Recherche Produits (6718 au total)
                   </h3>
                   
@@ -2131,7 +2132,7 @@ const cleanupFilesForSubmission = async (files) => {
                             setFocusedProductIndex(-1);
                           }}
                           onKeyDown={handleProductKeyDown}
-                          className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+                          className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 dark:border-indigo-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base dark:bg-gray-800 dark:text-gray-100"
                           autoComplete="off"
                         />
                       </div>
@@ -2150,41 +2151,41 @@ const cleanupFilesForSubmission = async (files) => {
                   {searchingProducts && (
                     <div className="flex items-center justify-center p-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mr-2"></div>
-                      <span className="text-indigo-600">Recherche en cours...</span>
+                      <span className="text-indigo-600 dark:text-indigo-400">Recherche en cours...</span>
                     </div>
                   )}
                   
                   {productSearchTerm && productSearchTerm.length < 2 && !searchingProducts && (
-                    <div className="p-4 text-center text-gray-500 border border-gray-200 rounded-lg">
+                    <div className="p-4 text-center text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg dark:bg-gray-800">
                       Tapez au moins 2 caractères pour rechercher dans les 6718 produits
                     </div>
                   )}
                   
                   {productSearchTerm.length >= 2 && !searchingProducts && (
-                    <div className="max-h-60 overflow-y-auto border border-indigo-200 rounded-lg">
+                    <div className="max-h-60 overflow-y-auto border border-indigo-200 dark:border-indigo-800 rounded-lg dark:bg-gray-800">
                       {products.length === 0 ? (
                         <div className="p-4 text-center text-gray-500">
                           Aucun produit trouvé pour "{productSearchTerm}"
                           <br />
-                          <span className="text-xs">Essayez avec d'autres mots-clés</span>
+                          <span className="text-xs dark:text-gray-500">Essayez avec d'autres mots-clés</span>
                         </div>
                       ) : (
                         <>
-                          <div className="p-2 bg-gray-50 text-xs text-gray-600 border-b">
+                          <div className="p-2 bg-gray-50 dark:bg-gray-700 text-xs text-gray-600 dark:text-gray-300 border-b dark:border-gray-600">
                             {products.length} résultat(s) trouvé(s) {products.length === 50 ? '(50 max affichés)' : ''}
                           </div>
                           {products.map((product, index) => (
                             <div 
                               key={product.product_id} 
                               data-product-index={index}
-                              className={`p-3 border-b border-indigo-100 hover:bg-indigo-50 cursor-pointer ${
-                                index === focusedProductIndex ? 'bg-indigo-100 border-indigo-300' : ''
+                              className={`p-3 border-b border-indigo-100 dark:border-indigo-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer ${
+                                index === focusedProductIndex ? 'bg-indigo-100 dark:bg-indigo-900/40 border-indigo-300' : 'dark:bg-gray-800'
                               }`}
                               onClick={() => selectProductForQuantity(product)}
                             >
                               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                                 <div className="flex-1">
-                                  <h4 className="font-medium text-gray-900 text-sm">
+                                  <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                                   {product.product_id} - {product.description}
                                   {product.is_non_inventory && (
                                   <span className="ml-2 bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
@@ -2192,7 +2193,7 @@ const cleanupFilesForSubmission = async (files) => {
                                   </span>
                                   )}
                                   </h4>
-                                  <div className="text-xs text-gray-500 space-y-1 sm:space-y-0 sm:space-x-4 sm:flex">
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 sm:space-y-0 sm:space-x-4 sm:flex">
                                     <span>📦 Groupe: {product.product_group}</span>
                                     <span>📏 Unité: {product.unit}</span>
                                     <span>📊 Stock: {product.stock_qty}</span>
@@ -2224,14 +2225,14 @@ const cleanupFilesForSubmission = async (files) => {
                 {/* Modal quantité MOBILE-FRIENDLY */}
                 {showQuantityInput && selectedProductForQuantity && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg w-full max-w-md">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md">
                       <div className="p-4 sm:p-6">
-                        <h3 className="text-lg font-semibold mb-4">
+                        <h3 className="text-lg font-semibold dark:text-gray-100 mb-4">
                           Quantité pour: {selectedProductForQuantity.description}
                         </h3>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               Quantité ({selectedProductForQuantity.unit})
                             </label>
                                   <input
@@ -2248,11 +2249,11 @@ const cleanupFilesForSubmission = async (files) => {
                                 }}
                               onKeyDown={handleQuantityKeyDown}
                             onFocus={(e) => e.target.select()} // ✅ AJOUT: Sélectionne au focus
-                                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3"
+                                className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                             autoFocus
                             />
                           </div>
-                          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                          <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                             <p>Prix vente: {formatCurrency(selectedProductForQuantity.selling_price)} / {selectedProductForQuantity.unit}</p>
                             <p>Prix coût: {formatCurrency(selectedProductForQuantity.cost_price)} / {selectedProductForQuantity.unit}</p>
                             <p className="font-medium text-green-700 mt-2">
@@ -2300,29 +2301,29 @@ const cleanupFilesForSubmission = async (files) => {
                 {/* Modal ajout rapide produit MOBILE-FRIENDLY */}
                 {showQuickAddProduct && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                       <div className="p-4 sm:p-6">
-                        <h3 className="text-lg font-semibold mb-4 text-orange-600">
+                        <h3 className="text-lg font-semibold mb-4 text-orange-600 dark:text-orange-400">
                           ➕ Ajouter Produit Non-Inventaire
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Code Produit *</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Code Produit *</label>
                             <input
                               type="text"
                               value={quickProductForm.product_id}
                               onChange={(e) => setQuickProductForm({...quickProductForm, product_id: e.target.value.toUpperCase()})}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                              className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Ex: TEMP-001"
                               required
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Unité</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unité</label>
                             <select
                               value={quickProductForm.unit}
                               onChange={(e) => setQuickProductForm({...quickProductForm, unit: e.target.value})}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                              className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                             >
                               <option value="Un">Un</option>
                               <option value="M">m</option>
@@ -2332,12 +2333,12 @@ const cleanupFilesForSubmission = async (files) => {
                             </select>
                           </div>
                           <div className="sm:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description *</label>
                             <input
                               type="text"
                               value={quickProductForm.description}
                               onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value.toUpperCase()})}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                              className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Description du produit..."
                               required
                             />
@@ -2345,7 +2346,7 @@ const cleanupFilesForSubmission = async (files) => {
                           
                           {/* PRIX COÛT AVEC CALCULATEUR USD */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Prix Coût CAD *</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Prix Coût CAD *</label>
                             <div className="flex gap-2">
                               <input
                                 type="number"
@@ -2375,9 +2376,9 @@ const cleanupFilesForSubmission = async (files) => {
 
                             {/* MINI-CALCULATEUR USD INLINE */}
                             {showUsdCalculator && (
-                              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                                 <div className="flex items-center justify-between mb-2">
-                                  <h4 className="text-sm font-medium text-blue-800 flex items-center">
+                                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center">
                                     <Calculator className="w-4 h-4 mr-1" />
                                     Convertir USD → CAD
                                   </h4>
@@ -2392,7 +2393,7 @@ const cleanupFilesForSubmission = async (files) => {
                                 
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-blue-700">Taux:</span>
+                                    <span className="text-blue-700 dark:text-blue-300">Taux:</span>
                                     <span className="font-medium">1 USD = {usdToCadRate.toFixed(4)} CAD</span>
                                     {loadingExchangeRate && (
                                       <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
@@ -2408,7 +2409,7 @@ const cleanupFilesForSubmission = async (files) => {
                                   </div>
                                   
                                   {exchangeRateError && (
-                                    <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                                    <div className="text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 p-2 rounded">
                                       {exchangeRateError}
                                     </div>
                                   )}
@@ -2421,7 +2422,7 @@ const cleanupFilesForSubmission = async (files) => {
                                       value={usdAmount}
                                       onChange={(e) => setUsdAmount(e.target.value)}
                                       placeholder="Montant USD"
-                                      className="flex-1 rounded border-blue-300 text-sm p-2"
+                                      className="flex-1 rounded border-blue-300 dark:border-blue-700 text-sm p-2 dark:bg-gray-800 dark:text-gray-100"
                                     />
                                     <span className="text-sm text-blue-700">USD</span>
                                     <span className="text-sm">=</span>
@@ -2445,14 +2446,14 @@ const cleanupFilesForSubmission = async (files) => {
 
                           {/* PRIX VENTE AVEC BOUTONS DE PROFIT */}
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vente CAD *</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Prix Vente CAD *</label>
                             <input
                               type="number"
                               step="0.01"
                               min="0"
                               value={quickProductForm.selling_price}
                               onChange={(e) => setQuickProductForm({...quickProductForm, selling_price: e.target.value})}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                              className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="0.00"
                               required
                             />
@@ -2490,8 +2491,8 @@ const cleanupFilesForSubmission = async (files) => {
                         </div>
                         
                         {quickProductForm.selling_price && quickProductForm.cost_price && (
-                          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-sm text-blue-800">
+                          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <p className="text-sm text-blue-800 dark:text-blue-300">
                               💰 Marge: {formatCurrency(parseFloat(quickProductForm.selling_price || 0) - parseFloat(quickProductForm.cost_price || 0))} 
                               ({((parseFloat(quickProductForm.selling_price || 0) - parseFloat(quickProductForm.cost_price || 0)) / parseFloat(quickProductForm.selling_price || 1) * 100).toFixed(1)}%)
                             </p>
@@ -2542,7 +2543,7 @@ const cleanupFilesForSubmission = async (files) => {
                       if (e.key === 'Escape') closeEditItemModal();
                     }}
                   >
-                    <div className="bg-white rounded-xl w-full max-w-md shadow-2xl">
+                    <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-md shadow-2xl">
                       {/* Header */}
                       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-t-xl">
                         <h3 className="text-lg font-bold">Modifier l'article</h3>
@@ -2555,7 +2556,7 @@ const cleanupFilesForSubmission = async (files) => {
                       <div className="p-6 space-y-4">
                         {/* Quantité */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Quantité ({editingItem.unit})
                           </label>
                           <input
@@ -2570,14 +2571,14 @@ const cleanupFilesForSubmission = async (files) => {
                                 saveEditItemModal();
                               }
                             }}
-                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3 text-lg"
+                            className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3 text-lg dark:bg-gray-800 dark:text-gray-100"
                             autoFocus
                           />
                         </div>
 
                         {/* Prix de vente */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Prix de vente ($)
                           </label>
                           <input
@@ -2592,13 +2593,13 @@ const cleanupFilesForSubmission = async (files) => {
                                 saveEditItemModal();
                               }
                             }}
-                            className="w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-3"
+                            className="w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 dark:bg-gray-800 dark:text-gray-100"
                           />
                         </div>
 
                         {/* Prix coûtant */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Prix coûtant ($)
                           </label>
                           <input
@@ -2613,40 +2614,40 @@ const cleanupFilesForSubmission = async (files) => {
                                 saveEditItemModal();
                               }
                             }}
-                            className="w-full rounded-lg border-orange-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3"
+                            className="w-full rounded-lg border-orange-300 dark:border-orange-700 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3 dark:bg-gray-800 dark:text-gray-100"
                           />
                         </div>
 
                         {/* Commentaire */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Commentaire (optionnel)
                           </label>
                           <textarea
                             value={editItemForm.comment}
                             onChange={(e) => setEditItemForm({...editItemForm, comment: e.target.value})}
-                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3"
+                            className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3 dark:bg-gray-800 dark:text-gray-100"
                             rows={2}
                             placeholder="Note pour cet article..."
                           />
                         </div>
 
                         {/* Aperçu totaux */}
-                        <div className="bg-gray-50 p-3 rounded-lg space-y-1">
+                        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg space-y-1">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Total vente:</span>
+                            <span className="text-gray-600 dark:text-gray-400">Total vente:</span>
                             <span className="font-medium text-green-700">
                               {formatCurrency((parseFloat(editItemForm.quantity) || 0) * (parseFloat(editItemForm.selling_price) || 0))}
                             </span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Total coût:</span>
+                            <span className="text-gray-600 dark:text-gray-400">Total coût:</span>
                             <span className="font-medium text-orange-700">
                               {formatCurrency((parseFloat(editItemForm.quantity) || 0) * (parseFloat(editItemForm.cost_price) || 0))}
                             </span>
                           </div>
-                          <div className="flex justify-between text-sm border-t pt-1 mt-1">
-                            <span className="text-gray-600">Marge:</span>
+                          <div className="flex justify-between text-sm border-t dark:border-gray-700 pt-1 mt-1">
+                            <span className="text-gray-600 dark:text-gray-400">Marge:</span>
                             <span className="font-medium text-blue-700">
                               {formatCurrency(
                                 ((parseFloat(editItemForm.quantity) || 0) * (parseFloat(editItemForm.selling_price) || 0)) -
@@ -2658,7 +2659,7 @@ const cleanupFilesForSubmission = async (files) => {
                       </div>
 
                       {/* Footer */}
-                      <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex justify-between items-center">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 rounded-b-xl flex justify-between items-center">
                         <button
                           type="button"
                           onClick={deleteFromEditModal}
@@ -2690,24 +2691,24 @@ const cleanupFilesForSubmission = async (files) => {
                 {/* MODAL POUR LES COMMENTAIRES */}
                 {showCommentModal && editingCommentItem && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg w-full max-w-md">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md">
                       <div className="p-4 sm:p-6">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center">
+                        <h3 className="text-lg font-semibold mb-4 flex items-center dark:text-gray-100">
                           <MessageSquare className="w-5 h-5 mr-2 text-blue-600" />
                           Commentaire pour: {editingCommentItem.description}
                         </h3>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               Commentaire (optionnel)
                             </label>
                             <textarea
                               value={tempComment}
                               onChange={(e) => setTempComment(e.target.value)}
-                              className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 h-24 resize-none"
+                              className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 h-24 resize-none dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Ajouter un commentaire pour ce produit..."
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Ce commentaire apparaîtra sur la soumission imprimée
                             </p>
                           </div>
@@ -2735,15 +2736,15 @@ const cleanupFilesForSubmission = async (files) => {
 
                 {/* Items sélectionnés MOBILE-FRIENDLY - Reste inchangé mais tronqué pour la taille */}
                 {selectedItems.length > 0 && (
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                    <h3 className="text-base sm:text-lg font-semibold text-yellow-800 mb-4">
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <h3 className="text-base sm:text-lg font-semibold text-yellow-800 dark:text-yellow-300 mb-4">
                       📦 Produits Sélectionnés ({selectedItems.length})
                     </h3>
                     
                     {/* Tableau responsive */}
-                    <div className="hidden sm:block max-h-80 overflow-y-auto border border-yellow-200 rounded-lg bg-white">
+                    <div className="hidden sm:block max-h-80 overflow-y-auto border border-yellow-200 dark:border-yellow-800 rounded-lg bg-white dark:bg-gray-900">
                       <table className="w-full text-sm">
-                        <thead className="bg-yellow-100 sticky top-0">
+                        <thead className="bg-yellow-100 dark:bg-yellow-900/40 sticky top-0">
                           <tr>
                             <th className="text-left p-2 font-semibold">Code</th>
                             <th className="text-left p-2 font-semibold">Description</th>
@@ -2762,14 +2763,14 @@ const cleanupFilesForSubmission = async (files) => {
                             return (
                               <tr 
                                 key={item.product_id} 
-                                className="border-b border-yellow-100 hover:bg-yellow-50 cursor-pointer"
+                                className="border-b border-yellow-100 dark:border-yellow-900/30 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 cursor-pointer dark:bg-gray-900"
                                 onClick={() => openEditItemModal(item)}
                               >
-                                <td className="p-2 font-mono text-xs">{item.product_id}</td>
+                                <td className="p-2 font-mono text-xs dark:text-gray-300">{item.product_id}</td>
                                 <td className="p-2">
                                   <div className="max-w-xs">
-                                    <div className="font-medium text-gray-900 truncate">{item.description}</div>
-                                    <div className="text-xs text-gray-500">{item.product_group} • {item.unit}</div>
+                                    <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{item.description}</div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">{item.product_group} • {item.unit}</div>
                                     {item.comment && (
                                       <div className="text-xs text-blue-600 italic mt-1 truncate">
                                         💬 {item.comment}
@@ -2789,7 +2790,7 @@ const cleanupFilesForSubmission = async (files) => {
                                         updateItemQuantity(item.product_id, value);
                                       }
                                     }}
-                                    className="w-16 text-center rounded border-gray-300 text-sm"
+                                    className="w-16 text-center rounded border-gray-300 dark:border-gray-600 text-sm dark:bg-gray-800 dark:text-gray-100"
                                   />
                                 </td>
                                 <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
@@ -2799,7 +2800,7 @@ const cleanupFilesForSubmission = async (files) => {
                                     min="0"
                                     value={item.selling_price}
                                     onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
-                                    className="w-20 text-right rounded border-green-300 text-sm focus:border-green-500 focus:ring-green-500"
+                                    className="w-20 text-right rounded border-green-300 dark:border-green-700 text-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
                                   />
                                 </td>
                                 <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
@@ -2809,7 +2810,7 @@ const cleanupFilesForSubmission = async (files) => {
                                     min="0"
                                     value={item.cost_price}
                                     onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
-                                    className="w-20 text-right rounded border-orange-300 text-sm focus:border-orange-500 focus:ring-orange-500"
+                                    className="w-20 text-right rounded border-orange-300 dark:border-orange-700 text-sm focus:border-orange-500 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100"
                                   />
                                 </td>
                                 <td className="p-2 text-right font-medium text-green-700">
@@ -2824,8 +2825,8 @@ const cleanupFilesForSubmission = async (files) => {
                                     onClick={() => openCommentModal(item)}
                                     className={`px-2 py-1 rounded text-xs ${
                                       item.comment 
-                                        ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50' 
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                                     }`}
                                     title={item.comment ? 'Modifier commentaire' : 'Ajouter commentaire'}
                                   >
@@ -2854,15 +2855,15 @@ const cleanupFilesForSubmission = async (files) => {
                       {[...selectedItems].reverse().map((item) => (
                         <div 
                           key={item.product_id} 
-                          className="bg-white p-3 rounded-lg border border-yellow-200 cursor-pointer active:bg-yellow-50"
+                          className="bg-white dark:bg-gray-900 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 cursor-pointer active:bg-yellow-50 dark:active:bg-yellow-900/20"
                           onClick={() => openEditItemModal(item)}
                         >
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900 text-sm">{item.product_id}</h4>
-                              <p className="text-xs text-gray-600">{item.description}</p>
+                              <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm">{item.product_id}</h4>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">{item.description}</p>
                               {item.comment && (
-                                <p className="text-xs text-blue-600 italic mt-1">💬 {item.comment}</p>
+                                <p className="text-xs text-blue-600 dark:text-blue-400 italic mt-1">💬 {item.comment}</p>
                               )}
                             </div>
                             <div className="text-right">
@@ -2880,7 +2881,7 @@ const cleanupFilesForSubmission = async (files) => {
                     
                     <div className="mt-3 space-y-2">
                       <div className="flex justify-between items-center text-sm">
-                        <span className="text-yellow-700">
+                        <span className="text-yellow-700 dark:text-yellow-400">
                           📊 {selectedItems.length} article(s) • 
                           Total quantité: {selectedItems.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(1)} unités
                         </span>
@@ -2898,8 +2899,8 @@ const cleanupFilesForSubmission = async (files) => {
                 )}
 
                 {/* Section Documents - NOUVEAU */}
-<div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-  <label className="block text-sm font-semibold text-purple-800 mb-2">
+<div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+  <label className="block text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">
     📎 Documents (PDF, XLS, DOC, etc.)
   </label>
   
@@ -2915,7 +2916,7 @@ const cleanupFilesForSubmission = async (files) => {
       />
     </div>
     {uploadingFiles && (
-      <p className="text-sm text-purple-600 mt-2 flex items-center">
+      <p className="text-sm text-purple-600 dark:text-purple-400 mt-2 flex items-center">
         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600 mr-2"></div>
         📤 Upload en cours... Veuillez patienter.
       </p>
@@ -2924,20 +2925,20 @@ const cleanupFilesForSubmission = async (files) => {
 
   {submissionForm.files && submissionForm.files.length > 0 && (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-purple-700">
+      <p className="text-sm font-medium text-purple-700 dark:text-purple-400">
         📁 Documents joints ({submissionForm.files.length})
       </p>
       <div className="space-y-2">
         {submissionForm.files.map((file, index) => (
-          <div key={index} className="bg-white p-3 rounded border border-purple-200 shadow-sm">
+          <div key={index} className="bg-white dark:bg-gray-800 p-3 rounded border border-purple-200 dark:border-purple-800 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center space-x-3 flex-1 min-w-0">
                 <span className="text-xl flex-shrink-0">{getFileIcon(file.type)}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                     {file.name}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {formatFileSize(file.size)} • {file.type}
                   </p>
                 </div>
@@ -2987,41 +2988,41 @@ const cleanupFilesForSubmission = async (files) => {
 
                 {/* Totaux responsive */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-green-100 p-4 rounded-lg border border-green-300">
-                    <label className="block text-base sm:text-lg font-semibold text-green-800 mb-2">
+                  <div className="bg-green-100 dark:bg-green-900/20 p-4 rounded-lg border border-green-300 dark:border-green-800">
+                    <label className="block text-base sm:text-lg font-semibold text-green-800 dark:text-green-300 mb-2">
                       💰 Total Vente
                     </label>
-                    <div className="text-xl sm:text-2xl font-bold text-green-900">
+                    <div className="text-xl sm:text-2xl font-bold text-green-900 dark:text-green-200">
                       {formatCurrency(submissionForm.amount)}
                     </div>
                   </div>
                   
-                  <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
-                    <label className="block text-base sm:text-lg font-semibold text-orange-800 mb-2">
+                  <div className="bg-orange-100 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-300 dark:border-orange-800">
+                    <label className="block text-base sm:text-lg font-semibold text-orange-800 dark:text-orange-300 mb-2">
                       🏷️ Total Coût
                     </label>
-                    <div className="text-xl sm:text-2xl font-bold text-orange-900">
+                    <div className="text-xl sm:text-2xl font-bold text-orange-900 dark:text-orange-200">
                       {formatCurrency(calculatedCostTotal)}
                     </div>
                   </div>
 
-                  <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
-                    <label className="block text-base sm:text-lg font-semibold text-blue-800 mb-2">
+                  <div className="bg-blue-100 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-300 dark:border-blue-800">
+                    <label className="block text-base sm:text-lg font-semibold text-blue-800 dark:text-blue-300 mb-2">
                       📈 Marge
                     </label>
-                    <div className="text-xl sm:text-2xl font-bold text-blue-900">
+                    <div className="text-xl sm:text-2xl font-bold text-blue-900 dark:text-blue-200">
                       {formatCurrency(submissionForm.amount - calculatedCostTotal)}
                     </div>
                     {submissionForm.amount > 0 && calculatedCostTotal > 0 && (
-                      <div className="text-sm text-blue-700">
+                      <div className="text-sm text-blue-700 dark:text-blue-400">
                         {((submissionForm.amount - calculatedCostTotal) / submissionForm.amount * 100).toFixed(1)}%
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                  <p className="text-gray-600 text-sm">
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
                     📋 {selectedItems.length} produit(s) sélectionné(s) • 
                     Utilisez les boutons dans la barre violette ci-dessus pour sauvegarder
                   </p>
@@ -3134,14 +3135,14 @@ const cleanupFilesForSubmission = async (files) => {
       </div>
 
       {/* Info système */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <p className="text-sm text-gray-600">
+      <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           📊 6718 produits • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto • 📧 Email .EML
         </p>
       </div>
 
       {/* Filtres responsive */}
-      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -3151,7 +3152,7 @@ const cleanupFilesForSubmission = async (files) => {
                 placeholder="🔍 Rechercher par client ou description..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base"
+                className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base dark:bg-gray-800 dark:text-gray-100"
               />
             </div>
           </div>
@@ -3162,7 +3163,7 @@ const cleanupFilesForSubmission = async (files) => {
                 setStatusFilter(e.target.value);
                 localStorage.setItem('soumission_statusFilter', e.target.value);
               }}
-              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+              className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="all">Tous les statuts</option>
               <option value="draft">📝 Brouillons</option>
@@ -3174,39 +3175,39 @@ const cleanupFilesForSubmission = async (files) => {
       </div>
 
       {/* DESKTOP VIEW - Table compacte */}
-      <div className="hidden lg:block bg-white shadow-lg rounded-lg overflow-hidden">
+      <div className="hidden lg:block bg-white dark:bg-gray-900 shadow-lg rounded-lg overflow-hidden">
         {filteredSoumissions.length === 0 ? (
           <div className="text-center py-12">
             <span className="text-6xl mb-4 block">📝</span>
-            <p className="text-gray-500 text-lg">Aucune soumission trouvée</p>
+            <p className="text-gray-500 dark:text-gray-400 text-lg">Aucune soumission trouvée</p>
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Soumission
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Client & Description
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Montant
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Statut
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredSoumissions.map((submission) => (
-                <tr key={submission.id} className="hover:bg-gray-50">
+                <tr key={submission.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                   <td className="px-3 py-4 whitespace-nowrap">
                     <div className="text-sm space-y-1">
                       {submission.submission_number && (
@@ -3223,8 +3224,8 @@ const cleanupFilesForSubmission = async (files) => {
                   </td>
                   <td className="px-3 py-4">
                     <div className="text-sm">
-                      <div className="font-medium text-gray-900">{submission.client_name}</div>
-                      <div className="text-gray-500 truncate max-w-xs" title={submission.description}>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{submission.client_name}</div>
+                      <div className="text-gray-500 dark:text-gray-400 truncate max-w-xs" title={submission.description}>
                         {submission.description}
                       </div>
                     </div>
@@ -3244,7 +3245,7 @@ const cleanupFilesForSubmission = async (files) => {
                        submission.status === 'draft' ? '📝' : '✅'}
                     </span>
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                  <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(submission.created_at)}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-center">
@@ -3292,12 +3293,12 @@ const cleanupFilesForSubmission = async (files) => {
       {/* Vue MOBILE/TABLETTE - Layout 2 lignes ULTRA-COMPACT */}
       <div className="lg:hidden">
         {filteredSoumissions.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md p-8 text-center">
             <span className="text-6xl mb-4 block">📝</span>
-            <p className="text-gray-500 text-lg">Aucune soumission trouvée</p>
+            <p className="text-gray-500 dark:text-gray-400 text-lg">Aucune soumission trouvée</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden divide-y divide-gray-100">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
             {filteredSoumissions.map((submission, index) => (
               <div
                 key={submission.id}
@@ -3320,7 +3321,7 @@ const cleanupFilesForSubmission = async (files) => {
                   setShowForm(true);
                 }}
                 className={`p-2 sm:p-3 hover:bg-purple-50 active:bg-purple-100 transition-all duration-150 cursor-pointer touch-manipulation ${
-                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'
                 }`}
               >
                 {/* LIGNE 1: Infos principales */}
@@ -3339,12 +3340,12 @@ const cleanupFilesForSubmission = async (files) => {
                   )}
 
                   {/* Client */}
-                  <div className="font-semibold text-gray-900 text-sm truncate flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate flex-1 min-w-0">
                     {submission.client_name}
                   </div>
 
                   {/* Date */}
-                  <div className="text-xs font-medium text-gray-700 flex-shrink-0 hidden sm:block">
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-400 flex-shrink-0 hidden sm:block">
                     {formatDate(submission.created_at)}
                   </div>
 

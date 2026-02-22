@@ -474,6 +474,19 @@ CRON_SECRET                   # Auth pour cron jobs
 5. ~~**Réception directe + Ajustement inventaire**~~ - ✅ COMPLÉTÉ 2026-02-18 (PR #52) - DirectReceiptModal
 6. ~~**Historique des prix produits**~~ - ✅ COMPLÉTÉ 2026-02-11 (PR #36-#39) - 3 niveaux prix + fournisseur
 7. ~~**Recherche serveur inventaire**~~ - ✅ COMPLÉTÉ 2026-02-12 (PR #37) - max 50 résultats, par groupe
+8. ~~**Mode Sombre (Dark Mode)**~~ - ✅ COMPLÉTÉ 2026-02-22 (branche `claude/add-dark-mode-support-FvcFv`)
+   - `tailwind.config.js` — `darkMode: 'class'` activé
+   - `app/globals.css` — `color-scheme: dark` ajouté
+   - `components/ThemeProvider.js` — wrapper `next-themes` (nouveau)
+   - `app/layout.js` — ThemeProvider + classes `dark:` sur body
+   - `app/(protected)/parametres/page.js` — page sélecteur Système/Clair/Sombre (nouveau)
+   - Tous les composants migrés avec classes Tailwind `dark:` :
+     Navigation, ClientManager, InventoryManager, SupplierPurchaseManager, SupplierPurchaseForms,
+     WorkOrderForm, TimeTracker, MaterialSelector, DeliveryNoteForm, DeliveryNoteClientView,
+     DirectReceiptModal, SupplierReceiptModal, BCCConfirmationModal, ClientModal, PurchaseOrderModal,
+     SoumissionsManager, DeliverySlipModal, ClientPOManager, SplitViewPanel, bons-travail page, login
+   - Pattern: `bg-white dark:bg-gray-900` / `text-gray-900 dark:text-gray-100` / inputs: `dark:bg-gray-800 dark:border-gray-600`
+   - **Reste à faire:** Tester visuellement sur tablette + ajuster si couleurs incorrectes
 
 ### À faire (priorité utilisateur)
 1. **Rapports & Statistiques de Ventes** - Nouveau module: coûts, ventes, marges par BT/BL/Soumission (voir `Rapports_Statistiques.md`)
@@ -484,6 +497,7 @@ CRON_SECRET                   # Auth pour cron jobs
 6. **Optimisation mobile BT/BL** - 95% usage mobile
 7. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
+9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin (ex: badges statut, composants WorkOrderList, WorkOrderClientView)
 
 ### Bugs connus (corrigés)
 - ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé (2026-02-07)
@@ -619,6 +633,8 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
   signature_timestamp: "2026-02-07T14:30:00Z",
   client_signature_name: "Jean Tremblay"
 }
+
+
 ```
 
 **Différences clés BL vs BT:**
