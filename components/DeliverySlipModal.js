@@ -5,9 +5,10 @@
  *              - Déduction automatique du stock (products/non_inventory_items)
  *              - Création des mouvements d'inventaire (inventory_movements)
  *              - Génération PDF avec 2 copies (Client + STMT)
- * @version 1.1.0
- * @date 2026-02-11
+ * @version 1.2.0
+ * @date 2026-02-22
  * @changelog
+ *   1.2.0 - Ajout classes dark mode Tailwind CSS
  *   1.1.0 - Ajout déduction inventaire (stock_qty) et mouvements (inventory_movements) lors de la création du BL
  *   1.0.0 - Version initiale
  */
@@ -584,7 +585,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold">
@@ -600,17 +601,17 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-red-100 dark:bg-red-900/20 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-400 px-4 py-3 rounded mb-4">
               {error}
             </div>
           )}
 
           {!hasExistingSubmission && (
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 p-4 mb-4">
               <div className="flex">
                 <div className="flex-shrink-0">ℹ️</div>
                 <div className="ml-3">
-                  <p className="text-sm text-blue-700">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
                     <strong>Info:</strong> Ce bon d'achat n'a pas de soumission attribuée.
                     Vous pouvez quand même créer une livraison pour les articles ajoutés manuellement.
                   </p>
@@ -623,104 +624,104 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             {/* Informations générales */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Date de livraison *
                 </label>
                 <input
                   type="date"
                   value={formData.delivery_date}
                   onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Entreprise de transport
                 </label>
                 <input
                   type="text"
                   value={formData.transport_company}
                   onChange={(e) => setFormData(prev => ({ ...prev, transport_company: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Ex: Purolator, UPS, FedEx..."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Numéro de transport
                 </label>
                 <input
                   type="text"
                   value={formData.tracking_number}
                   onChange={(e) => setFormData(prev => ({ ...prev, tracking_number: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Numéro de transport du transporteur"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Contact livraison
                 </label>
                 <input
                   type="text"
                   value={formData.delivery_contact}
                   onChange={(e) => setFormData(prev => ({ ...prev, delivery_contact: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Nom du contact pour la réception"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Instructions spéciales
               </label>
               <textarea
                 value={formData.special_instructions}
                 onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value }))}
                 rows={2}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="Instructions particulières pour la livraison..."
               />
             </div>
 
             {/* Sélection des articles */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
                 Sélection des articles à livrer
               </h3>
 
               {formData.items.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                   <p>Aucun article disponible pour ce bon d'achat</p>
                 </div>
               ) : (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                   <div className="max-h-80 overflow-y-auto">
                     <table className="w-full">
-                      <thead className="bg-gray-50 sticky top-0">
+                      <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                             Sélectionner
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                             Article
                           </th>
-                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                             Qté Restante
                           </th>
-                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                             Qté à Livrer
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                         {formData.items.map((item) => (
-                          <tr key={item.id} className={item.selected ? 'bg-blue-50' : ''}>
+                          <tr key={item.id} className={item.selected ? 'bg-blue-50 dark:bg-blue-900/20' : 'dark:bg-gray-900'}>
                             <td className="px-4 py-3">
                               <input
                                 type="checkbox"
@@ -732,13 +733,13 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                             </td>
                             <td className="px-4 py-3">
                               <div>
-                                <div className="text-sm font-medium text-gray-900">
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                   {item.product_id}
                                 </div>
-                                <div className="text-sm text-gray-500">
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
                                   {item.description}
                                 </div>
-                                <div className="text-xs text-gray-400">
+                                <div className="text-xs text-gray-400 dark:text-gray-500">
                                   {item.unit} | Déjà livré: {item.delivered_quantity}
                                 </div>
                               </div>
@@ -746,8 +747,8 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                             <td className="px-4 py-3 text-center">
                               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                 item.remaining_quantity > 0 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-gray-100 text-gray-800'
+                                  ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' 
+                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
                               }`}>
                                 {item.remaining_quantity}
                               </span>
@@ -761,10 +762,10 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                                   step="0.01"
                                   value={item.quantity_to_deliver}
                                   onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                  className="w-20 p-1 text-center border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                  className="w-20 p-1 text-center border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                                 />
                               ) : (
-                                <span className="text-gray-400">-</span>
+                                <span className="text-gray-400 dark:text-gray-500">-</span>
                               )}
                             </td>
                           </tr>
@@ -777,9 +778,9 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
 
               {/* Résumé de la sélection */}
               {selectedItems.length > 0 && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-800 mb-2">Résumé de la livraison</h4>
-                  <div className="text-sm text-blue-700">
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Résumé de la livraison</h4>
+                  <div className="text-sm text-blue-700 dark:text-blue-300">
                     <p>Articles sélectionnés: {selectedItems.length}</p>
                     <p>Quantité totale à livrer: {totalItems.toFixed(2)}</p>
                   </div>
@@ -788,11 +789,11 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
             </div>
 
             {/* Boutons d'action */}
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                 disabled={isLoading}
               >
                 Annuler

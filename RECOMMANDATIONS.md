@@ -1043,6 +1043,66 @@ Pas de tests automatises detectes.
 - [ ] Ajout de tests automatises
 - [ ] Documentation API (Swagger/OpenAPI)
 
+### Phase 13 - Mode Sombre (Dark Mode) ✅ COMPLETE (2026-02-22)
+
+**Demande:** Ajouter un mode sombre a toute l'application pour le confort visuel en conditions de faible lumiere (terrain le soir, etc.).
+
+**Implementation completee (2026-02-22) - branche `claude/add-dark-mode-support-FvcFv`:**
+
+**Infrastructure:**
+- `tailwind.config.js` - `darkMode: 'class'` active
+- `app/globals.css` - `color-scheme: dark` dans `@layer base`
+- `package.json` - dependance `next-themes` ajoutee
+- `components/ThemeProvider.js` (v1.0.0, NOUVEAU) - wrapper `next-themes` avec `attribute="class" defaultTheme="system" enableSystem`
+- `app/layout.js` - ThemeProvider integre, `suppressHydrationWarning` sur `<html>`, classes `dark:bg-gray-950 dark:text-gray-100` sur `<body>`
+- `app/(protected)/parametres/page.js` (v1.0.0, NOUVEAU) - page de selection du theme (Systeme auto / Clair / Sombre)
+- Navigation - lien "Parametres" (icone Settings) ajoute
+
+**Composants migres (classes Tailwind `dark:`):**
+- `components/Navigation.js` - dark mode nav + icone Settings
+- `components/work-orders/WorkOrderForm.js` - formulaire BT complet (~104 classes `dark:`)
+- `components/work-orders/TimeTracker.js` - suivi temps, sessions, modal edition (~60 classes `dark:`)
+- `components/work-orders/MaterialSelector.js` - liste materiaux, modals recherche/edition (~88 classes `dark:`)
+- `components/delivery-notes/DeliveryNoteForm.js` - formulaire BL complet (~90 classes `dark:`)
+- `components/delivery-notes/DeliveryNoteClientView.js` - vue client signature BL (~86 classes `dark:`)
+- `components/DirectReceiptModal.js` - reception directe + ajustement (~113 classes `dark:`)
+- `components/SupplierReceiptModal.js` - reception AF (~85 classes `dark:`)
+- `components/PurchaseOrder/BCCConfirmationModal.js` - confirmation commande (~130 classes `dark:`)
+- `components/ClientModal.js` - gestion client (~106 classes `dark:`)
+- `components/PurchaseOrderModal.js` - modal BA complet (~243 classes `dark:`)
+- `components/SoumissionsManager.js` - gestion soumissions (~128 classes `dark:`)
+- `components/DeliverySlipModal.js` - ancien modal BL (~36 classes `dark:`)
+- `components/ClientPOManager.js` - gestionnaire BA client (~62 classes `dark:`)
+- `components/ClientManager.js` - gestion clients
+- `components/InventoryManager.js` - gestion inventaire
+- `components/SupplierPurchaseManager.js` - gestion AF
+- `components/SupplierPurchaseForms.js` - formulaires AF
+- `components/SplitView/SplitViewPanel.js` - panneau lateral
+- `app/bons-travail/page.js` - liste BT/BL
+- `app/login/page.js` - page connexion
+
+**Pattern standard applique:**
+```
+bg-white      → dark:bg-gray-900  (containers principaux)
+bg-gray-50    → dark:bg-gray-800  (sections, cartes)
+bg-gray-100   → dark:bg-gray-800  (fonds secondaires)
+text-gray-900 → dark:text-gray-100
+text-gray-700 → dark:text-gray-300
+text-gray-500 → dark:text-gray-400
+border-gray-200 → dark:border-gray-700
+border-gray-300 → dark:border-gray-600
+input fields  → dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600
+bg-red-50     → dark:bg-red-900/20 (alertes)
+bg-green-50   → dark:bg-green-900/20 (succes)
+bg-yellow-50  → dark:bg-yellow-900/20 (avertissements)
+```
+
+**A verifier / ajuster post-merge:**
+- [ ] Tester visuellement sur tablette (mode sombre ON) - focus BT et BL (95% mobile)
+- [ ] Verifier les badges de statut (couleurs pastel en mode sombre)
+- [ ] `WorkOrderList.js` et `WorkOrderClientView.js` non migres (pages peu utilisees)
+- [ ] Ajuster si des couleurs semblent incorrectes apres test terrain
+
 ---
 
 ## Reponses de l'Utilisateur (2026-02-05)
@@ -1095,7 +1155,7 @@ Priorite a l'optimisation responsive pour:
 
 ## Prochaines Actions Prioritaires
 
-Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-18:
+Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 
 1. ~~**Bon de Livraison (BL) integre dans BT**~~ - ✅ Phase 3 QUASI-COMPLETE (2026-02-17, PR #42-#51) - reste bandeau alertes
 2. ~~**TimeTracker surcharges soir/weekend/ferie**~~ - ✅ Phase 4 COMPLETE (2026-02-10)
@@ -1105,10 +1165,12 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-18:
 6. ~~**Panneau lateral Split View**~~ - ✅ Phase 8 COMPLETE (2026-02-16, PR #48)
 7. ~~**Reception directe + Ajustement inventaire**~~ - ✅ Phase 9 COMPLETE (2026-02-18, PR #52)
 8. ~~**Historique des prix produits**~~ - ✅ Phase 10 COMPLETE (2026-02-11, PR #36-#39)
-9. **Optimisation mobile BT/BL** - Continue (95% mobile)
-10. **Rapports & Statistiques de Ventes** - Phase 12 (demande 2026-02-19) - EN ATTENTE
-11. **Systeme permissions** - Futur (multi-utilisateurs)
-12. **Revoir rapport hebdomadaire** - Futur
+9. ~~**Mode Sombre (Dark Mode)**~~ - ✅ Phase 11 COMPLETE (2026-02-22, PR #60)
+10. **Ajustements visuels Dark Mode** - Tester sur tablette apres merge, ajuster si besoin
+11. **Optimisation mobile BT/BL** - Continue (95% mobile)
+12. **Rapports & Statistiques de Ventes** - Phase 12 (demande 2026-02-19) - EN ATTENTE
+13. **Systeme permissions** - Futur (multi-utilisateurs)
+14. **Revoir rapport hebdomadaire** - Futur
 
 ---
 
@@ -1157,4 +1219,4 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-18:
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-02-19 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-02-22 par Claude AI*

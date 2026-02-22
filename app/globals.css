@@ -1,6 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Dark mode - styles de base */
+@layer base {
+  .dark {
+    color-scheme: dark;
+  }
+}
+
 /* Ajouter ces styles à la fin de globals.css */
 
 /* Styles d'impression professionnels */

@@ -58,17 +58,17 @@ export default function SplitViewPanel() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white border-l border-gray-200 shadow-lg">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg">
       {/* Panel header with close button */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200 flex-shrink-0">
-        <span className="text-sm font-medium text-gray-600">
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
           {panelContent.type === 'purchase-order' && 'Bon d\'Achat Client'}
           {panelContent.type === 'supplier-purchase' && 'Achat Fournisseur'}
           {panelContent.type === 'soumission' && 'Soumission'}
         </span>
         <button
           onClick={closePanel}
-          className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors text-gray-500 hover:text-gray-700"
+          className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
           title="Fermer le panneau"
         >
           <X className="w-5 h-5" />

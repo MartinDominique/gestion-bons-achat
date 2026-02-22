@@ -1,6 +1,6 @@
 'use client';
 
-import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse } from 'lucide-react';
+import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -106,10 +106,10 @@ const shouldHideNav = pathname.includes('/bons-travail/') &&
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Vérification de l'authentification...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Vérification de l'authentification...</p>
         </div>
       </div>
     );
@@ -126,7 +126,7 @@ const shouldHideNav = pathname.includes('/bons-travail/') &&
 return (
   <>
     {/* Navigation principale */}
-    <nav className="sticky top-0 z-40 bg-white shadow-md mb-6 print:shadow-none">
+    <nav className="sticky top-0 z-40 bg-white dark:bg-gray-900 shadow-md dark:shadow-gray-950/50 mb-6 print:shadow-none">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16 md:h-20">
             
@@ -154,8 +154,8 @@ return (
                     href={`/${id}`}
                     className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
                       active
-                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
                     <Icon className="w-5 h-5 mr-2" />
@@ -163,14 +163,26 @@ return (
                   </Link>
                 );
               })}
-              
+
               <button
                 onClick={() => setShowClientManager(true)}
-                className="flex items-center px-4 py-2 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors"
+                className="flex items-center px-4 py-2 rounded-lg font-medium text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
               >
                 <Users className="w-5 h-5 mr-2" />
                 Gestion Clients
               </button>
+
+              <Link
+                href="/parametres"
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                  pathname.startsWith('/parametres')
+                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+              >
+                <Settings className="w-5 h-5 mr-2" />
+                Paramètres
+              </Link>
             </div>
 
             {/* Navigation tablette ET mobile (icônes compactes - TOUJOURS VISIBLE) */}
@@ -183,8 +195,8 @@ return (
                     href={`/${id}`}
                     className={`flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0 ${
                       active
-                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                     title={name}
                   >
@@ -193,15 +205,28 @@ return (
                   </Link>
                 );
               })}
-              
+
               <button
                 onClick={() => setShowClientManager(true)}
-                className="flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium text-green-600 hover:text-green-900 hover:bg-green-100 transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0"
+                className="flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0"
                 title="Gestion des Clients"
               >
                 <Users className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
                 <span className="text-[10px] sm:text-xs leading-tight text-center">Clients</span>
               </button>
+
+              <Link
+                href="/parametres"
+                className={`flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0 ${
+                  pathname.startsWith('/parametres')
+                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+                title="Paramètres"
+              >
+                <Settings className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
+                <span className="text-[10px] sm:text-xs leading-tight text-center">Param.</span>
+              </Link>
             </div>
 
             {/* Actions à droite */}
@@ -209,7 +234,7 @@ return (
               {/* Info utilisateur desktop */}
               {user && (
                 <div className="hidden sm:flex items-center space-x-3">
-                  <span className="text-sm text-gray-700 hidden lg:block">
+                  <span className="text-sm text-gray-700 dark:text-gray-300 hidden lg:block">
                     Bonjour {user.email}
                   </span>
                   <button
@@ -238,7 +263,7 @@ return (
       {/* Modal ClientManager */}
       {showClientManager && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
             <ClientManager onClose={() => setShowClientManager(false)} />
           </div>
         </div>
