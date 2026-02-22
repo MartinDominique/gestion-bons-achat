@@ -358,8 +358,8 @@ Merci!`;
               
               {/* Fournisseur et Bon d'achat lié */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <label className="block text-sm font-semibold text-blue-800 mb-2">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <label className="block text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">
                     Fournisseur *
                   </label>
                   <div className="flex gap-2">
@@ -368,13 +368,13 @@ Merci!`;
                       onChange={(e) => {
                         const supplier = suppliers.find(s => s.id === e.target.value);
                         setPurchaseForm({
-                          ...purchaseForm, 
+                          ...purchaseForm,
                           supplier_id: e.target.value,
                           supplier_name: supplier?.company_name || ''
                         });
                       }}
-                      className={`block flex-1 rounded-lg border-blue-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 ${
-                        editingPurchase ? 'bg-gray-100 cursor-not-allowed' : ''
+                      className={`block flex-1 rounded-lg border-blue-300 dark:border-blue-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 ${
+                        editingPurchase ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''
                       }`}
                       required
                       disabled={!!editingPurchase}
@@ -420,52 +420,52 @@ Merci!`;
 
               {/* NOUVEAU - BA Acomba et Soumission fournisseur */}
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                  <label className="block text-sm font-semibold text-purple-800 mb-2">
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
+                  <label className="block text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">
                     BA Acomba
                   </label>
                   <input
                     type="text"
                     value={purchaseForm.ba_acomba}
                     onChange={(e) => setPurchaseForm({...purchaseForm, ba_acomba: e.target.value})}
-                    className="block w-full rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                    className="block w-full rounded-lg border-purple-300 dark:border-purple-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
                     placeholder="BA Acomba..."
                   />
                 </div>
 
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                  <label className="block text-sm font-semibold text-yellow-800 mb-2">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                  <label className="block text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">
                     Soumission
                   </label>
                   <input
                     type="text"
                     value={purchaseForm.supplier_quote_reference}
                     onChange={(e) => setPurchaseForm({...purchaseForm, supplier_quote_reference: e.target.value})}
-                    className="block w-full rounded-lg border-yellow-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
+                    className="block w-full rounded-lg border-yellow-300 dark:border-yellow-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
                     placeholder="Réf. soumission fournisseur"
                   />
                 </div>
 
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                  <label className="block text-sm font-semibold text-indigo-800 mb-2">
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-200 dark:border-indigo-700">
+                  <label className="block text-sm font-semibold text-indigo-800 dark:text-indigo-300 mb-2">
                     Date livraison prévue *
                   </label>
                   <input
                     type="date"
                     value={purchaseForm.delivery_date}
                     onChange={(e) => setPurchaseForm({...purchaseForm, delivery_date: e.target.value})}
-                    className="block w-full rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                    className="block w-full rounded-lg border-indigo-300 dark:border-indigo-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
                   />
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <label className="block text-sm font-semibold text-gray-800 mb-2">
+                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
                     Statut
                   </label>
                   <select
                     value={purchaseForm.status}
                     onChange={(e) => setPurchaseForm({...purchaseForm, status: e.target.value})}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
+                    className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base p-3"
                   >
                     {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
@@ -476,15 +476,15 @@ Merci!`;
 
               {/* Adresse de livraison et Méthode */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                  <label className="block text-sm font-semibold text-purple-800 mb-2">
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
+                  <label className="block text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">
                     Adresse de livraison *
                   </label>
                   <div className="flex gap-2">
                     <select
                       value={purchaseForm.shipping_address_id}
                       onChange={(e) => setPurchaseForm({...purchaseForm, shipping_address_id: e.target.value})}
-                      className="block flex-1 rounded-lg border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
+                      className="block flex-1 rounded-lg border-purple-300 dark:border-purple-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
                       required
                     >
                       <option value="">Sélectionner une adresse...</option>
@@ -519,16 +519,16 @@ Merci!`;
                   </div>
                 </div>
 
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-700">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-semibold text-orange-800 mb-2">
+                      <label className="block text-sm font-semibold text-orange-800 dark:text-orange-300 mb-2">
                         Transporteur
                       </label>
                       <select
                         value={purchaseForm.shipping_company}
                         onChange={(e) => setPurchaseForm({...purchaseForm, shipping_company: e.target.value})}
-                        className="block w-full rounded-lg border-orange-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                        className="block w-full rounded-lg border-orange-300 dark:border-orange-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                       >
                         {CARRIERS.map((carrier, index) => (
                           <option key={index} value={carrier}>
@@ -538,14 +538,14 @@ Merci!`;
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-orange-800 mb-2">
+                      <label className="block text-sm font-semibold text-orange-800 dark:text-orange-300 mb-2">
                         N° Compte
                       </label>
                       <input
                         type="text"
                         value={purchaseForm.shipping_account}
                         onChange={(e) => setPurchaseForm({...purchaseForm, shipping_account: e.target.value})}
-                        className="block w-full rounded-lg border-orange-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                        className="block w-full rounded-lg border-orange-300 dark:border-orange-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                         placeholder="N° compte..."
                       />
                     </div>
@@ -555,8 +555,8 @@ Merci!`;
 
               {/* Frais de livraison */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                  <label className="block text-sm font-semibold text-red-800 mb-2">
+                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-700">
+                  <label className="block text-sm font-semibold text-red-800 dark:text-red-300 mb-2">
                     Frais de livraison
                   </label>
                   <input
@@ -565,7 +565,7 @@ Merci!`;
                     min="0"
                     value={purchaseForm.shipping_cost}
                     onChange={(e) => setPurchaseForm({...purchaseForm, shipping_cost: e.target.value})}
-                    className="block w-full rounded-lg border-red-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-base p-3"
+                    className="block w-full rounded-lg border-red-300 dark:border-red-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-red-500 focus:ring-red-500 text-base p-3"
                     placeholder="0.00"
                   />
                 </div>
@@ -651,14 +651,14 @@ Merci!`;
               />
 
               {/* Notes */}
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <label className="block text-sm font-semibold text-gray-800 mb-2">
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Notes
                 </label>
                 <textarea
                   value={purchaseForm.notes}
                   onChange={(e) => setPurchaseForm({...purchaseForm, notes: e.target.value.toUpperCase()})}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 text-base p-3"
+                  className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-gray-500 focus:ring-gray-500 text-base p-3"
                   rows="3"
                   placeholder="Notes additionnelles..."
                 />
@@ -666,31 +666,31 @@ Merci!`;
 
               {/* Totaux */}
               <div className={`grid grid-cols-1 gap-4 ${isCanadianSupplier() ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
-                <div className="bg-green-100 p-4 rounded-lg border border-green-300">
-                  <p className="text-sm font-semibold text-green-800">Sous-total</p>
-                  <p className="text-xl font-bold text-green-900">{formatCurrency(purchaseForm.subtotal)}</p>
+                <div className="bg-green-100 dark:bg-green-900/20 p-4 rounded-lg border border-green-300 dark:border-green-700">
+                  <p className="text-sm font-semibold text-green-800 dark:text-green-300">Sous-total</p>
+                  <p className="text-xl font-bold text-green-900 dark:text-green-200">{formatCurrency(purchaseForm.subtotal)}</p>
                 </div>
-                
+
                 {isCanadianSupplier() && (
                   <>
-                    <div className="bg-blue-100 p-4 rounded-lg border border-blue-300">
-                      <p className="text-sm font-semibold text-blue-800">TPS (5%)</p>
-                      <p className="text-xl font-bold text-blue-900">{formatCurrency(purchaseForm.tps)}</p>
+                    <div className="bg-blue-100 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-300 dark:border-blue-700">
+                      <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">TPS (5%)</p>
+                      <p className="text-xl font-bold text-blue-900 dark:text-blue-200">{formatCurrency(purchaseForm.tps)}</p>
                     </div>
-                    <div className="bg-cyan-100 p-4 rounded-lg border border-cyan-300">
-                      <p className="text-sm font-semibold text-cyan-800">TVQ (9.975%)</p>
-                      <p className="text-xl font-bold text-cyan-900">{formatCurrency(purchaseForm.tvq)}</p>
+                    <div className="bg-cyan-100 dark:bg-cyan-900/20 p-4 rounded-lg border border-cyan-300 dark:border-cyan-700">
+                      <p className="text-sm font-semibold text-cyan-800 dark:text-cyan-300">TVQ (9.975%)</p>
+                      <p className="text-xl font-bold text-cyan-900 dark:text-cyan-200">{formatCurrency(purchaseForm.tvq)}</p>
                     </div>
                   </>
                 )}
-                
-                <div className="bg-orange-100 p-4 rounded-lg border border-orange-300">
-                  <p className="text-sm font-semibold text-orange-800">Livraison</p>
-                  <p className="text-xl font-bold text-orange-900">{formatCurrency(purchaseForm.shipping_cost)}</p>
+
+                <div className="bg-orange-100 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-300 dark:border-orange-700">
+                  <p className="text-sm font-semibold text-orange-800 dark:text-orange-300">Livraison</p>
+                  <p className="text-xl font-bold text-orange-900 dark:text-orange-200">{formatCurrency(purchaseForm.shipping_cost)}</p>
                 </div>
-                <div className="bg-purple-100 p-4 rounded-lg border border-purple-300">
-                  <p className="text-sm font-semibold text-purple-800">TOTAL</p>
-                  <p className="text-xl font-bold text-purple-900">{formatCurrency(purchaseForm.total_amount)}</p>
+                <div className="bg-purple-100 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-300 dark:border-purple-700">
+                  <p className="text-sm font-semibold text-purple-800 dark:text-purple-300">TOTAL</p>
+                  <p className="text-xl font-bold text-purple-900 dark:text-purple-200">{formatCurrency(purchaseForm.total_amount)}</p>
                 </div>
               </div>
             </form>
@@ -719,11 +719,11 @@ export const ProductSearch = ({
   fetchExchangeRate
 }) => {
   return (
-    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-      <h3 className="text-base sm:text-lg font-semibold text-indigo-800 mb-4">
+    <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-200 dark:border-indigo-700">
+      <h3 className="text-base sm:text-lg font-semibold text-indigo-800 dark:text-indigo-300 mb-4">
         Recherche Produits
       </h3>
-      
+
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="flex-1">
           <div className="relative">
@@ -738,7 +738,7 @@ export const ProductSearch = ({
                 setFocusedProductIndex(-1);
               }}
               onKeyDown={handleProductKeyDown}
-              className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
+              className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 dark:border-indigo-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
               autoComplete="off"
             />
           </div>
@@ -782,19 +782,19 @@ export const ProductSearch = ({
       )}
       
       {productSearchTerm.length >= 2 && !searchingProducts && products.length > 0 && (
-        <div className="mt-3 max-h-60 overflow-y-auto border border-indigo-200 rounded-lg">
+        <div className="mt-3 max-h-60 overflow-y-auto border border-indigo-200 dark:border-indigo-700 rounded-lg bg-white dark:bg-gray-900">
           {products.map((product, index) => (
-            <div 
-              key={product.product_id} 
-              className={`p-3 border-b hover:bg-indigo-50 cursor-pointer ${
-                index === focusedProductIndex ? 'bg-indigo-100' : ''
+            <div
+              key={product.product_id}
+              className={`p-3 border-b dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer ${
+                index === focusedProductIndex ? 'bg-indigo-100 dark:bg-indigo-900/30' : ''
               }`}
               onClick={() => selectProductForQuantity(product)}
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="font-medium">{product.product_id} - {product.description}</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="font-medium dark:text-gray-100">{product.product_id} - {product.description}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     Prix coût: {formatUnitPrice(product.cost_price)} / {product.unit}
                     {' | '}Main: <span className={product.stock_qty > 0 ? 'font-medium text-green-700' : 'text-gray-400'}>{product.stock_qty || 0}</span>
                     {' | '}Cmd: <span className={product.on_order > 0 ? 'font-medium text-blue-700' : 'text-gray-400'}>{product.on_order || 0}</span>
@@ -833,8 +833,8 @@ export const QuantityModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md p-6">
-        <h3 className="text-lg font-semibold mb-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md p-6">
+        <h3 className="text-lg font-semibold mb-4 dark:text-gray-100">
           Quantité pour: {selectedProductForQuantity.description}
         </h3>
          <input
@@ -846,7 +846,7 @@ export const QuantityModal = ({
             onChange={(e) => setTempQuantity(e.target.value)}
             onKeyDown={handleQuantityKeyDown}
             onFocus={(e) => e.target.select()}
-            className="block w-full rounded-lg border-gray-300 shadow-sm text-base p-3 mb-4"
+            className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm text-base p-3 mb-4"
             autoFocus
           />
         <div className="flex gap-3">
@@ -911,7 +911,7 @@ export const NonInventoryModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="p-4 sm:p-6">
           <h3 className="text-lg font-semibold mb-4 text-orange-600 flex items-center">
             <Plus className="w-5 h-5 mr-2" />
@@ -921,12 +921,12 @@ export const NonInventoryModal = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Code Produit */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Code Produit *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Code Produit *</label>
               <input
                 type="text"
                 value={nonInventoryForm.product_id}
                 onChange={(e) => setNonInventoryForm({...nonInventoryForm, product_id: e.target.value.toUpperCase()})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Ex: TEMP-001"
                 required
               />
@@ -934,11 +934,11 @@ export const NonInventoryModal = ({
 
             {/* Unité */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Unité</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unité</label>
               <select
                 value={nonInventoryForm.unit}
                 onChange={(e) => setNonInventoryForm({...nonInventoryForm, unit: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
               >
                 <option value="Un">Un</option>
                 <option value="M">m</option>
@@ -950,12 +950,12 @@ export const NonInventoryModal = ({
 
             {/* Description */}
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description *</label>
               <input
                 type="text"
                 value={nonInventoryForm.description}
                 onChange={(e) => setNonInventoryForm({...nonInventoryForm, description: e.target.value.toUpperCase()})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Description du produit..."
                 required
               />
@@ -963,12 +963,12 @@ export const NonInventoryModal = ({
 
             {/* Dernier fournisseur */}
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Dernier fournisseur</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dernier fournisseur</label>
               <input
                 type="text"
                 value={nonInventoryForm.supplier || ''}
                 onChange={(e) => setNonInventoryForm({...nonInventoryForm, supplier: e.target.value.toUpperCase()})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Rempli automatiquement depuis l'AF en cours"
               />
               {nonInventoryForm.supplier && (
@@ -978,7 +978,7 @@ export const NonInventoryModal = ({
 
             {/* PRIX CÔTE À CÔTE */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Prix Coût CAD *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Prix Coût CAD *</label>
               <div className="flex gap-2">
                 <input
                   type="number"
@@ -1078,14 +1078,14 @@ export const NonInventoryModal = ({
 
             {/* PRIX VENDANT SANS USD */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Prix Vente CAD *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Prix Vente CAD *</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 value={nonInventoryForm.selling_price}
                 onChange={(e) => setNonInventoryForm({...nonInventoryForm, selling_price: e.target.value})}
-                className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="0.00"
                 required
               />
@@ -1183,27 +1183,27 @@ export const SelectedItemsTable = ({
   if (selectedItems.length === 0) return null;
 
   return (
-    <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-      <h3 className="text-base sm:text-lg font-semibold text-yellow-800 mb-4">
+    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700">
+      <h3 className="text-base sm:text-lg font-semibold text-yellow-800 dark:text-yellow-300 mb-4">
         Produits Sélectionnés ({selectedItems.length})
       </h3>
-      
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-yellow-100">
+          <thead className="bg-yellow-100 dark:bg-yellow-900/30">
             <tr>
-              <th className="text-left p-2">Code</th>
-              <th className="text-left p-2">Description</th>
-              <th className="text-center p-2">Qté</th>
-              <th className="text-right p-2">Prix Coût</th>
-              <th className="text-right p-2">Total</th>
-              <th className="text-left p-2">Notes</th>
-              <th className="text-center p-2">Actions</th>
+              <th className="text-left p-2 dark:text-yellow-200">Code</th>
+              <th className="text-left p-2 dark:text-yellow-200">Description</th>
+              <th className="text-center p-2 dark:text-yellow-200">Qté</th>
+              <th className="text-right p-2 dark:text-yellow-200">Prix Coût</th>
+              <th className="text-right p-2 dark:text-yellow-200">Total</th>
+              <th className="text-left p-2 dark:text-yellow-200">Notes</th>
+              <th className="text-center p-2 dark:text-yellow-200">Actions</th>
             </tr>
           </thead>
           <tbody>
             {selectedItems.map((item) => (
-              <tr key={item.product_id} className="border-b">
+              <tr key={item.product_id} className="border-b dark:border-gray-700 dark:text-gray-200">
                 <td className="p-2">{item.product_id}</td>
                 <td className="p-2">{item.description}</td>
                 <td className="p-2 text-center">
@@ -1299,24 +1299,24 @@ export const PriceUpdateModal = ({
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
       onKeyDown={handleKeyDown}
     >
-      <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
-        <div className="bg-amber-50 px-6 py-4 border-b">
-          <h3 className="text-lg font-semibold text-amber-900">
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md shadow-xl">
+        <div className="bg-amber-50 dark:bg-amber-900/20 px-6 py-4 border-b dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-amber-900 dark:text-amber-300">
             Mise à jour prix inventaire
           </h3>
-          <p className="text-sm text-amber-700 mt-1">
+          <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
             {item.product_id} - {item.description}
           </p>
         </div>
 
         <div className="p-6 space-y-4">
-          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Prix inventaire actuel:</span>
-              <span className="font-medium">{item.originalCostPrice?.toFixed(2)} $</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Prix inventaire actuel:</span>
+              <span className="font-medium dark:text-gray-200">{item.originalCostPrice?.toFixed(2)} $</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Nouveau prix fournisseur:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Nouveau prix fournisseur:</span>
               <span className={`font-bold ${priceDiff > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {item.newCostPrice?.toFixed(2)} $
                 <span className="ml-2 text-sm">
@@ -1326,8 +1326,8 @@ export const PriceUpdateModal = ({
             </div>
           </div>
 
-          <div className="bg-green-50 p-4 rounded-lg">
-            <label className="block text-sm font-medium text-green-800 mb-2">
+          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+            <label className="block text-sm font-medium text-green-800 dark:text-green-300 mb-2">
               Calcul automatique par marge %
             </label>
             <div className="flex gap-2 mb-2">
@@ -1372,7 +1372,7 @@ export const PriceUpdateModal = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Nouveau prix de vente *
             </label>
             <input
@@ -1390,14 +1390,14 @@ export const PriceUpdateModal = ({
                   }
                 }
               }}
-              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 p-3"
+              className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-amber-500 focus:ring-amber-500 p-3"
               placeholder="0.00"
             />
           </div>
 
           {currentMargin && (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-sm text-gray-600 mb-1">Aperçu marge:</div>
+            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Aperçu marge:</div>
               <div className={`text-lg font-medium ${
                 parseFloat(currentMargin) >= 20 ? 'text-green-600' : 
                 parseFloat(currentMargin) >= 10 ? 'text-amber-600' : 'text-red-600'
@@ -1408,11 +1408,11 @@ export const PriceUpdateModal = ({
           )}
         </div>
 
-        <div className="bg-gray-50 px-6 py-4 flex gap-3">
+        <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
           >
             Ignorer (Esc)
           </button>
@@ -1448,9 +1448,9 @@ export const SupplierModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center p-6 border-b bg-orange-50">
-          <h2 className="text-2xl font-bold text-orange-600">Gestion des Fournisseurs</h2>
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700 bg-orange-50 dark:bg-orange-900/20">
+          <h2 className="text-2xl font-bold text-orange-600 dark:text-orange-400">Gestion des Fournisseurs</h2>
           <div className="flex gap-3">
             <button
               onClick={() => {
@@ -1463,7 +1463,7 @@ export const SupplierModal = ({
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-300"
             >
               Fermer
             </button>
@@ -1472,18 +1472,18 @@ export const SupplierModal = ({
 
         <div className="flex-1 overflow-y-auto p-6">
           {suppliers.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
               <p>Aucun fournisseur enregistré</p>
             </div>
           ) : (
             <div className="space-y-4">
               {suppliers.map((supplier) => (
-                <div key={supplier.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div key={supplier.id} className="border dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
                   <div className="flex justify-between">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{supplier.company_name}</h3>
-                      <div className="text-sm text-gray-600 mt-2 space-y-1">
+                      <h3 className="font-semibold text-lg dark:text-gray-100">{supplier.company_name}</h3>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-2 space-y-1">
                         {supplier.contact_name && <p>Contact: {supplier.contact_name}</p>}
                         {supplier.email && <p>{supplier.email}</p>}
                         {supplier.phone && <p>{supplier.phone}</p>}
@@ -1567,8 +1567,8 @@ export const SupplierFormModal = ({
   };
 
   return (
-    <dialog id="supplier-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50">
-      <div className="bg-white rounded-lg w-full max-w-2xl p-6">
+    <dialog id="supplier-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50 dark:bg-gray-900">
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl p-6">
         <h3 className="text-xl font-bold text-orange-600 mb-4">
           {editingSupplier ? 'Modifier Fournisseur' : 'Nouveau Fournisseur'}
         </h3>
@@ -1840,7 +1840,7 @@ export const SupplierFormSimpleModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
-      <div className="bg-white rounded-lg w-full max-w-2xl p-6 shadow-2xl">
+      <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl p-6 shadow-2xl">
         <h3 className="text-xl font-bold text-blue-600 mb-4">Nouveau Fournisseur</h3>
         
         <form onSubmit={handleSupplierFormSubmit} className="space-y-4">
@@ -1849,7 +1849,7 @@ export const SupplierFormSimpleModal = ({
             placeholder="Nom de l'entreprise *"
             value={supplierForm.company_name}
             onChange={(e) => setSupplierForm({...supplierForm, company_name: e.target.value})}
-            className="w-full rounded-lg border-gray-300 p-3"
+            className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 p-3"
             required
           />
           
@@ -1859,14 +1859,14 @@ export const SupplierFormSimpleModal = ({
               placeholder="Email"
               value={supplierForm.email}
               onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
-              className="w-full rounded-lg border-gray-300 p-3"
+              className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 p-3"
             />
             <input
               type="tel"
               placeholder="Téléphone"
               value={supplierForm.phone}
               onChange={handlePhoneChange}
-              className="w-full rounded-lg border-gray-300 p-3"
+              className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 p-3"
             />
           </div>
 
@@ -1877,7 +1877,7 @@ export const SupplierFormSimpleModal = ({
               onChange={(e) => setSupplierForm({...supplierForm, preferred_english: e.target.checked})}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-700">Préférence anglais / English preference</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">Préférence anglais / English preference</span>
           </div>
                   
           <div className="flex gap-3 justify-end pt-4">
@@ -1942,8 +1942,8 @@ const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppli
   };
 
   return (
-    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-      <label className="block text-sm font-semibold text-green-800 mb-2">
+    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
+      <label className="block text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
         Bon d&apos;achat client lié
       </label>
       <div className="flex gap-2">
@@ -1959,7 +1959,7 @@ const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppli
               linked_po_number: po?.po_number || '',
             });
           }}
-          className="block w-full rounded-lg border-green-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+          className="block w-full rounded-lg border-green-300 dark:border-green-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
         >
           <option value="">Aucun (optionnel)</option>
           {purchaseOrders.map((po) => (

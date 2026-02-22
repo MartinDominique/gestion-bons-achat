@@ -131,7 +131,7 @@ return (
           <div className="flex items-center justify-between h-16 md:h-20">
             
             {/* Logo */}
-            <div className="flex items-center">
+            <div className="flex items-center flex-shrink-0">
               <div className="flex-shrink-0">
                 <Image
                   src="/logo.png"
@@ -186,7 +186,7 @@ return (
             </div>
 
             {/* Navigation tablette ET mobile (icônes compactes - TOUJOURS VISIBLE) */}
-            <div className="flex lg:hidden items-center space-x-1 overflow-x-auto scrollbar-hide">
+            <div className="flex lg:hidden flex-1 min-w-0 items-center space-x-1 mx-2 overflow-x-auto scrollbar-hide">
               {pages.map(({ id, name, shortName, icon: Icon }) => {
                 const active = pathname.startsWith('/' + id);
                 return (

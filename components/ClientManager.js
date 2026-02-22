@@ -165,9 +165,9 @@ export default function ClientManager({ onClose }) {
                           {(client.email || client.phone) && (
                             <div className="bg-green-50 dark:bg-green-950 p-2 rounded mb-2">
                               <div className="flex items-center mb-1">
-                                <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded font-medium mr-2">Principal</span>
+                                <span className="text-xs bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200 px-2 py-0.5 rounded font-medium mr-2">Principal</span>
                                 {(client.contact_name || client.contact_person) && (
-                                  <span className="text-sm font-medium text-green-800">
+                                  <span className="text-sm font-medium text-green-800 dark:text-green-300">
                                     {client.contact_name || client.contact_person}
                                   </span>
                                 )}
@@ -195,9 +195,9 @@ export default function ClientManager({ onClose }) {
                           {(client.email_2 || client.contact_2) && (
                             <div className="bg-blue-50 dark:bg-blue-950 p-2 rounded mb-2">
                               <div className="flex items-center mb-1">
-                                <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-medium mr-2">Contact #2</span>
+                                <span className="text-xs bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200 px-2 py-0.5 rounded font-medium mr-2">Contact #2</span>
                                 {client.contact_name_2 && (
-                                  <span className="text-sm font-medium text-blue-800">
+                                  <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
                                     {client.contact_name_2}
                                   </span>
                                 )}
@@ -225,9 +225,9 @@ export default function ClientManager({ onClose }) {
                           {(client.email_admin || client.contact_admin) && (
                             <div className="bg-purple-50 dark:bg-purple-950 p-2 rounded mb-2">
                               <div className="flex items-center mb-1">
-                                <span className="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded font-medium mr-2">Administration</span>
+                                <span className="text-xs bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-200 px-2 py-0.5 rounded font-medium mr-2">Administration</span>
                                 {client.contact_name_admin && (
-                                  <span className="text-sm font-medium text-purple-800">
+                                  <span className="text-sm font-medium text-purple-800 dark:text-purple-300">
                                     {client.contact_name_admin}
                                   </span>
                                 )}
