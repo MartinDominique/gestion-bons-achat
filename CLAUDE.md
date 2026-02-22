@@ -474,6 +474,14 @@ CRON_SECRET                   # Auth pour cron jobs
 5. ~~**Réception directe + Ajustement inventaire**~~ - ✅ COMPLÉTÉ 2026-02-18 (PR #52) - DirectReceiptModal
 6. ~~**Historique des prix produits**~~ - ✅ COMPLÉTÉ 2026-02-11 (PR #36-#39) - 3 niveaux prix + fournisseur
 7. ~~**Recherche serveur inventaire**~~ - ✅ COMPLÉTÉ 2026-02-12 (PR #37) - max 50 résultats, par groupe
+   8. ~~**Mode Sombre (Dark Mode)**~~ - ✅ COMPLÉTÉ 2026-02-22 (branche `claude/add-dark-mode-support-RevPQ`)
+   - `tailwind.config.js` — `darkMode: 'class'`
+   - `components/ThemeProvider.js` — wrapper next-themes
+   - `app/layout.js` — ThemeProvider intégré
+   - `app/(protected)/parametres/page.js` — sélecteur Système/Clair/Sombre
+   - Composants migrés: Navigation, SplitViewPanel, login, bons-travail, ClientManager, InventoryManager, SupplierPurchaseManager, SupplierPurchaseForms
+   - **Non migrés encore:** WorkOrderForm, WorkOrderList, SoumissionsManager, ClientModal, DeliverySlipModal
+   - Pattern: `bg-white dark:bg-gray-800` / `text-gray-900 dark:text-gray-100`
 
 ### À faire (priorité utilisateur)
 1. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
@@ -483,6 +491,7 @@ CRON_SECRET                   # Auth pour cron jobs
 5. **Optimisation mobile BT/BL** - 95% usage mobile
 6. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
 7. **Multi-utilisateurs** - Préparer système permissions/RLS
+8. **Compléter Dark Mode** - Migrer WorkOrderForm, WorkOrderList, SoumissionsManager, ClientModal, DeliverySlipModal
 
 ### Bugs connus (corrigés)
 - ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé (2026-02-07)
@@ -618,6 +627,8 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
   signature_timestamp: "2026-02-07T14:30:00Z",
   client_signature_name: "Jean Tremblay"
 }
+
+
 ```
 
 **Différences clés BL vs BT:**
