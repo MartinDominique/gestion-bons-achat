@@ -5,9 +5,10 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.1.0
+ * @version 1.1.1
  * @date 2026-02-22
  * @changelog
+ *   1.1.1 - Fix boutons Fermer: texte invisible au survol en dark mode (hover:bg-gray-100 → dark:hover:bg-gray-700 + dark:text-gray-100)
  *   1.1.0 - Ajout classes dark mode Tailwind CSS
  *   1.0.0 - Version initiale
  */
@@ -2457,7 +2458,7 @@ setTimeout(() => {
                 
                 <button
                   onClick={onClose}
-                  className="px-3 sm:px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-xs sm:text-sm"
+                  className="px-3 sm:px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs sm:text-sm"
                 >
                   Fermer
                 </button>
@@ -2879,7 +2880,7 @@ setTimeout(() => {
                 </button>
                 <button
                   onClick={() => setShowSupplierPurchaseModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm"
                 >
                   Fermer
                 </button>

@@ -1,3 +1,14 @@
+/**
+ * @file components/ClientManager.js
+ * @description Gestionnaire de la liste des clients.
+ *              - Affichage, recherche, création, modification et suppression de clients
+ *              - Sections contacts (Principal, #2, Administration) avec badges colorés
+ * @version 1.0.1
+ * @date 2026-02-22
+ * @changelog
+ *   1.0.1 - Correction dark mode: fonds vert/mauve/bleu → gris neutre; en-tête bg-white
+ *   1.0.0 - Version initiale
+ */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -98,8 +109,8 @@ export default function ClientManager({ onClose }) {
       <div className="flex flex-col h-full max-h-[90vh]">
         
         {/* En-tete avec titre et bouton fermer */}
-        <div className="flex-shrink-0 flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 sm:p-6 border-b bg-green-50 dark:bg-green-950 dark:border-gray-700">
-          <h2 className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400 mb-3 sm:mb-0">
+        <div className="flex-shrink-0 flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 sm:p-6 border-b bg-white dark:bg-gray-900 dark:border-gray-700">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3 sm:mb-0">
             Gestion des Clients
           </h2>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -163,11 +174,11 @@ export default function ClientManager({ onClose }) {
                           
                           {/* Contact Principal */}
                           {(client.email || client.phone) && (
-                            <div className="bg-green-50 dark:bg-green-950 p-2 rounded mb-2">
+                            <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mb-2">
                               <div className="flex items-center mb-1">
                                 <span className="text-xs bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200 px-2 py-0.5 rounded font-medium mr-2">Principal</span>
                                 {(client.contact_name || client.contact_person) && (
-                                  <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {client.contact_name || client.contact_person}
                                   </span>
                                 )}
@@ -193,11 +204,11 @@ export default function ClientManager({ onClose }) {
                           
                           {/* Contact #2 */}
                           {(client.email_2 || client.contact_2) && (
-                            <div className="bg-blue-50 dark:bg-blue-950 p-2 rounded mb-2">
+                            <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mb-2">
                               <div className="flex items-center mb-1">
                                 <span className="text-xs bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200 px-2 py-0.5 rounded font-medium mr-2">Contact #2</span>
                                 {client.contact_name_2 && (
-                                  <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {client.contact_name_2}
                                   </span>
                                 )}
@@ -223,11 +234,11 @@ export default function ClientManager({ onClose }) {
                           
                           {/* Contact Administration */}
                           {(client.email_admin || client.contact_admin) && (
-                            <div className="bg-purple-50 dark:bg-purple-950 p-2 rounded mb-2">
+                            <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mb-2">
                               <div className="flex items-center mb-1">
                                 <span className="text-xs bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-200 px-2 py-0.5 rounded font-medium mr-2">Administration</span>
                                 {client.contact_name_admin && (
-                                  <span className="text-sm font-medium text-purple-800 dark:text-purple-300">
+                                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {client.contact_name_admin}
                                   </span>
                                 )}
