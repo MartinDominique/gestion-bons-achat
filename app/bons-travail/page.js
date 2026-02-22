@@ -239,16 +239,16 @@ export default function BonsTravailPage() {
 
   const getStatusColor = (status) => {
     const colors = {
-      draft: 'bg-gray-100 text-gray-800',
-      in_progress: 'bg-blue-100 text-blue-800',
-      ready_for_signature: 'bg-blue-100 text-blue-800',
-      signed: 'bg-green-100 text-green-800',
-      completed: 'bg-green-100 text-green-800',
-      pending_send: 'bg-orange-100 text-orange-800',
-      sent: 'bg-purple-100 text-purple-800',
-      archived: 'bg-gray-100 text-gray-800'
+      draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+      ready_for_signature: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+      signed: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+      completed: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+      pending_send: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+      sent: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+      archived: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
   };
 
   const getStatusLabel = (status) => {
@@ -287,11 +287,11 @@ export default function BonsTravailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center min-h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-            <span className="ml-2 text-teal-700">Chargement...</span>
+            <span className="ml-2 text-teal-700 dark:text-teal-400">Chargement...</span>
           </div>
         </div>
       </div>
@@ -299,10 +299,10 @@ export default function BonsTravailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 via-orange-400 to-gray-500 rounded-2xl shadow-xl p-4 sm:p-5 mb-6">
+        <div className="bg-gradient-to-r from-orange-500 via-orange-400 to-gray-500 dark:from-orange-600 dark:via-orange-500 dark:to-gray-600 rounded-2xl shadow-xl dark:shadow-gray-950/50 p-4 sm:p-5 mb-6">
           {/* Ligne 1: Titre + Boutons */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-bold text-white">Bons de Travail & Livraison</h1>
@@ -338,15 +338,15 @@ export default function BonsTravailPage() {
         </div>
 
         {/* Filtre par type BT/BL */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg p-4 mb-4 border border-white/50">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Filtrer par type:</h3>
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-lg dark:shadow-gray-950/50 p-4 mb-4 border border-white/50 dark:border-gray-700/50">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Filtrer par type:</h3>
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => setTypeFilter([])}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                 typeFilter.length === 0
                   ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white shadow-md'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               Tous ({totalAll})
@@ -355,8 +355,8 @@ export default function BonsTravailPage() {
               onClick={() => toggleTypeFilter('bt')}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${
                 typeFilter.includes('bt')
-                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md ring-2 ring-teal-400 ring-offset-1'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md ring-2 ring-teal-400 ring-offset-1 dark:ring-offset-gray-800'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               <FileText size={14} /> BT ({totalBT})
@@ -365,22 +365,22 @@ export default function BonsTravailPage() {
               onClick={() => toggleTypeFilter('bl')}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-1 ${
                 typeFilter.includes('bl')
-                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md ring-2 ring-orange-400 ring-offset-1'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md ring-2 ring-orange-400 ring-offset-1 dark:ring-offset-gray-800'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               <Truck size={14} /> BL ({totalBL})
             </button>
           </div>
 
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Filtrer par statut:</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Filtrer par statut:</h3>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setStatusFilter([])}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
                 statusFilter.length === 0
                   ? 'bg-gradient-to-r from-teal-500 to-blue-600 text-white shadow-md'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
               }`}
             >
               Tous
@@ -397,14 +397,14 @@ export default function BonsTravailPage() {
                         status === 'signed' ? 'from-green-500 to-green-600' :
                         status === 'pending_send' ? 'from-orange-500 to-orange-600' :
                         'from-purple-500 to-purple-600'
-                      } text-white shadow-md ring-2 ring-offset-1 ${
+                      } text-white shadow-md ring-2 ring-offset-1 dark:ring-offset-gray-800 ${
                         status === 'draft' ? 'ring-gray-400' :
                         status === 'ready_for_signature' ? 'ring-blue-400' :
                         status === 'signed' ? 'ring-green-400' :
                         status === 'pending_send' ? 'ring-orange-400' :
                         'ring-purple-400'
                       }`
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                 }`}
               >
                 {getStatusLabel(status)} ({combinedList.filter(i => i.status === status).length})
@@ -413,7 +413,7 @@ export default function BonsTravailPage() {
           </div>
 
           {statusFilter.length > 0 && (
-            <div className="mt-3 text-sm text-blue-700 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 flex items-center justify-between">
+            <div className="mt-3 text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 flex items-center justify-between">
               <span>
                 <span className="font-semibold">{filteredItems.length}</span> resultat(s)
               </span>
@@ -425,14 +425,14 @@ export default function BonsTravailPage() {
         </div>
 
         {/* Recherche */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6 border border-white/50">
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-lg dark:shadow-gray-950/50 p-6 mb-6 border border-white/50 dark:border-gray-700/50">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="sm:w-48">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Rechercher par</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rechercher par</label>
               <select
                 value={searchType}
                 onChange={(e) => setSearchType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-gray-700 dark:text-gray-200"
               >
                 <option value="client">Client</option>
                 <option value="bt_number"># BT/BL</option>
@@ -440,17 +440,17 @@ export default function BonsTravailPage() {
               </select>
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Terme de recherche</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Terme de recherche</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
+                  <Search className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                 </div>
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder={getSearchPlaceholder()}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
                 />
               </div>
             </div>
@@ -458,7 +458,7 @@ export default function BonsTravailPage() {
               <div className="sm:w-auto flex items-end">
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Effacer
                 </button>
@@ -466,14 +466,14 @@ export default function BonsTravailPage() {
             )}
           </div>
           {searchTerm && (
-            <div className="mt-3 text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+            <div className="mt-3 text-sm text-gray-600 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
               <span className="font-semibold text-blue-700">{filteredItems.length}</span> resultat(s) pour "{searchTerm}"
             </div>
           )}
         </div>
 
         {/* Liste */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 overflow-hidden">
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-lg dark:shadow-gray-950/50 border border-white/50 dark:border-gray-700/50 overflow-hidden">
           {filteredItems.length === 0 ? (
             <div className="p-8 text-center">
               <div className="bg-gradient-to-r from-gray-200 to-gray-300 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -481,14 +481,14 @@ export default function BonsTravailPage() {
               </div>
               {searchTerm ? (
                 <>
-                  <p className="text-gray-600 mb-4 text-lg">Aucun resultat pour "{searchTerm}"</p>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">Aucun resultat pour "{searchTerm}"</p>
                   <button onClick={() => setSearchTerm('')} className="text-teal-600 hover:text-teal-700 font-medium">
                     Effacer la recherche
                   </button>
                 </>
               ) : (
                 <>
-                  <p className="text-gray-600 mb-4 text-lg">Aucun bon pour le moment</p>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">Aucun bon pour le moment</p>
                   <div className="flex gap-3 justify-center">
                     <Link
                       href="/bons-travail/nouveau"
@@ -520,8 +520,8 @@ export default function BonsTravailPage() {
                     <div
                       key={key}
                       onClick={() => handleEdit(item)}
-                      className={`p-3 border-b last:border-b-0 hover:bg-blue-50 active:bg-blue-100 cursor-pointer ${
-                        isOld ? 'bg-red-50 border-l-4 border-l-red-500' : ''
+                      className={`p-3 border-b dark:border-b-gray-700 last:border-b-0 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 dark:active:bg-blue-900/30 cursor-pointer ${
+                        isOld ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-l-red-500' : ''
                       }`}
                     >
                       {/* Ligne 1: BT/BL# + Statut */}
@@ -545,13 +545,13 @@ export default function BonsTravailPage() {
                       </div>
 
                       {/* Ligne 2: Client */}
-                      <div className="flex items-center text-sm text-gray-700 mb-1">
+                      <div className="flex items-center text-sm text-gray-700 dark:text-gray-300 mb-1">
                         <User className="mr-1 flex-shrink-0" size={14} />
                         <span className="truncate font-medium">{item._clientName}</span>
                       </div>
 
                       {/* Ligne 3: Date + Heures (BT) ou Livraison (BL) */}
-                      <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                         <div className="flex items-center">
                           <Calendar className="mr-1" size={12} />
                           {formatDate(dateStr)}
@@ -571,7 +571,7 @@ export default function BonsTravailPage() {
 
                       {/* Description */}
                       {item._description && (
-                        <p className="mt-1 text-xs text-gray-600 truncate">
+                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 truncate">
                           {truncateText(item._description, 50)}
                         </p>
                       )}
@@ -583,18 +583,18 @@ export default function BonsTravailPage() {
               {/* Version DESKTOP - Tableau (style main avec px-6) */}
               <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
+                  <thead className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-gray-800">
                     <tr>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">BT/BL #</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Client</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Date</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Heures</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Statut</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Description</th>
-                      <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">Actions</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">BT/BL #</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Client</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Date</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Heures</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Statut</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Description</th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                     {filteredItems.map((item, index) => {
                       const key = `${item._type}-${item.id}`;
                       const isBL = item._type === 'bl';
@@ -602,8 +602,8 @@ export default function BonsTravailPage() {
                       const isOld = dateStr && (new Date() - new Date(dateStr)) > (15 * 24 * 60 * 60 * 1000) && item.status !== 'sent';
 
                       return (
-                        <tr key={key} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 ${
-                          isOld ? 'bg-red-100 border-l-4 border-l-red-500' : index % 2 === 0 ? 'bg-white/50' : 'bg-gray-50/50'
+                        <tr key={key} className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 transition-all duration-200 ${
+                          isOld ? 'bg-red-100 dark:bg-red-900/20 border-l-4 border-l-red-500' : index % 2 === 0 ? 'bg-white/50 dark:bg-gray-800/50' : 'bg-gray-50/50 dark:bg-gray-900/30'
                         }`}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`font-mono text-sm font-bold flex items-center gap-2 ${
@@ -619,7 +619,7 @@ export default function BonsTravailPage() {
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-gray-900 font-medium">{item._clientName}</span>
+                            <span className="text-gray-900 dark:text-gray-100 font-medium">{item._clientName}</span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center text-sm">
@@ -643,7 +643,7 @@ export default function BonsTravailPage() {
                               {getStatusLabel(item.status)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600 w-48">
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 w-48">
                             <div title={item._description || 'Aucune description'} className="cursor-help">
                               {truncateText(item._description, 60)}
                             </div>
@@ -652,7 +652,7 @@ export default function BonsTravailPage() {
                             <div className="flex items-center justify-end space-x-2">
                               <button
                                 onClick={() => handleEdit(item)}
-                                className="bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-700 p-2 rounded-lg transition-all duration-200"
+                                className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 hover:text-blue-700 p-2 rounded-lg transition-all duration-200"
                                 title="Voir details"
                               >
                                 <Eye size={16} />
@@ -660,7 +660,7 @@ export default function BonsTravailPage() {
                               {canEdit(item.status) && (
                                 <button
                                   onClick={() => handleEdit(item)}
-                                  className="bg-green-100 text-green-600 hover:bg-green-200 hover:text-green-700 p-2 rounded-lg transition-all duration-200"
+                                  className="bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/60 hover:text-green-700 p-2 rounded-lg transition-all duration-200"
                                   title="Modifier"
                                   disabled={actionLoading[key]}
                                 >
@@ -670,7 +670,7 @@ export default function BonsTravailPage() {
                               {canDelete(item.status) && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
-                                  className="bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-700 p-2 rounded-lg transition-all duration-200"
+                                  className="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 hover:text-red-700 p-2 rounded-lg transition-all duration-200"
                                   title="Supprimer"
                                   disabled={actionLoading[key]}
                                 >

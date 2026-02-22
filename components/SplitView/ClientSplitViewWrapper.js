@@ -28,7 +28,7 @@ function SplitViewInner({ children }) {
             : 'w-full'
         }`}
       >
-        <main className={`${panelOpen ? 'max-w-none mx-4' : 'max-w-6xl mx-auto'} p-6 bg-white rounded-lg shadow transition-all duration-300`}>
+        <main className={`${panelOpen ? 'max-w-none mx-4' : 'max-w-6xl mx-auto'} p-6 bg-white dark:bg-gray-900 rounded-lg shadow dark:shadow-gray-950/50 transition-all duration-300`}>
           {children}
         </main>
       </div>
