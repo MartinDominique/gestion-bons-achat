@@ -290,6 +290,7 @@ const total = subtotal + tps + tvq;
 /(protected)/achat-materiels     → Achats Fournisseurs (AF)
 /(protected)/inventaire          → Gestion inventaire
 /(protected)/soumissions         → Soumissions/devis
+/(protected)/statistiques        → Rapports & Statistiques de Ventes
 ```
 
 ### API Endpoints Critiques
@@ -309,6 +310,7 @@ const total = subtotal + tps + tvq;
 /api/products                          → CRUD produits
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
+/api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -338,6 +340,10 @@ components/InventoryManager.js                → Gestion inventaire (recherche 
 components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation commande client)
 components/SplitView/                         → Panneau latéral (BA/AF/Soumission inline)
 components/ClientManager.js                   → Gestion clients
+components/statistics/StatisticsManager.js    → Composant principal Statistiques de Ventes
+components/statistics/StatisticsFilters.js    → Filtres de recherche (type, dates, client, etc.)
+components/statistics/SalesReport.js          → Tableau ventes + bandeau résumé + pagination
+components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes
 ```
 
 ---
@@ -488,8 +494,18 @@ CRON_SECRET                   # Auth pour cron jobs
    - Pattern: `bg-white dark:bg-gray-900` / `text-gray-900 dark:text-gray-100` / inputs: `dark:bg-gray-800 dark:border-gray-600`
    - **Reste à faire:** Tester visuellement sur tablette + ajuster si couleurs incorrectes
 
+9. ~~**Rapports & Statistiques de Ventes - Phase 1 MVP**~~ - ✅ COMPLÉTÉ 2026-02-24
+   - `app/api/statistics/route.js` — API GET avec filtres, tri, pagination, agrégation BT/BL/Soumissions
+   - `components/statistics/StatisticsManager.js` — Composant principal (orchestration)
+   - `components/statistics/StatisticsFilters.js` — Filtres: type, dates, client, N° doc, description, produit, tri
+   - `components/statistics/SalesReport.js` — Tableau desktop + cartes mobile + bandeau résumé + pagination
+   - `components/statistics/StatisticsPDFExport.js` — Export PDF via pdf-common.js + jsPDF autoTable
+   - `app/(protected)/statistiques/page.js` — Page protégée
+   - `components/Navigation.js` — Ajout onglet Statistiques (icône BarChart3)
+   - Note: Coûts BT/BL basés sur cost_price actuel des produits (approximatif si prix changé)
+
 ### À faire (priorité utilisateur)
-1. **Rapports & Statistiques de Ventes** - Nouveau module: coûts, ventes, marges par BT/BL/Soumission (voir `Rapports_Statistiques.md`)
+1. **Rapports & Statistiques Phase 2** - Drill-down, graphiques, migration cost_price BT/BL (voir `Rapports_Statistiques.md`)
 2. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 3. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
 4. **Simplifier workflow Prix Jobe** - Trop complexe actuellement

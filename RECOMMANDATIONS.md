@@ -789,19 +789,28 @@ await supabase
 - Alertes stock bas
 - Statistiques du mois (heures, revenus)
 
-### 9. Rapports & Statistiques de Ventes (Priorite: Haute)
+### 9. ~~Rapports & Statistiques de Ventes - Phase 1 MVP~~ ✅ COMPLETE (2026-02-24)
 
 **Plan detaille:** Voir `Rapports_Statistiques.md`
 
 **Objectif:** Module complet de rapports permettant de visualiser les couts, prix de vente et marges de profit pour chaque BT, BL et Soumission.
 
-**Phase 1 - MVP:**
-- [ ] Nouvel onglet "Statistiques" dans la navigation
-- [ ] Page `/(protected)/statistiques` avec tableau de ventes
-- [ ] API `/api/statistics` avec requetes agregees cote serveur
-- [ ] Filtres: type document, periode, client, N° document, description, item/produit
-- [ ] Bandeau resume (revenus, couts, marge $, marge %)
-- [ ] Export PDF du rapport (via pdf-common.js + jsPDF)
+**Phase 1 - MVP:** ✅ COMPLETE (2026-02-24)
+- [x] Nouvel onglet "Statistiques" dans la navigation
+- [x] Page `/(protected)/statistiques` avec tableau de ventes
+- [x] API `/api/statistics` avec requetes agregees cote serveur
+- [x] Filtres: type document, periode, client, N° document, description, item/produit
+- [x] Bandeau resume (revenus, couts, marge $, marge %)
+- [x] Export PDF du rapport (via pdf-common.js + jsPDF)
+
+**Implementation completee (2026-02-24):**
+- `app/api/statistics/route.js` - API endpoint avec requetes BT/BL/Soumissions, filtres, tri, pagination
+- `components/statistics/StatisticsManager.js` - Composant principal orchestrant filtres + rapport + PDF
+- `components/statistics/StatisticsFilters.js` - Filtres: type, dates, client, N° doc, description, produit, tri
+- `components/statistics/SalesReport.js` - Tableau desktop + cartes mobile + bandeau resume + pagination
+- `components/statistics/StatisticsPDFExport.js` - Generation PDF avec pdf-common.js
+- `app/(protected)/statistiques/page.js` - Page protegee
+- `components/Navigation.js` - Ajout onglet Statistiques (icone BarChart3)
 
 **Phase 2 - Ameliorations:**
 - [ ] Migration SQL: ajouter `cost_price` aux tables `work_order_materials` et `delivery_note_materials`
@@ -1023,20 +1032,22 @@ Pas de tests automatises detectes.
 - [ ] Dashboard complet (si le bandeau alertes ne suffit pas)
 - [ ] Bandeau alertes BA orphelins / AF recus sans livraison (reste de Phase 3)
 
-### Phase 12 - Rapports & Statistiques de Ventes (Section 9)
-- [ ] #1: Creer page `/(protected)/statistiques/page.js`
-- [ ] #2: Creer API `/api/statistics/route.js` avec requetes agregees
-- [ ] #3: Creer composant `StatisticsManager.js` (tableau ventes + filtres)
-- [ ] #4: Implémenter filtres (type, date, client, N° document, description, item)
-- [ ] #5: Bandeau resume (totaux revenus, couts, marge)
-- [ ] #6: Ajouter onglet "Statistiques" dans `Navigation.js`
-- [ ] #7: Export PDF rapport via `pdf-common.js`
-- [ ] #8: (Phase 2) Migration SQL `cost_price` sur materiaux BT/BL
-- [ ] #9: (Phase 2) Drill-down detail par document
-- [ ] #10: (Phase 2) Graphiques visuels (Recharts ou Chart.js)
-- [ ] #11: (Phase 3) Rapport par produit/groupe
-- [ ] #12: (Phase 3) Rapport heures travaillees
-- [ ] #13: (Phase 3) Tableau de bord widgets
+### ~~Phase 12 - Rapports & Statistiques de Ventes - Phase 1 MVP (Section 9)~~ ✅ COMPLETE (2026-02-24)
+- [x] #1: Creer page `/(protected)/statistiques/page.js`
+- [x] #2: Creer API `/api/statistics/route.js` avec requetes agregees
+- [x] #3: Creer composant `StatisticsManager.js` (tableau ventes + filtres)
+- [x] #4: Implémenter filtres (type, date, client, N° document, description, item)
+- [x] #5: Bandeau resume (totaux revenus, couts, marge)
+- [x] #6: Ajouter onglet "Statistiques" dans `Navigation.js`
+- [x] #7: Export PDF rapport via `pdf-common.js`
+
+### Phase 13 - Rapports & Statistiques Phase 2 (Ameliorations)
+- [ ] #8: Migration SQL `cost_price` sur materiaux BT/BL
+- [ ] #9: Drill-down detail par document
+- [ ] #10: Graphiques visuels (Recharts ou Chart.js)
+- [ ] #11: Rapport par produit/groupe
+- [ ] #12: Rapport heures travaillees
+- [ ] #13: Tableau de bord widgets
 
 ### Phase 13 - Qualite Long Terme (ongoing)
 - [ ] Migration progressive vers TypeScript
@@ -1168,7 +1179,7 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 9. ~~**Mode Sombre (Dark Mode)**~~ - ✅ Phase 11 COMPLETE (2026-02-22, PR #60)
 10. **Ajustements visuels Dark Mode** - Tester sur tablette apres merge, ajuster si besoin
 11. **Optimisation mobile BT/BL** - Continue (95% mobile)
-12. **Rapports & Statistiques de Ventes** - Phase 12 (demande 2026-02-19) - EN ATTENTE
+12. ~~**Rapports & Statistiques de Ventes - Phase 1 MVP**~~ - ✅ Phase 12 COMPLETE (2026-02-24)
 13. **Systeme permissions** - Futur (multi-utilisateurs)
 14. **Revoir rapport hebdomadaire** - Futur
 
