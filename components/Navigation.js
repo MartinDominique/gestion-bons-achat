@@ -1,6 +1,6 @@
 'use client';
 
-import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse, Settings } from 'lucide-react';
+import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse, Settings, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ const pages = [
   { id: 'inventaire', name: 'Inventaire', shortName: "Inv.", icon: Warehouse },
   { id: 'achat-materiels', name: 'Achat', shortName: "Achat", icon: ShoppingCart },
   { id: 'bons-travail', name: 'Bons Travail', shortName: "BT", icon: FileText },
+  { id: 'statistiques', name: 'Statistiques', shortName: "Stats", icon: BarChart3 },
 ];
 
 export default function Navigation() {
@@ -51,7 +52,7 @@ const shouldHideNav = pathname.includes('/bons-travail/') &&
           setUser(user);
         }
 
-        const protectedRoutes = ['/bons-', '/soumissions', '/bons-travail', '/inventaire', '/achat-materiels'];
+        const protectedRoutes = ['/bons-', '/soumissions', '/bons-travail', '/inventaire', '/achat-materiels', '/statistiques'];
         const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
         
         if (isProtectedRoute && !user) {
