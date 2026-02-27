@@ -1,9 +1,10 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL
- * @version 1.0.2
- * @date 2026-02-18
+ * @version 1.1.0
+ * @date 2026-02-27
  * @changelog
+ *   1.1.0 - Ajout mise à jour delivered_quantity dans client_po_items (cohérence avec send-email)
  *   1.0.2 - Filtrer metadata __fields: dans recipient_emails (sélection checkboxes)
  *   1.0.1 - Fix: vérification erreur sur toutes les mises à jour DB,
  *           fallback sans colonnes optionnelles si update échoue
@@ -260,6 +261,39 @@ export async function POST(request, { params }) {
           } catch (invError) {
             console.error(`Erreur inventaire pour ${material.product_id}:`, invError);
           }
+        }
+      }
+
+      // 7b. Mettre à jour delivered_quantity dans client_po_items si BL lié à un BA
+      if (deliveryNote.linked_po_id && deliveryNote.materials && deliveryNote.materials.length > 0) {
+        try {
+          const { data: poItems } = await supabaseAdmin
+            .from('client_po_items')
+            .select('id, product_id, quantity, delivered_quantity')
+            .eq('purchase_order_id', deliveryNote.linked_po_id);
+
+          if (poItems && poItems.length > 0) {
+            for (const material of deliveryNote.materials) {
+              if (!material.product_id || !material.quantity) continue;
+
+              const matchingPoItem = poItems.find(pi => pi.product_id === material.product_id);
+              if (matchingPoItem) {
+                const currentDelivered = parseFloat(matchingPoItem.delivered_quantity) || 0;
+                const deliveredQty = parseFloat(material.quantity) || 0;
+                const newDelivered = currentDelivered + deliveredQty;
+
+                await supabaseAdmin
+                  .from('client_po_items')
+                  .update({
+                    delivered_quantity: newDelivered,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', matchingPoItem.id);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Erreur mise à jour delivered_quantity:', err);
         }
       }
 
