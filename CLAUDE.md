@@ -291,6 +291,7 @@ const total = subtotal + tps + tvq;
 /(protected)/inventaire          → Gestion inventaire
 /(protected)/soumissions         → Soumissions/devis
 /(protected)/statistiques        → Rapports & Statistiques de Ventes
+/(protected)/facturation         → Module Facturation (À facturer + Factures)
 ```
 
 ### API Endpoints Critiques
@@ -312,6 +313,9 @@ const total = subtotal + tps + tvq;
 /api/products/groups                   → Groupes de produits distincts
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
 /api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
+/api/invoices                          → CRUD Factures (GET liste + POST création)
+/api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
+/api/invoices/[id]/send-email          → Envoi facture PDF par email au client
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -345,6 +349,8 @@ components/statistics/StatisticsManager.js    → Composant principal Statistiqu
 components/statistics/StatisticsFilters.js    → Filtres de recherche (type, dates, client, etc.)
 components/statistics/SalesReport.js          → Tableau ventes + bandeau résumé + pagination
 components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes
+components/invoices/InvoiceManager.js         → Module Facturation (2 onglets: À facturer + Factures)
+components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ)
 ```
 
 ---
@@ -353,12 +359,13 @@ components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes
 
 ### work_orders (BT)
 ```sql
-id, bt_number, client_id, linked_po_id,
+id, bt_number, client_id, linked_po_id, invoice_id,
 work_date, time_entries (JSONB), total_hours,
 work_description, status, is_prix_jobe,
 signature_data, signature_timestamp, client_signature_name
 ```
 **Statuts:** draft, signed, pending_send, completed
+**Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `invoice_id IS NOT NULL` → facturé (vert)
 
 ### clients
 ```sql
@@ -385,7 +392,7 @@ items (JSONB), subtotal, tps, tvq, total_amount, status
 
 ### delivery_notes (BL)
 ```sql
-id, bl_number, client_id, client_name, linked_po_id,
+id, bl_number, client_id, client_name, linked_po_id, invoice_id,
 delivery_date, delivery_description, status,
 is_prix_jobe, signature_data, signature_timestamp,
 client_signature_name, recipient_emails (JSONB),
@@ -393,6 +400,20 @@ user_id, created_at, updated_at
 ```
 **Statuts:** draft, ready_for_signature, signed, pending_send, sent
 **Matériaux:** Table séparée `delivery_note_materials` (product_id, quantity, unit, unit_price, etc.)
+**Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `invoice_id IS NOT NULL` → facturé (vert)
+
+### invoices (Factures)
+```sql
+id, invoice_number, client_id, client_name, client_address,
+source_type ('work_order'|'delivery_note'), source_id, source_number,
+invoice_date, due_date, payment_terms,
+line_items (JSONB), subtotal, tps_rate, tvq_rate, tps_amount, tvq_amount, total,
+total_materials, total_labor, total_transport,
+status, is_prix_jobe, notes, pdf_url,
+sent_at, paid_at, user_id, created_at, updated_at
+```
+**Statuts:** draft, sent, paid
+**Line items types:** labor, transport, material, forfait, other
 
 ### products / non_inventory_items
 ```sql
@@ -513,9 +534,21 @@ CRON_SECRET                   # Auth pour cron jobs
     - Décisions confirmées: Dimanche 1.5x, Fériés 2x, Navigation Option A, Transport ligne 0$
     - Conditions paiement: Net 30 jours / 2% 10 Net 30 jours / Payable sur réception
 
+11. ~~**Facturation MVP (Phase B)**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `supabase/migrations/20260227_create_invoices.sql` — Table invoices + invoice_id sur BT/BL
+    - `app/api/invoices/route.js` — API GET (liste) + POST (création avec auto-numéro)
+    - `app/api/invoices/[id]/route.js` — API GET/PUT/DELETE facture individuelle
+    - `app/api/invoices/[id]/send-email/route.js` — Envoi PDF facture par email (cascade client)
+    - `components/invoices/InvoiceManager.js` — 2 onglets: "À facturer" + "Factures"
+    - `components/invoices/InvoiceEditor.js` — Éditeur lignes (M.O., transport, matériaux, forfait)
+    - `app/(protected)/facturation/page.js` — Page protégée Facturation
+    - `components/Navigation.js` — Ajout onglet Facturation (icône Receipt)
+    - `app/bons-travail/page.js` — Indicateurs rouge/vert facturé sur BT/BL
+    - `app/api/work-orders/route.js` + `delivery-notes/route.js` — Ajout invoice_id au SELECT
+    - Note: Migration SQL doit être exécutée manuellement dans Supabase Dashboard
+
 ### À faire (priorité utilisateur)
-1. **Facturation MVP (Phase B)** - Module complet de facturation (voir `Facturation_Taux_Statistiques.md`)
-2. **Rapport Acomba (Phase C)** - Rapport mensuel ventilé pour saisie dans Acomba
+1. **Rapport Acomba (Phase C)** - Rapport mensuel ventilé pour saisie dans Acomba
 3. **Statistiques Phase 2 (Phase D)** - Sous-onglet Financier basé sur les factures
 4. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
 5. **Numéros cliquables SplitView** - ReferenceLink.js partout dans l'app

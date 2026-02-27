@@ -18,7 +18,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye, Search, Truck, Package } from 'lucide-react';
+import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye, Search, Truck, Package, DollarSign } from 'lucide-react';
 import ConnectionStatus from '../../components/ConnectionStatus';
 
 export default function BonsTravailPage() {
@@ -524,7 +524,7 @@ export default function BonsTravailPage() {
                         isOld ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-l-red-500' : ''
                       }`}
                     >
-                      {/* Ligne 1: BT/BL# + Statut */}
+                      {/* Ligne 1: BT/BL# + Indicateur facture + Statut */}
                       <div className="flex items-center justify-between mb-2">
                         <span className={`font-mono text-sm font-bold flex items-center gap-1.5 ${
                           isBL
@@ -539,9 +539,17 @@ export default function BonsTravailPage() {
                             </span>
                           )}
                         </span>
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
-                          {getStatusLabel(item.status)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {['signed', 'completed', 'sent'].includes(item.status) && (
+                            <span
+                              className={`inline-flex h-2.5 w-2.5 rounded-full ${item.invoice_id ? 'bg-green-500' : 'bg-red-500'}`}
+                              title={item.invoice_id ? 'Facturé' : 'Non facturé'}
+                            />
+                          )}
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
+                            {getStatusLabel(item.status)}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Ligne 2: Client */}
@@ -609,6 +617,12 @@ export default function BonsTravailPage() {
                             <span className={`font-mono text-sm font-bold flex items-center gap-2 ${
                               isBL ? 'text-orange-600' : 'bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent'
                             }`}>
+                              {['signed', 'completed', 'sent'].includes(item.status) && (
+                                <span
+                                  className={`inline-flex h-2.5 w-2.5 rounded-full flex-shrink-0 ${item.invoice_id ? 'bg-green-500' : 'bg-red-500'}`}
+                                  title={item.invoice_id ? 'Facturé' : 'Non facturé'}
+                                />
+                              )}
                               {item._number}
                               {!isBL && item.has_active_session && (
                                 <span className="relative flex h-3 w-3" title="Session en cours">

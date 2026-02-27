@@ -209,6 +209,7 @@ export async function GET(request) {
         delivery_date,
         delivery_description,
         status,
+        invoice_id,
         client:clients(id, name),
         linked_po:purchase_orders(id, po_number)
       `, { count: 'exact' })
