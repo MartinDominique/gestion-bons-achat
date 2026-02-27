@@ -1,10 +1,16 @@
-//==============================
-// components/work-orders/WorkOrderClientView.js
-//===============================
-// RÔLE: Page de présentation du BT au client pour signature
-// MODIF: Protection signature si offline + indicateur wifi visible + timeout
-// IMPORTANT: Bloque la signature si pas de connexion
-//===============================
+/**
+ * @file components/work-orders/WorkOrderClientView.js
+ * @description Page de présentation du BT au client pour signature
+ *              - Protection signature si offline + indicateur wifi visible + timeout
+ *              - IMPORTANT: Bloque la signature si pas de connexion
+ *              - Mobile-first: 95% usage tablette/mobile
+ * @version 2.0.0
+ * @date 2026-02-27
+ * @changelog
+ *   2.0.0 - Ajout support complet dark mode (Tailwind dark: variants)
+ *           Canvas signature toujours blanc pour compatibilité PDF
+ *   1.0.0 - Version initiale
+ */
 
 'use client';
 
@@ -295,7 +301,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* ✅ NOUVEAU: Bannière offline fixe en haut */}
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 bg-red-600 text-white text-center py-3 z-50 shadow-lg">
@@ -307,7 +313,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
       )}
 
       {/* Header professionnel style TMT */}
-      <div className={`bg-white p-3 sm:p-6 print:bg-white ${!isOnline ? 'mt-12' : ''}`}>
+      <div className={`bg-white dark:bg-gray-900 p-3 sm:p-6 print:bg-white ${!isOnline ? 'mt-12' : ''}`}>
         <div className="max-w-6xl mx-auto">
           {/* Layout responsive */}
           <div className="grid grid-cols-2 sm:grid-cols-3 items-start gap-3 sm:gap-6 pb-3 sm:pb-4">
@@ -324,7 +330,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                     e.target.nextSibling.style.display = 'block';
                   }}
                 />
-                <div className="text-2xl font-bold text-gray-800 hidden">
+                <div className="text-2xl font-bold text-gray-800 dark:text-gray-200 hidden">
                   LOGO
                 </div>
               </div>
@@ -332,8 +338,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
             {/* Colonne 2: Informations Entreprise */}
             <div className="hidden sm:flex flex-col items-start">
-              <h1 className="text-xl font-bold text-gray-900 mb-2">Services TMT Inc.</h1>
-              <div className="text-sm text-gray-700 space-y-0.5">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Services TMT Inc.</h1>
+              <div className="text-sm text-gray-700 dark:text-gray-300 space-y-0.5">
                 <p>3195, 42e Rue Nord</p>
                 <p>Saint-Georges, QC G5Z 0V9</p>
                 <p>Tél: (418) 225-3875</p>
@@ -343,16 +349,16 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
          
             {/* Colonne 3: Information Document + Indicateur connexion */}
             <div className="text-right">
-              <h2 className="text-base sm:text-xl font-bold text-gray-900 mb-1 sm:mb-2">BON DE TRAVAIL</h2>
-              <div className="text-xs sm:text-sm text-gray-700 space-y-0.5 sm:space-y-1">
+              <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">BON DE TRAVAIL</h2>
+              <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 space-y-0.5 sm:space-y-1">
                 <p><strong>N°:</strong> {workOrder.bt_number || `BT-2025-${String(workOrder.id).padStart(3, '0')}`}</p>
                 <p><strong>Date:</strong> {workOrder.work_date}</p>
                 
                 {/* ✅ NOUVEAU: Indicateur connexion plus visible */}
                 <div className={`flex items-center justify-end mt-2 px-3 py-1.5 rounded-full ${
-                  isOnline 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-red-100 text-red-700 animate-pulse'
+                  isOnline
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 animate-pulse'
                 }`}>
                   {isOnline ? (
                     <>
@@ -371,47 +377,47 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
           </div>
 
           {/* Ligne de séparation */}
-          <div className="border-t-2 border-gray-900"></div>
+          <div className="border-t-2 border-gray-900 dark:border-gray-300"></div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto p-6">
         {/* Informations client */}
-        <div className="bg-gray-50 rounded-lg p-3 sm:p-6 mb-4 sm:mb-6">
-          <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 flex items-center">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 flex items-center dark:text-gray-100">
             <User className="mr-2" size={20} />
             Informations Client
           </h2>
-          
+
           {/* Infos client compactes */}
-          <div className="bg-white rounded-lg p-3 mb-4 border border-gray-300">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-3 mb-4 border border-gray-300 dark:border-gray-600">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <div className="font-bold text-gray-900">
+              <div className="font-bold text-gray-900 dark:text-gray-100">
                 {workOrder.client?.name || 'Client inconnu'}
               </div>
-              
-              <div className="hidden sm:block text-gray-300">|</div>
-              
+
+              <div className="hidden sm:block text-gray-300 dark:text-gray-600">|</div>
+
               {workOrder.client?.address && (
                 <>
-                  <div className="text-gray-700">
+                  <div className="text-gray-700 dark:text-gray-300">
                     {workOrder.client.address}
                   </div>
-                  <div className="hidden sm:block text-gray-300">|</div>
+                  <div className="hidden sm:block text-gray-300 dark:text-gray-600">|</div>
                 </>
               )}
-              
+
               {workOrder.client?.phone && (
                 <>
-                  <div className="text-gray-700 font-medium">
+                  <div className="text-gray-700 dark:text-gray-300 font-medium">
                     {workOrder.client.phone}
                   </div>
-                  <div className="hidden sm:block text-gray-300">|</div>
+                  <div className="hidden sm:block text-gray-300 dark:text-gray-600">|</div>
                 </>
               )}
-              
+
               {(workOrder.linked_po?.po_number || workOrder.linked_po_id) && (
-                <div className="text-blue-700 font-medium">
+                <div className="text-blue-700 dark:text-blue-400 font-medium">
                   BA: {workOrder.linked_po?.po_number || workOrder.linked_po_id}
                 </div>
               )}
@@ -421,14 +427,14 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
           {/* Sessions de travail */}
           {!workOrder.is_prix_jobe && (
           <div>
-            <h3 className="text-lg font-semibold text-black mb-2">Sessions de travail:</h3>
+            <h3 className="text-lg font-semibold text-black dark:text-gray-100 mb-2">Sessions de travail:</h3>
             {workOrder.time_entries && workOrder.time_entries.length > 0 ? (
               <div className="space-y-1">
                 {workOrder.time_entries.map((entry, index) => (
-                  <div key={index} className="text-sm bg-white p-2 rounded border">
+                  <div key={index} className="text-sm bg-white dark:bg-gray-900 p-2 rounded border dark:border-gray-600 dark:text-gray-200">
                     <span className="font-semibold">{entry.date}</span>: {entry.start_time} → {entry.end_time || 'En cours'}
-                    {entry.pause_minutes > 0 && <span className="text-orange-600 ml-2">(Pause: {entry.pause_minutes}min)</span>}
-                    <span className="font-bold text-blue-700 ml-2">
+                    {entry.pause_minutes > 0 && <span className="text-orange-600 dark:text-orange-400 ml-2">(Pause: {entry.pause_minutes}min)</span>}
+                    <span className="font-bold text-blue-700 dark:text-blue-400 ml-2">
                       {(() => {
                         const h = Math.floor(entry.total_hours || 0);
                         const m = Math.round(((entry.total_hours || 0) - h) * 60);
@@ -436,10 +442,10 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                       })()}
                     </span>
                     {entry.end_time && entry.include_travel && workOrder.client?.travel_minutes > 0 && (
-                      <span className="text-orange-600 ml-2">(Retour: {workOrder.client.travel_minutes}min)</span>
+                      <span className="text-orange-600 dark:text-orange-400 ml-2">(Retour: {workOrder.client.travel_minutes}min)</span>
                     )}
                     {entry.include_transport_fee && (
-                      <span className="text-green-600 ml-2">🚗 Transport</span>
+                      <span className="text-green-600 dark:text-green-400 ml-2">🚗 Transport</span>
                     )}
                     {entry.surcharge_type && (() => {
                       const badges = {
@@ -459,7 +465,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                     })()}
                   </div>
                 ))}
-               <div className="text-sm font-bold text-blue-900 pt-2 border-t mt-2">
+               <div className="text-sm font-bold text-blue-900 dark:text-blue-300 pt-2 border-t dark:border-gray-600 mt-2">
                   TOTAL: {(() => {
                     const total = workOrder.total_hours || 0;
                     const h = Math.floor(total);
@@ -469,7 +475,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">Aucune session enregistrée</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Aucune session enregistrée</p>
             )}
           </div>
           )}
@@ -477,20 +483,20 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
         {/* Emails destinataires */}
         {workOrder.recipient_emails && workOrder.recipient_emails.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2 flex items-center">
               <Mail className="mr-2" size={16} />
               Email(s) destinataire(s) du bon de travail
             </h3>
             <div className="space-y-1">
               {workOrder.recipient_emails.map((email, index) => (
-                <div key={index} className="text-sm text-blue-800 flex items-center">
-                  <span className="inline-block w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
+                <div key={index} className="text-sm text-blue-800 dark:text-blue-200 flex items-center">
+                  <span className="inline-block w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full mr-2"></span>
                   {email}
                 </div>
               ))}
             </div>
-            <p className="text-xs text-blue-600 mt-2">
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
               {workOrder.recipient_emails.length} email(s) recevront ce bon de travail une fois signé
             </p>
           </div>
@@ -498,12 +504,12 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
         {/* Description des travaux */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-gray-100">
             <FileText className="mr-2" size={24} />
             Description des Travaux
           </h2>
-          <div className="bg-white border rounded-lg p-6">
-            <div className="text-gray-800 leading-relaxed whitespace-pre-line">
+          <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-6">
+            <div className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line">
               {workOrder.description || workOrder.work_description || 'Aucune description disponible'}
             </div>
           </div>
@@ -512,49 +518,49 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
         {/* Matériaux utilisés */}
         {!workOrder.is_prix_jobe && workOrder.materials && workOrder.materials.length > 0 && (
           <div className="mb-4 sm:mb-6">
-            <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4">Matériaux Utilisés</h2>
-            
+            <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 dark:text-gray-100">Matériaux Utilisés</h2>
+
             {/* Version MOBILE */}
-            <div className="md:hidden bg-white border rounded-lg divide-y">
+            <div className="md:hidden bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
               {workOrder.materials.map((material, index) => (
                 <div key={index} className="p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                    <span className="font-mono text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
                       {material.product?.product_id || material.product_id || 'N/A'}
                     </span>
-                    <span className="text-sm font-bold text-gray-900">
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                       Qté: {material.quantity} {material.unit || material.product?.unit || 'UN'}
                     </span>
                   </div>
-                  
-                  <p className="text-sm text-gray-700 mb-1">
+
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
                     {material.product?.description || material.description || 'Sans description'}
                   </p>
-                  
+
                   {material.notes && (
-                    <p className="text-xs text-gray-900 mt-1">
+                    <p className="text-xs text-gray-900 dark:text-gray-100 mt-1">
                       {material.notes}
                     </p>
                   )}
-                  
+
                   {material.show_price && (material.product?.selling_price || material.unit_price) && (
-                    <div className="flex justify-between items-center mt-2 pt-2 border-t text-xs">
-                      <span className="text-gray-600">
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-gray-600 text-xs">
+                      <span className="text-gray-600 dark:text-gray-400">
                         Prix unit.: {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
                       </span>
-                      <span className="font-bold text-green-700">
+                      <span className="font-bold text-green-700 dark:text-green-400">
                         Total: {formatCurrency(material.quantity * (material.product?.selling_price || material.unit_price || 0))}
                       </span>
                     </div>
                   )}
                 </div>
               ))}
-              
+
               {workOrder.materials.some(m => m.show_price === true) && (
-                <div className="p-3 bg-green-50 border-t-2">
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 border-t-2 dark:border-gray-600">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-green-900">Total matériaux:</span>
-                    <span className="text-lg font-bold text-green-900">
+                    <span className="text-sm font-medium text-green-900 dark:text-green-200">Total matériaux:</span>
+                    <span className="text-lg font-bold text-green-900 dark:text-green-200">
                       {formatCurrency(calculateTotal())}
                     </span>
                   </div>
@@ -563,9 +569,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             </div>
 
             {/* Version DESKTOP */}
-            <div className="hidden md:block bg-white border rounded-lg overflow-hidden">
+            <div className="hidden md:block bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-4 py-3 text-left">Code</th>
                     <th className="px-4 py-3 text-left">Matériau / Description</th>
@@ -581,8 +587,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                 </thead>
                 <tbody>
                   {workOrder.materials.map((material, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="px-4 py-3 font-mono text-sm font-bold">
+                    <tr key={index} className="border-t dark:border-gray-700">
+                      <td className="px-4 py-3 font-mono text-sm font-bold dark:text-gray-100">
                         {material.product?.product_id || material.product_id || 'N/A'}
                       </td>
                       <td className="px-4 py-3">
@@ -591,12 +597,12 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                             {material.product?.product_id || material.product_id || 'Matériau sans code'}
                           </p>
                           {(material.product?.description || material.description) && (
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                               {material.product?.description || material.description}
                             </p>
                           )}
                           {material.notes && (
-                            <p className="text-sm text-gray-900 mt-1">
+                            <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
                               {material.notes}
                             </p>
                           )}
@@ -609,14 +615,14 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                       {(workOrder.materials && workOrder.materials.some(m => m.show_price === true)) && (
                         <>
                           <td className="px-4 py-3 text-right">
-                            {material.show_price ? 
-                              formatCurrency(material.product?.selling_price || material.unit_price || 0) : 
+                            {material.show_price ?
+                              formatCurrency(material.product?.selling_price || material.unit_price || 0) :
                               ''
                             }
                           </td>
                           <td className="px-4 py-3 text-right font-semibold">
-                            {material.show_price ? 
-                              formatCurrency(material.quantity * (material.product?.selling_price || material.unit_price || 0)) : 
+                            {material.show_price ?
+                              formatCurrency(material.quantity * (material.product?.selling_price || material.unit_price || 0)) :
                               ''
                             }
                           </td>
@@ -626,7 +632,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                   ))}
                 </tbody>
                 {(workOrder.materials && workOrder.materials.some(m => m.show_price === true)) && (
-                  <tfoot className="bg-gray-50 border-t-2">
+                  <tfoot className="bg-gray-50 dark:bg-gray-700 border-t-2 dark:border-gray-600">
                     <tr>
                       <td colSpan="4" className="px-4 py-3 text-right font-bold">
                         Total:
@@ -648,9 +654,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
             {!isSigning ? (
               <>
                 {/* Barre de boutons fixée en bas */}
-                <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-orange-50 to-yellow-50 border-t-4 border-orange-400 shadow-2xl z-40 p-3">
+                <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-orange-50 dark:from-orange-900/30 to-yellow-50 dark:to-yellow-900/20 border-t-4 border-orange-400 shadow-2xl z-40 p-3">
                   <div className="max-w-6xl mx-auto">
-                    <p className="text-orange-800 text-sm font-semibold mb-2 text-center">
+                    <p className="text-orange-800 dark:text-orange-200 text-sm font-semibold mb-2 text-center">
                       ✓ Vérifiez tous les détails ci-dessus puis signez pour accepter les travaux
                     </p>
                     
@@ -662,7 +668,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                             window.location.href = `/bons-travail`;
                           }, 100);
                         }}
-                        className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all font-bold text-base flex items-center justify-center shadow-lg"
+                        className="flex-1 bg-gray-500 dark:bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition-all font-bold text-base flex items-center justify-center shadow-lg"
                       >
                         <X className="mr-2" size={20} />
                         Fermer
@@ -681,7 +687,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                         className={`flex-1 px-8 py-3 rounded-lg transition-all font-bold text-base flex items-center justify-center shadow-xl border-2 ${
                           isOnline
                             ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 border-green-500'
-                            : 'bg-gray-400 text-gray-200 cursor-not-allowed border-gray-400'
+                            : 'bg-gray-400 dark:bg-gray-600 text-gray-200 cursor-not-allowed border-gray-400 dark:border-gray-600'
                         }`}
                       >
                         {isOnline ? (
@@ -704,7 +710,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
               </>
             ) : (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
-                <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-4xl my-8">
                   {/* Header du modal */}
                   <div className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-6 py-4 rounded-t-xl">
                     <div className="flex items-center justify-between">
@@ -744,16 +750,16 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                   <div className="p-6 space-y-6">
                     {/* Sélection du signataire */}
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         Qui signe ce formulaire? *
                       </label>
-                      
+
                       {(() => {
                         const signatories = getClientSignatories();
-                        
+
                         if (signatories.length === 0) {
                           return (
-                            <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4">
+                            <div className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg p-4">
                               <label className="flex items-center cursor-pointer">
                                 <input
                                   type="radio"
@@ -763,7 +769,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                                   className="mr-3 w-5 h-5"
                                 />
                                 <div className="flex-1">
-                                  <span className="text-sm font-medium text-gray-700 block mb-2">Entrer le nom:</span>
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Entrer le nom:</span>
                                   <input
                                     type="text"
                                     value={customSignerName}
@@ -772,7 +778,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                                       setSelectedSignatoryMode('custom');
                                     }}
                                     placeholder="Ex: Jean Tremblay"
-                                    className="w-full px-3 py-2 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-3 py-2 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                     maxLength={50}
                                   />
                                 </div>
@@ -780,17 +786,17 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                             </div>
                           );
                         }
-                        
+
                         return (
                           <div className="space-y-3">
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                               {signatories.map((signatory) => (
-                                <label 
-                                  key={signatory.index} 
+                                <label
+                                  key={signatory.index}
                                   className={`flex items-center bg-white border-2 rounded-lg px-4 py-3 hover:border-blue-400 cursor-pointer transition-all ${
-                                    selectedSignatoryMode === 'checkbox' && selectedSignatoryIndex === signatory.index 
-                                      ? 'border-blue-500 bg-blue-50' 
-                                      : 'border-gray-300'
+                                    selectedSignatoryMode === 'checkbox' && selectedSignatoryIndex === signatory.index
+                                      ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                                      : 'border-gray-300 dark:border-gray-600 dark:bg-gray-800'
                                   }`}
                                 >
                                   <input
@@ -800,13 +806,13 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                                     onChange={() => handleSignatorySelect(signatory.index)}
                                     className="mr-2 w-5 h-5 cursor-pointer"
                                   />
-                                  <span className="text-sm font-medium text-gray-800">{signatory.name}</span>
+                                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{signatory.name}</span>
                                 </label>
                               ))}
                             </div>
-                            
+
                             <div className={`bg-white border-2 rounded-lg p-4 ${
-                              selectedSignatoryMode === 'custom' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                              selectedSignatoryMode === 'custom' ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 dark:bg-gray-800'
                             }`}>
                               <label className="flex items-start cursor-pointer">
                                 <input
@@ -817,7 +823,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                                   className="mt-1 mr-3 w-5 h-5 cursor-pointer flex-shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium text-gray-700 block mb-2">Autre:</span>
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Autre:</span>
                                   <input
                                     type="text"
                                     value={customSignerName}
@@ -827,7 +833,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                                     }}
                                     onFocus={handleCustomSelect}
                                     placeholder="Ex: Jean Tremblay"
-                                    className="w-full px-3 py-2 text-base border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                     maxLength={50}
                                   />
                                 </div>
@@ -836,22 +842,22 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                           </div>
                         );
                       })()}
-                      
+
                       {signerName && (
-                        <div className="mt-3 p-3 bg-green-50 border-2 border-green-300 rounded-lg">
-                          <p className="text-sm text-green-800">
+                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-700 rounded-lg">
+                          <p className="text-sm text-green-800 dark:text-green-200">
                             <span className="font-semibold">✓ Signataire:</span> {signerName}
                           </p>
                         </div>
                       )}
                     </div>
                     
-                    {/* Zone de signature */}
+                    {/* Zone de signature - toujours blanc pour compatibilité PDF */}
                     <div>
-                      <p className="text-sm font-semibold text-gray-700 mb-2">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                         Signature avec votre doigt ou stylet:
                       </p>
-                      <div className="border-4 border-gray-400 rounded-xl bg-white overflow-hidden shadow-inner">
+                      <div className="border-4 border-gray-400 dark:border-gray-500 rounded-xl bg-white overflow-hidden shadow-inner">
                         <canvas
                           ref={canvasRef}
                           width={800}
@@ -868,10 +874,10 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                     </div>
                     
                     {/* Boutons */}
-                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-gray-200">
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
                       <button
                         onClick={clearSignature}
-                        className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors font-semibold text-base flex items-center justify-center"
+                        className="flex-1 bg-gray-500 dark:bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition-colors font-semibold text-base flex items-center justify-center"
                       >
                         <X className="mr-2" size={20} />
                         Effacer
@@ -890,8 +896,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                         disabled={!signature || !signerName || isSubmitting || !isOnline}
                         className={`flex-1 px-6 py-3 rounded-lg font-semibold text-base flex items-center justify-center transition-colors ${
                           signature && signerName && !isSubmitting && isOnline
-                            ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
+                            : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                         }`}
                       >
                         {isSubmitting ? (
@@ -921,22 +927,22 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
         {/* Travaux signés */}
         {workOrder.status === 'signed' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-green-800 mb-2">
+                <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
                   ✅ Travaux Acceptés et Signés
                 </h3>
-                <p className="text-green-700">
+                <p className="text-green-700 dark:text-green-300">
                   Signé le {new Date(workOrder.signed_at).toLocaleString('fr-CA')}
                 </p>
-                <p className="text-sm text-green-600 mt-1">
+                <p className="text-sm text-green-600 dark:text-green-400 mt-1">
                   Email envoyé automatiquement au client
                 </p>
               </div>
               <button
                 onClick={() => window.close()}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+                className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-800"
               >
                 Fermer
               </button>
@@ -946,14 +952,14 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
         {/* Statut d'attente envoi */}
         {workOrder.status === 'pending_send' && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
-            <h3 className="text-lg font-semibold text-orange-800 mb-2">
+          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-200 mb-2">
               ⏳ En Attente d'Envoi
             </h3>
-            <p className="text-orange-700 mb-3">
+            <p className="text-orange-700 dark:text-orange-300 mb-3">
               Travaux signés - Envoi automatique en cours de traitement par le système
             </p>
-            <p className="text-sm text-orange-600">
+            <p className="text-sm text-orange-600 dark:text-orange-400">
               L'email sera envoyé automatiquement depuis le bureau
             </p>
           </div>
@@ -961,16 +967,16 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
 
         {/* Travaux envoyés */}
         {workOrder.status === 'sent' && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6 text-center">
-            <h3 className="text-lg font-semibold text-orange-800 mb-2">
-              📧 Bon de Travail Envoyé avec Succès
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 mb-6 text-center">
+            <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
+              ✅ Bon de Travail Envoyé avec Succès
             </h3>
-            <p className="text-orange-700">
+            <p className="text-green-700 dark:text-green-300">
               Envoyé le {workOrder.sent_at ? new Date(workOrder.sent_at).toLocaleString('fr-CA') : 'maintenant'}
             </p>
             <button
               onClick={() => window.close()}
-              className="mt-3 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+              className="mt-3 bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-800"
             >
               Fermer
             </button>
