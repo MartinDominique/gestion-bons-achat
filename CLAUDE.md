@@ -312,6 +312,7 @@ const total = subtotal + tps + tvq;
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
+/api/statistics/financial              → Statistiques financières (GET: par mois, par client, en attente)
 /api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
 /api/invoices                          → CRUD Factures (GET liste + POST création)
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
@@ -346,10 +347,14 @@ components/InventoryManager.js                → Gestion inventaire (recherche 
 components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation commande client)
 components/SplitView/                         → Panneau latéral (BA/AF/Soumission inline)
 components/ClientManager.js                   → Gestion clients
-components/statistics/StatisticsManager.js    → Composant principal Statistiques de Ventes
-components/statistics/StatisticsFilters.js    → Filtres de recherche (type, dates, client, etc.)
+components/statistics/StatisticsManager.js    → Composant principal Statistiques (2 sous-onglets: Opérationnel + Financier)
+components/statistics/StatisticsFilters.js    → Filtres de recherche opérationnel (type, dates, client, etc.)
 components/statistics/SalesReport.js          → Tableau ventes + bandeau résumé + pagination
-components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes
+components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes opérationnel
+components/statistics/FinancialStatistics.js  → Orchestrateur sous-onglet Financier (factures)
+components/statistics/FinancialFilters.js     → Filtres financiers (période, client, statut, vue)
+components/statistics/FinancialReport.js      → Rapport financier (par mois, par client, en attente)
+components/statistics/FinancialPDFExport.js   → Export PDF rapport financier
 components/invoices/InvoiceManager.js         → Module Facturation (2 onglets: À facturer + Factures + Rapport Acomba)
 components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ)
 components/invoices/AcombaReportExport.js     → Export PDF + CSV rapport mensuel Acomba
@@ -559,9 +564,18 @@ CRON_SECRET                   # Auth pour cron jobs
     - Colonnes: N° Fact., Date, Client, Réf., Vente mat., Vente temps, Vente dépl., Sous-total, TPS, TVQ, Total
     - Ligne TOTAUX en gras en bas du rapport
 
+13. ~~**Statistiques Phase 2 (Phase D)**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `app/api/statistics/financial/route.js` — API GET statistiques financières (résumé, par mois, par client, en attente)
+    - `components/statistics/FinancialStatistics.js` — Orchestrateur sous-onglet Financier
+    - `components/statistics/FinancialFilters.js` — Filtres: période, client, statut, vue (Par mois/Par client/En attente)
+    - `components/statistics/FinancialReport.js` — 3 vues: revenus par mois, revenus par client, factures en attente
+    - `components/statistics/FinancialPDFExport.js` — Export PDF rapport financier (3 modes)
+    - `components/statistics/StatisticsManager.js` v2.0.0 — 2 sous-onglets: Opérationnel (BT/BL) + Financier (Factures)
+    - Bandeau résumé: total facturé, payé, en attente, brouillon, ventilation matériaux/M.O./transport
+    - Vue En attente: suivi échéances, détection retards
+
 ### À faire (priorité utilisateur)
-1. **Statistiques Phase 2 (Phase D)** - Sous-onglet Financier basé sur les factures
-4. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
+1. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
 5. **Numéros cliquables SplitView** - ReferenceLink.js partout dans l'app
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)

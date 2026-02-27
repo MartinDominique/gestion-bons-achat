@@ -817,6 +817,8 @@ await supabase
 - [ ] Drill-down (detail par document dans panneau lateral)
 - [ ] Graphiques visuels (revenus/couts par mois, marge, repartition clients)
 - [ ] Filtres avances (BA lie, statut, Prix Jobe)
+- [x] Sous-onglet Financier base sur les factures (Phase D) ✅ COMPLETE (2026-02-27)
+  - Revenus par mois, par client, factures en attente, export PDF
 
 **Phase 3 - Rapports avances (futurs):**
 - [ ] Rapport par produit (par groupe ou individuellement)
@@ -1042,6 +1044,13 @@ Pas de tests automatises detectes.
 - [x] #7: Export PDF rapport via `pdf-common.js`
 
 ### Phase 13 - Rapports & Statistiques Phase 2 (Ameliorations)
+- [x] Sous-onglet Financier (factures) dans Statistiques ✅ COMPLETE (2026-02-27)
+  - `app/api/statistics/financial/route.js` — API statistiques financieres
+  - `components/statistics/FinancialStatistics.js` — Orchestrateur
+  - `components/statistics/FinancialFilters.js` — Filtres financiers
+  - `components/statistics/FinancialReport.js` — 3 vues (par mois, par client, en attente)
+  - `components/statistics/FinancialPDFExport.js` — Export PDF
+  - `components/statistics/StatisticsManager.js` v2.0.0 — 2 sous-onglets
 - [ ] #8: Migration SQL `cost_price` sur materiaux BT/BL
 - [ ] #9: Drill-down detail par document
 - [ ] #10: Graphiques visuels (Recharts ou Chart.js)
