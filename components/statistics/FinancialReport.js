@@ -4,13 +4,16 @@
  *              - 3 vues: Par mois, Par client, En attente
  *              - Bandeau résumé global (facturé, payé, en attente)
  *              - Responsive: tableaux desktop, cartes mobile
- * @version 1.0.0
+ *              - Numéros de référence cliquables (SplitView)
+ * @version 1.1.0
  * @date 2026-02-27
  * @changelog
+ *   1.1.0 - Ajout ReferenceLink sur N° référence BT/BL (Phase E — Numéros cliquables)
  *   1.0.0 - Version initiale (Phase D — Statistiques Phase 2)
  */
 
 import { AlertTriangle } from 'lucide-react';
+import { ReferenceLink } from '../SplitView';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('fr-CA', {
@@ -29,6 +32,17 @@ function formatDate(dateStr) {
     month: 'short',
     year: 'numeric',
   });
+}
+
+function getSourceRefProps(sourceNumber) {
+  if (!sourceNumber) return null;
+  if (sourceNumber.startsWith('BT-')) {
+    return { type: 'work-order', variant: 'green', data: { btNumber: sourceNumber } };
+  }
+  if (sourceNumber.startsWith('BL-')) {
+    return { type: 'delivery-note', variant: 'orange', data: { blNumber: sourceNumber } };
+  }
+  return null;
 }
 
 // ============================================
@@ -325,7 +339,16 @@ function OutstandingView({ outstanding }) {
                 <td className="px-3 py-2 font-mono text-xs font-medium text-gray-900 dark:text-gray-100">{inv.invoiceNumber}</td>
                 <td className="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDate(inv.invoiceDate)}</td>
                 <td className="px-3 py-2 text-gray-900 dark:text-gray-100 max-w-[150px] truncate">{inv.clientName}</td>
-                <td className="px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">{inv.sourceNumber}</td>
+                <td className="px-3 py-2">
+                  {(() => {
+                    const ref = getSourceRefProps(inv.sourceNumber);
+                    return ref ? (
+                      <ReferenceLink type={ref.type} label={inv.sourceNumber} data={ref.data} variant={ref.variant} />
+                    ) : (
+                      <span className="font-mono text-xs text-gray-600 dark:text-gray-400">{inv.sourceNumber}</span>
+                    );
+                  })()}
+                </td>
                 <td className="px-3 py-2 text-right font-mono font-medium text-gray-900 dark:text-gray-100">{formatCurrency(inv.total)}</td>
                 <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{inv.paymentTerms || '-'}</td>
                 <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400 whitespace-nowrap">

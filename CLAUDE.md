@@ -345,7 +345,7 @@ components/SupplierReceiptModal.js            → Réception AF (partielle/compl
 components/DirectReceiptModal.js              → Réception directe sans AF + ajustement inventaire
 components/InventoryManager.js                → Gestion inventaire (recherche serveur, modal unifié)
 components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation commande client)
-components/SplitView/                         → Panneau latéral (BA/AF/Soumission inline)
+components/SplitView/                         → Panneau latéral (BA/AF/Soumission/BT/BL inline)
 components/ClientManager.js                   → Gestion clients
 components/statistics/StatisticsManager.js    → Composant principal Statistiques (2 sous-onglets: Opérationnel + Financier)
 components/statistics/StatisticsFilters.js    → Filtres de recherche opérationnel (type, dates, client, etc.)
@@ -574,9 +574,17 @@ CRON_SECRET                   # Auth pour cron jobs
     - Bandeau résumé: total facturé, payé, en attente, brouillon, ventilation matériaux/M.O./transport
     - Vue En attente: suivi échéances, détection retards
 
+14. ~~**Numéros cliquables SplitView (Phase E)**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `components/SplitView/PanelWorkOrder.js` — Panneau lecture BT (nouveau)
+    - `components/SplitView/PanelDeliveryNote.js` — Panneau lecture BL (nouveau)
+    - `components/SplitView/SplitViewPanel.js` v1.1.0 — Support types work-order et delivery-note
+    - `components/invoices/InvoiceManager.js` v1.4.0 — ReferenceLink sur N° BT/BL (À facturer + Factures)
+    - `components/statistics/SalesReport.js` v1.1.0 — ReferenceLink sur N° documents (BT/BL/Soumission)
+    - `components/statistics/FinancialReport.js` v1.1.0 — ReferenceLink sur N° référence (vue En attente)
+    - Pattern: clic sur un N° BT/BL/Soumission ouvre le panneau latéral SplitView en lecture
+
 ### À faire (priorité utilisateur)
 1. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
-5. **Numéros cliquables SplitView** - ReferenceLink.js partout dans l'app
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
