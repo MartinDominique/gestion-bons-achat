@@ -4,9 +4,11 @@
  *              - Onglet "À facturer": BT/BL signés sans facture
  *              - Onglet "Factures": Liste des factures créées
  *              - Actions: créer, voir, renvoyer, marquer payée
- * @version 1.2.0
+ *              - Rapport Acomba: export PDF + CSV mensuel ventilé
+ * @version 1.3.0
  * @date 2026-02-27
  * @changelog
+ *   1.3.0 - Ajout Rapport Acomba (PDF + CSV) + sélecteur de mois (Phase C)
  *   1.2.0 - Ajout "Marquer facturé (Acomba)" individuel + bulk
  *   1.1.0 - Ajout bouton Télécharger PDF (Supabase Storage)
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
@@ -15,8 +17,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive } from 'lucide-react';
+import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
+import { generateAcombaReportPDF, generateAcombaReportCSV } from './AcombaReportExport';
 
 export default function InvoiceManager() {
   const [activeTab, setActiveTab] = useState('to_invoice');
@@ -43,6 +46,13 @@ export default function InvoiceManager() {
 
   // Settings
   const [settings, setSettings] = useState(null);
+
+  // Rapport Acomba
+  const [reportMonth, setReportMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [reportLoading, setReportLoading] = useState(false);
 
   // Auto-hide messages
   useEffect(() => {
@@ -334,6 +344,41 @@ export default function InvoiceManager() {
     }
   };
 
+  // Générer rapport Acomba (PDF ou CSV)
+  const handleAcombaReport = async (format) => {
+    setReportLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/invoices/report?month=${reportMonth}`);
+      const result = await res.json();
+
+      if (!result.success) {
+        setError(result.error || 'Erreur chargement rapport');
+        return;
+      }
+
+      const reportData = result.data;
+
+      if (reportData.count === 0) {
+        setError('Aucune facture pour ce mois');
+        return;
+      }
+
+      if (format === 'pdf') {
+        await generateAcombaReportPDF(reportData);
+        setSuccess(`Rapport Acomba PDF téléchargé (${reportData.count} factures)`);
+      } else {
+        generateAcombaReportCSV(reportData);
+        setSuccess(`Rapport Acomba CSV téléchargé (${reportData.count} factures)`);
+      }
+    } catch (err) {
+      console.error('Erreur rapport Acomba:', err);
+      setError('Erreur génération du rapport');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     const [year, month, day] = dateStr.split('-');
@@ -606,27 +651,65 @@ export default function InvoiceManager() {
           ) : (
             /* ===== ONGLET "FACTURES" ===== */
             <>
-              {/* Filtres */}
-              <div className="p-4 border-b dark:border-gray-700 flex flex-wrap gap-2 items-center">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Statut:</span>
-                {[
-                  { value: 'all', label: 'Toutes' },
-                  { value: 'draft', label: 'Brouillons' },
-                  { value: 'sent', label: 'Envoyées' },
-                  { value: 'paid', label: 'Payées' },
-                ].map(f => (
+              {/* Filtres + Rapport Acomba */}
+              <div className="p-4 border-b dark:border-gray-700 space-y-3">
+                {/* Ligne 1: Filtres statut */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Statut:</span>
+                  {[
+                    { value: 'all', label: 'Toutes' },
+                    { value: 'draft', label: 'Brouillons' },
+                    { value: 'sent', label: 'Envoyées' },
+                    { value: 'paid', label: 'Payées' },
+                  ].map(f => (
+                    <button
+                      key={f.value}
+                      onClick={() => setInvoiceFilter(f.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        invoiceFilter === f.value
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Ligne 2: Rapport Acomba */}
+                <div className="flex flex-wrap gap-2 items-center pt-2 border-t dark:border-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">Rapport:</span>
+                  <input
+                    type="month"
+                    value={reportMonth}
+                    onChange={(e) => setReportMonth(e.target.value)}
+                    className="px-2 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
                   <button
-                    key={f.value}
-                    onClick={() => setInvoiceFilter(f.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      invoiceFilter === f.value
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
+                    onClick={() => handleAcombaReport('pdf')}
+                    disabled={reportLoading}
+                    className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
                   >
-                    {f.label}
+                    {reportLoading ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Printer className="w-3.5 h-3.5" />
+                    )}
+                    Rapport Acomba
                   </button>
-                ))}
+                  <button
+                    onClick={() => handleAcombaReport('csv')}
+                    disabled={reportLoading}
+                    className="bg-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-teal-700 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {reportLoading ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                    )}
+                    Export CSV
+                  </button>
+                </div>
               </div>
 
               {invoices.length === 0 ? (
