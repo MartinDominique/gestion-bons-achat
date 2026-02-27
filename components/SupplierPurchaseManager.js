@@ -1056,6 +1056,7 @@ const ImportSubmissionModal = ({
                                 min="0.1"
                                 value={item.importQuantity}
                                 onChange={(e) => updateImportQuantity(item.product_id, e.target.value)}
+                                onFocus={(e) => e.target.select()}
                                 disabled={!item.selected}
                                 className={`w-20 text-center rounded border p-1 ${
                                   item.selected 
