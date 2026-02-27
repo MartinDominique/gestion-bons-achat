@@ -1,12 +1,15 @@
 /**
  * @file app/api/invoices/[id]/send-email/route.js
  * @description Envoi d'une facture par email au client avec PDF en pièce jointe
- *              - Génère le PDF facture via InvoicePDFService
+ *              - Génère le PDF facture via jsPDF + pdf-common.js
+ *              - Upload le PDF dans Supabase Storage (bucket invoices)
+ *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-02-27
  * @changelog
+ *   1.1.0 - Ajout upload PDF vers Supabase Storage + pdf_url
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
 
@@ -257,8 +260,41 @@ export async function POST(request, { params }) {
 
     // 4. Générer le PDF
     const pdfBuffer = generateInvoicePDF(invoice, settings);
+    const pdfBufferNode = Buffer.from(pdfBuffer);
 
-    // 5. Envoyer l'email
+    // 5. Upload PDF dans Supabase Storage (bucket 'invoices')
+    let pdfUrl = null;
+    try {
+      const invoiceDate = invoice.invoice_date || new Date().toISOString().split('T')[0];
+      const [year, month] = invoiceDate.split('-');
+      const storagePath = `${year}/${month}/facture-${invoice.invoice_number}.pdf`;
+
+      const { data: uploadData, error: uploadError } = await supabaseAdmin
+        .storage
+        .from('invoices')
+        .upload(storagePath, pdfBufferNode, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        // Log mais ne pas bloquer l'envoi email
+        console.error('Erreur upload PDF Storage:', uploadError.message);
+      } else {
+        // Générer l'URL signée (valide 10 ans = accès permanent via l'app)
+        const { data: urlData } = await supabaseAdmin
+          .storage
+          .from('invoices')
+          .createSignedUrl(storagePath, 60 * 60 * 24 * 365 * 10);
+
+        pdfUrl = urlData?.signedUrl || null;
+        console.log('PDF uploadé:', storagePath);
+      }
+    } catch (storageErr) {
+      console.error('Erreur Storage (non bloquante):', storageErr.message);
+    }
+
+    // 6. Envoyer l'email
     const companyName = pdfCommon.COMPANY.name;
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@servicestmt.com';
 
@@ -294,7 +330,7 @@ export async function POST(request, { params }) {
       html: htmlContent,
       attachments: [{
         filename: `Facture_${invoice.invoice_number}.pdf`,
-        content: Buffer.from(pdfBuffer),
+        content: pdfBufferNode,
         contentType: 'application/pdf',
       }],
     };
@@ -314,14 +350,19 @@ export async function POST(request, { params }) {
       );
     }
 
-    // 6. Mettre à jour le statut de la facture
+    // 7. Mettre à jour le statut de la facture + pdf_url
+    const updateData = {
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    if (pdfUrl) {
+      updateData.pdf_url = pdfUrl;
+    }
+
     await supabaseAdmin
       .from('invoices')
-      .update({
-        status: 'sent',
-        sent_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', parseInt(id));
 
     return NextResponse.json({

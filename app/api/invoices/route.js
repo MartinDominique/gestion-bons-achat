@@ -212,6 +212,7 @@ export async function GET(request) {
         status,
         is_prix_jobe,
         notes,
+        pdf_url,
         sent_at,
         paid_at,
         created_at
