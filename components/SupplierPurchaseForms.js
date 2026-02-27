@@ -565,6 +565,7 @@ Merci!`;
                     min="0"
                     value={purchaseForm.shipping_cost}
                     onChange={(e) => setPurchaseForm({...purchaseForm, shipping_cost: e.target.value})}
+                    onFocus={(e) => e.target.select()}
                     className="block w-full rounded-lg border-red-300 dark:border-red-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-red-500 focus:ring-red-500 text-base p-3"
                     placeholder="0.00"
                   />
@@ -986,6 +987,7 @@ export const NonInventoryModal = ({
                   min="0"
                   value={nonInventoryForm.cost_price}
                   onChange={(e) => setNonInventoryForm({...nonInventoryForm, cost_price: e.target.value})}
+                  onFocus={(e) => e.target.select()}
                   className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                   placeholder="0.00"
                   required
@@ -1053,6 +1055,7 @@ export const NonInventoryModal = ({
                         min="0"
                         value={usdAmountCost}
                         onChange={(e) => setUsdAmountCost(e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         placeholder="Montant USD"
                         className="flex-1 rounded border-blue-300 text-sm p-2"
                       />
@@ -1085,6 +1088,7 @@ export const NonInventoryModal = ({
                 min="0"
                 value={nonInventoryForm.selling_price}
                 onChange={(e) => setNonInventoryForm({...nonInventoryForm, selling_price: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="0.00"
                 required
@@ -1213,6 +1217,7 @@ export const SelectedItemsTable = ({
                     min="1"
                     value={item.quantity}
                     onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     className="w-16 text-center rounded border-gray-300"
                   />
                 </td>
@@ -1223,6 +1228,7 @@ export const SelectedItemsTable = ({
                     min="0"
                     value={item.cost_price}
                     onChange={(e) => updateItemPrice(item.product_id, e.target.value)}
+                    onFocus={(e) => e.target.select()}
                     onBlur={(e) => handlePriceBlur && handlePriceBlur(item.product_id, e.target.value)}
                     className="w-24 text-right rounded border-gray-300"
                   />
@@ -1337,6 +1343,7 @@ export const PriceUpdateModal = ({
                 min="0"
                 value={form.marginPercent}
                 onChange={(e) => setForm({...form, marginPercent: e.target.value})}
+                onFocus={(e) => e.target.select()}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -1381,6 +1388,7 @@ export const PriceUpdateModal = ({
               min="0"
               value={form.newSellingPrice}
               onChange={(e) => setForm({...form, newSellingPrice: e.target.value})}
+              onFocus={(e) => e.target.select()}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();

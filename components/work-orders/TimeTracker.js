@@ -5,9 +5,10 @@
  *              - Sessions manuelles (ajout, édition, suppression)
  *              - Détection automatique surcharges (soir, samedi, dimanche, jours fériés QC)
  *              - Application des minimums (2h soir, 3h weekend/férié)
- * @version 2.1.0
- * @date 2026-02-22
+ * @version 2.1.1
+ * @date 2026-02-27
  * @changelog
+ *   2.1.1 - Ajout onFocus select sur champs pause (auto-sélection)
  *   2.1.0 - Ajout support dark mode
  *   2.0.0 - Intégration surcharges: détection auto, minimums, badges, recalcul toggle
  *   1.2.0 - Fix UTC date (getLocalDateString), fix circular dependency
@@ -562,6 +563,7 @@ const formatDuration = (hours) => {
                   ...currentSession,
                   pause_minutes: Math.min(120, Math.max(0, parseInt(e.target.value) || 0))
                 })}
+                onFocus={(e) => e.target.select()}
                 disabled={status === 'sent' || status === 'signed'}  // ⭐ NOUVEAU
                 className={`w-full text-center font-mono font-bold text-orange-700 border-2 rounded px-2 py-1 ${
                   status === 'sent' || status === 'signed' 
@@ -938,6 +940,7 @@ const formatDuration = (hours) => {
                   max="120"
                   value={manualPause}
                   onChange={(e) => setManualPause(Math.min(120, Math.max(0, parseInt(e.target.value) || 0)))}
+                  onFocus={(e) => e.target.select()}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
