@@ -4,9 +4,10 @@
  *              - Onglet "À facturer": BT/BL signés sans facture
  *              - Onglet "Factures": Liste des factures créées
  *              - Actions: créer, voir, renvoyer, marquer payée
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-02-27
  * @changelog
+ *   1.2.0 - Ajout "Marquer facturé (Acomba)" individuel + bulk
  *   1.1.0 - Ajout bouton Télécharger PDF (Supabase Storage)
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
@@ -14,7 +15,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download } from 'lucide-react';
+import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
 
 export default function InvoiceManager() {
@@ -187,6 +188,66 @@ export default function InvoiceManager() {
     if (saved) {
       fetchData();
       setSuccess('Facture sauvegardée avec succès');
+    }
+  };
+
+  // Marquer un item comme facturé externement (Acomba)
+  const handleMarkExternal = async (item) => {
+    if (!confirm(`Marquer ${item._number} comme déjà facturé (Acomba)?\n\nCe document sera retiré de la liste "À facturer".`)) return;
+
+    setActionLoading(prev => ({ ...prev, [`ext-${item._type}-${item.id}`]: true }));
+    try {
+      const res = await fetch('/api/invoices/mark-external', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: [{ type: item._type, id: item.id }] }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(`${item._number} marqué comme facturé (Acomba)`);
+        fetchData();
+      } else {
+        setError(data.error || 'Erreur');
+      }
+    } catch (err) {
+      setError('Erreur connexion');
+    } finally {
+      setActionLoading(prev => {
+        const n = { ...prev };
+        delete n[`ext-${item._type}-${item.id}`];
+        return n;
+      });
+    }
+  };
+
+  // Marquer TOUS les items comme facturés externement (Acomba)
+  const handleMarkAllExternal = async () => {
+    const count = toInvoiceItems.length;
+    if (!confirm(`Marquer les ${count} documents comme déjà facturés (Acomba)?\n\nTous les BT/BL de la liste "À facturer" seront marqués comme facturés.`)) return;
+
+    setActionLoading(prev => ({ ...prev, 'bulk-external': true }));
+    try {
+      const items = toInvoiceItems.map(item => ({ type: item._type, id: item.id }));
+      const res = await fetch('/api/invoices/mark-external', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(data.message);
+        fetchData();
+      } else {
+        setError(data.error || 'Erreur');
+      }
+    } catch (err) {
+      setError('Erreur connexion');
+    } finally {
+      setActionLoading(prev => {
+        const n = { ...prev };
+        delete n['bulk-external'];
+        return n;
+      });
     }
   };
 
@@ -418,6 +479,26 @@ export default function InvoiceManager() {
               </div>
             ) : (
               <>
+                {/* Barre d'action bulk */}
+                <div className="p-3 border-b dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <p className="text-sm text-amber-800 dark:text-amber-300">
+                    <Archive className="inline w-4 h-4 mr-1" />
+                    Des BT/BL déjà facturés avec Acomba?
+                  </p>
+                  <button
+                    onClick={handleMarkAllExternal}
+                    disabled={actionLoading['bulk-external']}
+                    className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {actionLoading['bulk-external'] ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Archive className="w-4 h-4" />
+                    )}
+                    Tout marquer facturé (Acomba)
+                  </button>
+                </div>
+
                 {/* Mobile */}
                 <div className="lg:hidden">
                   {toInvoiceItems.map(item => (
@@ -432,13 +513,24 @@ export default function InvoiceManager() {
                           {item._type === 'bt' ? <FileText className="inline w-3.5 h-3.5 mr-1" /> : <Truck className="inline w-3.5 h-3.5 mr-1" />}
                           {item._number}
                         </span>
-                        <button
-                          onClick={() => handleCreateInvoice(item, item._type)}
-                          className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700 transition-colors flex items-center gap-1"
-                        >
-                          <DollarSign className="w-3.5 h-3.5" />
-                          Facturer
-                        </button>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => handleMarkExternal(item)}
+                            disabled={actionLoading[`ext-${item._type}-${item.id}`]}
+                            className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors flex items-center gap-1 disabled:opacity-50"
+                            title="Déjà facturé (Acomba)"
+                          >
+                            <Archive className="w-3.5 h-3.5" />
+                            Acomba
+                          </button>
+                          <button
+                            onClick={() => handleCreateInvoice(item, item._type)}
+                            className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700 transition-colors flex items-center gap-1"
+                          >
+                            <DollarSign className="w-3.5 h-3.5" />
+                            Facturer
+                          </button>
+                        </div>
                       </div>
                       <div className="text-sm text-gray-700 dark:text-gray-300 font-medium">{item._clientName}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatDate(item._date)}</div>
@@ -455,7 +547,7 @@ export default function InvoiceManager() {
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">N°</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Date</th>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Client</th>
-                        <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Action</th>
+                        <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -485,13 +577,24 @@ export default function InvoiceManager() {
                             {item._clientName}
                           </td>
                           <td className="px-6 py-3 text-right">
-                            <button
-                              onClick={() => handleCreateInvoice(item, item._type)}
-                              className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors inline-flex items-center gap-1.5"
-                            >
-                              <DollarSign className="w-4 h-4" />
-                              Créer facture
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleMarkExternal(item)}
+                                disabled={actionLoading[`ext-${item._type}-${item.id}`]}
+                                className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-2 rounded-lg text-sm font-medium hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+                                title="Déjà facturé dans Acomba"
+                              >
+                                <Archive className="w-4 h-4" />
+                                Acomba
+                              </button>
+                              <button
+                                onClick={() => handleCreateInvoice(item, item._type)}
+                                className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors inline-flex items-center gap-1.5"
+                              >
+                                <DollarSign className="w-4 h-4" />
+                                Créer facture
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
