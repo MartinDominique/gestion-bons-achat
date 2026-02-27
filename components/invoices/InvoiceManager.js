@@ -5,9 +5,11 @@
  *              - Onglet "Factures": Liste des factures créées
  *              - Actions: créer, voir, renvoyer, marquer payée
  *              - Rapport Acomba: export PDF + CSV mensuel ventilé
- * @version 1.3.0
+ *              - Numéros de référence cliquables (SplitView)
+ * @version 1.4.0
  * @date 2026-02-27
  * @changelog
+ *   1.4.0 - Ajout ReferenceLink sur N° BT/BL (Phase E — Numéros cliquables)
  *   1.3.0 - Ajout Rapport Acomba (PDF + CSV) + sélecteur de mois (Phase C)
  *   1.2.0 - Ajout "Marquer facturé (Acomba)" individuel + bulk
  *   1.1.0 - Ajout bouton Télécharger PDF (Supabase Storage)
@@ -20,6 +22,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
 import { generateAcombaReportPDF, generateAcombaReportCSV } from './AcombaReportExport';
+import { ReferenceLink } from '../SplitView';
 
 export default function InvoiceManager() {
   const [activeTab, setActiveTab] = useState('to_invoice');
@@ -404,6 +407,17 @@ export default function InvoiceManager() {
     );
   };
 
+  // Helper: déterminer le type SplitView à partir du source_type ou du préfixe du numéro
+  const getRefLinkProps = (sourceNumber, sourceType) => {
+    if (sourceType === 'work_order' || (sourceNumber && sourceNumber.startsWith('BT-'))) {
+      return { type: 'work-order', variant: 'green', data: { btNumber: sourceNumber } };
+    }
+    if (sourceType === 'delivery_note' || (sourceNumber && sourceNumber.startsWith('BL-'))) {
+      return { type: 'delivery-note', variant: 'orange', data: { blNumber: sourceNumber } };
+    }
+    return null;
+  };
+
   // Combiner et trier les items à facturer
   const toInvoiceItems = [
     ...uninvoicedBT.map(bt => ({
@@ -552,11 +566,14 @@ export default function InvoiceManager() {
                       className="p-3 border-b dark:border-b-gray-700 last:border-b-0"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <span className={`font-mono text-sm font-bold ${
-                          item._type === 'bl' ? 'text-orange-600' : 'text-teal-600'
-                        }`}>
-                          {item._type === 'bt' ? <FileText className="inline w-3.5 h-3.5 mr-1" /> : <Truck className="inline w-3.5 h-3.5 mr-1" />}
-                          {item._number}
+                        <span className="flex items-center gap-1">
+                          {item._type === 'bt' ? <FileText className="inline w-3.5 h-3.5 text-teal-600" /> : <Truck className="inline w-3.5 h-3.5 text-orange-600" />}
+                          <ReferenceLink
+                            type={item._type === 'bt' ? 'work-order' : 'delivery-note'}
+                            label={item._number}
+                            data={item._type === 'bt' ? { btNumber: item._number } : { blNumber: item._number }}
+                            variant={item._type === 'bt' ? 'green' : 'orange'}
+                          />
                         </span>
                         <div className="flex gap-1.5">
                           <button
@@ -612,8 +629,13 @@ export default function InvoiceManager() {
                               {item._type.toUpperCase()}
                             </span>
                           </td>
-                          <td className="px-6 py-3 font-mono text-sm font-bold text-gray-900 dark:text-gray-100">
-                            {item._number}
+                          <td className="px-6 py-3">
+                            <ReferenceLink
+                              type={item._type === 'bt' ? 'work-order' : 'delivery-note'}
+                              label={item._number}
+                              data={item._type === 'bt' ? { btNumber: item._number } : { blNumber: item._number }}
+                              variant={item._type === 'bt' ? 'green' : 'orange'}
+                            />
                           </td>
                           <td className="px-6 py-3 text-sm text-gray-600 dark:text-gray-400">
                             {formatDate(item._date)}
@@ -808,8 +830,20 @@ export default function InvoiceManager() {
                             <td className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100 font-medium">
                               {invoice.client_name}
                             </td>
-                            <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400 font-mono">
-                              {invoice.source_number}
+                            <td className="px-6 py-3">
+                              {(() => {
+                                const ref = getRefLinkProps(invoice.source_number, invoice.source_type);
+                                return ref ? (
+                                  <ReferenceLink
+                                    type={ref.type}
+                                    label={invoice.source_number}
+                                    data={ref.data}
+                                    variant={ref.variant}
+                                  />
+                                ) : (
+                                  <span className="text-sm text-gray-500 dark:text-gray-400 font-mono">{invoice.source_number}</span>
+                                );
+                              })()}
                             </td>
                             <td className="px-6 py-3 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
                               {formatCurrency(invoice.total)}

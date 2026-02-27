@@ -669,9 +669,22 @@ Bouton "Télécharger PDF" visible dans la liste des factures (mobile + desktop)
 **Bandeau résumé:** Total facturé, Payé, En attente, Brouillon, Moy./facture, Ventilation matériaux/M.O./transport
 **Vue En attente:** Retards en rouge, icône alerte, jours avant/après échéance
 
-### Phase E — Améliorations globales (en attente)
+### ~~Phase E — Numéros cliquables SplitView~~ ✅ COMPLÉTÉE (2026-02-27)
+1. ✅ `components/SplitView/PanelWorkOrder.js` — Panneau lecture seule BT (temps, matériaux, description)
+2. ✅ `components/SplitView/PanelDeliveryNote.js` — Panneau lecture seule BL (matériaux, description)
+3. ✅ `components/SplitView/SplitViewPanel.js` v1.1.0 — Support types 'work-order' et 'delivery-note'
+4. ✅ `components/SplitView/SplitViewContext.js` — JSDoc mis à jour (5 types)
+5. ✅ `components/invoices/InvoiceManager.js` v1.4.0 — ReferenceLink sur N° BT/BL (onglets À facturer + Factures)
+6. ✅ `components/statistics/SalesReport.js` v1.1.0 — ReferenceLink sur N° documents (BT/BL/Soumission)
+7. ✅ `components/statistics/FinancialReport.js` v1.1.0 — ReferenceLink sur N° référence (vue En attente)
+8. ✅ CLAUDE.md mis à jour (roadmap, composants)
+
+**Fonctionnement:** Clic sur un numéro BT/BL/Soumission ouvre le document en lecture dans le panneau latéral SplitView.
+**Types supportés:** work-order (BT, vert), delivery-note (BL, orange), purchase-order (BA, bleu), supplier-purchase (AF, orange), soumission (violet)
+
+**Note:** La navigation mobile (Option A — menu "Plus") reste à faire séparément.
 
 ---
 
-*Document créé le 2026-02-26 — Révision 6 avec Phases A, B, C et D complétées.*
-*Prochaine étape: Phase E (Améliorations globales — numéros cliquables, navigation mobile).*
+*Document créé le 2026-02-26 — Révision 7 avec Phases A, B, C, D et E complétées.*
+*Toutes les phases du plan sont complétées. Reste: Navigation mobile (Option A).*
