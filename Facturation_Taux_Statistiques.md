@@ -644,11 +644,20 @@ Bouton "Télécharger PDF" visible dans la liste des factures (mobile + desktop)
 
 **Note:** Les 2 migrations SQL doivent être exécutées manuellement dans Supabase Dashboard.
 
-### Phase C — Rapport Acomba (en attente)
+### ~~Phase C — Rapport Acomba~~ ✅ COMPLÉTÉE (2026-02-27)
+1. ✅ `app/api/invoices/report/route.js` — API GET rapport mensuel (toutes factures du mois + totaux agrégés)
+2. ✅ `components/invoices/AcombaReportExport.js` — Export PDF (jsPDF autoTable, en-tête/footer pdf-common.js, ligne TOTAUX gras) + Export CSV (séparateur point-virgule, BOM UTF-8 pour Excel français)
+3. ✅ `components/invoices/InvoiceManager.js` v1.3.0 — Sélecteur de mois `<input type="month">` + bouton "Rapport Acomba" (PDF) + bouton "Export CSV" dans l'onglet Factures
+4. ✅ CLAUDE.md mis à jour (endpoint, composant, roadmap)
+
+**Colonnes du rapport:** N° Facture | Date | Client | Référence | Vente mat. | Vente temps | Vente dépl. | Sous-total | TPS | TVQ | Total
+**Ligne TOTAUX** en gras avec fond gris en bas du tableau.
+**Fichiers:** `Rapport-Acomba_YYYY-MM.pdf` et `Rapport-Acomba_YYYY-MM.csv`
+
 ### Phase D — Statistiques Phase 2 (en attente)
 ### Phase E — Améliorations globales (en attente)
 
 ---
 
-*Document créé le 2026-02-26 — Révision 4 avec Phase A et Phase B complétées.*
-*Prochaine étape: Exécuter les migrations SQL, puis Phase C (Rapport Acomba).*
+*Document créé le 2026-02-26 — Révision 5 avec Phases A, B et C complétées.*
+*Prochaine étape: Phase D (Statistiques Phase 2 — sous-onglet Financier).*

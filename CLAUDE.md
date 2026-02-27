@@ -316,6 +316,7 @@ const total = subtotal + tps + tvq;
 /api/invoices                          → CRUD Factures (GET liste + POST création)
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
+/api/invoices/report                   → Rapport Acomba mensuel (GET avec mois)
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -349,8 +350,9 @@ components/statistics/StatisticsManager.js    → Composant principal Statistiqu
 components/statistics/StatisticsFilters.js    → Filtres de recherche (type, dates, client, etc.)
 components/statistics/SalesReport.js          → Tableau ventes + bandeau résumé + pagination
 components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes
-components/invoices/InvoiceManager.js         → Module Facturation (2 onglets: À facturer + Factures)
+components/invoices/InvoiceManager.js         → Module Facturation (2 onglets: À facturer + Factures + Rapport Acomba)
 components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ)
+components/invoices/AcombaReportExport.js     → Export PDF + CSV rapport mensuel Acomba
 ```
 
 ---
@@ -550,9 +552,15 @@ CRON_SECRET                   # Auth pour cron jobs
       et l'URL signée est sauvegardée dans `invoices.pdf_url` pour téléchargement ultérieur
     - Note: Les 2 migrations SQL doivent être exécutées manuellement dans Supabase Dashboard
 
+12. ~~**Rapport Acomba (Phase C)**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `app/api/invoices/report/route.js` — API GET rapport mensuel avec ventilation + totaux agrégés
+    - `components/invoices/AcombaReportExport.js` — Export PDF (jsPDF autoTable) + CSV (point-virgule, BOM UTF-8)
+    - `components/invoices/InvoiceManager.js` v1.3.0 — Sélecteur mois + boutons Rapport Acomba PDF + Export CSV
+    - Colonnes: N° Fact., Date, Client, Réf., Vente mat., Vente temps, Vente dépl., Sous-total, TPS, TVQ, Total
+    - Ligne TOTAUX en gras en bas du rapport
+
 ### À faire (priorité utilisateur)
-1. **Rapport Acomba (Phase C)** - Rapport mensuel ventilé pour saisie dans Acomba
-3. **Statistiques Phase 2 (Phase D)** - Sous-onglet Financier basé sur les factures
+1. **Statistiques Phase 2 (Phase D)** - Sous-onglet Financier basé sur les factures
 4. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
 5. **Numéros cliquables SplitView** - ReferenceLink.js partout dans l'app
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
