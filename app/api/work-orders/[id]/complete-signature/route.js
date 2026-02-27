@@ -6,9 +6,11 @@
  *              - Envoi email automatique
  *              - Déduction inventaire + mouvement d'inventaire
  *              - Ajout PDF au BA lié
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-02-27
  * @changelog
+ *   1.2.0 - Inventaire déduit à la signature (avant envoi email), pas seulement si email réussit
+ *           Protection anti-doublon via vérification inventory_movements existants
  *   1.1.0 - Ajout déduction inventaire + mouvements (inventory_movements) après envoi email
  *   1.0.0 - Version initiale
  */
@@ -181,12 +183,88 @@ export async function POST(request, { params }) {
     if (fetchError || !workOrder) {
       console.error('❌ Erreur récupération BT:', fetchError);
       return NextResponse.json(
-        { 
+        {
           signatureSaved: true,
           autoSendResult: { success: false, needsManualSend: true, reason: 'BT introuvable' },
           status: 'signed'
         }
       );
+    }
+
+    // 2b. Déduire l'inventaire À LA SIGNATURE (indépendant de l'envoi email)
+    if (workOrder.materials && workOrder.materials.length > 0) {
+      // Vérifier si l'inventaire a déjà été déduit pour ce BT (protection anti-doublon)
+      const { data: existingMovements } = await supabaseAdmin
+        .from('inventory_movements')
+        .select('id')
+        .eq('reference_type', 'work_order')
+        .eq('reference_id', workOrder.id.toString())
+        .limit(1);
+
+      if (existingMovements && existingMovements.length > 0) {
+        console.log('📦 Inventaire déjà déduit pour BT', workOrder.bt_number, '- skip');
+      } else {
+        console.log('📦 Traitement inventaire pour', workOrder.materials.length, 'matériaux');
+
+        for (const material of workOrder.materials) {
+          if (!material.product_id || !material.quantity) continue;
+
+          const qty = parseFloat(material.quantity) || 0;
+          if (qty === 0) continue;
+
+          const isCredit = qty < 0;
+          const absQty = Math.abs(qty);
+          const movementType = isCredit ? 'IN' : 'OUT';
+
+          const isNonInventory = material.product?.is_non_inventory || false;
+          const tableName = isNonInventory ? 'non_inventory_items' : 'products';
+
+          try {
+            const { data: product, error: productError } = await supabaseAdmin
+              .from(tableName)
+              .select('stock_qty')
+              .eq('product_id', material.product_id)
+              .single();
+
+            if (!productError && product) {
+              const currentStock = parseFloat(product.stock_qty) || 0;
+              const newStock = isCredit ? currentStock + absQty : currentStock - absQty;
+              const roundedStock = Math.round(newStock * 10000) / 10000;
+
+              await supabaseAdmin
+                .from(tableName)
+                .update({ stock_qty: roundedStock.toString() })
+                .eq('product_id', material.product_id);
+
+              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${material.product_id}: ${currentStock} → ${roundedStock}`);
+            }
+
+            const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
+            const totalCost = Math.round(absQty * unitCost * 100) / 100;
+
+            await supabaseAdmin
+              .from('inventory_movements')
+              .insert({
+                product_id: material.product_id,
+                product_description: material.description || material.product?.description || '',
+                product_group: material.product?.product_group || '',
+                unit: material.unit || 'UN',
+                movement_type: movementType,
+                quantity: absQty,
+                unit_cost: unitCost,
+                total_cost: totalCost,
+                reference_type: 'work_order',
+                reference_id: workOrder.id.toString(),
+                name: `${workOrder.bt_number}.pdf`,
+                notes: `BT ${workOrder.bt_number}${isCredit ? ' (CRÉDIT)' : ''} - ${workOrder.client?.company_name || workOrder.client?.name || 'Client'}`,
+                created_at: new Date().toISOString()
+              });
+
+          } catch (invError) {
+            console.error(`⚠️ Erreur inventaire pour ${material.product_id}:`, invError);
+          }
+        }
+      }
     }
 
     // 3. Vérifier si envoi automatique possible
@@ -286,78 +364,6 @@ export async function POST(request, { params }) {
         console.log('✅ Statut mis à jour vers "sent" avec succès');
       }
       
-      // 6b. Déduire/Ajouter les matériaux de l'inventaire
-      if (workOrder.materials && workOrder.materials.length > 0) {
-        console.log('📦 Traitement inventaire pour', workOrder.materials.length, 'matériaux');
-
-        for (const material of workOrder.materials) {
-          if (!material.product_id || !material.quantity) continue;
-
-          const qty = parseFloat(material.quantity) || 0;
-          if (qty === 0) continue;
-
-          // Déterminer le type de mouvement
-          const isCredit = qty < 0;
-          const absQty = Math.abs(qty);
-          const movementType = isCredit ? 'IN' : 'OUT'; // Crédit = retour = IN
-
-          // Déterminer si c'est un produit inventaire ou non-inventaire
-          const isNonInventory = material.product?.is_non_inventory || false;
-          const tableName = isNonInventory ? 'non_inventory_items' : 'products';
-
-          try {
-            // Récupérer le stock actuel
-            const { data: product, error: productError } = await supabaseAdmin
-              .from(tableName)
-              .select('stock_qty')
-              .eq('product_id', material.product_id)
-              .single();
-
-            if (!productError && product) {
-              const currentStock = parseFloat(product.stock_qty) || 0;
-              // Crédit (qty < 0): on ajoute | Vente (qty > 0): on soustrait
-              const newStock = isCredit ? currentStock + absQty : currentStock - absQty;
-
-              // Arrondir à 4 décimales
-              const roundedStock = Math.round(newStock * 10000) / 10000;
-
-              // Mettre à jour le stock
-              await supabaseAdmin
-                .from(tableName)
-                .update({ stock_qty: roundedStock.toString() })
-                .eq('product_id', material.product_id);
-
-              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${material.product_id}: ${currentStock} → ${roundedStock}`);
-            }
-
-            // Créer le mouvement d'inventaire
-            const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
-            const totalCost = Math.round(absQty * unitCost * 100) / 100;
-
-            await supabaseAdmin
-              .from('inventory_movements')
-              .insert({
-                product_id: material.product_id,
-                product_description: material.description || material.product?.description || '',
-                product_group: material.product?.product_group || '',
-                unit: material.unit || 'UN',
-                movement_type: movementType,
-                quantity: absQty,
-                unit_cost: unitCost,
-                total_cost: totalCost,
-                reference_type: 'work_order',
-                reference_id: workOrder.id.toString(),
-                name: `${workOrder.bt_number}.pdf`,
-                notes: `BT ${workOrder.bt_number}${isCredit ? ' (CRÉDIT)' : ''} - ${workOrder.client?.company_name || workOrder.client?.name || 'Client'}`,
-                created_at: new Date().toISOString()
-              });
-
-          } catch (invError) {
-            console.error(`⚠️ Erreur inventaire pour ${material.product_id}:`, invError);
-          }
-        }
-      }
-
       // 7. Ajouter le PDF au bon d'achat si lié
       console.log('🔍 DEBUG result:', {
         hasResult: !!result,

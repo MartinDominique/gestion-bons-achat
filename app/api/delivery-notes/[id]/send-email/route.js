@@ -142,7 +142,17 @@ export async function POST(request, { params }) {
       .eq('id', deliveryNoteId);
 
     // 7. Déduire l'inventaire
-    if (deliveryNote.materials && deliveryNote.materials.length > 0) {
+    // Vérifier si l'inventaire a déjà été déduit (via complete-signature)
+    const { data: existingBLMovements } = await supabaseAdmin
+      .from('inventory_movements')
+      .select('id')
+      .eq('reference_type', 'delivery_note')
+      .eq('reference_id', deliveryNote.id.toString())
+      .limit(1);
+
+    if (existingBLMovements && existingBLMovements.length > 0) {
+      console.log('📦 Inventaire déjà déduit pour BL', deliveryNote.bl_number, '(via signature) - skip');
+    } else if (deliveryNote.materials && deliveryNote.materials.length > 0) {
       for (const material of deliveryNote.materials) {
         if (!material.product_id || !material.quantity) continue;
 
