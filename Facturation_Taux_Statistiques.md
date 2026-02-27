@@ -626,18 +626,23 @@ const tvq = Math.round(subtotal * (settings.tvq_rate / 100) * 100) / 100;
 
 ### ~~Phase B — Facturation MVP~~ ✅ COMPLÉTÉE (2026-02-27)
 1. ✅ `supabase/migrations/20260227_create_invoices.sql` — Table invoices + invoice_id sur BT/BL
-2. ✅ `app/api/invoices/route.js` — API GET (liste + filtres + pagination) + POST (création + auto-numéro)
-3. ✅ `app/api/invoices/[id]/route.js` — API GET/PUT/DELETE facture individuelle
-4. ✅ `app/api/invoices/[id]/send-email/route.js` — Génération PDF + envoi email (cascade client)
-5. ✅ `components/invoices/InvoiceManager.js` — 2 onglets: "À facturer" (BT/BL non facturés) + "Factures" (liste)
-6. ✅ `components/invoices/InvoiceEditor.js` — Éditeur lignes avec calculs auto (M.O., transport, matériaux, forfait)
-7. ✅ `app/(protected)/facturation/page.js` — Page protégée
-8. ✅ `components/Navigation.js` — Ajout onglet Facturation (icône Receipt) + route protégée
-9. ✅ `app/bons-travail/page.js` — Indicateurs rouge/vert facturé (mobile + desktop)
-10. ✅ `app/api/work-orders/route.js` + `delivery-notes/route.js` — Ajout invoice_id au SELECT
-11. ✅ CLAUDE.md mis à jour (endpoints, composants, table invoices, roadmap)
+2. ✅ `supabase/migrations/20260227_create_invoices_storage.sql` — Bucket Storage 'invoices' (privé) + policies
+3. ✅ `app/api/invoices/route.js` — API GET (liste + filtres + pagination) + POST (création + auto-numéro)
+4. ✅ `app/api/invoices/[id]/route.js` — API GET/PUT/DELETE facture individuelle
+5. ✅ `app/api/invoices/[id]/send-email/route.js` — PDF + upload Storage + pdf_url + envoi email (cascade)
+6. ✅ `components/invoices/InvoiceManager.js` — 2 onglets + bouton Télécharger PDF (depuis Storage)
+7. ✅ `components/invoices/InvoiceEditor.js` — Éditeur lignes avec calculs auto (M.O., transport, matériaux, forfait)
+8. ✅ `app/(protected)/facturation/page.js` — Page protégée
+9. ✅ `components/Navigation.js` — Ajout onglet Facturation (icône Receipt) + route protégée
+10. ✅ `app/bons-travail/page.js` — Indicateurs rouge/vert facturé (mobile + desktop)
+11. ✅ `app/api/work-orders/route.js` + `delivery-notes/route.js` — Ajout invoice_id au SELECT
+12. ✅ CLAUDE.md mis à jour (endpoints, composants, table invoices, roadmap, stockage PDF)
 
-**Note:** La migration SQL `20260227_create_invoices.sql` doit être exécutée manuellement dans Supabase Dashboard.
+**Stockage PDF:** Lors de l'envoi, le PDF est uploadé dans `invoices/YYYY/MM/facture-{numero}.pdf`
+(bucket privé Supabase Storage) et l'URL signée est sauvegardée dans `invoices.pdf_url`.
+Bouton "Télécharger PDF" visible dans la liste des factures (mobile + desktop).
+
+**Note:** Les 2 migrations SQL doivent être exécutées manuellement dans Supabase Dashboard.
 
 ### Phase C — Rapport Acomba (en attente)
 ### Phase D — Statistiques Phase 2 (en attente)

@@ -536,16 +536,19 @@ CRON_SECRET                   # Auth pour cron jobs
 
 11. ~~**Facturation MVP (Phase B)**~~ - ✅ COMPLÉTÉ 2026-02-27
     - `supabase/migrations/20260227_create_invoices.sql` — Table invoices + invoice_id sur BT/BL
+    - `supabase/migrations/20260227_create_invoices_storage.sql` — Bucket Supabase Storage 'invoices' (privé)
     - `app/api/invoices/route.js` — API GET (liste) + POST (création avec auto-numéro)
     - `app/api/invoices/[id]/route.js` — API GET/PUT/DELETE facture individuelle
-    - `app/api/invoices/[id]/send-email/route.js` — Envoi PDF facture par email (cascade client)
-    - `components/invoices/InvoiceManager.js` — 2 onglets: "À facturer" + "Factures"
+    - `app/api/invoices/[id]/send-email/route.js` — Envoi PDF + upload Storage + sauvegarde pdf_url
+    - `components/invoices/InvoiceManager.js` — 2 onglets: "À facturer" + "Factures" + bouton Télécharger PDF
     - `components/invoices/InvoiceEditor.js` — Éditeur lignes (M.O., transport, matériaux, forfait)
     - `app/(protected)/facturation/page.js` — Page protégée Facturation
     - `components/Navigation.js` — Ajout onglet Facturation (icône Receipt)
     - `app/bons-travail/page.js` — Indicateurs rouge/vert facturé sur BT/BL
     - `app/api/work-orders/route.js` + `delivery-notes/route.js` — Ajout invoice_id au SELECT
-    - Note: Migration SQL doit être exécutée manuellement dans Supabase Dashboard
+    - **Stockage PDF:** Lors de l'envoi, le PDF est uploadé dans `invoices/YYYY/MM/facture-{numero}.pdf`
+      et l'URL signée est sauvegardée dans `invoices.pdf_url` pour téléchargement ultérieur
+    - Note: Les 2 migrations SQL doivent être exécutées manuellement dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)
 1. **Rapport Acomba (Phase C)** - Rapport mensuel ventilé pour saisie dans Acomba

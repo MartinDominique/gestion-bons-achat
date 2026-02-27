@@ -4,16 +4,17 @@
  *              - Onglet "À facturer": BT/BL signés sans facture
  *              - Onglet "Factures": Liste des factures créées
  *              - Actions: créer, voir, renvoyer, marquer payée
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-02-27
  * @changelog
+ *   1.1.0 - Ajout bouton Télécharger PDF (Supabase Storage)
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
 
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle } from 'lucide-react';
+import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
 
 export default function InvoiceManager() {
@@ -557,6 +558,16 @@ export default function InvoiceManager() {
                           >
                             <Eye className="w-3.5 h-3.5" /> Voir
                           </button>
+                          {invoice.pdf_url && (
+                            <a
+                              href={invoice.pdf_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-1.5 rounded text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-1"
+                            >
+                              <Download className="w-3.5 h-3.5" /> PDF
+                            </a>
+                          )}
                           {invoice.status !== 'paid' && (
                             <>
                               <button
@@ -629,6 +640,17 @@ export default function InvoiceManager() {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
+                                {invoice.pdf_url && (
+                                  <a
+                                    href={invoice.pdf_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    title="Télécharger PDF"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </a>
+                                )}
                                 {invoice.status !== 'paid' && (
                                   <>
                                     <button
