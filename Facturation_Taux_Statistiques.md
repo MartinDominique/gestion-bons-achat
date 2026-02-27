@@ -80,9 +80,9 @@ dossier client, tout endroit où un numéro BT/BL/BA/Soumission est affiché.
 |------|---------------|-------|---------|
 | Régulier | 1× | Lundi-Vendredi jour | 1h |
 | Temps et demi | 1.5× | Soirs (début après 17h) + Samedis | 2h soirs / 3h samedis |
-| Temps double | 2× | Dimanches + Jours fériés | 3h |
+| Temps double | 2× | Jours fériés | 3h |
 
-**Note:** Le CLAUDE.md actuel indique 1.5× pour dimanches/fériés. À confirmer avec Dominique. La BD supporte les deux options sans changement.
+**Confirmé (2026-02-27):** Dimanches = 1.5×, Fériés = 2×. CLAUDE.md mis à jour.
 
 Le `TimeTracker.js` gère déjà la détection automatique via `surcharge_type` dans les `time_entries`. Les taux en $ sont la seule donnée manquante.
 
@@ -106,7 +106,7 @@ ALTER TABLE clients ADD COLUMN contact_3      TEXT DEFAULT NULL;
 
 ALTER TABLE clients ADD COLUMN payment_terms TEXT DEFAULT NULL;
 -- NULL = utiliser settings.default_payment_terms
--- Valeurs: 'Net 30 jours', 'Payable à la réception', '10 jours 10% - Net 30 jours'
+-- Valeurs: 'Net 30 jours', 'Payable sur réception', '2% 10 Net 30 jours'
 
 -- Rendre email_admin NON obligatoire (retirer NOT NULL si existant)
 -- À vérifier dans Supabase avant d'exécuter
@@ -204,8 +204,8 @@ La page Paramètres existe (Dark mode). Ajouter :
 │                                                       │
 │  Conditions de paiement par défaut:                  │
 │  [ Net 30 jours ▼ ]                                  │
-│  Options: Net 30 jours / Payable à la réception /   │
-│           10 jours 10% - Net 30 jours                │
+│  Options: Net 30 jours / Payable sur réception /   │
+│           2% 10 Net 30 jours                │
 │                                                       │
 │  Note pied de facture:                               │
 │  [ Merci de votre confiance!          ]              │
@@ -586,10 +586,10 @@ Nouveaux rapports financiers : revenus par mois, par client, factures en attente
 ```javascript
 function getRate(baseRate, surchargeType) {
   switch (surchargeType) {
+    case 'holiday':  return baseRate * 2.0;  // Fériés = 2x (confirmé 2026-02-27)
     case 'sunday':
-    case 'holiday': return baseRate * 2.0;  // À CONFIRMER avec Dominique
     case 'saturday':
-    case 'evening':  return baseRate * 1.5;
+    case 'evening':  return baseRate * 1.5;  // Dim/Sam/Soir = 1.5x
     default:         return baseRate;
   }
 }
@@ -601,17 +601,35 @@ const tvq = Math.round(subtotal * (settings.tvq_rate / 100) * 100) / 100;
 
 ---
 
-## 12. Questions ouvertes
+## 12. ~~Questions ouvertes~~ ✅ RÉSOLUES (2026-02-27)
 
-1. **Taux dimanches/fériés** — 1.5× ou 2×? À confirmer avec Dominique. Mettre à jour CLAUDE.md une fois décidé.
-
-2. **Navigation mobile** — Option A, B ou C? (Recommandation: Option A)
-
-3. **Transport sans montant client** — Si `include_transport_fee = true` mais client sans `transport_fee`: (a) pas de ligne transport, ou (b) ligne à 0$ que Dominique remplit?
-
-4. **Conditions de paiement** — Les 3 options (Net 30, Payable à réception, 10j/10%-Net30) sont-elles suffisantes?
+1. **Taux dimanches/fériés** — ✅ **Dimanche 1.5×, Fériés 2×** — CLAUDE.md mis à jour
+2. **Navigation mobile** — ✅ **Option A** (menu "Plus") retenue
+3. **Transport sans montant client** — ✅ **Ligne à 0$** que Dominique remplit manuellement dans l'éditeur de facture
+4. **Conditions de paiement** — ✅ Corrigées selon Acomba:
+   - `Net 30 jours`
+   - `2% 10 Net 30 jours` (pas 10%, c'est 2%)
+   - `Payable sur réception`
 
 ---
 
-*Document créé le 2026-02-26 — Révision 2 intégrant les commentaires de Martin.*
-*Prochaine étape: Répondre aux 4 questions (Section 12), approuver, puis Phase A.*
+## 13. Suivi d'implantation
+
+### ~~Phase A — Fondations~~ ✅ COMPLÉTÉE (2026-02-27)
+1. ✅ `supabase/migrations/20260227_add_settings_and_tarification.sql` — Table settings + colonnes clients
+2. ✅ `app/api/settings/route.js` — API GET/PUT paramètres globaux
+3. ✅ `app/(protected)/parametres/page.js` v2.0.0 — Sections Taux & Tarifs + Facturation
+4. ✅ `components/ClientModal.js` v2.0.0 — Tarification + Contact #3 + email_admin optionnel
+5. ✅ CLAUDE.md mis à jour (taux fériés 2x, roadmap, endpoints)
+
+**Note:** La migration SQL doit être exécutée manuellement dans Supabase Dashboard avant utilisation.
+
+### Phase B — Facturation MVP (en attente)
+### Phase C — Rapport Acomba (en attente)
+### Phase D — Statistiques Phase 2 (en attente)
+### Phase E — Améliorations globales (en attente)
+
+---
+
+*Document créé le 2026-02-26 — Révision 3 avec réponses confirmées et Phase A complétée.*
+*Prochaine étape: Exécuter la migration SQL, puis Phase B (Facturation MVP).*

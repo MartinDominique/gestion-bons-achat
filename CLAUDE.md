@@ -311,6 +311,7 @@ const total = subtotal + tps + tvq;
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
+/api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -439,7 +440,7 @@ Code: `lib/services/email-service.js` fonction `toQuarterHourUp()`
 | Soir (début après 17h, nouvelle job) | 2h | 1.5x | "Soir" |
 | Samedi | 3h | 1.5x | "Samedi" |
 | Dimanche | 3h | 1.5x | "Dimanche" |
-| Jour férié (Québec) | 3h | 1.5x | "Jour férié" |
+| Jour férié (Québec) | 3h | 2x | "Jour férié" |
 
 **Règle soir:** S'applique UNIQUEMENT si la job débute après 17h (pas une continuité de jour).
 **Checkbox:** Optionnel par BT via `work_orders.apply_surcharge` (boolean).
@@ -504,16 +505,24 @@ CRON_SECRET                   # Auth pour cron jobs
    - `components/Navigation.js` — Ajout onglet Statistiques (icône BarChart3)
    - Note: Coûts BT/BL basés sur cost_price actuel des produits (approximatif si prix changé)
 
+10. ~~**Phase A Fondations — Taux horaires, Tarification, Settings**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `supabase/migrations/20260227_add_settings_and_tarification.sql` — Table settings + colonnes clients
+    - `app/api/settings/route.js` — API GET/PUT paramètres globaux (nouveau)
+    - `app/(protected)/parametres/page.js` — Sections Taux & Tarifs + Facturation (v2.0.0)
+    - `components/ClientModal.js` — Tarification + Contact #3 + email_admin optionnel (v2.0.0)
+    - Décisions confirmées: Dimanche 1.5x, Fériés 2x, Navigation Option A, Transport ligne 0$
+    - Conditions paiement: Net 30 jours / 2% 10 Net 30 jours / Payable sur réception
+
 ### À faire (priorité utilisateur)
-1. **Rapports & Statistiques Phase 2** - Drill-down, graphiques, migration cost_price BT/BL (voir `Rapports_Statistiques.md`)
-2. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
-3. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
-4. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
-5. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
-6. **Optimisation mobile BT/BL** - 95% usage mobile
-7. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
+1. **Facturation MVP (Phase B)** - Module complet de facturation (voir `Facturation_Taux_Statistiques.md`)
+2. **Rapport Acomba (Phase C)** - Rapport mensuel ventilé pour saisie dans Acomba
+3. **Statistiques Phase 2 (Phase D)** - Sous-onglet Financier basé sur les factures
+4. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
+5. **Numéros cliquables SplitView** - ReferenceLink.js partout dans l'app
+6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
+7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
-9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin (ex: badges statut, composants WorkOrderList, WorkOrderClientView)
+9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
 - ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé (2026-02-07)
