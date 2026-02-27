@@ -654,10 +654,24 @@ Bouton "Télécharger PDF" visible dans la liste des factures (mobile + desktop)
 **Ligne TOTAUX** en gras avec fond gris en bas du tableau.
 **Fichiers:** `Rapport-Acomba_YYYY-MM.pdf` et `Rapport-Acomba_YYYY-MM.csv`
 
-### Phase D — Statistiques Phase 2 (en attente)
+### ~~Phase D — Statistiques Phase 2~~ ✅ COMPLÉTÉE (2026-02-27)
+1. ✅ `app/api/statistics/financial/route.js` — API GET statistiques financières (résumé global, par mois, par client, factures en attente)
+2. ✅ `components/statistics/FinancialStatistics.js` — Orchestrateur sous-onglet Financier (gestion état, API, PDF)
+3. ✅ `components/statistics/FinancialFilters.js` — Filtres: période (défaut 12 mois), client, statut, vue (Par mois / Par client / En attente)
+4. ✅ `components/statistics/FinancialReport.js` — 3 vues responsive (desktop tableau, mobile cartes):
+   - **Par mois:** Ventilation matériaux/M.O./transport + sous-total + TPS/TVQ + total + compteurs payé/en attente
+   - **Par client:** Total par client + ventilation + payé/en attente + % du total
+   - **En attente:** Factures non payées triées par ancienneté + jours restants/retard + détection échéance dépassée
+5. ✅ `components/statistics/FinancialPDFExport.js` — Export PDF (3 modes) avec en-tête/footer pdf-common.js
+6. ✅ `components/statistics/StatisticsManager.js` v2.0.0 — 2 sous-onglets: Opérationnel (BT/BL) + Financier (Factures)
+7. ✅ CLAUDE.md mis à jour (endpoint, composants, roadmap)
+
+**Bandeau résumé:** Total facturé, Payé, En attente, Brouillon, Moy./facture, Ventilation matériaux/M.O./transport
+**Vue En attente:** Retards en rouge, icône alerte, jours avant/après échéance
+
 ### Phase E — Améliorations globales (en attente)
 
 ---
 
-*Document créé le 2026-02-26 — Révision 5 avec Phases A, B et C complétées.*
-*Prochaine étape: Phase D (Statistiques Phase 2 — sous-onglet Financier).*
+*Document créé le 2026-02-26 — Révision 6 avec Phases A, B, C et D complétées.*
+*Prochaine étape: Phase E (Améliorations globales — numéros cliquables, navigation mobile).*
