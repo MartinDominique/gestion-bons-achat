@@ -5,9 +5,10 @@
  *              - Filtre par type (BT/BL), statut, recherche
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
- * @version 2.1.0
- * @date 2026-02-14
+ * @version 2.2.0
+ * @date 2026-02-27
  * @changelog
+ *   2.2.0 - Indicateur facture distingue Acomba (ambre) vs App (vert)
  *   2.1.0 - Fix filtre type multi-select + restauration layout tablette style main
  *   2.0.0 - Ajout support BL dans la liste unifiée
  *   1.0.0 - Version initiale (BT seulement)
@@ -542,8 +543,20 @@ export default function BonsTravailPage() {
                         <div className="flex items-center gap-2">
                           {['signed', 'completed', 'sent'].includes(item.status) && (
                             <span
-                              className={`inline-flex h-2.5 w-2.5 rounded-full ${item.invoice_id ? 'bg-green-500' : 'bg-red-500'}`}
-                              title={item.invoice_id ? 'Facturé' : 'Non facturé'}
+                              className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                                item.invoice_id === -1
+                                  ? 'bg-amber-500'
+                                  : item.invoice_id
+                                    ? 'bg-green-500'
+                                    : 'bg-red-500'
+                              }`}
+                              title={
+                                item.invoice_id === -1
+                                  ? 'Facturé (Acomba)'
+                                  : item.invoice_id
+                                    ? 'Facturé'
+                                    : 'Non facturé'
+                              }
                             />
                           )}
                           <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
@@ -619,8 +632,20 @@ export default function BonsTravailPage() {
                             }`}>
                               {['signed', 'completed', 'sent'].includes(item.status) && (
                                 <span
-                                  className={`inline-flex h-2.5 w-2.5 rounded-full flex-shrink-0 ${item.invoice_id ? 'bg-green-500' : 'bg-red-500'}`}
-                                  title={item.invoice_id ? 'Facturé' : 'Non facturé'}
+                                  className={`inline-flex h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                                    item.invoice_id === -1
+                                      ? 'bg-amber-500'
+                                      : item.invoice_id
+                                        ? 'bg-green-500'
+                                        : 'bg-red-500'
+                                  }`}
+                                  title={
+                                    item.invoice_id === -1
+                                      ? 'Facturé (Acomba)'
+                                      : item.invoice_id
+                                        ? 'Facturé'
+                                        : 'Non facturé'
+                                  }
                                 />
                               )}
                               {item._number}
