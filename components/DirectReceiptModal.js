@@ -7,9 +7,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.2.0
- * @date 2026-02-19
+ * @version 1.3.0
+ * @date 2026-02-22
  * @changelog
+ *   1.3.0 - Ajout support dark mode
  *   1.2.0 - Ajout prix vendant + % marge par article (calcul auto), auto-sélection champs numériques
  *   1.1.0 - Retrait checkbox non-inventaire du formulaire création (items toujours dans products)
  *   1.0.0 - Version initiale
@@ -418,7 +419,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl">
+      <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl">
 
         {/* Header */}
         <div className={`${isAdjustment
@@ -478,7 +479,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
         {/* Messages */}
         {error && (
-          <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center gap-2">
+          <div className="mx-4 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-400 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <span className="text-sm">{error}</span>
             <button onClick={() => setError('')} className="ml-auto text-red-400 hover:text-red-600">
@@ -487,7 +488,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
           </div>
         )}
         {success && (
-          <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 flex items-center gap-2">
+          <div className="mx-4 mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg text-green-700 dark:text-green-300 flex items-center gap-2">
             <Check className="w-5 h-5 flex-shrink-0" />
             <span className="text-sm">{success}</span>
           </div>
@@ -498,11 +499,11 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
           {/* Recherche de produits */}
           <div className="relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Rechercher un produit
             </label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -513,7 +514,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                 }}
                 onKeyDown={handleSearchKeyDown}
                 placeholder="Rechercher par code ou description..."
-                className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
               {searching && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -524,31 +525,31 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
             {/* Résultats de recherche */}
             {searchResults.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                 {searchResults.map((product, index) => (
                   <div
                     key={product.product_id}
                     onClick={() => addProductToReceipt(product)}
                     className={`px-4 py-2 cursor-pointer flex items-center justify-between ${
-                      index === focusedIndex ? 'bg-teal-50' : 'hover:bg-gray-50'
+                      index === focusedIndex ? 'bg-teal-50 dark:bg-teal-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">
+                        <span className="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-0.5 rounded">
                           {product.product_id}
                         </span>
                         {product.is_non_inventory && (
-                          <span className="bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5 rounded-full">
+                          <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs px-1.5 py-0.5 rounded-full">
                             Non-inv.
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 truncate mt-0.5">{product.description}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">{product.description}</p>
                     </div>
                     <div className="text-right ml-3 flex-shrink-0">
-                      <div className="text-xs text-gray-500">Stock: {parseFloat(product.stock_qty) || 0}</div>
-                      <div className="text-xs text-teal-600">{formatCurrency(product.cost_price)}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Stock: {parseFloat(product.stock_qty) || 0}</div>
+                      <div className="text-xs text-teal-600 dark:text-teal-400">{formatCurrency(product.cost_price)}</div>
                     </div>
                   </div>
                 ))}
@@ -557,8 +558,8 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
             {/* Pas de résultats */}
             {productSearchTerm.length >= 2 && !searching && searchResults.length === 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center">
-                <p className="text-gray-500 text-sm mb-2">Aucun produit trouvé</p>
+              <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 text-center">
+                <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">Aucun produit trouvé</p>
                 <button
                   onClick={() => {
                     setShowNewItemForm(true);
@@ -579,7 +580,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
           {!showNewItemForm && (
             <button
               onClick={() => setShowNewItemForm(true)}
-              className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-teal-400 hover:text-teal-600 text-sm flex items-center justify-center gap-2 transition-colors"
+              className="w-full py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:border-teal-400 hover:text-teal-600 dark:hover:border-teal-500 dark:hover:text-teal-400 text-sm flex items-center justify-center gap-2 transition-colors"
             >
               <Plus className="w-4 h-4" />
               Créer un nouveau produit
@@ -588,12 +589,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
           {/* Formulaire nouveau produit */}
           {showNewItemForm && (
-            <div className="border-2 border-teal-200 rounded-lg p-4 bg-teal-50/50">
+            <div className="border-2 border-teal-200 dark:border-teal-700 rounded-lg p-4 bg-teal-50/50 dark:bg-teal-900/10">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-teal-800">Nouveau produit</h3>
+                <h3 className="font-semibold text-teal-800 dark:text-teal-300">Nouveau produit</h3>
                 <button
                   onClick={() => { setShowNewItemForm(false); resetNewItemForm(); }}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -601,27 +602,27 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Code produit *</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Code produit *</label>
                   <input
                     type="text"
                     value={newItemForm.product_id}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, product_id: e.target.value.toUpperCase() }))}
                     placeholder="Ex: PROD-001"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Description *</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description *</label>
                   <input
                     type="text"
                     value={newItemForm.description}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Description du produit"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Prix coûtant *</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Prix coûtant *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -631,11 +632,11 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, cost_price: e.target.value }))}
                     onFocus={(e) => e.target.select()}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Prix vente *</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Prix vente *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -645,15 +646,15 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, selling_price: e.target.value }))}
                     onFocus={(e) => e.target.select()}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Unité</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Unité</label>
                   <select
                     value={newItemForm.unit}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, unit: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   >
                     <option value="Un">Un</option>
                     <option value="M">M (mètre)</option>
@@ -667,13 +668,13 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Groupe</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Groupe</label>
                   <input
                     type="text"
                     value={newItemForm.product_group}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, product_group: e.target.value }))}
                     placeholder="Ex: Électrique, Plomberie..."
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
@@ -681,7 +682,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
               <div className="flex justify-end gap-2 mt-3">
                 <button
                   onClick={() => { setShowNewItemForm(false); resetNewItemForm(); }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                 >
                   Annuler
                 </button>
@@ -699,38 +700,38 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
           {/* Liste des items sélectionnés */}
           {receiptItems.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-2">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Articles à {isAdjustment ? 'ajuster' : 'réceptionner'}
               </h3>
               <div className="space-y-2">
                 {receiptItems.map((item) => (
                   <div
                     key={item.product_id}
-                    className="border rounded-lg p-3 bg-white hover:bg-gray-50"
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750"
                   >
                     {/* Row 1: Info produit + stock + supprimer */}
                     <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">
+                          <span className="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-0.5 rounded">
                             {item.product_id}
                           </span>
                           {item.is_non_inventory && (
-                            <span className="bg-purple-100 text-purple-700 text-xs px-1.5 py-0.5 rounded-full">
+                            <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs px-1.5 py-0.5 rounded-full">
                               Non-inv.
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 truncate mt-0.5">{item.description}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">{item.description}</p>
                       </div>
 
                       <div className="text-right text-sm min-w-[80px]">
-                        <div className="text-blue-600 text-xs">
+                        <div className="text-blue-600 dark:text-blue-400 text-xs">
                           Stock: <span className="font-bold">{item.current_stock}</span>
                         </div>
                         {item.quantity !== 0 && (
                           <div className={`text-xs px-1.5 py-0.5 rounded mt-0.5 ${
-                            item.quantity > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                            item.quantity > 0 ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
                           }`}>
                             Nouveau: <span className="font-bold">{Math.max(0, item.current_stock + item.quantity)}</span>
                           </div>
@@ -739,7 +740,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
                       <button
                         onClick={() => removeItem(item.product_id)}
-                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                        className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                         title="Retirer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -749,7 +750,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     {/* Row 2: Coûtant + % + Vendant + Qté */}
                     <div className="flex items-end gap-2 mt-2 flex-wrap">
                       <div className="w-[90px]">
-                        <label className="text-xs text-gray-500 block mb-0.5">Coûtant</label>
+                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">Coûtant</label>
                         <input
                           type="number"
                           step="0.01"
@@ -758,12 +759,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                           value={item.cost_price || ''}
                           onChange={(e) => updateItemCostPrice(item.product_id, e.target.value)}
                           onFocus={(e) => e.target.select()}
-                          className="w-full px-2 py-1.5 border rounded text-center text-sm"
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-center text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
 
                       <div className="w-16">
-                        <label className="text-xs text-gray-500 block mb-0.5">%</label>
+                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">%</label>
                         <input
                           type="number"
                           step="1"
@@ -784,13 +785,13 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                             ));
                           }}
                           onFocus={(e) => e.target.select()}
-                          className="w-full px-2 py-1.5 border rounded text-center text-sm bg-green-50"
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-center text-sm bg-green-50 dark:bg-green-900/20 text-gray-900 dark:text-gray-100"
                           placeholder="%"
                         />
                       </div>
 
                       <div className="w-[90px]">
-                        <label className="text-xs text-gray-500 block mb-0.5">Vendant</label>
+                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">Vendant</label>
                         <input
                           type="number"
                           step="0.01"
@@ -799,12 +800,12 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                           value={item.selling_price || ''}
                           onChange={(e) => updateItemSellingPrice(item.product_id, e.target.value)}
                           onFocus={(e) => e.target.select()}
-                          className="w-full px-2 py-1.5 border rounded text-center text-sm"
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-center text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
 
                       <div className="flex-1 min-w-[80px]">
-                        <label className="text-xs text-gray-500 block mb-0.5">
+                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">
                           {isAdjustment ? 'Ajust. (+/-)' : 'Qté'}
                         </label>
                         <input
@@ -816,7 +817,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                           onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
                           onFocus={(e) => e.target.select()}
                           className={`w-full px-2 py-1.5 border rounded text-center font-medium text-sm ${
-                            item.quantity < 0 ? 'border-red-300 bg-red-50 text-red-700' : ''
+                            item.quantity < 0 ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                           }`}
                           placeholder="0"
                         />
@@ -833,7 +834,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
             {!isAdjustment && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Fournisseur (optionnel)
                   </label>
                   <input
@@ -841,11 +842,11 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     value={supplierName}
                     onChange={(e) => setSupplierName(e.target.value)}
                     placeholder="Nom du fournisseur"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     N° BL fournisseur (optionnel)
                   </label>
                   <input
@@ -853,20 +854,20 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     value={supplierDeliveryNumber}
                     onChange={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
                     placeholder="Ex: BL-12345"
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </>
             )}
             <div className={!isAdjustment ? 'sm:col-span-2' : 'col-span-full'}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Notes (optionnel)
               </label>
               <textarea
                 value={receiptNotes}
                 onChange={(e) => setReceiptNotes(e.target.value)}
                 placeholder={isAdjustment ? 'Ex: Prise d\'inventaire février 2026' : 'Ex: Achat direct au comptoir...'}
-                className="w-full px-3 py-2 border rounded-lg resize-none text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 rows={2}
               />
             </div>
@@ -874,10 +875,10 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
         </div>
 
         {/* Footer */}
-        <div className="border-t px-6 py-4 bg-gray-50 rounded-b-xl flex justify-between items-center">
+        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-800 rounded-b-xl flex justify-between items-center">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm"
           >
             Fermer
           </button>

@@ -290,6 +290,7 @@ const total = subtotal + tps + tvq;
 /(protected)/achat-materiels     → Achats Fournisseurs (AF)
 /(protected)/inventaire          → Gestion inventaire
 /(protected)/soumissions         → Soumissions/devis
+/(protected)/statistiques        → Rapports & Statistiques de Ventes
 ```
 
 ### API Endpoints Critiques
@@ -309,6 +310,8 @@ const total = subtotal + tps + tvq;
 /api/products                          → CRUD produits
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
+/api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
+/api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -338,6 +341,10 @@ components/InventoryManager.js                → Gestion inventaire (recherche 
 components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation commande client)
 components/SplitView/                         → Panneau latéral (BA/AF/Soumission inline)
 components/ClientManager.js                   → Gestion clients
+components/statistics/StatisticsManager.js    → Composant principal Statistiques de Ventes
+components/statistics/StatisticsFilters.js    → Filtres de recherche (type, dates, client, etc.)
+components/statistics/SalesReport.js          → Tableau ventes + bandeau résumé + pagination
+components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes
 ```
 
 ---
@@ -433,7 +440,7 @@ Code: `lib/services/email-service.js` fonction `toQuarterHourUp()`
 | Soir (début après 17h, nouvelle job) | 2h | 1.5x | "Soir" |
 | Samedi | 3h | 1.5x | "Samedi" |
 | Dimanche | 3h | 1.5x | "Dimanche" |
-| Jour férié (Québec) | 3h | 1.5x | "Jour férié" |
+| Jour férié (Québec) | 3h | 2x | "Jour férié" |
 
 **Règle soir:** S'applique UNIQUEMENT si la job débute après 17h (pas une continuité de jour).
 **Checkbox:** Optionnel par BT via `work_orders.apply_surcharge` (boolean).
@@ -474,16 +481,48 @@ CRON_SECRET                   # Auth pour cron jobs
 5. ~~**Réception directe + Ajustement inventaire**~~ - ✅ COMPLÉTÉ 2026-02-18 (PR #52) - DirectReceiptModal
 6. ~~**Historique des prix produits**~~ - ✅ COMPLÉTÉ 2026-02-11 (PR #36-#39) - 3 niveaux prix + fournisseur
 7. ~~**Recherche serveur inventaire**~~ - ✅ COMPLÉTÉ 2026-02-12 (PR #37) - max 50 résultats, par groupe
+8. ~~**Mode Sombre (Dark Mode)**~~ - ✅ COMPLÉTÉ 2026-02-22 (branche `claude/add-dark-mode-support-FvcFv`)
+   - `tailwind.config.js` — `darkMode: 'class'` activé
+   - `app/globals.css` — `color-scheme: dark` ajouté
+   - `components/ThemeProvider.js` — wrapper `next-themes` (nouveau)
+   - `app/layout.js` — ThemeProvider + classes `dark:` sur body
+   - `app/(protected)/parametres/page.js` — page sélecteur Système/Clair/Sombre (nouveau)
+   - Tous les composants migrés avec classes Tailwind `dark:` :
+     Navigation, ClientManager, InventoryManager, SupplierPurchaseManager, SupplierPurchaseForms,
+     WorkOrderForm, TimeTracker, MaterialSelector, DeliveryNoteForm, DeliveryNoteClientView,
+     DirectReceiptModal, SupplierReceiptModal, BCCConfirmationModal, ClientModal, PurchaseOrderModal,
+     SoumissionsManager, DeliverySlipModal, ClientPOManager, SplitViewPanel, bons-travail page, login
+   - Pattern: `bg-white dark:bg-gray-900` / `text-gray-900 dark:text-gray-100` / inputs: `dark:bg-gray-800 dark:border-gray-600`
+   - **Reste à faire:** Tester visuellement sur tablette + ajuster si couleurs incorrectes
+
+9. ~~**Rapports & Statistiques de Ventes - Phase 1 MVP**~~ - ✅ COMPLÉTÉ 2026-02-24
+   - `app/api/statistics/route.js` — API GET avec filtres, tri, pagination, agrégation BT/BL/Soumissions
+   - `components/statistics/StatisticsManager.js` — Composant principal (orchestration)
+   - `components/statistics/StatisticsFilters.js` — Filtres: type, dates, client, N° doc, description, produit, tri
+   - `components/statistics/SalesReport.js` — Tableau desktop + cartes mobile + bandeau résumé + pagination
+   - `components/statistics/StatisticsPDFExport.js` — Export PDF via pdf-common.js + jsPDF autoTable
+   - `app/(protected)/statistiques/page.js` — Page protégée
+   - `components/Navigation.js` — Ajout onglet Statistiques (icône BarChart3)
+   - Note: Coûts BT/BL basés sur cost_price actuel des produits (approximatif si prix changé)
+
+10. ~~**Phase A Fondations — Taux horaires, Tarification, Settings**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `supabase/migrations/20260227_add_settings_and_tarification.sql` — Table settings + colonnes clients
+    - `app/api/settings/route.js` — API GET/PUT paramètres globaux (nouveau)
+    - `app/(protected)/parametres/page.js` — Sections Taux & Tarifs + Facturation (v2.0.0)
+    - `components/ClientModal.js` — Tarification + Contact #3 + email_admin optionnel (v2.0.0)
+    - Décisions confirmées: Dimanche 1.5x, Fériés 2x, Navigation Option A, Transport ligne 0$
+    - Conditions paiement: Net 30 jours / 2% 10 Net 30 jours / Payable sur réception
 
 ### À faire (priorité utilisateur)
-1. **Rapports & Statistiques de Ventes** - Nouveau module: coûts, ventes, marges par BT/BL/Soumission (voir `Rapports_Statistiques.md`)
-2. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
-3. **Standardisation PDF** - En-tête uniforme tous documents (module `pdf-common.js`)
-4. **Simplifier workflow Prix Jobe** - Trop complexe actuellement
-5. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
-6. **Optimisation mobile BT/BL** - 95% usage mobile
-7. **Rapport hebdomadaire** - Format à revoir (rapport Achats est OK)
+1. **Facturation MVP (Phase B)** - Module complet de facturation (voir `Facturation_Taux_Statistiques.md`)
+2. **Rapport Acomba (Phase C)** - Rapport mensuel ventilé pour saisie dans Acomba
+3. **Statistiques Phase 2 (Phase D)** - Sous-onglet Financier basé sur les factures
+4. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
+5. **Numéros cliquables SplitView** - ReferenceLink.js partout dans l'app
+6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
+7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
+9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
 - ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé (2026-02-07)
@@ -619,6 +658,8 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
   signature_timestamp: "2026-02-07T14:30:00Z",
   client_signature_name: "Jean Tremblay"
 }
+
+
 ```
 
 **Différences clés BL vs BT:**

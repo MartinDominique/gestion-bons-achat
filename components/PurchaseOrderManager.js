@@ -215,11 +215,11 @@ const PurchaseOrderManager = () => {
   // Couleur statut
   const getStatusColor = (status) => {
     const statusColors = {
-      in_progress: 'bg-blue-100 text-blue-800',
-      partial: 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-green-100 text-green-800'
+      in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+      partial: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+      completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
     };
-    return statusColors[status] || 'bg-blue-100 text-blue-800';
+    return statusColors[status] || 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
   };
 
   // Options de statut pour le select
@@ -234,7 +234,7 @@ const PurchaseOrderManager = () => {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des bons d'achat...</p>
+          <p className="text-gray-600 dark:text-gray-400">Chargement des bons d'achat...</p>
         </div>
       </div>
     );
@@ -316,12 +316,12 @@ const PurchaseOrderManager = () => {
 
       {/* Message d'erreur */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
-          <div className="text-red-800 text-sm">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4">
+          <div className="text-red-800 dark:text-red-300 text-sm">
             <strong>Erreur:</strong> {error}
-            <button 
-              onClick={() => setError('')} 
-              className="ml-4 text-red-600 underline hover:no-underline"
+            <button
+              onClick={() => setError('')}
+              className="ml-4 text-red-600 dark:text-red-400 underline hover:no-underline"
             >
               Fermer
             </button>
@@ -329,10 +329,10 @@ const PurchaseOrderManager = () => {
         </div>
       )}
 
-      {/* Section Principale Blanche */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+      {/* Section Principale */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700">
         {/* Barre de recherche compacte */}
-        <div className="p-3 sm:p-4 md:p-6 border-b border-gray-100">
+        <div className="p-3 sm:p-4 md:p-6 border-b border-gray-100 dark:border-gray-700">
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
@@ -341,7 +341,7 @@ const PurchaseOrderManager = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Rechercher par numéro, client..."
-                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all duration-200 text-sm"
+                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500 transition-all duration-200 text-sm"
               />
             </div>
             <select
@@ -350,7 +350,7 @@ const PurchaseOrderManager = () => {
                 setStatusFilter(e.target.value);
                 localStorage.setItem('ba_statusFilter', e.target.value);
               }}
-              className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white min-w-[160px] sm:min-w-[200px] transition-all duration-200 text-sm"
+              className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 dark:text-gray-100 min-w-[160px] sm:min-w-[200px] transition-all duration-200 text-sm"
             >
               <option value="all">Tous les statuts</option>
               <option value="in_progress">🔵 En cours</option>
@@ -363,15 +363,15 @@ const PurchaseOrderManager = () => {
         {/* Pas d'en-têtes - Layout 2 lignes */}
 
         {/* Liste des BAs - Format 2 LIGNES ULTRA-COMPACT */}
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">
           {filteredPOs.length === 0 ? (
             <div className="text-center py-12 sm:py-16 px-4 sm:px-6">
-              <div className="w-16 h-16 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                <FileText className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400" />
+              <div className="w-16 h-16 sm:w-24 sm:h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <FileText className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Aucun bon d'achat trouvé</h3>
-              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
-                {searchTerm || statusFilter !== 'all' 
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Aucun bon d'achat trouvé</h3>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 sm:mb-6">
+                {searchTerm || statusFilter !== 'all'
                   ? 'Aucun résultat ne correspond à vos critères de recherche.'
                   : 'Commencez par créer votre premier bon d\'achat.'}
               </p>
@@ -384,47 +384,47 @@ const PurchaseOrderManager = () => {
             </div>
           ) : (
             filteredPOs.map((po, index) => (
-              <div 
-                key={po.id} 
+              <div
+                key={po.id}
                 onClick={() => handleEditPO(po)}
-                className={`p-2 sm:p-3 hover:bg-blue-50 active:bg-blue-100 transition-all duration-150 cursor-pointer touch-manipulation ${
-                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                className={`p-2 sm:p-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 active:bg-blue-100 dark:active:bg-blue-900/30 transition-all duration-150 cursor-pointer touch-manipulation ${
+                  index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'
                 }`}
               >
                 {/* LIGNE 1: Informations principales */}
                 <div className="flex items-center gap-2 sm:gap-3 mb-1">
                   {/* #BA */}
-                  <div className="bg-gradient-to-r from-blue-100 to-purple-100 px-2 py-1 rounded flex-shrink-0">
-                    <div className="font-mono text-xs font-bold text-blue-700">#{po.po_number}</div>
+                  <div className="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 px-2 py-1 rounded flex-shrink-0">
+                    <div className="font-mono text-xs font-bold text-blue-700 dark:text-blue-400">#{po.po_number}</div>
                   </div>
 
                   {/* CLIENT */}
-                  <div className="font-semibold text-gray-900 text-sm truncate flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate flex-1 min-w-0">
                     {po.client_name || 'N/A'}
                   </div>
 
                   {/* BCC */}
                   {(po.bcc_sent_count || 0) > 0 && (
-                    <div className="flex items-center gap-1 bg-emerald-100 px-2 py-0.5 rounded-full flex-shrink-0" title={`${po.bcc_sent_count} BCC envoyé(s)`}>
-                      <FileText className="w-3 h-3 text-emerald-600" />
-                      <span className="text-xs font-medium text-emerald-700">{po.bcc_sent_count}</span>
+                    <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full flex-shrink-0" title={`${po.bcc_sent_count} BCC envoyé(s)`}>
+                      <FileText className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{po.bcc_sent_count}</span>
                     </div>
                   )}
 
                   {/* DATE */}
-                  <div className="text-xs font-medium text-gray-700 flex-shrink-0 hidden sm:block">
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-400 flex-shrink-0 hidden sm:block">
                     {formatDate(po.date)}
                   </div>
 
                   {/* MONTANT */}
-                  <div className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
+                  <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
                     {formatCurrency(po.amount)}
                   </div>
 
                   {/* STATUT - Modifiable */}
                   <div onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                     {updatingStatus[po.id] ? (
-                      <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs">
+                      <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full text-xs">
                         <Loader2 className="w-3 h-3 animate-spin" />
                       </div>
                     ) : (
@@ -443,14 +443,14 @@ const PurchaseOrderManager = () => {
                   </div>
 
                   {/* LIVRAISON */}
-                  <div className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                    <Truck className="w-3 h-3 text-gray-600" />
-                    <span className="text-xs font-medium text-gray-700">{deliveryCounts[po.id] || 0}</span>
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                    <Truck className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{deliveryCounts[po.id] || 0}</span>
                   </div>
                 </div>
 
                 {/* LIGNE 2: Description + Soumission */}
-                <div className="text-xs text-gray-600 pl-2 truncate" onClick={(e) => { if (po.submission_no) e.stopPropagation(); }}>
+                <div className="text-xs text-gray-600 dark:text-gray-400 pl-2 truncate" onClick={(e) => { if (po.submission_no) e.stopPropagation(); }}>
                   {po.submission_no && (
                     <>
                       <ReferenceLink

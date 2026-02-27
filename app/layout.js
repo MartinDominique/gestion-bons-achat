@@ -2,6 +2,7 @@
 import './globals.css';
 import Navigation from '../components/Navigation';
 import ClientSplitViewWrapper from '../components/SplitView/ClientSplitViewWrapper';
+import ThemeProvider from '../components/ThemeProvider';
 
 export const metadata = {
   title: 'Gestion Bons d\'Achat',
@@ -38,7 +39,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
         {/* 👇 AJOUT PWA - Meta tags - Début */}
         <meta name="application-name" content="Gestion Bons d'Achat" />
@@ -52,11 +53,13 @@ export default function RootLayout({ children }) {
         <link rel="apple-touch-icon" href="/logo192.png" />
         {/* 👆 AJOUT PWA - Meta tags - Fin */}
       </head>
-      <body className="bg-gray-100">
-        <Navigation />
-        <ClientSplitViewWrapper>
-          {children}
-        </ClientSplitViewWrapper>
+      <body className="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors">
+        <ThemeProvider>
+          <Navigation />
+          <ClientSplitViewWrapper>
+            {children}
+          </ClientSplitViewWrapper>
+        </ThemeProvider>
       </body>
     </html>
   );

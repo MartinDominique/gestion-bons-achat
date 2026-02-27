@@ -1,3 +1,17 @@
+/**
+ * @file components/PurchaseOrderModal.js
+ * @description Modal de gestion des bons d'achat client (BA)
+ *              - Création et édition de BA avec onglets (Info, Articles, Livraisons, Documents)
+ *              - Import depuis soumissions et achats fournisseurs
+ *              - Gestion des bons de livraison liés
+ *              - Modal BCC (confirmation de commande)
+ * @version 1.1.1
+ * @date 2026-02-22
+ * @changelog
+ *   1.1.1 - Fix boutons Fermer: texte invisible au survol en dark mode (hover:bg-gray-100 → dark:hover:bg-gray-700 + dark:text-gray-100)
+ *   1.1.0 - Ajout classes dark mode Tailwind CSS
+ *   1.0.0 - Version initiale
+ */
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import DeliverySlipModal from './DeliverySlipModal';
@@ -816,7 +830,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
 
     if (editMode) {
       return (
-        <tr className="bg-yellow-50">
+        <tr className="bg-yellow-50 dark:bg-yellow-900/20">
           <td className="px-1 py-1 relative">
             <input
               type="text"
@@ -826,11 +840,11 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
                 if (searchResults.length > 0) setShowSuggestions(true);
               }}
               placeholder="Code..."
-              className="w-full px-1 py-1 text-xs border rounded"
+              className="w-full px-1 py-1 text-xs border rounded dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             />
             
             {showSuggestions && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-b shadow-lg z-10 max-h-48 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-b shadow-lg z-10 max-h-48 overflow-y-auto">
                 {searchResults.map((product) => (
                   <div
                     key={product.id}
@@ -838,7 +852,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
                     className="px-2 py-1 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
                   >
                     <div className="font-medium text-xs">{product.product_id}</div>
-                    <div className="text-xs text-gray-600 truncate">{product.description || product.name}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 truncate">{product.description || product.name}</div>
                   </div>
                 ))}
               </div>
@@ -850,7 +864,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
               value={localItem.description}
               onChange={(e) => setLocalItem({...localItem, description: e.target.value})}
               placeholder="Description"
-              className="w-full px-1 py-1 text-xs border rounded"
+              className="w-full px-1 py-1 text-xs border rounded dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             />
           </td>
           <td className="px-1 py-1">
@@ -858,7 +872,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
               type="number"
               value={localItem.quantity}
               onChange={(e) => setLocalItem({...localItem, quantity: parseFloat(e.target.value) || 0})}
-              className="w-12 px-1 py-1 text-xs border rounded text-center"
+              className="w-12 px-1 py-1 text-xs border rounded text-center dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
               step="0.001"
               min="0"
             />
@@ -867,7 +881,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
             <select
               value={localItem.unit}
               onChange={(e) => setLocalItem({...localItem, unit: e.target.value})}
-              className="w-14 px-0 py-1 text-xs border rounded"
+              className="w-14 px-0 py-1 text-xs border rounded dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             >
               <option value="unité">UN</option>
               <option value="mètre">M</option>
@@ -882,7 +896,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
               type="number"
               value={localItem.selling_price}
               onChange={(e) => setLocalItem({...localItem, selling_price: parseFloat(e.target.value) || 0})}
-              className="w-14 px-1 py-1 text-xs border rounded text-center"
+              className="w-14 px-1 py-1 text-xs border rounded text-center dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
               step="any"
               min="0"
             />
@@ -921,18 +935,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
     const deliveryPercentage = totalQty > 0 ? (deliveredQty / totalQty) * 100 : 0;
 
     return (
-      <tr className="hover:bg-gray-50">
+      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
         <td className="px-2 py-2">
-          <div className="font-medium text-gray-900 text-xs">{item.product_id}</div>
+          <div className="font-medium text-gray-900 dark:text-gray-100 text-xs">{item.product_id}</div>
         </td>
         <td className="px-2 py-2 max-w-[120px]">
-          <div className="text-xs text-gray-900 truncate">{item.description}</div>
+          <div className="text-xs text-gray-900 dark:text-gray-100 truncate">{item.description}</div>
         </td>
         <td className="px-2 py-2 text-center">
           <div className="font-medium text-xs">{item.quantity}</div>
         </td>
         <td className="px-2 py-2 text-center">
-          <div className="text-xs">{item.unit}</div>
+          <div className="text-xs dark:text-gray-300">{item.unit}</div>
         </td>
         <td className="px-2 py-2 text-center text-xs">
           ${parseFloat(item.selling_price || 0).toFixed(2)}
@@ -1613,10 +1627,10 @@ setTimeout(() => {
     <>
       {/* Modal principal adapté mobile - or inline panel */}
       <div className={panelMode ? '' : 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-2 sm:p-4'}>
-        <div className={panelMode ? 'bg-white flex flex-col overflow-hidden h-full' : 'bg-white rounded-xl w-full h-[98vh] sm:max-w-6xl sm:h-[95vh] flex flex-col overflow-hidden'}>
+        <div className={panelMode ? 'bg-white dark:bg-gray-900 flex flex-col overflow-hidden h-full' : 'bg-white dark:bg-gray-900 rounded-xl w-full h-[98vh] sm:max-w-6xl sm:h-[95vh] flex flex-col overflow-hidden'}>
           {/* Header adapté mobile */}
           <div className={`bg-gradient-to-r from-blue-600 to-purple-600 text-white ${panelMode ? 'p-3' : 'p-4 sm:p-6'} flex-shrink-0`}>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center dark:text-gray-100">
               <div>
                 <h2 className={`${panelMode ? 'text-base' : 'text-lg sm:text-2xl'} font-bold`}>
                   {effectiveEditingPO ? `BA #${effectiveEditingPO.po_number || formData.po_number}` : 'Nouveau BA Client'}
@@ -1635,14 +1649,14 @@ setTimeout(() => {
           </div>
 
           {/* Navigation par onglets - VERSION MOBILE OPTIMISÉE */}
-          <div className="bg-gray-50 border-b border-gray-200 flex-shrink-0 overflow-x-auto">
+          <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-x-auto">
             <nav className="flex space-x-0 min-w-max">
               <button
                 onClick={() => setActiveTab('info')}
                 className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'info'
-                    ? 'border-blue-500 text-blue-600 bg-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue-500 text-blue-600 bg-white dark:bg-gray-900'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
                 <span>📋</span>
@@ -1652,14 +1666,14 @@ setTimeout(() => {
                 onClick={() => setActiveTab('articles')}
                 className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'articles'
-                    ? 'border-blue-500 text-blue-600 bg-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue-500 text-blue-600 bg-white dark:bg-gray-900'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
                 <span>📦</span>
                 <span>Articles</span>
                 {items.length > 0 && (
-                  <span className="bg-blue-100 text-blue-800 text-xs px-1 sm:px-2 py-1 rounded-full">
+                  <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-xs px-1 sm:px-2 py-1 rounded-full">
                     {items.length}
                   </span>
                 )}
@@ -1669,14 +1683,14 @@ setTimeout(() => {
                   onClick={() => setActiveTab('livraisons')}
                   className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                     activeTab === 'livraisons'
-                      ? 'border-blue-500 text-blue-600 bg-white'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                      ? 'border-blue-500 text-blue-600 bg-white dark:bg-gray-900'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
                 >
                   <span>🚚</span>
                   <span>Livraisons</span>
                   {deliverySlips.length > 0 && (
-                    <span className="bg-green-100 text-green-800 text-xs px-1 sm:px-2 py-1 rounded-full">
+                    <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 text-xs px-1 sm:px-2 py-1 rounded-full">
                       {deliverySlips.length}
                     </span>
                   )}
@@ -1686,14 +1700,14 @@ setTimeout(() => {
                 onClick={() => setActiveTab('documents')}
                 className={`px-3 sm:px-6 py-3 sm:py-4 h-14 sm:h-16 border-b-2 font-medium text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 whitespace-nowrap ${
                   activeTab === 'documents'
-                    ? 'border-blue-500 text-blue-600 bg-white'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-blue-500 text-blue-600 bg-white dark:bg-gray-900'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
                 <span>📎</span>
                 <span>Docs</span>
                 {attachedFiles.length > 0 && (
-                  <span className="bg-purple-100 text-purple-800 text-xs px-1 sm:px-2 py-1 rounded-full">
+                  <span className="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 text-xs px-1 sm:px-2 py-1 rounded-full">
                     {attachedFiles.length}
                   </span>
                 )}
@@ -1706,7 +1720,7 @@ setTimeout(() => {
                   <span>📧</span>
                   <span>BCC</span>
                   {(formData.bcc_sent_count || 0) > 0 && (
-                    <span className="bg-emerald-100 text-emerald-800 text-xs px-1 sm:px-2 py-0.5 rounded-full font-bold">
+                    <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-xs px-1 sm:px-2 py-0.5 rounded-full font-bold">
                       {formData.bcc_sent_count}
                     </span>
                   )}
@@ -1717,18 +1731,18 @@ setTimeout(() => {
 
           {/* Message d'erreur */}
           {error && (
-            <div className="mx-4 sm:mx-6 mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex-shrink-0">
+            <div className="mx-4 sm:mx-6 mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded flex-shrink-0">
               {error}
             </div>
           )}
 
           {/* Alerte soumission existante */}
           {hasExistingSubmission && existingSubmissionData && (
-            <div className="mx-4 sm:mx-6 mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 flex-shrink-0">
+            <div className="mx-4 sm:mx-6 mt-4 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 flex-shrink-0">
               <div className="flex">
                 <div className="flex-shrink-0">⚠️</div>
                 <div className="ml-3">
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
                     <strong>Ce bon d'achat a déjà une soumission attribuée:</strong><br/>
                     Soumission #{existingSubmissionData.submission_number} - {existingSubmissionData.client_name}
                   </p>
@@ -1738,13 +1752,13 @@ setTimeout(() => {
           )}
 
           {/* Contenu des onglets */}
-          <div className="flex-1 p-4 sm:p-6 overflow-y-auto min-h-0">
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto min-h-0 dark:bg-gray-900">
             
             {/* ONGLET INFORMATIONS */}
             {activeTab === 'info' && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                  <h3 className="text-lg font-semibold">Informations du Bon d'Achat</h3>
+                  <h3 className="text-lg font-semibold dark:text-gray-100">Informations du Bon d'Achat</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={loadSubmissions}
@@ -1758,7 +1772,7 @@ setTimeout(() => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Client *
                     </label>
                     <select
@@ -1775,8 +1789,8 @@ setTimeout(() => {
                           }));
                         }
                       }}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                        editingPO ? 'bg-gray-100 cursor-not-allowed' : ''
+                      className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:text-gray-100 ${
+                        editingPO ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'dark:bg-gray-800'
                       }`}
                       required
                       disabled={!!editingPO}
@@ -1791,7 +1805,7 @@ setTimeout(() => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       No. Bon Achat Client *
                     </label>
                     <input
@@ -1799,14 +1813,14 @@ setTimeout(() => {
                       name="po_number"
                       value={formData.po_number}
                       onChange={(e) => setFormData(prev => ({ ...prev, po_number: e.target.value.toUpperCase() }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Ex: PO-2025-001"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       No Soumission
                     </label>
                     <input
@@ -1814,14 +1828,14 @@ setTimeout(() => {
                       name="submission_no"
                       value={formData.submission_no}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100 dark:bg-gray-700 dark:text-gray-400"
                       placeholder="Sera rempli par import soumission"
                       readOnly
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Date *
                     </label>
                     <input
@@ -1829,13 +1843,13 @@ setTimeout(() => {
                       name="date"
                       value={formData.date}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Montant <span className="text-xs text-gray-500">(modifiable manuellement)</span>
                     </label>
                     <input
@@ -1844,23 +1858,23 @@ setTimeout(() => {
                       value={formData.amount}
                       onChange={handleChange}
                       step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="0.00"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Le montant peut être saisi manuellement ou calculé automatiquement depuis les articles
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Statut
                     </label>
                     <select
                       name="status"
                       value={formData.status}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                     >
                       <option value="in_progress">🔵 En cours</option>
                       <option value="partial">🚚 Partiellement livré</option>
@@ -1870,21 +1884,21 @@ setTimeout(() => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Description du BA
                       </label>
                       <textarea
                         name="description"
                         value={formData.description}
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value.toUpperCase() }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                         placeholder="Description détaillée du bon d'achat..."
                         rows="3"
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">                      
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">                      
                         Notes complémentaires (optionnel)
                   </label>
                   <input
@@ -1892,15 +1906,15 @@ setTimeout(() => {
                     name="special_instructions"
                     value={formData.special_instructions}
                     onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value.toUpperCase() }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Notes additionnelles, instructions spéciales..."
                   />
                 </div>
 
                 {/* Section client compactée */}
                 {formData.client_name && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-sm text-blue-700">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
                       <strong>Client:</strong> {formData.client_name}
                       {formData.client_email && <span> • {formData.client_email}</span>}
                       {formData.client_phone && <span> • {formData.client_phone}</span>}
@@ -1914,7 +1928,7 @@ setTimeout(() => {
             {activeTab === 'articles' && (
               <div className="space-y-6">
                 <div className="flex flex-col gap-4">
-                  <h3 className="text-lg font-semibold">
+                  <h3 className="text-lg font-semibold dark:text-gray-100">
                     Articles du Bon d'Achat ({items.length})
                   </h3>
                   
@@ -1950,9 +1964,9 @@ setTimeout(() => {
                 </div>
 
                 {items.length === 0 ? (
-                  <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                    <p className="text-gray-500 mb-4">Aucun article dans ce bon d'achat</p>
-                    <p className="text-sm text-gray-400 mb-4">Vous pouvez :</p>
+                  <div className="text-center py-8 sm:py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">Aucun article dans ce bon d'achat</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">Vous pouvez :</p>
                     <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
                       <button
                         onClick={addNewItem}
@@ -1979,13 +1993,13 @@ setTimeout(() => {
                 ) : (
                   <div className="space-y-4">
                     {/* TABLE RESPONSIVE POUR MOBILE */}
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
                       {/* Version mobile - Cards */}
-                      <div className="block sm:hidden divide-y divide-gray-200">
+                      <div className="block sm:hidden divide-y divide-gray-200 dark:divide-gray-700">
                         {items.map((item, index) => (
-                          <div key={item.id || index} className="p-4 bg-white">
+                          <div key={item.id || index} className="p-4 bg-white dark:bg-gray-900">
                             <div className="flex justify-between items-start mb-2">
-                              <div className="font-medium text-gray-900 text-sm">{item.product_id}</div>
+                              <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{item.product_id}</div>
                               <div className="flex gap-1">
                                 <button
                                   onClick={() => startEditingItem(index)}
@@ -2003,32 +2017,32 @@ setTimeout(() => {
                                 )}
                               </div>
                             </div>
-                            <div className="text-sm text-gray-600 mb-2">{item.description}</div>
-                            <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{item.description}</div>
+                            <div className="grid grid-cols-2 gap-2 text-sm dark:text-gray-300">
                               <div>
-                                <span className="text-gray-500">Qté:</span>
+                                <span className="text-gray-500 dark:text-gray-400">Qté:</span>
                                 <span className="ml-1 font-medium">{item.quantity}</span>
                               </div>
                               <div>
-                                <span className="text-gray-500">Prix:</span>
+                                <span className="text-gray-500 dark:text-gray-400">Prix:</span>
                                 <span className="ml-1 font-medium">${parseFloat(item.selling_price || 0).toFixed(2)}</span>
                               </div>
                               <div>
-                                <span className="text-gray-500">Livré:</span>
+                                <span className="text-gray-500 dark:text-gray-400">Livré:</span>
                                 <span className="ml-1 font-medium">{item.delivered_quantity || 0}</span>
                               </div>
                               <div>
-                                <span className="text-gray-500">Total:</span>
+                                <span className="text-gray-500 dark:text-gray-400">Total:</span>
                                 <span className="ml-1 font-bold text-green-600">
                                   ${(parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)).toFixed(2)}
                                 </span>
                               </div>
                             </div>
                             {item.from_manual && (
-                              <div className="text-xs text-blue-600 mt-1">Article ajouté manuellement</div>
+                              <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">Article ajouté manuellement</div>
                             )}
                             {item.from_supplier_purchase && (
-                              <div className="text-xs text-purple-600 mt-1">
+                              <div className="text-xs text-purple-600 dark:text-purple-400 mt-1">
                                 Importé depuis achat #{item.supplier_purchase_number}
                               </div>
                             )}
@@ -2038,19 +2052,19 @@ setTimeout(() => {
 
                       {/* Version desktop - Table normale */}
                       <table className="w-full hidden sm:table">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 dark:bg-gray-800">
                           <tr>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qté</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">UM</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Prix</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">Livré</th>
-                            <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase w-16">Act.</th>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Code</th>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Description</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qté</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">UM</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Prix</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Livré</th>
+                            <th className="px-2 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</th>
+                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-16">Act.</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                           {items.map((item, index) => (
                             <ItemRow
                               key={item.id || index}
@@ -2060,12 +2074,12 @@ setTimeout(() => {
                             />
                           ))}
                         </tbody>
-                        <tfoot className="bg-gray-50">
+                        <tfoot className="bg-gray-50 dark:bg-gray-800">
                           <tr>
-                            <td colSpan="6" className="px-4 py-3 text-right font-semibold">
+                            <td colSpan="6" className="px-4 py-3 text-right font-semibold dark:text-gray-300">
                               Total:
                             </td>
-                            <td className="px-4 py-3 text-right font-bold text-lg">
+                            <td className="px-4 py-3 text-right font-bold text-lg dark:text-gray-100">
                               ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
                             </td>
                             <td className="px-4 py-3"></td>
@@ -2075,9 +2089,9 @@ setTimeout(() => {
                     </div>
 
                     {/* Total visible sur mobile */}
-                    <div className="block sm:hidden bg-gray-50 rounded-lg p-4">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-gray-700">Total général:</span>
+                    <div className="block sm:hidden bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                      <div className="flex justify-between items-center dark:text-gray-100">
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">Total général:</span>
                         <span className="font-bold text-lg text-green-600">
                           ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
                         </span>
@@ -2092,14 +2106,14 @@ setTimeout(() => {
             {activeTab === 'livraisons' && effectiveEditingPO && (
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                  <h3 className="text-lg font-semibold">
+                  <h3 className="text-lg font-semibold dark:text-gray-100">
                     Livraisons ({deliverySlips.length})
                   </h3>
                   <div className="flex items-center gap-4">
                     <div className={'px-3 py-1 rounded-full text-sm font-medium ' + (
-                      deliveryStatus === 'completed' ? 'bg-green-100 text-green-800' :
-                      deliveryStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
+                      deliveryStatus === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                      deliveryStatus === 'partial' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                      'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                     )}>
                       {deliveryStatus === 'completed' && 'Livraison Complète'}
                       {deliveryStatus === 'partial' && 'Livraison Partielle'}
@@ -2117,29 +2131,29 @@ setTimeout(() => {
 
                 {deliverySlips.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-gray-500 mb-4">Aucune livraison créée</p>
-                    <p className="text-sm text-gray-400">Créez votre première livraison pour ce bon d'achat</p>
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">Aucune livraison créée</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">Créez votre première livraison pour ce bon d'achat</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {deliverySlips.map((slip) => (
-                      <div key={slip.id} className="border rounded-lg p-4">
+                      <div key={slip.id} className="border dark:border-gray-700 rounded-lg p-4 dark:bg-gray-800">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h4 className="font-semibold text-lg">{slip.delivery_number}</h4>
-                            <p className="text-gray-600">Date: {new Date(slip.delivery_date).toLocaleDateString()}</p>
+                            <h4 className="font-semibold text-lg dark:text-gray-100">{slip.delivery_number}</h4>
+                            <p className="text-gray-600 dark:text-gray-400">Date: {new Date(slip.delivery_date).toLocaleDateString()}</p>
                             {slip.transport_company && (
-                              <p className="text-sm text-gray-500">Transport: {slip.transport_company}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">Transport: {slip.transport_company}</p>
                             )}
                             {slip.tracking_number && (
-                              <p className="text-sm text-gray-500">Suivi: {slip.tracking_number}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">Suivi: {slip.tracking_number}</p>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
-                              slip.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                              slip.status === 'in_transit' ? 'bg-blue-100 text-blue-800' :
-                              'bg-yellow-100 text-yellow-800'
+                              slip.status === 'delivered' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                              slip.status === 'in_transit' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' :
+                              'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
                             )}>
                               {slip.status}
                             </span>
@@ -2156,12 +2170,12 @@ setTimeout(() => {
                         
                         {slip.delivery_slip_items && slip.delivery_slip_items.length > 0 && (
                           <div className="mt-4">
-                            <p className="text-sm font-medium text-gray-700 mb-2">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               Articles livrés ({slip.delivery_slip_items.length}):
                             </p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                               {slip.delivery_slip_items.map((item, index) => (
-                                <div key={index} className="text-sm text-gray-600 bg-gray-50 rounded p-2">
+                                <div key={index} className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-2">
                                   <span className="font-medium">{item.product_id}</span>
                                   <span className="ml-2">Qté: {item.quantity_delivered}</span>
                                 </div>
@@ -2183,7 +2197,7 @@ setTimeout(() => {
                 {/* Section Documents */}
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                    <h3 className="text-lg font-semibold">Documents Joints ({attachedFiles.length})</h3>
+                    <h3 className="text-lg font-semibold dark:text-gray-100">Documents Joints ({attachedFiles.length})</h3>
                     <div className="flex items-center gap-4">
                       <input
                         type="file"
@@ -2206,7 +2220,7 @@ setTimeout(() => {
 
                   {/* Progress bar pour upload */}
                   {isUploadingFiles && (
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                         style={{ width: uploadProgress + '%' }}
@@ -2215,24 +2229,24 @@ setTimeout(() => {
                   )}
 
                   {/* Types de fichiers acceptés */}
-                  <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
                     <strong>Types acceptés:</strong> PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG (Max: 10MB par fichier)           ''Voir = Tablette, Télécharger = Ordinateur''
                   </div>
 
                   {/* Section BCC envoyés */}
                   {attachedFiles.filter(f => f.is_bcc).length > 0 && (
                     <div className="mb-4">
-                      <h4 className="text-sm font-semibold text-emerald-700 mb-2 flex items-center gap-2">
+                      <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-2">
                         📧 Confirmations de Commande (BCC) envoyées
                       </h4>
                       <div className="grid gap-2">
                         {attachedFiles.filter(f => f.is_bcc).map((file) => (
-                          <div key={file.id} className="border border-emerald-200 bg-emerald-50 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div key={file.id} className="border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              <div className="flex-shrink-0 bg-emerald-100 w-8 h-8 rounded-full flex items-center justify-center text-sm">📧</div>
+                              <div className="flex-shrink-0 bg-emerald-100 dark:bg-emerald-900/40 w-8 h-8 rounded-full flex items-center justify-center text-sm">📧</div>
                               <div>
-                                <p className="font-medium text-emerald-900">{file.name}</p>
-                                <p className="text-xs text-emerald-700">
+                                <p className="font-medium text-emerald-900 dark:text-emerald-200">{file.name}</p>
+                                <p className="text-xs text-emerald-700 dark:text-emerald-400">
                                   {new Date(file.bcc_date || file.uploadDate).toLocaleDateString('fr-CA', {
                                     timeZone: 'America/Toronto', day: 'numeric', month: 'short', year: 'numeric',
                                     hour: '2-digit', minute: '2-digit'
@@ -2241,7 +2255,7 @@ setTimeout(() => {
                                   {file.bcc_total && ` • $${parseFloat(file.bcc_total).toFixed(2)}`}
                                 </p>
                                 {file.bcc_recipients && (
-                                  <p className="text-xs text-emerald-600 truncate max-w-[300px]" title={file.bcc_recipients.join(', ')}>
+                                  <p className="text-xs text-emerald-600 dark:text-emerald-500 truncate max-w-[300px]" title={file.bcc_recipients.join(', ')}>
                                     Envoyé à: {file.bcc_recipients.join(', ')}
                                   </p>
                                 )}
@@ -2271,14 +2285,14 @@ setTimeout(() => {
 
                   {/* Liste des documents manuels */}
                   {attachedFiles.filter(f => !f.is_bcc).length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                      <p className="text-gray-500 mb-2">Aucun document joint</p>
-                      <p className="text-sm text-gray-400">Glissez des fichiers ici ou cliquez sur "Choisir Fichiers"</p>
+                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                      <p className="text-gray-500 dark:text-gray-400 mb-2">Aucun document joint</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500">Glissez des fichiers ici ou cliquez sur "Choisir Fichiers"</p>
                     </div>
                   ) : (
                     <div className="grid gap-3">
                       {attachedFiles.filter(f => !f.is_bcc).map((file) => (
-                        <div key={file.id} className="border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-50">
+                        <div key={file.id} className="border dark:border-gray-700 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900">
                           <div className="flex items-center gap-3">
                             <div className="flex-shrink-0">
                               {file.type.includes('pdf') ? '📄' :
@@ -2287,8 +2301,8 @@ setTimeout(() => {
                                file.type.includes('image') ? '🖼️' : '📎'}
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{file.name}</p>
-                              <p className="text-sm text-gray-500">
+                              <p className="font-medium text-gray-900 dark:text-gray-100">{file.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {formatFileSize(file.size)} • Ajouté le {new Date(file.uploadDate).toLocaleDateString()}
                               </p>
                             </div>
@@ -2324,37 +2338,37 @@ setTimeout(() => {
 
                 {/* Section Achats Fournisseurs */}
                 <div className="space-y-4 border-t pt-6">
-                  <h3 className="text-lg font-semibold">Achats Fournisseurs Liés ({supplierPurchases.length})</h3>
+                  <h3 className="text-lg font-semibold dark:text-gray-100">Achats Fournisseurs Liés ({supplierPurchases.length})</h3>
                   
                   {supplierPurchases.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg border">
-                      <p className="text-gray-500">Aucun achat fournisseur lié à ce BA</p>
-                      <p className="text-sm text-gray-400 mt-1">
+                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+                      <p className="text-gray-500 dark:text-gray-400">Aucun achat fournisseur lié à ce BA</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                         Les achats fournisseurs apparaîtront ici automatiquement s'ils sont liés à ce bon d'achat
                       </p>
                     </div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="w-full">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Achat</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fournisseur</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Montant</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Date</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Statut</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">N° Achat</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fournisseur</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Montant</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Statut</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-200">
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                             {supplierPurchases.map((purchase) => (
-                              <tr key={purchase.id} className="hover:bg-gray-50">
+                              <tr key={purchase.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900">
                                 <td className="px-4 py-3">
-                                  <div className="font-medium text-gray-900">{purchase.purchase_number}</div>
+                                  <div className="font-medium text-gray-900 dark:text-gray-100">{purchase.purchase_number}</div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <div className="text-gray-900">{purchase.supplier_name}</div>
+                                  <div className="text-gray-900 dark:text-gray-100">{purchase.supplier_name}</div>
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <div className="font-medium text-green-600">
@@ -2362,15 +2376,15 @@ setTimeout(() => {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <div className="text-sm text-gray-600">
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">
                                     {new Date(purchase.created_at).toLocaleDateString()}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-center">
                                   <span className={'px-2 py-1 rounded-full text-xs font-semibold ' + (
-                                    purchase.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                    purchase.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-gray-100 text-gray-800'
+                                    purchase.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                                    purchase.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                                    'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                                   )}>
                                     {purchase.status}
                                   </span>
@@ -2397,9 +2411,9 @@ setTimeout(() => {
           </div>
 
           {/* Footer adapté mobile */}
-          <div className="bg-gray-50 px-4 sm:px-6 py-4 border-t flex-shrink-0">
+          <div className="bg-gray-50 dark:bg-gray-800 px-4 sm:px-6 py-4 border-t dark:border-gray-700 flex-shrink-0">
             {/* Informations sur une ligne séparée sur mobile */}
-            <div className="text-sm text-gray-600 text-center mb-3 sm:mb-0 sm:hidden">
+            <div className="text-sm text-gray-600 dark:text-gray-400 text-center mb-3 sm:mb-0 sm:hidden">
               {items.length > 0 && (
                 <span className="block">
                   Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
@@ -2415,7 +2429,7 @@ setTimeout(() => {
             {/* Boutons tous ensemble sur mobile */}
             <div className="flex flex-row justify-between items-center gap-2 sm:gap-4">
               {/* Informations desktop à gauche */}
-              <div className="hidden sm:block text-sm text-gray-600">
+              <div className="hidden sm:block text-sm text-gray-600 dark:text-gray-400">
                 {items.length > 0 && (
                   <span>
                     Total: ${items.reduce((sum, item) => sum + (parseFloat(item.quantity || 0) * parseFloat(item.selling_price || 0)), 0).toFixed(2)}
@@ -2444,7 +2458,7 @@ setTimeout(() => {
                 
                 <button
                   onClick={onClose}
-                  className="px-3 sm:px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-xs sm:text-sm"
+                  className="px-3 sm:px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs sm:text-sm"
                 >
                   Fermer
                 </button>
@@ -2477,7 +2491,7 @@ setTimeout(() => {
       {/* Modal import soumissions */}
       {showSubmissionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
             <div className="bg-blue-600 text-white px-6 py-4 flex justify-between items-center">
               <h3 className="text-xl font-semibold">Sélectionner une Soumission</h3>
               <button
@@ -2487,24 +2501,24 @@ setTimeout(() => {
                 ✕
               </button>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)] dark:bg-gray-900">
               {submissions.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">Aucune soumission disponible</p>
-                  <p className="text-sm text-gray-400 mt-2">
+                  <p className="text-gray-500 dark:text-gray-400">Aucune soumission disponible</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
                     Seules les soumissions acceptées et non liées sont affichées
                   </p>
                 </div>
               ) : (
                 <div className="grid gap-4">
                   {submissions.map((submission) => (
-                    <div key={submission.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                    <div key={submission.id} className="border dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-semibold">#{submission.submission_number || submission.id}</h4>
-                          <p className="text-gray-600">{submission.client_name}</p>
-                          <p className="text-sm text-gray-500 mb-2">{submission.description}</p>
-                          <div className="flex gap-4 text-xs text-gray-500">
+                          <h4 className="font-semibold dark:text-gray-100">#{submission.submission_number || submission.id}</h4>
+                          <p className="text-gray-600 dark:text-gray-400">{submission.client_name}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{submission.description}</p>
+                          <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400">
                             <span>Date: {new Date(submission.created_at).toLocaleDateString()}</span>
                             <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
                               {submission.status}
@@ -2536,7 +2550,7 @@ setTimeout(() => {
       {/* Modal import depuis achats fournisseurs */}
       {showSupplierImportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg w-full h-[95vh] sm:max-w-6xl sm:h-[90vh] overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full h-[95vh] sm:max-w-6xl sm:h-[90vh] overflow-hidden">
             <div className="bg-purple-600 text-white px-4 sm:px-6 py-4 flex justify-between items-center">
               <h3 className="text-lg sm:text-xl font-semibold">Import Achats Fournisseurs - {formData.client_name}</h3>
               <button
@@ -2553,17 +2567,17 @@ setTimeout(() => {
             
             <div className="flex flex-col sm:flex-row h-[calc(95vh-200px)] sm:h-[calc(90vh-200px)]">
               {/* Liste des achats fournisseurs */}
-              <div className="w-full sm:w-1/3 border-r bg-gray-50 p-4 overflow-y-auto">
-                <h4 className="font-semibold mb-4">Achats Fournisseurs Disponibles</h4>
+              <div className="w-full sm:w-1/3 border-r dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4 overflow-y-auto">
+                <h4 className="font-semibold mb-4 dark:text-gray-100">Achats Fournisseurs Disponibles</h4>
                 
                 {isLoadingSupplierPurchases ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
-                    <p className="text-gray-500">Chargement...</p>
+                    <p className="text-gray-500 dark:text-gray-400">Chargement...</p>
                   </div>
                 ) : clientSupplierPurchases.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">Aucun achat fournisseur trouvé</p>
+                    <p className="text-gray-500 dark:text-gray-400">Aucun achat fournisseur trouvé</p>
                     <p className="text-sm text-gray-400 mt-1">
                       Aucun achat fournisseur avec articles disponible pour ce client
                     </p>
@@ -2576,16 +2590,16 @@ setTimeout(() => {
                         onClick={() => selectPurchaseForImport(purchase)}
                         className={`border rounded-lg p-3 cursor-pointer transition-all ${
                           selectedPurchaseForImport?.id === purchase.id
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:bg-gray-900 dark:hover:border-gray-600'
                         }`}
                       >
-                        <div className="font-semibold text-sm">#{purchase.purchase_number}</div>
-                        <div className="text-xs text-gray-600">{purchase.supplier_name}</div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="font-semibold text-sm dark:text-gray-100">#{purchase.purchase_number}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">{purchase.supplier_name}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           {purchase.items?.length || 0} articles • ${parseFloat(purchase.total_amount || 0).toFixed(2)}
                         </div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-gray-400 dark:text-gray-500">
                           {new Date(purchase.created_at).toLocaleDateString()}
                         </div>
                       </div>
@@ -2595,15 +2609,15 @@ setTimeout(() => {
               </div>
 
               {/* Détail des articles */}
-              <div className="flex-1 p-4 overflow-y-auto">
+              <div className="flex-1 p-4 overflow-y-auto dark:bg-gray-900">
                 {!selectedPurchaseForImport ? (
-                  <div className="text-center py-16">
-                    <p className="text-gray-500">Sélectionnez un achat fournisseur pour voir les articles</p>
+                  <div className="text-center py-16 dark:bg-gray-900">
+                    <p className="text-gray-500 dark:text-gray-400">Sélectionnez un achat fournisseur pour voir les articles</p>
                   </div>
                 ) : (
                   <div>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
-                      <h4 className="font-semibold">
+                      <h4 className="font-semibold dark:text-gray-100">
                         Articles de #{selectedPurchaseForImport.purchase_number}
                       </h4>
                       <div className="flex items-center gap-3">
@@ -2622,27 +2636,27 @@ setTimeout(() => {
                       </div>
                     </div>
 
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
-                              <th className="px-3 py-2 text-left w-10">✓</th>
-                              <th className="px-3 py-2 text-left">Code</th>
-                              <th className="px-3 py-2 text-left">Description</th>
-                              <th className="px-3 py-2 text-center">Qté</th>
-                              <th className="px-3 py-2 text-center">Prix Unit.</th>
-                              <th className="px-3 py-2 text-right">Total</th>
+                              <th className="px-3 py-2 text-left w-10 dark:text-gray-400">✓</th>
+                              <th className="px-3 py-2 text-left dark:text-gray-400">Code</th>
+                              <th className="px-3 py-2 text-left dark:text-gray-400">Description</th>
+                              <th className="px-3 py-2 text-center dark:text-gray-400">Qté</th>
+                              <th className="px-3 py-2 text-center dark:text-gray-400">Prix Unit.</th>
+                              <th className="px-3 py-2 text-right dark:text-gray-400">Total</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-200">
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                             {(selectedPurchaseForImport.items || []).map((item, index) => {
                               const quantity = parseFloat(item.quantity || item.qty || 1);
                               const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
                               const lineTotal = quantity * unitPrice;
                               
                               return (
-                                <tr key={index} className="hover:bg-gray-50">
+                                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900">
                                   <td className="px-3 py-2">
                                     <input
                                       type="checkbox"
@@ -2651,15 +2665,15 @@ setTimeout(() => {
                                       className="rounded"
                                     />
                                   </td>
-                                  <td className="px-3 py-2 font-medium">
+                                  <td className="px-3 py-2 font-medium dark:text-gray-100">
                                     {item.product_id || item.code || item.sku || '-'}
                                   </td>
-                                  <td className="px-3 py-2">
+                                  <td className="px-3 py-2 dark:text-gray-300">
                                     {item.description || item.name || item.product_name || '-'}
                                   </td>
-                                  <td className="px-3 py-2 text-center">{quantity}</td>
-                                  <td className="px-3 py-2 text-center">${unitPrice.toFixed(2)}</td>
-                                  <td className="px-3 py-2 text-right font-medium">${lineTotal.toFixed(2)}</td>
+                                  <td className="px-3 py-2 text-center dark:text-gray-300">{quantity}</td>
+                                  <td className="px-3 py-2 text-center dark:text-gray-300">${unitPrice.toFixed(2)}</td>
+                                  <td className="px-3 py-2 text-right font-medium dark:text-gray-100">${lineTotal.toFixed(2)}</td>
                                 </tr>
                               );
                             })}
@@ -2669,11 +2683,11 @@ setTimeout(() => {
                     </div>
 
                     {selectedItemsForImport.length > 0 && (
-                      <div className="mt-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
-                        <p className="text-sm text-purple-700">
+                      <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+                        <p className="text-sm text-purple-700 dark:text-purple-300">
                           <strong>{selectedItemsForImport.length} articles sélectionnés</strong> pour import
                         </p>
-                        <p className="text-xs text-purple-600 mt-1">
+                        <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
                           Total estimé: ${selectedItemsForImport.reduce((sum, itemIndex) => {
                             const item = selectedPurchaseForImport.items[itemIndex];
                             const quantity = parseFloat(item.quantity || item.qty || 1);
@@ -2689,7 +2703,7 @@ setTimeout(() => {
             </div>
 
             {/* Footer du modal */}
-            <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-t">
+            <div className="bg-gray-50 dark:bg-gray-800 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-t dark:border-gray-700">
               <div></div>
               <div className="flex gap-3">
                 <button
@@ -2718,10 +2732,10 @@ setTimeout(() => {
       {/* Modal visualisation achat fournisseur */}
       {showSupplierPurchaseModal && selectedSupplierPurchase && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg w-full h-[95vh] sm:max-w-4xl sm:h-[90vh] overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full h-[95vh] sm:max-w-4xl sm:h-[90vh] overflow-hidden">
             {/* Header du modal */}
-            <div className="bg-white px-4 sm:px-6 py-4 flex justify-between items-center border-b">
-              <h3 className="text-lg sm:text-xl font-semibold">Achat Fournisseur {selectedSupplierPurchase.purchase_number}</h3>
+            <div className="bg-white dark:bg-gray-900 px-4 sm:px-6 py-4 flex justify-between items-center border-b dark:border-gray-700">
+              <h3 className="text-lg sm:text-xl font-semibold dark:text-gray-100">Achat Fournisseur {selectedSupplierPurchase.purchase_number}</h3>
               <button
                 onClick={() => setShowSupplierPurchaseModal(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -2731,25 +2745,25 @@ setTimeout(() => {
             </div>
             
             {/* Contenu du modal - Format d'impression */}
-            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-120px)]">
-              <div className="max-w-3xl mx-auto bg-white">
+            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-120px)] dark:bg-gray-900">
+              <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900">
                 {/* En-tête du document */}
-                <div className="text-center mb-6">
-                  <h1 className="text-xl sm:text-2xl font-bold mb-4">ACHAT FOURNISSEUR</h1>
-                  <h2 className="text-lg sm:text-xl font-semibold">N°: {selectedSupplierPurchase.purchase_number}</h2>
-                  <p className="mt-2">Date: {new Date(selectedSupplierPurchase.created_at).toLocaleDateString()}</p>
+                <div className="text-center mb-6 dark:text-gray-100">
+                  <h1 className="text-xl sm:text-2xl font-bold mb-4 dark:text-gray-100">ACHAT FOURNISSEUR</h1>
+                  <h2 className="text-lg sm:text-xl font-semibold dark:text-gray-100">N°: {selectedSupplierPurchase.purchase_number}</h2>
+                  <p className="mt-2 dark:text-gray-300">Date: {new Date(selectedSupplierPurchase.created_at).toLocaleDateString()}</p>
                 </div>
                 
-                <hr className="my-6 border-black" />
+                <hr className="my-6 border-black dark:border-gray-600" />
                 
                 {/* Informations principales */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-6">
                   <div>
-                    <h3 className="font-bold text-lg mb-2">FOURNISSEUR:</h3>
-                    <p className="text-lg">{selectedSupplierPurchase.supplier_name}</p>
+                    <h3 className="font-bold text-lg mb-2 dark:text-gray-100">FOURNISSEUR:</h3>
+                    <p className="text-lg dark:text-gray-300">{selectedSupplierPurchase.supplier_name}</p>
                   </div>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-2 dark:text-gray-300">
                     <p><strong>Date création:</strong> {new Date(selectedSupplierPurchase.created_at).toLocaleDateString()}</p>
                     {selectedSupplierPurchase.delivery_date && (
                       <p><strong>Date livraison:</strong> {new Date(selectedSupplierPurchase.delivery_date).toLocaleDateString()}</p>
@@ -2760,30 +2774,30 @@ setTimeout(() => {
                 
                 {/* Lien avec bon d'achat client */}
                 {selectedSupplierPurchase.linked_po_number && (
-                  <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                    <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6">
+                    <h3 className="font-bold text-lg mb-2 flex items-center gap-2 dark:text-blue-300">
                       🔗 LIEN AVEC BON D'ACHAT CLIENT:
                     </h3>
                     <p><strong>N° Bon d'achat:</strong> {selectedSupplierPurchase.linked_po_number}</p>
-                    <p className="italic text-sm mt-1">Cet achat fournisseur est lié au bon d'achat client ci-dessus</p>
+                    <p className="italic text-sm mt-1 dark:text-blue-400">Cet achat fournisseur est lié au bon d'achat client ci-dessus</p>
                   </div>
                 )}
                 
                 {/* Détail des articles */}
                 <div className="mb-6">
-                  <h3 className="font-bold text-lg mb-4">DÉTAIL DES ARTICLES:</h3>
+                  <h3 className="font-bold text-lg mb-4 dark:text-gray-100">DÉTAIL DES ARTICLES:</h3>
                   
                   {selectedSupplierPurchase.items && selectedSupplierPurchase.items.length > 0 ? (
                     <div className="overflow-x-auto">
-                      <table className="w-full border-collapse border border-gray-300">
+                      <table className="w-full border-collapse border border-gray-300 dark:border-gray-700">
                         <thead>
-                          <tr className="bg-gray-100">
-                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-left text-xs sm:text-sm">Code</th>
-                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-left text-xs sm:text-sm">Description</th>
-                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">Qté</th>
-                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">Unité</th>
-                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">Prix Unit.</th>
-                            <th className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">Total</th>
+                          <tr className="bg-gray-100 dark:bg-gray-800">
+                            <th className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-left text-xs sm:text-sm dark:text-gray-300">Code</th>
+                            <th className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-left text-xs sm:text-sm dark:text-gray-300">Description</th>
+                            <th className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm dark:text-gray-300">Qté</th>
+                            <th className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm dark:text-gray-300">Unité</th>
+                            <th className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm dark:text-gray-300">Prix Unit.</th>
+                            <th className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm dark:text-gray-300">Total</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2794,17 +2808,17 @@ setTimeout(() => {
                             
                             return (
                               <tr key={index}>
-                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-xs sm:text-sm">{item.product_id || item.code || item.sku || '-'}</td>
-                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-xs sm:text-sm">
+                                <td className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-xs sm:text-sm dark:text-gray-300">{item.product_id || item.code || item.sku || '-'}</td>
+                                <td className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-xs sm:text-sm dark:text-gray-300">
                                   <div>{item.description || item.name || item.product_name || '-'}</div>
                                   {item.notes && (
-                                    <div className="text-xs text-blue-600 italic mt-1">📝 {item.notes}</div>
+                                    <div className="text-xs text-blue-600 dark:text-blue-400 italic mt-1">📝 {item.notes}</div>
                                   )}
                                 </td>
-                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm">{quantity}</td>
-                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">{item.unit || item.unity || 'UN'}</td>
-                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm">${unitPrice.toFixed(2)}</td>
-                                <td className="border border-gray-300 px-2 sm:px-3 py-2 text-center font-bold text-green-600 text-xs sm:text-sm">${lineTotal.toFixed(2)}</td>
+                                <td className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm dark:text-gray-300">{quantity}</td>
+                                <td className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-center text-xs sm:text-sm dark:text-gray-300">{item.unit || item.unity || 'UN'}</td>
+                                <td className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm dark:text-gray-300">${unitPrice.toFixed(2)}</td>
+                                <td className="border border-gray-300 dark:border-gray-700 px-2 sm:px-3 py-2 text-center font-bold text-green-600 dark:text-green-400 text-xs sm:text-sm">${lineTotal.toFixed(2)}</td>
                               </tr>
                             );
                           })}
@@ -2812,16 +2826,16 @@ setTimeout(() => {
                       </table>
                     </div>
                   ) : (
-                    <p className="text-gray-500 italic">Aucun détail d'article disponible</p>
+                    <p className="text-gray-500 dark:text-gray-400 italic">Aucun détail d'article disponible</p>
                   )}
                 </div>
                 
                 {/* Totaux */}
-                <div className="border-t-2 border-black pt-4">
+                <div className="border-t-2 border-black dark:border-gray-600 pt-4">
                   <div className="flex justify-end">
-                    <div className="w-full sm:w-64">
+                    <div className="w-full sm:w-64 dark:text-gray-300">
                       <div className="flex justify-between py-1 text-sm">
-                        <span className="font-semibold">Sous-total:</span>
+                        <span className="font-semibold dark:text-gray-200">Sous-total:</span>
                         <span className="font-semibold">${parseFloat(selectedSupplierPurchase.subtotal || 0).toFixed(2)}</span>
                       </div>
                       {parseFloat(selectedSupplierPurchase.taxes || 0) > 0 && (
@@ -2836,7 +2850,7 @@ setTimeout(() => {
                           <span>${parseFloat(selectedSupplierPurchase.shipping_cost || 0).toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between py-2 border-t border-gray-300 font-bold text-base sm:text-lg">
+                      <div className="flex justify-between py-2 border-t border-gray-300 dark:border-gray-600 font-bold text-base sm:text-lg dark:text-gray-100">
                         <span>TOTAL GÉNÉRAL:</span>
                         <span>${parseFloat(selectedSupplierPurchase.total_amount || 0).toFixed(2)}</span>
                       </div>
@@ -2846,16 +2860,16 @@ setTimeout(() => {
                 
                 {/* Notes si présentes */}
                 {selectedSupplierPurchase.notes && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded">
-                    <h4 className="font-semibold mb-2">Notes:</h4>
-                    <p className="text-sm">{selectedSupplierPurchase.notes}</p>
+                  <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded">
+                    <h4 className="font-semibold mb-2 dark:text-gray-200">Notes:</h4>
+                    <p className="text-sm dark:text-gray-400">{selectedSupplierPurchase.notes}</p>
                   </div>
                 )}
               </div>
             </div>
             
             {/* Footer avec bouton imprimer */}
-            <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-t">
+            <div className="bg-gray-50 dark:bg-gray-800 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-t dark:border-gray-700">
               <div></div>
               <div className="flex gap-3">
                 <button
@@ -2866,7 +2880,7 @@ setTimeout(() => {
                 </button>
                 <button
                   onClick={() => setShowSupplierPurchaseModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm"
                 >
                   Fermer
                 </button>
@@ -2899,7 +2913,7 @@ setTimeout(() => {
       {/* Modal d'édition mobile */}
       {showMobileItemEditor && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden">
             <div className="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
               <h3 className="text-lg font-semibold">
                 {editingItemIndex !== null ? 'Modifier Article' : 'Nouvel Article'}
@@ -2912,9 +2926,9 @@ setTimeout(() => {
               </button>
             </div>
             
-            <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-120px)]">
+            <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-120px)] dark:bg-gray-900">
               <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Code Produit * (recherche disponible)
                 </label>
                 <input
@@ -2930,12 +2944,12 @@ setTimeout(() => {
                     }
                   }}
                   placeholder="Ex: PROD-001 ou tapez pour chercher..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
                 
                 {/* Suggestions de recherche */}
                 {mobileSearchResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-b shadow-lg z-10 max-h-48 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-b shadow-lg z-10 max-h-48 overflow-y-auto">
                     {mobileSearchResults.map((product) => (
                       <div
                         key={product.id}
@@ -2951,11 +2965,11 @@ setTimeout(() => {
                         }}
                         className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
                       >
-                        <div className="font-medium text-sm">{product.product_id}</div>
-                        <div className="text-xs text-gray-600 truncate">
+                        <div className="font-medium text-sm dark:text-gray-100">{product.product_id}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
                           {product.description || product.name}
                         </div>
-                        <div className="text-xs text-green-600">
+                        <div className="text-xs text-green-600 dark:text-green-400">
                           ${parseFloat(product.selling_price || product.price || 0).toFixed(2)}
                         </div>
                       </div>
@@ -2965,21 +2979,21 @@ setTimeout(() => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Description *
                 </label>
                 <textarea
                   value={editingItemData?.description || ''}
                   onChange={(e) => setEditingItemData(prev => ({...prev, description: e.target.value}))}
                   placeholder="Description de l'article"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   rows="3"
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Quantité *
                   </label>
                   <input
@@ -2987,19 +3001,19 @@ setTimeout(() => {
                     value={editingItemData?.quantity || ''}
                     onChange={(e) => setEditingItemData(prev => ({...prev, quantity: parseFloat(e.target.value) || 0}))}
                     placeholder="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                     step="0.01"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Unité
                   </label>
                   <select
                     value={editingItemData?.unit || 'unité'}
                     onChange={(e) => setEditingItemData(prev => ({...prev, unit: e.target.value}))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   >
                     <option value="unité">UN</option>
                     <option value="mètre">M</option>
@@ -3012,7 +3026,7 @@ setTimeout(() => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Prix Unitaire *
                 </label>
                 <input
@@ -3020,15 +3034,15 @@ setTimeout(() => {
                   value={editingItemData?.selling_price || ''}
                   onChange={(e) => setEditingItemData(prev => ({...prev, selling_price: parseFloat(e.target.value) || 0}))}
                   placeholder="0.00"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   step="0.01"
                 />
               </div>
               
               {/* Affichage du total calculé */}
-              <div className="bg-gray-50 rounded-lg p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">Total ligne :</span>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                <div className="flex justify-between items-center dark:text-gray-100">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total ligne :</span>
                   <span className="text-lg font-bold text-green-600">
                     ${((editingItemData?.quantity || 0) * (editingItemData?.selling_price || 0)).toFixed(2)}
                   </span>
@@ -3037,7 +3051,7 @@ setTimeout(() => {
               
               {/* Bouton supprimer pour les articles modifiables */}
               {editingItemIndex !== null && (
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t dark:border-gray-700">
                   <button
                     onClick={() => {
                       if (window.confirm('Êtes-vous sûr de vouloir supprimer cet article ?')) {
@@ -3053,7 +3067,7 @@ setTimeout(() => {
               )}
             </div>
             
-            <div className="bg-gray-50 px-4 py-3 flex justify-between items-center border-t">
+            <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 flex justify-between items-center border-t dark:border-gray-700">
               <button
                 onClick={cancelMobileItemEdit}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
