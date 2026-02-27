@@ -1,9 +1,12 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL
- * @version 1.0.2
- * @date 2026-02-18
+ * @version 1.2.0
+ * @date 2026-02-27
  * @changelog
+ *   1.2.0 - Inventaire déduit à la signature (avant envoi email), pas seulement si email réussit
+ *           Protection anti-doublon via vérification inventory_movements existants
+ *   1.1.0 - Ajout mise à jour delivered_quantity dans client_po_items (cohérence avec send-email)
  *   1.0.2 - Filtrer metadata __fields: dans recipient_emails (sélection checkboxes)
  *   1.0.1 - Fix: vérification erreur sur toutes les mises à jour DB,
  *           fallback sans colonnes optionnelles si update échoue
@@ -114,6 +117,115 @@ export async function POST(request, { params }) {
       });
     }
 
+    // 2b. Déduire l'inventaire À LA SIGNATURE (indépendant de l'envoi email)
+    if (deliveryNote.materials && deliveryNote.materials.length > 0) {
+      // Vérifier si l'inventaire a déjà été déduit pour ce BL (protection anti-doublon)
+      const { data: existingMovements } = await supabaseAdmin
+        .from('inventory_movements')
+        .select('id')
+        .eq('reference_type', 'delivery_note')
+        .eq('reference_id', deliveryNote.id.toString())
+        .limit(1);
+
+      if (existingMovements && existingMovements.length > 0) {
+        console.log('📦 Inventaire déjà déduit pour BL', deliveryNote.bl_number, '- skip');
+      } else {
+        console.log('📦 Traitement inventaire pour', deliveryNote.materials.length, 'matériaux');
+
+        for (const material of deliveryNote.materials) {
+          if (!material.product_id || !material.quantity) continue;
+
+          const qty = parseFloat(material.quantity) || 0;
+          if (qty === 0) continue;
+
+          const isCredit = qty < 0;
+          const absQty = Math.abs(qty);
+          const movementType = isCredit ? 'IN' : 'OUT';
+
+          const isNonInventory = material.product?.is_non_inventory || false;
+          const tableName = isNonInventory ? 'non_inventory_items' : 'products';
+
+          try {
+            const { data: product } = await supabaseAdmin
+              .from(tableName)
+              .select('stock_qty')
+              .eq('product_id', material.product_id)
+              .single();
+
+            if (product) {
+              const currentStock = parseFloat(product.stock_qty) || 0;
+              const newStock = isCredit ? currentStock + absQty : currentStock - absQty;
+              const roundedStock = Math.round(newStock * 10000) / 10000;
+
+              await supabaseAdmin
+                .from(tableName)
+                .update({ stock_qty: roundedStock.toString() })
+                .eq('product_id', material.product_id);
+
+              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${material.product_id}: ${currentStock} → ${roundedStock}`);
+            }
+
+            const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
+            const totalCost = Math.round(absQty * unitCost * 100) / 100;
+
+            await supabaseAdmin
+              .from('inventory_movements')
+              .insert({
+                product_id: material.product_id,
+                product_description: material.description || material.product?.description || '',
+                product_group: material.product?.product_group || '',
+                unit: material.unit || 'UN',
+                movement_type: movementType,
+                quantity: absQty,
+                unit_cost: unitCost,
+                total_cost: totalCost,
+                reference_type: 'delivery_note',
+                reference_id: deliveryNote.id.toString(),
+                name: `${deliveryNote.bl_number}.pdf`,
+                notes: `BL ${deliveryNote.bl_number}${isCredit ? ' (CRÉDIT)' : ''} - ${deliveryNote.client?.name || deliveryNote.client_name || 'Client'}`,
+                created_at: new Date().toISOString()
+              });
+
+          } catch (invError) {
+            console.error(`⚠️ Erreur inventaire pour ${material.product_id}:`, invError);
+          }
+        }
+      }
+
+      // 2c. Mettre à jour delivered_quantity dans client_po_items si BL lié à un BA
+      if (deliveryNote.linked_po_id) {
+        try {
+          const { data: poItems } = await supabaseAdmin
+            .from('client_po_items')
+            .select('id, product_id, quantity, delivered_quantity')
+            .eq('purchase_order_id', deliveryNote.linked_po_id);
+
+          if (poItems && poItems.length > 0) {
+            for (const material of deliveryNote.materials) {
+              if (!material.product_id || !material.quantity) continue;
+
+              const matchingPoItem = poItems.find(pi => pi.product_id === material.product_id);
+              if (matchingPoItem) {
+                const currentDelivered = parseFloat(matchingPoItem.delivered_quantity) || 0;
+                const deliveredQty = parseFloat(material.quantity) || 0;
+                const newDelivered = currentDelivered + deliveredQty;
+
+                await supabaseAdmin
+                  .from('client_po_items')
+                  .update({
+                    delivered_quantity: newDelivered,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', matchingPoItem.id);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Erreur mise à jour delivered_quantity:', err);
+        }
+      }
+    }
+
     // 3. Vérifier si envoi automatique possible
     const autoSendCheck = checkCanAutoSend(deliveryNote);
 
@@ -204,66 +316,7 @@ export async function POST(request, { params }) {
         }
       }
 
-      // 7. Déduire l'inventaire
-      if (deliveryNote.materials && deliveryNote.materials.length > 0) {
-        for (const material of deliveryNote.materials) {
-          if (!material.product_id || !material.quantity) continue;
-
-          const qty = parseFloat(material.quantity) || 0;
-          if (qty === 0) continue;
-
-          const isCredit = qty < 0;
-          const absQty = Math.abs(qty);
-          const movementType = isCredit ? 'IN' : 'OUT';
-
-          const isNonInventory = material.product?.is_non_inventory || false;
-          const tableName = isNonInventory ? 'non_inventory_items' : 'products';
-
-          try {
-            const { data: product } = await supabaseAdmin
-              .from(tableName)
-              .select('stock_qty')
-              .eq('product_id', material.product_id)
-              .single();
-
-            if (product) {
-              const currentStock = parseFloat(product.stock_qty) || 0;
-              const newStock = isCredit ? currentStock + absQty : currentStock - absQty;
-              const roundedStock = Math.round(newStock * 10000) / 10000;
-
-              await supabaseAdmin
-                .from(tableName)
-                .update({ stock_qty: roundedStock.toString() })
-                .eq('product_id', material.product_id);
-            }
-
-            const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
-            const totalCost = Math.round(absQty * unitCost * 100) / 100;
-
-            await supabaseAdmin
-              .from('inventory_movements')
-              .insert({
-                product_id: material.product_id,
-                product_description: material.description || material.product?.description || '',
-                product_group: material.product?.product_group || '',
-                unit: material.unit || 'UN',
-                movement_type: movementType,
-                quantity: absQty,
-                unit_cost: unitCost,
-                total_cost: totalCost,
-                reference_type: 'delivery_note',
-                reference_id: deliveryNote.id.toString(),
-                name: `${deliveryNote.bl_number}.pdf`,
-                notes: `BL ${deliveryNote.bl_number}${isCredit ? ' (CRÉDIT)' : ''} - ${deliveryNote.client?.name || deliveryNote.client_name || 'Client'}`,
-                created_at: new Date().toISOString()
-              });
-          } catch (invError) {
-            console.error(`Erreur inventaire pour ${material.product_id}:`, invError);
-          }
-        }
-      }
-
-      // 8. Ajouter le PDF au BA si lié
+      // 7. Ajouter le PDF au BA si lié
       if (deliveryNote.linked_po_id && result.pdfBase64) {
         try {
           const { data: purchaseOrder } = await supabaseAdmin

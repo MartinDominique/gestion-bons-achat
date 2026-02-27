@@ -173,9 +173,19 @@ export async function POST(request, { params }) {
       .eq('id', workOrderId);
 
       // 6b. Déduire/Ajouter les matériaux de l'inventaire
-      if (workOrder.materials && workOrder.materials.length > 0) {
+      // Vérifier si l'inventaire a déjà été déduit (via complete-signature)
+      const { data: existingBTMovements } = await supabaseAdmin
+        .from('inventory_movements')
+        .select('id')
+        .eq('reference_type', 'work_order')
+        .eq('reference_id', workOrder.id.toString())
+        .limit(1);
+
+      if (existingBTMovements && existingBTMovements.length > 0) {
+        console.log('📦 Inventaire déjà déduit pour BT', workOrder.bt_number, '(via signature) - skip');
+      } else if (workOrder.materials && workOrder.materials.length > 0) {
         console.log('📦 Traitement inventaire pour', workOrder.materials.length, 'matériaux');
-        
+
         for (const material of workOrder.materials) {
           if (!material.product_id || !material.quantity) continue;
           
