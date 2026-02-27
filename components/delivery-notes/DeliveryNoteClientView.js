@@ -8,9 +8,11 @@
  *              - Envoi automatique après signature
  *              - Auto-fermeture après signature + envoi email
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.2.0
- * @date 2026-02-22
+ * @version 2.2.1
+ * @date 2026-02-27
  * @changelog
+ *   2.2.1 - Fix canvas signature toujours blanc pour visibilité en dark mode
+ *           (noir sur blanc = compatible PDF, toujours lisible)
  *   2.2.0 - Ajout support dark mode (Tailwind dark: variants)
  *   2.1.1 - Filtrer metadata __fields: dans l'affichage des emails destinataires
  *   2.1.0 - Fix workflow fermeture: window.close() avec fallback navigation,
@@ -756,7 +758,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                       <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                         Signature avec votre doigt ou stylet:
                       </p>
-                      <div className="border-4 border-gray-400 dark:border-gray-500 rounded-xl bg-white dark:bg-gray-800 overflow-hidden shadow-inner">
+                      <div className="border-4 border-gray-400 dark:border-gray-500 rounded-xl bg-white overflow-hidden shadow-inner">
                         <canvas
                           ref={canvasRef}
                           width={800}
