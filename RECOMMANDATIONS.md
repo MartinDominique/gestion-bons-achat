@@ -1123,6 +1123,19 @@ bg-yellow-50  → dark:bg-yellow-900/20 (avertissements)
 - [ ] `WorkOrderList.js` et `WorkOrderClientView.js` non migres (pages peu utilisees)
 - [ ] Ajuster si des couleurs semblent incorrectes apres test terrain
 
+### ~~Phase 14 - Navigation mobile + SplitView tablette~~ ✅ COMPLETE (2026-03-01)
+- [x] #1: Navigation mobile Option A - Menu "Plus" pour modules bureau (bottom sheet)
+- [x] #2: Fix SplitView tablette - panneau overlay glissant depuis la droite
+- [x] #3: Fix SplitView mobile - overlay plein ecran
+- [x] #4: Animations slide-up (bottom sheet) et slide-in-right (panneau overlay)
+
+**Implementation completee (2026-03-01):**
+- `components/Navigation.js` (v2.0.0) - Mobile: BA + BT + Clients + bouton "Plus" → bottom sheet avec Soumissions, Inventaire, Achat, Stats, Facturation, Parametres
+- `components/SplitView/ClientSplitViewWrapper.js` (v2.0.0) - Desktop: 55/45 split inchange. Tablette/Mobile: overlay fixe avec backdrop, fermeture au clic exterieur
+- `tailwind.config.js` - Ajout animations `slide-up` et `slide-in-right`
+
+**Probleme resolu:** Sur tablette (<1024px), le panneau SplitView etait cache (`hidden lg:block`) mais `panelOpen=true` retrecissait le contenu principal a 55%. Le panneau etait invisible et impossible a fermer. Solution: detection JS de la taille d'ecran, mode overlay sur tablette/mobile.
+
 ---
 
 ## Reponses de l'Utilisateur (2026-02-05)
