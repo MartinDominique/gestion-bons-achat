@@ -1,14 +1,29 @@
+/**
+ * @file components/Navigation.js
+ * @description Navigation principale de l'application
+ *              - Desktop: tous les onglets visibles
+ *              - Mobile/Tablette: Option A — tabs terrain + menu "Plus"
+ *                BT, BA, Achat, Inventaire visibles; Soumissions, Stats,
+ *                Gestion Clients, Paramètres dans le menu "Plus"
+ * @version 2.0.0
+ * @date 2026-03-01
+ * @changelog
+ *   2.0.0 - Navigation mobile Option A — menu "Plus" pour modules bureau
+ *   1.0.0 - Version initiale
+ */
+
 'use client';
 
-import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse, Settings, BarChart3 } from 'lucide-react';
+import { Package, FileText, LogOut, Users, ShoppingCart, Warehouse, Settings, BarChart3, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import InventoryManager from './InventoryManager.js';
 import ClientManager from './ClientManager';
 
+// Tous les onglets (desktop — ordre original)
 const pages = [
   { id: 'bons-achat', name: "Clients", shortName: "BA", icon: Package },
   { id: 'soumissions', name: 'Soumissions', shortName: "Soum.", icon: FileText },
@@ -18,6 +33,20 @@ const pages = [
   { id: 'statistiques', name: 'Statistiques', shortName: "Stats", icon: BarChart3 },
 ];
 
+// Mobile: onglets principaux (modules terrain, toujours visibles)
+const mobilePrimaryPages = [
+  { id: 'bons-travail', name: 'Bons Travail', shortName: "BT", icon: FileText },
+  { id: 'bons-achat', name: "Clients", shortName: "BA", icon: Package },
+  { id: 'achat-materiels', name: 'Achat', shortName: "Achat", icon: ShoppingCart },
+  { id: 'inventaire', name: 'Inventaire', shortName: "Inv.", icon: Warehouse },
+];
+
+// Mobile: modules bureau dans le menu "Plus"
+const mobileSecondaryPages = [
+  { id: 'soumissions', name: 'Soumissions', icon: FileText },
+  { id: 'statistiques', name: 'Statistiques', icon: BarChart3 },
+];
+
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
@@ -25,6 +54,11 @@ export default function Navigation() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showClientManager, setShowClientManager] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef(null);
+
+  // "Plus" button actif si une page secondaire ou paramètres est active
+  const isMoreMenuActive = mobileSecondaryPages.some(p => pathname.startsWith('/' + p.id)) || pathname.startsWith('/parametres');
 
  // Routes où la navigation doit être CACHÉE complètement
 const shouldHideNav = pathname.includes('/bons-travail/') && 
@@ -95,6 +129,27 @@ const shouldHideNav = pathname.includes('/bons-travail/') &&
       subscription.unsubscribe();
     };
   }, [supabase.auth, pathname, router]);
+
+  // Fermer le menu "Plus" au changement de route
+  useEffect(() => {
+    setMoreMenuOpen(false);
+  }, [pathname]);
+
+  // Fermer le menu "Plus" au clic extérieur
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [moreMenuOpen]);
 
   const handleSignOut = async () => {
     try {
@@ -186,48 +241,89 @@ return (
               </Link>
             </div>
 
-            {/* Navigation tablette ET mobile (icônes compactes - TOUJOURS VISIBLE) */}
-            <div className="flex lg:hidden flex-1 min-w-0 items-center space-x-1 mx-2 overflow-x-auto scrollbar-hide">
-              {pages.map(({ id, name, shortName, icon: Icon }) => {
-                const active = pathname.startsWith('/' + id);
-                return (
-                  <Link
-                    key={id}
-                    href={`/${id}`}
-                    className={`flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0 ${
-                      active
-                        ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
-                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                    title={name}
-                  >
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
-                    <span className="text-[10px] sm:text-xs leading-tight text-center">{shortName}</span>
-                  </Link>
-                );
-              })}
+            {/* Navigation tablette ET mobile — Option A: tabs terrain + menu "Plus" */}
+            <div className="flex lg:hidden flex-1 min-w-0 items-center mx-2">
+              {/* Tabs primaires (modules terrain — toujours visibles) */}
+              <div className="flex items-center space-x-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+                {mobilePrimaryPages.map(({ id, name, shortName, icon: Icon }) => {
+                  const active = pathname.startsWith('/' + id);
+                  return (
+                    <Link
+                      key={id}
+                      href={`/${id}`}
+                      className={`flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0 ${
+                        active
+                          ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
+                          : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                      title={name}
+                    >
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
+                      <span className="text-[10px] sm:text-xs leading-tight text-center">{shortName}</span>
+                    </Link>
+                  );
+                })}
+              </div>
 
-              <button
-                onClick={() => setShowClientManager(true)}
-                className="flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0"
-                title="Gestion des Clients"
-              >
-                <Users className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
-                <span className="text-[10px] sm:text-xs leading-tight text-center">Clients</span>
-              </button>
+              {/* Bouton "Plus" avec dropdown — modules bureau */}
+              <div className="relative flex-shrink-0 ml-1" ref={moreMenuRef}>
+                <button
+                  onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                  className={`flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium transition-colors min-w-[56px] sm:min-w-[70px] ${
+                    isMoreMenuActive || moreMenuOpen
+                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  title="Plus d'options"
+                >
+                  <MoreHorizontal className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
+                  <span className="text-[10px] sm:text-xs leading-tight text-center">Plus</span>
+                </button>
 
-              <Link
-                href="/parametres"
-                className={`flex flex-col items-center px-2 sm:px-3 py-2 rounded-lg font-medium transition-colors min-w-[56px] sm:min-w-[70px] flex-shrink-0 ${
-                  pathname.startsWith('/parametres')
-                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-                title="Paramètres"
-              >
-                <Settings className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
-                <span className="text-[10px] sm:text-xs leading-tight text-center">Param.</span>
-              </Link>
+                {/* Dropdown menu */}
+                {moreMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50">
+                    {mobileSecondaryPages.map(({ id, name, icon: Icon }) => {
+                      const active = pathname.startsWith('/' + id);
+                      return (
+                        <Link
+                          key={id}
+                          href={`/${id}`}
+                          className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${
+                            active
+                              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                          onClick={() => setMoreMenuOpen(false)}
+                        >
+                          <Icon className="w-5 h-5 mr-3" />
+                          {name}
+                        </Link>
+                      );
+                    })}
+                    <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
+                    <button
+                      onClick={() => { setShowClientManager(true); setMoreMenuOpen(false); }}
+                      className="w-full flex items-center px-4 py-3 text-sm font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                    >
+                      <Users className="w-5 h-5 mr-3" />
+                      Gestion Clients
+                    </button>
+                    <Link
+                      href="/parametres"
+                      className={`flex items-center px-4 py-3 text-sm font-medium transition-colors ${
+                        pathname.startsWith('/parametres')
+                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                      onClick={() => setMoreMenuOpen(false)}
+                    >
+                      <Settings className="w-5 h-5 mr-3" />
+                      Paramètres
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Actions à droite */}

@@ -4,9 +4,10 @@
  *              - Manages state for the right-side panel
  *              - Provides open/close/replace panel functions
  *              - Tracks panel content type and data
- * @version 1.0.0
- * @date 2026-02-14
+ * @version 1.1.0
+ * @date 2026-03-01
  * @changelog
+ *   1.1.0 - Bloquer ouverture du panneau sur mobile/tablette (< 1024px)
  *   1.0.0 - Version initiale - Split view context et provider
  */
 
@@ -29,6 +30,10 @@ export function SplitViewProvider({ children }) {
   const [onPanelEvent, setOnPanelEvent] = useState(null); // callback for events from panel
 
   const openPanel = useCallback((type, data = {}, props = {}) => {
+    // Bloquer le split view sur mobile/tablette (< lg breakpoint 1024px)
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return;
+    }
     setPanelContent({ type, data, props });
     setPanelOpen(true);
   }, []);

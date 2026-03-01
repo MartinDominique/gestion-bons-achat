@@ -517,12 +517,15 @@ CRON_SECRET                   # Auth pour cron jobs
 1. **Facturation MVP (Phase B)** - Module complet de facturation (voir `Facturation_Taux_Statistiques.md`)
 2. **Rapport Acomba (Phase C)** - Rapport mensuel ventilé pour saisie dans Acomba
 3. **Statistiques Phase 2 (Phase D)** - Sous-onglet Financier basé sur les factures
-4. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
+4. ~~**Navigation mobile Option A**~~ ✅ COMPLÉTÉ (2026-03-01) - Menu "Plus" pour modules bureau
 5. **Numéros cliquables SplitView** - ReferenceLink.js partout dans l'app
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
+
+### Bugs corrigés récemment
+- ~~SplitView cassé sur tablette (panneau invisible + contenu compressé)~~ → Corrigé (2026-03-01)
 
 ### Bugs connus (corrigés)
 - ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé (2026-02-07)

@@ -1182,6 +1182,8 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 12. ~~**Rapports & Statistiques de Ventes - Phase 1 MVP**~~ - ✅ Phase 12 COMPLETE (2026-02-24)
 13. **Systeme permissions** - Futur (multi-utilisateurs)
 14. **Revoir rapport hebdomadaire** - Futur
+15. ~~**Navigation mobile Option A — menu "Plus"**~~ - ✅ COMPLETE (2026-03-01)
+16. ~~**Fix SplitView tablette**~~ - ✅ COMPLETE (2026-03-01) - Bloqué sur mobile/tablette
 
 ---
 
@@ -1221,6 +1223,7 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 - **Raison:** Permettre de naviguer entre documents lies sans perdre le contexte (ex: depuis AF, voir le BA lie)
 - **Architecture:** `SplitViewContext` global dans `app/layout.js` + composants `SplitView/`
 - **Usage:** Depuis AF, clic sur lien BA ouvre le panneau lateral
+- **Fix 2026-03-01:** Split view bloqué sur mobile/tablette (< 1024px) — panneau invisible causait compression du contenu
 
 ### 2026-02-18 - Reception directe + Ajustement inventaire (PR #52)
 - **Decision:** Modal de reception directe integre dans la page Achats
@@ -1230,4 +1233,12 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-02-22 par Claude AI*
+### 2026-03-01 - Navigation mobile Option A + Fix SplitView tablette
+- **Navigation:** Menu "Plus" (···) sur mobile/tablette — BT, BA, Achat, Inventaire visibles; Soumissions, Stats, Gestion Clients, Paramètres dans le dropdown
+- **SplitView fix:** Panneau split view bloqué sur écrans < 1024px — openPanel() vérifie la largeur, layout responsive ne compresse plus le contenu principal sur mobile
+- **Fichiers modifiés:**
+  - `components/Navigation.js` (v2.0.0) — Menu "Plus" avec dropdown, MoreHorizontal icon, click-outside, active state
+  - `components/SplitView/SplitViewContext.js` (v1.1.0) — Blocage openPanel sur mobile/tablette
+  - `components/SplitView/ClientSplitViewWrapper.js` (v1.1.0) — Layout responsive (w-full lg:w-[55%])
+
+*Document genere le 2026-02-05, mis a jour le 2026-03-01 par Claude AI*
