@@ -6,9 +6,10 @@
  *              - Actions: créer, voir, renvoyer, marquer payée
  *              - Rapport Acomba: export PDF + CSV mensuel ventilé
  *              - Numéros de référence cliquables (SplitView)
- * @version 1.4.0
- * @date 2026-02-27
+ * @version 1.5.0
+ * @date 2026-03-01
  * @changelog
+ *   1.5.0 - Fix: handleCreateInvoice utilise endpoint individuel pour récupérer matériaux + client complet (transport_fee, hourly_rate)
  *   1.4.0 - Ajout ReferenceLink sur N° BT/BL (Phase E — Numéros cliquables)
  *   1.3.0 - Ajout Rapport Acomba (PDF + CSV) + sélecteur de mois (Phase C)
  *   1.2.0 - Ajout "Marquer facturé (Acomba)" individuel + bulk
@@ -144,23 +145,20 @@ export default function InvoiceManager() {
 
   // Créer facture — ouvrir l'éditeur avec les données pré-remplies
   const handleCreateInvoice = async (item, type) => {
-    // Charger les détails complets
-    const endpoint = type === 'bt'
-      ? `/api/work-orders?limit=10000`
-      : `/api/delivery-notes?limit=10000`;
-
     try {
-      // Récupérer le document source complet
+      // Récupérer le document source complet via l'endpoint individuel
+      // (inclut materials + client complet avec transport_fee, hourly_rate_regular, etc.)
+      const endpoint = type === 'bt'
+        ? `/api/work-orders/${item.id}`
+        : `/api/delivery-notes/${item.id}`;
+
+      const res = await fetch(endpoint);
       let sourceData = item;
 
-      // Pour BT: récupérer les matériaux
-      if (type === 'bt') {
-        const res = await fetch(`/api/work-orders?limit=10000`);
-        if (res.ok) {
-          const data = await res.json();
-          const items = data.data || data || [];
-          const found = items.find(wo => wo.id === item.id);
-          if (found) sourceData = found;
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          sourceData = result.data;
         }
       }
 
