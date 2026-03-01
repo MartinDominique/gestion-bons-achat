@@ -583,8 +583,13 @@ CRON_SECRET                   # Auth pour cron jobs
     - `components/statistics/FinancialReport.js` v1.1.0 — ReferenceLink sur N° référence (vue En attente)
     - Pattern: clic sur un N° BT/BL/Soumission ouvre le panneau latéral SplitView en lecture
 
+15. ~~**Navigation mobile Option A + SplitView tablette**~~ - ✅ COMPLÉTÉ 2026-03-01
+    - `components/Navigation.js` v2.0.0 — Mobile: BA + BT + Clients + bouton "Plus" (bottom sheet)
+    - `components/SplitView/ClientSplitViewWrapper.js` v2.0.0 — Overlay mode tablette/mobile
+    - `tailwind.config.js` — Animations slide-up + slide-in-right
+    - Fix: panneau SplitView invisible sur tablette → mode overlay avec backdrop
+
 ### À faire (priorité utilisateur)
-1. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
