@@ -3,9 +3,10 @@
  * @description API pour un Bon de Livraison spécifique
  *              - GET: Récupérer un BL avec toutes ses relations + refs parent/child BO
  *              - PUT: Mettre à jour un BL (avec support backorder)
- * @version 1.1.0
+ * @version 1.1.1
  * @date 2026-03-03
  * @changelog
+ *   1.1.1 - Fix: permettre quantité 0 dans matériaux (|| 1 convertissait 0 en 1)
  *   1.1.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
  *           dans matériaux PUT, parent/child bl_number dans GET
  *   1.0.0 - Version initiale
@@ -227,7 +228,7 @@ export async function PUT(request, { params }) {
           product_id: validProductId,
           product_code: material.code || material.display_code || material.product?.product_id || null,
           description: material.description || material.product?.description || null,
-          quantity: parseFloat(material.quantity) || 1,
+          quantity: isNaN(parseFloat(material.quantity)) ? 1 : parseFloat(material.quantity),
           unit: material.unit || 'UN',
           unit_price: parseFloat(material.unit_price || material.product?.selling_price || 0),
           notes: material.notes || null,

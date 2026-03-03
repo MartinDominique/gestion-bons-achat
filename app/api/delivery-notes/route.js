@@ -4,9 +4,10 @@
  *              - POST: Créer un nouveau BL (avec support backorder)
  *              - GET: Lister les BL avec filtres et pagination
  *              - DELETE: Supprimer un BL (nettoie child_bl_id du parent)
- * @version 1.2.0
+ * @version 1.2.1
  * @date 2026-03-03
  * @changelog
+ *   1.2.1 - Fix: permettre quantité 0 dans matériaux (|| 1 convertissait 0 en 1)
  *   1.2.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
  *           dans matériaux, parent_bl_id dans delivery_notes, nettoyage child_bl_id
  *           à la suppression, child_bl_id/parent_bl_id dans GET liste
@@ -142,7 +143,7 @@ export async function POST(request) {
           product_id: validProductId,
           product_code: material.code || material.product?.product_id || null,
           description: material.description || material.product?.description || null,
-          quantity: parseFloat(material.quantity) || 1,
+          quantity: isNaN(parseFloat(material.quantity)) ? 1 : parseFloat(material.quantity),
           unit: material.unit || 'UN',
           unit_price: parseFloat(material.unit_price || material.product?.selling_price || 0),
           notes: material.notes || null,

@@ -9,9 +9,10 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.8.0
+ * @version 2.8.1
  * @date 2026-03-03
  * @changelog
+ *   2.8.1 - Fix: permettre quantité 0 dans buildPayload (|| 1 convertissait 0 en 1)
  *   2.8.0 - Ajout support backorder (BO): tableau résumé BO après MaterialSelector,
  *           bandeau livraison partielle, liens parent/child BL, ordered_quantity
  *           et previously_delivered dans buildPayload et import soumission/AF
@@ -474,7 +475,7 @@ export default function DeliveryNoteForm({
           product_id: m.product_id || m.code || null,
           code: m.code || m.product_id || '',
           description: m.description || '',
-          quantity: parseFloat(m.quantity) || 1,
+          quantity: isNaN(parseFloat(m.quantity)) ? 1 : parseFloat(m.quantity),
           unit: m.unit || 'UN',
           unit_price: parseFloat(m.unit_price) || 0,
           showPrice: m.showPrice || m.show_price || false,
