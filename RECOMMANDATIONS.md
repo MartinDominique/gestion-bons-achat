@@ -1250,6 +1250,22 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 - **Architecture:** `DirectReceiptModal.js` avec 2 modes: Reception (IN) et Ajustement (+/-)
 - **Flux inventaire:** Mouvements `direct_receipt` + decalage historique prix
 
+### 2026-03-03 - Gestion Backorder (BO) dans les Bons de Livraison
+- **Decision:** Livraisons partielles avec creation automatique de BL de suivi apres signature
+- **Raison:** Permettre de livrer partiellement une commande, visualiser ce qui manque, et generer un BL brouillon avec les quantites restantes
+- **Architecture:** Colonnes `parent_bl_id`/`child_bl_id` sur delivery_notes, `ordered_quantity`/`previously_delivered` sur delivery_note_materials
+- **Flux:** Import soumission/AF → set ordered_quantity → livrer partiellement → signature → auto-creation BL suivi en brouillon
+- **Cascade:** Si le BL de suivi est lui aussi partiel → le meme mecanisme cree un 3e BL, etc.
+- **Fichiers modifies:**
+  - `supabase/migrations/20260303_add_backorder_columns.sql` — Migration SQL
+  - `app/api/delivery-notes/route.js` v1.2.0 — POST/GET/DELETE
+  - `app/api/delivery-notes/[id]/route.js` v1.1.0 — GET/PUT
+  - `app/api/delivery-notes/[id]/complete-signature/route.js` v1.3.0 — Logique BO principale
+  - `components/delivery-notes/DeliveryNoteForm.js` v2.8.0 — UI BO
+  - `components/delivery-notes/DeliveryNoteClientView.js` v2.3.0 — Vue client BO
+  - `app/bons-travail/page.js` v2.3.0 — Badge BO
+  - `lib/services/email-service.js` v3.1.0 — PDF BO
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-02-22 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-03-03 par Claude AI*

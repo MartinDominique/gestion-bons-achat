@@ -1,11 +1,13 @@
 /**
  * @file app/api/delivery-notes/[id]/route.js
  * @description API pour un Bon de Livraison spécifique
- *              - GET: Récupérer un BL avec toutes ses relations
- *              - PUT: Mettre à jour un BL
- * @version 1.0.0
- * @date 2026-02-12
+ *              - GET: Récupérer un BL avec toutes ses relations + refs parent/child BO
+ *              - PUT: Mettre à jour un BL (avec support backorder)
+ * @version 1.1.0
+ * @date 2026-03-03
  * @changelog
+ *   1.1.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
+ *           dans matériaux PUT, parent/child bl_number dans GET
  *   1.0.0 - Version initiale
  */
 
@@ -81,6 +83,24 @@ export async function GET(request, { params }) {
           };
         }
       }
+    }
+
+    // Charger les bl_number parent/child pour navigation BO
+    if (data.parent_bl_id) {
+      const { data: parentBL } = await supabase
+        .from('delivery_notes')
+        .select('bl_number')
+        .eq('id', data.parent_bl_id)
+        .single();
+      data.parent_bl_number = parentBL?.bl_number || null;
+    }
+    if (data.child_bl_id) {
+      const { data: childBL } = await supabase
+        .from('delivery_notes')
+        .select('bl_number')
+        .eq('id', data.child_bl_id)
+        .single();
+      data.child_bl_number = childBL?.bl_number || null;
     }
 
     return NextResponse.json({
@@ -202,7 +222,7 @@ export async function PUT(request, { params }) {
           validProductId = material.product_id;
         }
 
-        return {
+        const materialRow = {
           delivery_note_id: deliveryNoteId,
           product_id: validProductId,
           product_code: material.code || material.display_code || material.product?.product_id || null,
@@ -213,6 +233,16 @@ export async function PUT(request, { params }) {
           notes: material.notes || null,
           show_price: material.showPrice || material.show_price || false
         };
+
+        // Support backorder: quantité commandée et déjà livrée
+        if (material.ordered_quantity != null) {
+          materialRow.ordered_quantity = parseFloat(material.ordered_quantity);
+        }
+        if (material.previously_delivered != null) {
+          materialRow.previously_delivered = parseFloat(material.previously_delivered) || 0;
+        }
+
+        return materialRow;
       });
 
       const { error: insertError } = await supabase

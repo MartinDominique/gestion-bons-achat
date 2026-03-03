@@ -1,12 +1,15 @@
 /**
  * @file app/api/delivery-notes/route.js
  * @description API CRUD pour les Bons de Livraison (BL)
- *              - POST: Créer un nouveau BL
+ *              - POST: Créer un nouveau BL (avec support backorder)
  *              - GET: Lister les BL avec filtres et pagination
- *              - DELETE: Supprimer un BL
- * @version 1.1.0
- * @date 2026-02-14
+ *              - DELETE: Supprimer un BL (nettoie child_bl_id du parent)
+ * @version 1.2.0
+ * @date 2026-03-03
  * @changelog
+ *   1.2.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
+ *           dans matériaux, parent_bl_id dans delivery_notes, nettoyage child_bl_id
+ *           à la suppression, child_bl_id/parent_bl_id dans GET liste
  *   1.1.0 - Fix: utiliser supabaseAdmin directement (supabase n'était pas importé)
  *   1.0.0 - Version initiale
  */
@@ -102,6 +105,11 @@ export async function POST(request) {
       is_prix_jobe: body.is_prix_jobe || false,
     };
 
+    // Support backorder: lien vers BL parent
+    if (body.parent_bl_id) {
+      deliveryNoteData.parent_bl_id = parseInt(body.parent_bl_id);
+    }
+
     const { data: deliveryNote, error: deliveryNoteError } = await supabaseAdmin
       .from('delivery_notes')
       .insert([deliveryNoteData])
@@ -129,7 +137,7 @@ export async function POST(request) {
           validProductId = material.product_id;
         }
 
-        return {
+        const materialRow = {
           delivery_note_id: deliveryNote.id,
           product_id: validProductId,
           product_code: material.code || material.product?.product_id || null,
@@ -140,6 +148,16 @@ export async function POST(request) {
           notes: material.notes || null,
           show_price: material.showPrice || material.show_price || false
         };
+
+        // Support backorder: quantité commandée et déjà livrée
+        if (material.ordered_quantity != null) {
+          materialRow.ordered_quantity = parseFloat(material.ordered_quantity);
+        }
+        if (material.previously_delivered != null) {
+          materialRow.previously_delivered = parseFloat(material.previously_delivered) || 0;
+        }
+
+        return materialRow;
       });
 
       const { data: materialsResult, error: materialsError } = await supabaseAdmin
@@ -210,6 +228,8 @@ export async function GET(request) {
         delivery_description,
         status,
         invoice_id,
+        parent_bl_id,
+        child_bl_id,
         client:clients(id, name),
         linked_po:purchase_orders(id, po_number)
       `, { count: 'exact' })
@@ -274,6 +294,20 @@ export async function DELETE(request) {
         { error: 'ID requis pour la suppression' },
         { status: 400 }
       );
+    }
+
+    // Nettoyer child_bl_id sur le parent si ce BL est un suivi BO
+    const { data: blToDelete } = await supabaseAdmin
+      .from('delivery_notes')
+      .select('parent_bl_id')
+      .eq('id', id)
+      .single();
+
+    if (blToDelete?.parent_bl_id) {
+      await supabaseAdmin
+        .from('delivery_notes')
+        .update({ child_bl_id: null })
+        .eq('id', blToDelete.parent_bl_id);
     }
 
     const { error } = await supabaseAdmin

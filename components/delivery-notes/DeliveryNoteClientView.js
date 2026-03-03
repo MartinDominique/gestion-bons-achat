@@ -7,10 +7,13 @@
  *              - Zone de signature tactile
  *              - Envoi automatique après signature
  *              - Auto-fermeture après signature + envoi email
+ *              - Affichage colonnes backorder (BO) en lecture seule
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.2.1
- * @date 2026-02-27
+ * @version 2.3.0
+ * @date 2026-03-03
  * @changelog
+ *   2.3.0 - Ajout affichage colonnes backorder (BO) en lecture seule: Commandé/Livré/BO
+ *           Bandeau livraison partielle, lien vers BL parent si suivi
  *   2.2.1 - Fix canvas signature toujours blanc pour visibilité en dark mode
  *           (noir sur blanc = compatible PDF, toujours lisible)
  *   2.2.0 - Ajout support dark mode (Tailwind dark: variants)
@@ -28,7 +31,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Check, Send, Wifi, WifiOff, X, FileText, User, Calendar, Package, Mail, Truck } from 'lucide-react';
+import { Check, Send, Wifi, WifiOff, X, FileText, User, Calendar, Package, Mail, Truck, AlertTriangle } from 'lucide-react';
 import { handleBLSignatureWithAutoSend } from '../../lib/services/client-signature.js';
 
 export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate }) {
@@ -415,6 +418,40 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
           </div>
         )}
 
+        {/* Lien BL parent si c'est un suivi BO */}
+        {deliveryNote.parent_bl_id && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 flex items-center gap-2">
+            <Package className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={16} />
+            <span className="text-sm text-blue-800 dark:text-blue-200">
+              Suite de {deliveryNote.parent_bl_number || `BL #${deliveryNote.parent_bl_id}`} — Backorder
+            </span>
+          </div>
+        )}
+
+        {/* Bandeau BO si livraison partielle */}
+        {(() => {
+          if (!deliveryNote.materials) return null;
+          const boItems = deliveryNote.materials.filter(m => {
+            if (!m.ordered_quantity) return false;
+            const bo = parseFloat(m.ordered_quantity) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
+            return bo > 0;
+          });
+          if (boItems.length === 0) return null;
+          return (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-3 mb-4 flex items-start gap-2">
+              <AlertTriangle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
+              <div>
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  Livraison partielle — {boItems.length} item(s) en backorder
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                  Les items restants feront l'objet d'une livraison ultérieure.
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Matériaux livrés */}
         {!deliveryNote.is_prix_jobe && deliveryNote.materials && deliveryNote.materials.length > 0 && (
           <div className="mb-4 sm:mb-6">
@@ -422,8 +459,14 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
 
             {/* Version MOBILE */}
             <div className="md:hidden bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
-              {deliveryNote.materials.map((material, index) => (
-                <div key={index} className="p-3">
+              {deliveryNote.materials.map((material, index) => {
+                const hasBO = material.ordered_quantity != null && material.ordered_quantity > 0;
+                const bo = hasBO
+                  ? parseFloat(material.ordered_quantity) - (parseFloat(material.previously_delivered) || 0) - (parseFloat(material.quantity) || 0)
+                  : 0;
+
+                return (
+                <div key={index} className={`p-3 ${hasBO && bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-mono text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
                       {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
@@ -443,6 +486,28 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                     </p>
                   )}
 
+                  {/* BO info (lecture seule) */}
+                  {hasBO && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div>
+                          <p className="text-gray-500 dark:text-gray-400">Commandé</p>
+                          <p className="font-semibold text-gray-900 dark:text-gray-100">{material.ordered_quantity}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 dark:text-gray-400">Livré</p>
+                          <p className="font-semibold text-blue-700 dark:text-blue-300">{material.quantity}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 dark:text-gray-400">Reste</p>
+                          <p className={`font-bold ${bo > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                            {bo > 0 ? bo : 0} {bo <= 0 ? '✓' : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {material.show_price && (material.product?.selling_price || material.unit_price) && (
                     <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-gray-600 text-xs">
                       <span className="text-gray-600 dark:text-gray-400">
@@ -454,7 +519,8 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
 
               {deliveryNote.materials.some(m => m.show_price === true) && (
                 <div className="p-3 bg-green-50 dark:bg-green-900/20 border-t-2 dark:border-gray-600">
@@ -470,14 +536,25 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
 
             {/* Version DESKTOP */}
             <div className="hidden md:block bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden">
+              {(() => {
+                const hasAnyBO = deliveryNote.materials.some(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+                const hasAnyPrices = deliveryNote.materials.some(m => m.show_price === true);
+
+                return (
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-4 py-3 text-left">Code</th>
                     <th className="px-4 py-3 text-left">Matériau / Description</th>
-                    <th className="px-4 py-3 text-center">Quantité</th>
+                    {hasAnyBO && (
+                      <th className="px-4 py-3 text-center">Commandé</th>
+                    )}
+                    <th className="px-4 py-3 text-center">{hasAnyBO ? 'Livré' : 'Quantité'}</th>
                     <th className="px-4 py-3 text-center">Unité</th>
-                    {(deliveryNote.materials && deliveryNote.materials.some(m => m.show_price === true)) && (
+                    {hasAnyBO && (
+                      <th className="px-4 py-3 text-center">Reste</th>
+                    )}
+                    {hasAnyPrices && (
                       <>
                         <th className="px-4 py-3 text-right">Prix Unit.</th>
                         <th className="px-4 py-3 text-right">Total</th>
@@ -486,8 +563,14 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                   </tr>
                 </thead>
                 <tbody>
-                  {deliveryNote.materials.map((material, index) => (
-                    <tr key={index} className="border-t dark:border-gray-700">
+                  {deliveryNote.materials.map((material, index) => {
+                    const matHasBO = material.ordered_quantity != null && material.ordered_quantity > 0;
+                    const bo = matHasBO
+                      ? parseFloat(material.ordered_quantity) - (parseFloat(material.previously_delivered) || 0) - (parseFloat(material.quantity) || 0)
+                      : 0;
+
+                    return (
+                    <tr key={index} className={`border-t dark:border-gray-700 ${matHasBO && bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}`}>
                       <td className="px-4 py-3 font-mono text-sm font-bold dark:text-gray-100">
                         {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
                       </td>
@@ -508,11 +591,27 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                           )}
                         </div>
                       </td>
+                      {hasAnyBO && (
+                        <td className="px-4 py-3 text-center font-semibold">
+                          {matHasBO ? material.ordered_quantity : '-'}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-center font-semibold">{material.quantity}</td>
                       <td className="px-4 py-3 text-center">
                         {material.unit || material.product?.unit || 'UN'}
                       </td>
-                      {(deliveryNote.materials && deliveryNote.materials.some(m => m.show_price === true)) && (
+                      {hasAnyBO && (
+                        <td className={`px-4 py-3 text-center font-bold ${
+                          matHasBO && bo > 0
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : matHasBO
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-gray-400'
+                        }`}>
+                          {matHasBO ? (bo > 0 ? bo : '0 ✓') : '-'}
+                        </td>
+                      )}
+                      {hasAnyPrices && (
                         <>
                           <td className="px-4 py-3 text-right">
                             {material.show_price ?
@@ -529,12 +628,13 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                         </>
                       )}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
-                {(deliveryNote.materials && deliveryNote.materials.some(m => m.show_price === true)) && (
+                {hasAnyPrices && (
                   <tfoot className="bg-gray-50 dark:bg-gray-700 border-t-2 dark:border-gray-600">
                     <tr>
-                      <td colSpan="4" className="px-4 py-3 text-right font-bold">
+                      <td colSpan={4 + (hasAnyBO ? 2 : 0)} className="px-4 py-3 text-right font-bold">
                         Total:
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-lg">
@@ -544,6 +644,8 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                   </tfoot>
                 )}
               </table>
+                );
+              })()}
             </div>
           </div>
         )}

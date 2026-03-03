@@ -403,11 +403,13 @@ id, bl_number, client_id, client_name, linked_po_id, invoice_id,
 delivery_date, delivery_description, status,
 is_prix_jobe, signature_data, signature_timestamp,
 client_signature_name, recipient_emails (JSONB),
+parent_bl_id, child_bl_id,
 user_id, created_at, updated_at
 ```
 **Statuts:** draft, ready_for_signature, signed, pending_send, sent
-**Matériaux:** Table séparée `delivery_note_materials` (product_id, quantity, unit, unit_price, etc.)
+**Matériaux:** Table séparée `delivery_note_materials` (product_id, quantity, unit, unit_price, ordered_quantity, previously_delivered, etc.)
 **Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `invoice_id IS NOT NULL` → facturé (vert)
+**Backorder:** `parent_bl_id` = BL d'origine (si suivi), `child_bl_id` = BL de suivi (si BO créé)
 
 ### invoices (Factures)
 ```sql
@@ -589,6 +591,17 @@ CRON_SECRET                   # Auth pour cron jobs
     - `tailwind.config.js` — Animations slide-up + slide-in-right
     - Fix: panneau SplitView invisible sur tablette → mode overlay avec backdrop
 
+16. ~~**Gestion Backorder (BO) dans les Bons de Livraison**~~ - ✅ COMPLÉTÉ 2026-03-03
+    - `supabase/migrations/20260303_add_backorder_columns.sql` — parent_bl_id, child_bl_id, ordered_quantity, previously_delivered
+    - `app/api/delivery-notes/route.js` v1.2.0 — POST accepte parent_bl_id + BO fields, GET inclut parent/child, DELETE nettoie child_bl_id
+    - `app/api/delivery-notes/[id]/route.js` v1.1.0 — GET charge parent/child bl_number, PUT accepte BO fields
+    - `app/api/delivery-notes/[id]/complete-signature/route.js` v1.3.0 — Détection BO, création auto BL suivi brouillon, lien parent↔child
+    - `components/delivery-notes/DeliveryNoteForm.js` v2.8.0 — Tableau résumé BO, bandeau livraison partielle, liens parent/child, BO dans import soumission/AF
+    - `components/delivery-notes/DeliveryNoteClientView.js` v2.3.0 — Colonnes BO lecture seule (mobile + desktop), bandeau BO
+    - `app/bons-travail/page.js` v2.3.0 — Badge "BO" orange, indicateur "Suite" pour BL de suivi
+    - `lib/services/email-service.js` v3.1.0 — PDF BL avec colonnes CMD/Livré/BO conditionnelles + note backorder
+    - Note: Migration SQL à exécuter manuellement dans Supabase Dashboard
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
@@ -709,6 +722,8 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
   },
   linked_po_id: 789,
   linked_po: { po_number: "PO-2026-001" },
+  parent_bl_id: null,        // Réf. BL parent (si c'est un suivi BO)
+  child_bl_id: null,         // Réf. BL de suivi (si BO créé après signature)
   delivery_date: "2026-02-07",
   delivery_description: "Livraison matériels électriques - Phase 1",
   materials: [
@@ -719,7 +734,9 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
       unit: "UN",
       unit_price: 50.00,
       show_price: true,
-      notes: "Note optionnelle"
+      notes: "Note optionnelle",
+      ordered_quantity: 10,     // Qté commandée d'origine (null si ajout manuel)
+      previously_delivered: 0   // Qté déjà livrée dans BL précédents
     }
   ],
   status: "sent",
@@ -729,8 +746,6 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
   signature_timestamp: "2026-02-07T14:30:00Z",
   client_signature_name: "Jean Tremblay"
 }
-
-
 ```
 
 **Différences clés BL vs BT:**
@@ -738,6 +753,7 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
 - Pas de `work_description` → `delivery_description` à la place
 - Pas de `work_date` → `delivery_date` à la place
 - Numérotation BL-YYMM-### au lieu de BT-YYMM-###
+- Support backorder (BO) via `ordered_quantity`, `previously_delivered`, `parent_bl_id`, `child_bl_id`
 
 ---
 

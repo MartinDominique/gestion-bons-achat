@@ -7,10 +7,14 @@
  *              - Date de livraison + description (MAJUSCULES)
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
+ *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.7.0
- * @date 2026-02-22
+ * @version 2.8.0
+ * @date 2026-03-03
  * @changelog
+ *   2.8.0 - Ajout support backorder (BO): tableau résumé BO après MaterialSelector,
+ *           bandeau livraison partielle, liens parent/child BL, ordered_quantity
+ *           et previously_delivered dans buildPayload et import soumission/AF
  *   2.7.0 - Ajout support dark mode (Tailwind dark: variants)
  *   2.6.0 - Fix: sélection emails par noms de champs (__fields: metadata dans
  *           recipient_emails) au lieu de matching par adresses. Résout le cas
@@ -47,7 +51,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Package, Calendar, FileText, User, Mail,
-  Save, Eye, X, Plus, Truck, PenTool, Check
+  Save, Eye, X, Plus, Truck, PenTool, Check, AlertTriangle, Link2
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
@@ -224,7 +228,7 @@ export default function DeliveryNoteForm({
         }
       }
 
-      // Charger les matériaux
+      // Charger les matériaux (avec support BO)
       if (deliveryNote.materials && deliveryNote.materials.length > 0) {
         const formattedMaterials = deliveryNote.materials.map((m, idx) => ({
           id: m.id || `existing-${idx}`,
@@ -238,6 +242,9 @@ export default function DeliveryNoteForm({
           show_price: m.show_price || false,
           notes: m.notes || '',
           product: m.product || null,
+          // Champs backorder
+          ordered_quantity: m.ordered_quantity != null ? parseFloat(m.ordered_quantity) : null,
+          previously_delivered: m.previously_delivered != null ? parseFloat(m.previously_delivered) : 0,
         }));
         setMaterials(formattedMaterials);
       }
@@ -455,27 +462,40 @@ export default function DeliveryNoteForm({
   // =============================================
 
   const buildPayload = () => {
-    return {
+    const payload = {
       client_id: clientId,
       client_name: selectedClient?.name || '',
       linked_po_id: linkedPoId || null,
       is_manual_po: isManualPo,
       delivery_date: deliveryDate,
       delivery_description: deliveryDescription,
-      materials: materials.map(m => ({
-        product_id: m.product_id || m.code || null,
-        code: m.code || m.product_id || '',
-        description: m.description || '',
-        quantity: parseFloat(m.quantity) || 1,
-        unit: m.unit || 'UN',
-        unit_price: parseFloat(m.unit_price) || 0,
-        showPrice: m.showPrice || m.show_price || false,
-        show_price: m.showPrice || m.show_price || false,
-        notes: m.notes || '',
-      })),
+      materials: materials.map(m => {
+        const mat = {
+          product_id: m.product_id || m.code || null,
+          code: m.code || m.product_id || '',
+          description: m.description || '',
+          quantity: parseFloat(m.quantity) || 1,
+          unit: m.unit || 'UN',
+          unit_price: parseFloat(m.unit_price) || 0,
+          showPrice: m.showPrice || m.show_price || false,
+          show_price: m.showPrice || m.show_price || false,
+          notes: m.notes || '',
+        };
+        // Champs backorder (uniquement si ordered_quantity existe)
+        if (m.ordered_quantity != null) {
+          mat.ordered_quantity = parseFloat(m.ordered_quantity);
+          mat.previously_delivered = parseFloat(m.previously_delivered) || 0;
+        }
+        return mat;
+      }),
       is_prix_jobe: isPrixJobe,
       recipient_emails: getSelectedEmailAddresses(),
     };
+    // Lien parent BL si c'est un suivi BO
+    if (deliveryNote?.parent_bl_id) {
+      payload.parent_bl_id = deliveryNote.parent_bl_id;
+    }
+    return payload;
   };
 
   // =============================================
@@ -554,6 +574,7 @@ export default function DeliveryNoteForm({
         const sourceCode = item.product_id || item.code || '';
         const description = item.name || item.description || 'Article importé depuis soumission';
 
+        const qty = parseFloat(item.quantity || 0);
         return {
           id: 'sub-' + Date.now() + '-' + arrayIndex,
           product_id: sourceCode || null,
@@ -566,14 +587,17 @@ export default function DeliveryNoteForm({
             selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
             unit: item.unit || 'UN',
           },
-          quantity: parseFloat(item.quantity || 0),
+          quantity: qty,
           unit: item.unit || 'UN',
           unit_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
           showPrice: false,
           show_price: false,
           notes: `Importé de soumission #${selectedSubmissionForImport.submission_number}`,
           from_submission: true,
-          submission_number: selectedSubmissionForImport.submission_number
+          submission_number: selectedSubmissionForImport.submission_number,
+          // Backorder: quantité commandée = quantité de la soumission
+          ordered_quantity: qty,
+          previously_delivered: 0,
         };
       });
 
@@ -692,6 +716,7 @@ export default function DeliveryNoteForm({
         const sourceCode = supplierItem.product_id || supplierItem.code || supplierItem.sku || '';
         const description = supplierItem.description || supplierItem.name || supplierItem.product_name || 'Article importé';
 
+        const qty = parseFloat(supplierItem.quantity || supplierItem.qty || 1);
         return {
           id: 'supplier-' + Date.now() + '-' + arrayIndex,
           product_id: sourceCode || null,
@@ -704,14 +729,17 @@ export default function DeliveryNoteForm({
             selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
             unit: supplierItem.unit || supplierItem.unity || 'UN',
           },
-          quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
+          quantity: qty,
           unit: supplierItem.unit || supplierItem.unity || 'UN',
           unit_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
           showPrice: false,
           show_price: false,
           notes: `Importé de AF #${selectedPurchaseForImport.purchase_number}`,
           from_supplier_purchase: true,
-          supplier_purchase_number: selectedPurchaseForImport.purchase_number
+          supplier_purchase_number: selectedPurchaseForImport.purchase_number,
+          // Backorder: quantité commandée = quantité de l'AF
+          ordered_quantity: qty,
+          previously_delivered: 0,
         };
       });
 
@@ -778,6 +806,39 @@ export default function DeliveryNoteForm({
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 max-w-4xl mx-auto">
+
+      {/* Liens parent/child BO */}
+      {deliveryNote?.parent_bl_id && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 flex items-center gap-2">
+          <Link2 className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={16} />
+          <span className="text-sm text-blue-800 dark:text-blue-200">
+            Suite de{' '}
+            <button
+              type="button"
+              onClick={() => router.push(`/bons-travail/bl/${deliveryNote.parent_bl_id}/modifier`)}
+              className="font-bold underline hover:text-blue-600 dark:hover:text-blue-300"
+            >
+              {deliveryNote.parent_bl_number || `BL #${deliveryNote.parent_bl_id}`}
+            </button>
+            {' '}— Backorder
+          </span>
+        </div>
+      )}
+      {deliveryNote?.child_bl_id && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4 flex items-center gap-2">
+          <Package className="text-orange-600 dark:text-orange-400 flex-shrink-0" size={16} />
+          <span className="text-sm text-orange-800 dark:text-orange-200">
+            BL de suivi :{' '}
+            <button
+              type="button"
+              onClick={() => router.push(`/bons-travail/bl/${deliveryNote.child_bl_id}/modifier`)}
+              className="font-bold underline hover:text-orange-600 dark:hover:text-orange-300"
+            >
+              {deliveryNote.child_bl_number || `BL #${deliveryNote.child_bl_id}`}
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Header avec boutons - identique au BT */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -1141,6 +1202,126 @@ export default function DeliveryNoteForm({
           materials={materials}
           onMaterialsChange={(newMaterials) => { setMaterials(newMaterials); onFormChange?.(); }}
         />
+
+        {/* Résumé Backorder (BO) - affiché uniquement quand des items ont ordered_quantity */}
+        {(() => {
+          const boMaterials = materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+          if (boMaterials.length === 0) return null;
+
+          const itemsWithBO = boMaterials.filter(m => {
+            const bo = (parseFloat(m.ordered_quantity) || 0) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
+            return bo > 0;
+          });
+
+          return (
+            <div className="mt-4">
+              {/* Bandeau BO */}
+              {itemsWithBO.length > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-3 mb-3 flex items-start gap-2">
+                  <AlertTriangle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                      Livraison partielle — {itemsWithBO.length} item(s) en backorder
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                      Un BL de suivi sera créé automatiquement après signature du client.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Tableau résumé BO */}
+              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Suivi commande / Backorder</h4>
+                </div>
+
+                {/* Version mobile (stacked) */}
+                <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                  {boMaterials.map((m, idx) => {
+                    const ordered = parseFloat(m.ordered_quantity) || 0;
+                    const prevDel = parseFloat(m.previously_delivered) || 0;
+                    const qty = parseFloat(m.quantity) || 0;
+                    const bo = ordered - prevDel - qty;
+
+                    return (
+                      <div key={idx} className={`p-3 ${bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}`}>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 truncate">
+                          {m.description || m.product?.description || 'Article'}
+                        </p>
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Commandé</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{ordered}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Déjà livré</p>
+                            <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{prevDel}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Ce BL</p>
+                            <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{qty}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">BO</p>
+                            <p className={`text-sm font-bold ${
+                              bo > 0
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-green-600 dark:text-green-400'
+                            }`}>
+                              {bo > 0 ? bo : 0} {bo <= 0 ? '✓' : ''}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Version desktop (tableau) */}
+                <div className="hidden md:block">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                        <th className="px-3 py-2 text-left">Description</th>
+                        <th className="px-3 py-2 text-center">Commandé</th>
+                        <th className="px-3 py-2 text-center">Déjà livré</th>
+                        <th className="px-3 py-2 text-center">Qté ce BL</th>
+                        <th className="px-3 py-2 text-center">BO</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {boMaterials.map((m, idx) => {
+                        const ordered = parseFloat(m.ordered_quantity) || 0;
+                        const prevDel = parseFloat(m.previously_delivered) || 0;
+                        const qty = parseFloat(m.quantity) || 0;
+                        const bo = ordered - prevDel - qty;
+
+                        return (
+                          <tr key={idx} className={bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}>
+                            <td className="px-3 py-2 text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
+                              {m.description || m.product?.description || 'Article'}
+                            </td>
+                            <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">{ordered}</td>
+                            <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-300">{prevDel}</td>
+                            <td className="px-3 py-2 text-center font-bold text-blue-700 dark:text-blue-300">{qty}</td>
+                            <td className={`px-3 py-2 text-center font-bold ${
+                              bo > 0
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-green-600 dark:text-green-400'
+                            }`}>
+                              {bo > 0 ? bo : 0} {bo <= 0 ? '✓' : ''}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ==========================================
