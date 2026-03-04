@@ -3,9 +3,10 @@
  * @description API pour un Bon de Livraison spécifique
  *              - GET: Récupérer un BL avec toutes ses relations + refs parent/child BO
  *              - PUT: Mettre à jour un BL (avec support backorder)
- * @version 1.1.1
- * @date 2026-03-03
+ * @version 1.2.0
+ * @date 2026-03-04
  * @changelog
+ *   1.2.0 - Fix: INSERT matériaux résilient — retry sans colonnes BO si INSERT échoue
  *   1.1.1 - Fix: permettre quantité 0 dans matériaux (|| 1 convertissait 0 en 1)
  *   1.1.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
  *           dans matériaux PUT, parent/child bl_number dans GET
@@ -246,10 +247,21 @@ export async function PUT(request, { params }) {
         return materialRow;
       });
 
-      const { error: insertError } = await supabase
+      let insertError;
+      ({ error: insertError } = await supabase
         .from('delivery_note_materials')
         .insert(materialsData)
-        .select();
+        .select());
+
+      // Si INSERT échoue (colonnes BO manquantes?), retry sans ordered_quantity/previously_delivered
+      if (insertError) {
+        console.warn('INSERT matériaux échoué, retry sans colonnes BO:', insertError.message);
+        const materialsWithoutBO = materialsData.map(({ ordered_quantity, previously_delivered, ...rest }) => rest);
+        ({ error: insertError } = await supabase
+          .from('delivery_note_materials')
+          .insert(materialsWithoutBO)
+          .select());
+      }
 
       if (insertError) {
         return NextResponse.json({

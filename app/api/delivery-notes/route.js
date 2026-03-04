@@ -4,9 +4,11 @@
  *              - POST: Créer un nouveau BL (avec support backorder)
  *              - GET: Lister les BL avec filtres et pagination
  *              - DELETE: Supprimer un BL (nettoie child_bl_id du parent)
- * @version 1.2.1
- * @date 2026-03-03
+ * @version 1.3.0
+ * @date 2026-03-04
  * @changelog
+ *   1.3.0 - Fix: INSERT matériaux résilient — retry sans colonnes BO si INSERT échoue
+ *           (migration pas encore appliquée), meilleur feedback erreur
  *   1.2.1 - Fix: permettre quantité 0 dans matériaux (|| 1 convertissait 0 en 1)
  *   1.2.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
  *           dans matériaux, parent_bl_id dans delivery_notes, nettoyage child_bl_id
@@ -161,13 +163,24 @@ export async function POST(request) {
         return materialRow;
       });
 
-      const { data: materialsResult, error: materialsError } = await supabaseAdmin
+      let materialsResult, materialsError;
+      ({ data: materialsResult, error: materialsError } = await supabaseAdmin
         .from('delivery_note_materials')
         .insert(materialsData)
-        .select();
+        .select());
+
+      // Si INSERT échoue (colonnes BO manquantes?), retry sans ordered_quantity/previously_delivered
+      if (materialsError) {
+        console.warn('INSERT matériaux échoué, retry sans colonnes BO:', materialsError.message);
+        const materialsWithoutBO = materialsData.map(({ ordered_quantity, previously_delivered, ...rest }) => rest);
+        ({ data: materialsResult, error: materialsError } = await supabaseAdmin
+          .from('delivery_note_materials')
+          .insert(materialsWithoutBO)
+          .select());
+      }
 
       if (materialsError) {
-        console.error('Erreur ajout matériaux:', materialsError);
+        console.error('Erreur ajout matériaux (retry aussi échoué):', materialsError);
       } else {
         deliveryNoteMaterials = materialsResult || [];
       }
