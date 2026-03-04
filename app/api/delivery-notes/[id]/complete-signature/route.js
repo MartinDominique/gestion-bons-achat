@@ -1,9 +1,11 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL + création BL suivi backorder
- * @version 1.3.0
- * @date 2026-03-03
+ * @version 1.4.0
+ * @date 2026-03-04
  * @changelog
+ *   1.4.0 - Fix BO: inclure TOUS les items dans le BL de suivi (pas seulement les BO),
+ *           items complétés avec quantity=0 pour vue complète commande côté client
  *   1.3.0 - Ajout gestion backorder (BO): après signature, si des items ont ordered_quantity
  *           et qu'il reste des quantités non livrées, crée automatiquement un BL de suivi
  *           en brouillon avec les quantités restantes et lie parent↔child
@@ -232,8 +234,9 @@ export async function POST(request, { params }) {
     // 2d. Gestion Backorder (BO): créer BL de suivi si quantités restantes
     let backorderResult = null;
     if (deliveryNote.materials && deliveryNote.materials.length > 0) {
-      const boItems = deliveryNote.materials.filter(m => {
-        if (!m.ordered_quantity) return false;
+      // Filtrer les items qui ont un suivi BO (ordered_quantity défini)
+      const trackedItems = deliveryNote.materials.filter(m => m.ordered_quantity);
+      const boItems = trackedItems.filter(m => {
         const totalDelivered = (parseFloat(m.previously_delivered) || 0) + (parseFloat(m.quantity) || 0);
         return totalDelivered < parseFloat(m.ordered_quantity);
       });
@@ -266,12 +269,13 @@ export async function POST(request, { params }) {
           } else {
             console.log(`✅ BL suivi créé: ${followUpBL.bl_number} (id: ${followUpBL.id})`);
 
-            // Créer les matériaux du BL de suivi (quantités restantes)
-            const followUpMaterials = boItems.map(m => {
+            // Inclure TOUS les items avec ordered_quantity (pas seulement les BO)
+            // Items complétés auront quantity=0, ce qui permet de voir la commande complète
+            const followUpMaterials = trackedItems.map(m => {
               const prevDelivered = parseFloat(m.previously_delivered) || 0;
               const currentDelivered = parseFloat(m.quantity) || 0;
               const orderedQty = parseFloat(m.ordered_quantity);
-              const remainingQty = orderedQty - prevDelivered - currentDelivered;
+              const remainingQty = Math.max(0, orderedQty - prevDelivered - currentDelivered);
 
               return {
                 delivery_note_id: followUpBL.id,
