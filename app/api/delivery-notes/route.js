@@ -1,12 +1,18 @@
 /**
  * @file app/api/delivery-notes/route.js
  * @description API CRUD pour les Bons de Livraison (BL)
- *              - POST: Créer un nouveau BL
+ *              - POST: Créer un nouveau BL (avec support backorder)
  *              - GET: Lister les BL avec filtres et pagination
- *              - DELETE: Supprimer un BL
- * @version 1.1.0
- * @date 2026-02-14
+ *              - DELETE: Supprimer un BL (nettoie child_bl_id du parent)
+ * @version 1.3.0
+ * @date 2026-03-04
  * @changelog
+ *   1.3.0 - Fix: INSERT matériaux résilient — retry sans colonnes BO si INSERT échoue
+ *           (migration pas encore appliquée), meilleur feedback erreur
+ *   1.2.1 - Fix: permettre quantité 0 dans matériaux (|| 1 convertissait 0 en 1)
+ *   1.2.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
+ *           dans matériaux, parent_bl_id dans delivery_notes, nettoyage child_bl_id
+ *           à la suppression, child_bl_id/parent_bl_id dans GET liste
  *   1.1.0 - Fix: utiliser supabaseAdmin directement (supabase n'était pas importé)
  *   1.0.0 - Version initiale
  */
@@ -102,6 +108,11 @@ export async function POST(request) {
       is_prix_jobe: body.is_prix_jobe || false,
     };
 
+    // Support backorder: lien vers BL parent
+    if (body.parent_bl_id) {
+      deliveryNoteData.parent_bl_id = parseInt(body.parent_bl_id);
+    }
+
     const { data: deliveryNote, error: deliveryNoteError } = await supabaseAdmin
       .from('delivery_notes')
       .insert([deliveryNoteData])
@@ -129,26 +140,47 @@ export async function POST(request) {
           validProductId = material.product_id;
         }
 
-        return {
+        const materialRow = {
           delivery_note_id: deliveryNote.id,
           product_id: validProductId,
           product_code: material.code || material.product?.product_id || null,
           description: material.description || material.product?.description || null,
-          quantity: parseFloat(material.quantity) || 1,
+          quantity: isNaN(parseFloat(material.quantity)) ? 1 : parseFloat(material.quantity),
           unit: material.unit || 'UN',
           unit_price: parseFloat(material.unit_price || material.product?.selling_price || 0),
           notes: material.notes || null,
           show_price: material.showPrice || material.show_price || false
         };
+
+        // Support backorder: quantité commandée et déjà livrée
+        if (material.ordered_quantity != null) {
+          materialRow.ordered_quantity = parseFloat(material.ordered_quantity);
+        }
+        if (material.previously_delivered != null) {
+          materialRow.previously_delivered = parseFloat(material.previously_delivered) || 0;
+        }
+
+        return materialRow;
       });
 
-      const { data: materialsResult, error: materialsError } = await supabaseAdmin
+      let materialsResult, materialsError;
+      ({ data: materialsResult, error: materialsError } = await supabaseAdmin
         .from('delivery_note_materials')
         .insert(materialsData)
-        .select();
+        .select());
+
+      // Si INSERT échoue (colonnes BO manquantes?), retry sans ordered_quantity/previously_delivered
+      if (materialsError) {
+        console.warn('INSERT matériaux échoué, retry sans colonnes BO:', materialsError.message);
+        const materialsWithoutBO = materialsData.map(({ ordered_quantity, previously_delivered, ...rest }) => rest);
+        ({ data: materialsResult, error: materialsError } = await supabaseAdmin
+          .from('delivery_note_materials')
+          .insert(materialsWithoutBO)
+          .select());
+      }
 
       if (materialsError) {
-        console.error('Erreur ajout matériaux:', materialsError);
+        console.error('Erreur ajout matériaux (retry aussi échoué):', materialsError);
       } else {
         deliveryNoteMaterials = materialsResult || [];
       }
@@ -210,6 +242,8 @@ export async function GET(request) {
         delivery_description,
         status,
         invoice_id,
+        parent_bl_id,
+        child_bl_id,
         client:clients(id, name),
         linked_po:purchase_orders(id, po_number)
       `, { count: 'exact' })
@@ -274,6 +308,20 @@ export async function DELETE(request) {
         { error: 'ID requis pour la suppression' },
         { status: 400 }
       );
+    }
+
+    // Nettoyer child_bl_id sur le parent si ce BL est un suivi BO
+    const { data: blToDelete } = await supabaseAdmin
+      .from('delivery_notes')
+      .select('parent_bl_id')
+      .eq('id', id)
+      .single();
+
+    if (blToDelete?.parent_bl_id) {
+      await supabaseAdmin
+        .from('delivery_notes')
+        .update({ child_bl_id: null })
+        .eq('id', blToDelete.parent_bl_id);
     }
 
     const { error } = await supabaseAdmin

@@ -5,9 +5,10 @@
  *              - Ajout rapide de produits non-inventaire
  *              - Clavier numérique pour saisie quantités (optimisé tablette)
  *              - Affichage/masquage prix par article
- * @version 1.1.0
- * @date 2026-02-22
+ * @version 1.2.0
+ * @date 2026-03-03
  * @changelog
+ *   1.2.0 - Permettre quantité 0 à l'édition pour items backorder (ordered_quantity)
  *   1.1.0 - Ajout support dark mode
  *   1.0.0 - Version initiale
  */
@@ -378,10 +379,13 @@ export default function MaterialSelector({
 
 const saveEditMaterial = () => {
   if (!editingMaterial) return;
-  
+
   const quantity = parseFloat(editForm.quantity);
-  if (isNaN(quantity) || quantity === 0) {
-    alert('Veuillez entrer une quantité valide (ne peut pas être zéro)');
+  // Permettre quantité 0 pour les items backorder (ordered_quantity présent)
+  const editedMaterial = (materials || []).find(m => m.id === editingMaterial);
+  const isBackorderItem = editedMaterial?.ordered_quantity != null;
+  if (isNaN(quantity) || (!isBackorderItem && quantity === 0)) {
+    alert('Veuillez entrer une quantité valide');
     return;
   }
   

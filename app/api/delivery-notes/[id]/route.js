@@ -1,11 +1,15 @@
 /**
  * @file app/api/delivery-notes/[id]/route.js
  * @description API pour un Bon de Livraison spécifique
- *              - GET: Récupérer un BL avec toutes ses relations
- *              - PUT: Mettre à jour un BL
- * @version 1.0.0
- * @date 2026-02-12
+ *              - GET: Récupérer un BL avec toutes ses relations + refs parent/child BO
+ *              - PUT: Mettre à jour un BL (avec support backorder)
+ * @version 1.2.0
+ * @date 2026-03-04
  * @changelog
+ *   1.2.0 - Fix: INSERT matériaux résilient — retry sans colonnes BO si INSERT échoue
+ *   1.1.1 - Fix: permettre quantité 0 dans matériaux (|| 1 convertissait 0 en 1)
+ *   1.1.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
+ *           dans matériaux PUT, parent/child bl_number dans GET
  *   1.0.0 - Version initiale
  */
 
@@ -81,6 +85,24 @@ export async function GET(request, { params }) {
           };
         }
       }
+    }
+
+    // Charger les bl_number parent/child pour navigation BO
+    if (data.parent_bl_id) {
+      const { data: parentBL } = await supabase
+        .from('delivery_notes')
+        .select('bl_number')
+        .eq('id', data.parent_bl_id)
+        .single();
+      data.parent_bl_number = parentBL?.bl_number || null;
+    }
+    if (data.child_bl_id) {
+      const { data: childBL } = await supabase
+        .from('delivery_notes')
+        .select('bl_number')
+        .eq('id', data.child_bl_id)
+        .single();
+      data.child_bl_number = childBL?.bl_number || null;
     }
 
     return NextResponse.json({
@@ -202,23 +224,44 @@ export async function PUT(request, { params }) {
           validProductId = material.product_id;
         }
 
-        return {
+        const materialRow = {
           delivery_note_id: deliveryNoteId,
           product_id: validProductId,
           product_code: material.code || material.display_code || material.product?.product_id || null,
           description: material.description || material.product?.description || null,
-          quantity: parseFloat(material.quantity) || 1,
+          quantity: isNaN(parseFloat(material.quantity)) ? 1 : parseFloat(material.quantity),
           unit: material.unit || 'UN',
           unit_price: parseFloat(material.unit_price || material.product?.selling_price || 0),
           notes: material.notes || null,
           show_price: material.showPrice || material.show_price || false
         };
+
+        // Support backorder: quantité commandée et déjà livrée
+        if (material.ordered_quantity != null) {
+          materialRow.ordered_quantity = parseFloat(material.ordered_quantity);
+        }
+        if (material.previously_delivered != null) {
+          materialRow.previously_delivered = parseFloat(material.previously_delivered) || 0;
+        }
+
+        return materialRow;
       });
 
-      const { error: insertError } = await supabase
+      let insertError;
+      ({ error: insertError } = await supabase
         .from('delivery_note_materials')
         .insert(materialsData)
-        .select();
+        .select());
+
+      // Si INSERT échoue (colonnes BO manquantes?), retry sans ordered_quantity/previously_delivered
+      if (insertError) {
+        console.warn('INSERT matériaux échoué, retry sans colonnes BO:', insertError.message);
+        const materialsWithoutBO = materialsData.map(({ ordered_quantity, previously_delivered, ...rest }) => rest);
+        ({ error: insertError } = await supabase
+          .from('delivery_note_materials')
+          .insert(materialsWithoutBO)
+          .select());
+      }
 
       if (insertError) {
         return NextResponse.json({
