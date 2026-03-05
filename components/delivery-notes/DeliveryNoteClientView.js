@@ -9,9 +9,11 @@
  *              - Auto-fermeture après signature + envoi email
  *              - Affichage colonnes backorder (BO) en lecture seule
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.4.0
- * @date 2026-03-04
+ * @version 2.5.0
+ * @date 2026-03-05
  * @changelog
+ *   2.5.0 - Simplification vue client BO: colonnes Reçu/À suivre uniquement
+ *           Suppression termes internes (CMD, Ce BL, Reste), note pré-signature BO
  *   2.4.0 - Fix affichage liste produits: toujours visible même avec items quantity=0
  *           Section "Détail de la commande" avec colonnes CMD/Déjà livré/Ce BL/Reste
  *           Items complétés grisés avec badge "Complet", vue mobile + desktop améliorées
@@ -445,7 +447,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
               <AlertTriangle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
               <div>
                 <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                  Livraison partielle — {boItems.length} item(s) en backorder
+                  Livraison partielle — {boItems.length} item(s) à suivre
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                   Les items restants feront l'objet d'une livraison ultérieure.
@@ -460,7 +462,6 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
           <div className="mb-4 sm:mb-6">
             {(() => {
               const hasAnyBO = deliveryNote.materials.some(m => m.ordered_quantity != null && m.ordered_quantity > 0);
-              const hasAnyPrevDelivered = deliveryNote.materials.some(m => parseFloat(m.previously_delivered) > 0);
               const hasAnyPrices = deliveryNote.materials.some(m => m.show_price === true);
 
               return (
@@ -498,7 +499,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                             </span>
                           )}
                           <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                            {hasAnyBO ? `Ce BL: ${currentQty}` : `Qté: ${currentQty}`} {material.unit || material.product?.unit || 'UN'}
+                            {currentQty} {material.unit || material.product?.unit || 'UN'}
                           </span>
                         </div>
                       </div>
@@ -513,31 +514,12 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                         </p>
                       )}
 
-                      {/* BO info (lecture seule) */}
-                      {matHasBO && (
+                      {/* BO info — afficher "À suivre" seulement si reste > 0 */}
+                      {matHasBO && bo > 0 && (
                         <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                          <div className={`grid gap-2 text-center text-xs ${prevDelivered > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                            <div>
-                              <p className="text-gray-500 dark:text-gray-400">CMD</p>
-                              <p className="font-semibold text-gray-900 dark:text-gray-100">{orderedQty}</p>
-                            </div>
-                            {prevDelivered > 0 && (
-                              <div>
-                                <p className="text-gray-500 dark:text-gray-400">Déjà livré</p>
-                                <p className="font-semibold text-gray-600 dark:text-gray-300">{prevDelivered}</p>
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-gray-500 dark:text-gray-400">Ce BL</p>
-                              <p className="font-semibold text-blue-700 dark:text-blue-300">{currentQty}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 dark:text-gray-400">Reste</p>
-                              <p className={`font-bold ${bo > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
-                                {bo > 0 ? bo : 0} {bo <= 0 ? '✓' : ''}
-                              </p>
-                            </div>
-                          </div>
+                          <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                            À suivre : {bo} {material.unit || material.product?.unit || 'UN'}
+                          </p>
                         </div>
                       )}
 
@@ -574,16 +556,10 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                       <tr>
                         <th className="px-4 py-3 text-left">Code</th>
                         <th className="px-4 py-3 text-left">Description</th>
-                        {hasAnyBO && (
-                          <th className="px-4 py-3 text-center">CMD</th>
-                        )}
-                        {hasAnyBO && hasAnyPrevDelivered && (
-                          <th className="px-4 py-3 text-center">Déjà livré</th>
-                        )}
-                        <th className="px-4 py-3 text-center">{hasAnyBO ? 'Ce BL' : 'Quantité'}</th>
+                        <th className="px-4 py-3 text-center">{hasAnyBO ? 'Reçu' : 'Quantité'}</th>
                         <th className="px-4 py-3 text-center">Unité</th>
                         {hasAnyBO && (
-                          <th className="px-4 py-3 text-center">Reste</th>
+                          <th className="px-4 py-3 text-center">À suivre</th>
                         )}
                         {hasAnyPrices && (
                           <>
@@ -632,29 +608,17 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                               )}
                             </div>
                           </td>
-                          {hasAnyBO && (
-                            <td className="px-4 py-3 text-center font-semibold">
-                              {matHasBO ? orderedQty : '-'}
-                            </td>
-                          )}
-                          {hasAnyBO && hasAnyPrevDelivered && (
-                            <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">
-                              {matHasBO && prevDelivered > 0 ? prevDelivered : '-'}
-                            </td>
-                          )}
                           <td className="px-4 py-3 text-center font-semibold">{currentQty}</td>
                           <td className="px-4 py-3 text-center">
                             {material.unit || material.product?.unit || 'UN'}
                           </td>
                           {hasAnyBO && (
-                            <td className={`px-4 py-3 text-center font-bold ${
+                            <td className={`px-4 py-3 text-center font-semibold ${
                               matHasBO && bo > 0
                                 ? 'text-amber-600 dark:text-amber-400'
-                                : matHasBO
-                                  ? 'text-green-600 dark:text-green-400'
-                                  : 'text-gray-400'
+                                : 'text-gray-400 dark:text-gray-500'
                             }`}>
-                              {matHasBO ? (bo > 0 ? bo : '0 ✓') : '-'}
+                              {matHasBO && bo > 0 ? bo : '—'}
                             </td>
                           )}
                           {hasAnyPrices && (
@@ -680,7 +644,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                     {hasAnyPrices && (
                       <tfoot className="bg-gray-50 dark:bg-gray-700 border-t-2 dark:border-gray-600">
                         <tr>
-                          <td colSpan={3 + (hasAnyBO ? 1 : 0) + (hasAnyBO && hasAnyPrevDelivered ? 1 : 0) + (hasAnyBO ? 1 : 0)} className="px-4 py-3 text-right font-bold">
+                          <td colSpan={3 + (hasAnyBO ? 1 : 0)} className="px-4 py-3 text-right font-bold">
                             Total:
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-lg">
@@ -696,6 +660,24 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
             })()}
           </div>
         )}
+
+        {/* Note pré-signature BO */}
+        {deliveryNote.status === 'ready_for_signature' && deliveryNote.materials && (() => {
+          const boCount = deliveryNote.materials.filter(m => {
+            if (!m.ordered_quantity) return false;
+            const bo = parseFloat(m.ordered_quantity) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
+            return bo > 0;
+          }).length;
+          if (boCount === 0) return null;
+          return (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 flex items-start gap-2">
+              <Package className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" size={18} />
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Certains items seront livrés ultérieurement. Un bon de livraison de suivi sera émis.
+              </p>
+            </div>
+          );
+        })()}
 
         {/* Zone de signature - statut ready_for_signature */}
         {deliveryNote.status === 'ready_for_signature' && (
