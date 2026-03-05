@@ -9,9 +9,10 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.8.1
- * @date 2026-03-03
+ * @version 2.9.0
+ * @date 2026-03-05
  * @changelog
+ *   2.9.0 - Champ "Déjà livré" éditable dans tableau résumé BO (transition + corrections)
  *   2.8.1 - Fix: permettre quantité 0 dans buildPayload (|| 1 convertissait 0 en 1)
  *   2.8.0 - Ajout support backorder (BO): tableau résumé BO après MaterialSelector,
  *           bandeau livraison partielle, liens parent/child BL, ordered_quantity
@@ -1244,6 +1245,7 @@ export default function DeliveryNoteForm({
                     const prevDel = parseFloat(m.previously_delivered) || 0;
                     const qty = parseFloat(m.quantity) || 0;
                     const bo = ordered - prevDel - qty;
+                    const matIndex = materials.findIndex(mat => mat === m);
 
                     return (
                       <div key={idx} className={`p-3 ${bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}`}>
@@ -1257,7 +1259,22 @@ export default function DeliveryNoteForm({
                           </div>
                           <div>
                             <p className="text-[10px] text-gray-500 dark:text-gray-400">Déjà livré</p>
-                            <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{prevDel}</p>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.previously_delivered ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], previously_delivered: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              className="w-full text-center text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5"
+                              style={{ minHeight: '32px' }}
+                              min="0"
+                            />
                           </div>
                           <div>
                             <p className="text-[10px] text-gray-500 dark:text-gray-400">Ce BL</p>
@@ -1297,6 +1314,7 @@ export default function DeliveryNoteForm({
                         const prevDel = parseFloat(m.previously_delivered) || 0;
                         const qty = parseFloat(m.quantity) || 0;
                         const bo = ordered - prevDel - qty;
+                        const matIndex = materials.findIndex(mat => mat === m);
 
                         return (
                           <tr key={idx} className={bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}>
@@ -1304,7 +1322,24 @@ export default function DeliveryNoteForm({
                               {m.description || m.product?.description || 'Article'}
                             </td>
                             <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">{ordered}</td>
-                            <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-300">{prevDel}</td>
+                            <td className="px-3 py-2 text-center">
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                value={m.previously_delivered ?? 0}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => {
+                                  const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                  const updated = [...materials];
+                                  updated[matIndex] = { ...updated[matIndex], previously_delivered: val };
+                                  setMaterials(updated);
+                                  onFormChange?.();
+                                }}
+                                className="w-20 text-center text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                                style={{ minHeight: '32px' }}
+                                min="0"
+                              />
+                            </td>
                             <td className="px-3 py-2 text-center font-bold text-blue-700 dark:text-blue-300">{qty}</td>
                             <td className={`px-3 py-2 text-center font-bold ${
                               bo > 0
