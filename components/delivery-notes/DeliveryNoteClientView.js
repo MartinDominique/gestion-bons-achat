@@ -9,9 +9,10 @@
  *              - Auto-fermeture après signature + envoi email
  *              - Affichage colonnes backorder (BO) en lecture seule
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.7.0
+ * @version 2.8.0
  * @date 2026-03-06
  * @changelog
+ *   2.8.0 - Colonnes BO client: Commandé/Expédié/B/O (remplace Reçu/À suivre)
  *   2.7.0 - Refonte affichage BO client: tableau compact unifié (Code/Desc/U/M/Reçu/À suivre)
  *           identique au format formulaire Martin, items non-BO en cartes séparées
  *   2.6.0 - Masquer colonne "À suivre" si aucun item n'a de BO restant
@@ -488,8 +489,9 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                         <thead>
                           <tr className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                             <th className="px-2 py-2 text-left">Article</th>
-                            <th className="px-1 py-2 text-center w-14">Reçu</th>
-                            {hasRemainingBO && <th className="px-1 py-2 text-center w-16">À suivre</th>}
+                            <th className="px-1 py-2 text-center w-14">CMD</th>
+                            <th className="px-1 py-2 text-center w-14">Expédié</th>
+                            {hasRemainingBO && <th className="px-1 py-2 text-center w-14">B/O</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -516,6 +518,9 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                                   <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
                                     {material.description || material.product?.description || 'Sans description'}
                                   </span>
+                                </td>
+                                <td className="px-1 py-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                                  {orderedQty}
                                 </td>
                                 <td className="px-1 py-2 text-center text-sm font-bold text-gray-900 dark:text-gray-100">
                                   {currentQty}
@@ -544,8 +549,9 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                             <th className="px-4 py-3 text-left">Code</th>
                             <th className="px-4 py-3 text-left">Description</th>
                             <th className="px-4 py-3 text-center">U/M</th>
-                            <th className="px-4 py-3 text-center">Reçu</th>
-                            {hasRemainingBO && <th className="px-4 py-3 text-center">À suivre</th>}
+                            <th className="px-4 py-3 text-center">Commandé</th>
+                            <th className="px-4 py-3 text-center">Expédié</th>
+                            {hasRemainingBO && <th className="px-4 py-3 text-center">B/O</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -578,6 +584,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                                 <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">
                                   {material.unit || material.product?.unit || 'UN'}
                                 </td>
+                                <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{orderedQty}</td>
                                 <td className="px-4 py-3 text-center font-semibold dark:text-gray-100">{currentQty}</td>
                                 {hasRemainingBO && (
                                   <td className={`px-4 py-3 text-center font-semibold ${
