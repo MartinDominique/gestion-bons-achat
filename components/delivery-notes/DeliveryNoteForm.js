@@ -1228,7 +1228,6 @@ export default function DeliveryNoteForm({
         {(() => {
           const boMaterials = materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
           if (boMaterials.length === 0) return null;
-          const showPrevDelivered = boMaterials.some(m => (parseFloat(m.previously_delivered) || 0) > 0);
 
           return (
             <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-4">
@@ -1239,7 +1238,7 @@ export default function DeliveryNoteForm({
                     <tr className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                       <th className="px-2 py-2 text-left">Article</th>
                       <th className="px-1 py-2 text-center w-14">CMD</th>
-                      {showPrevDelivered && <th className="px-1 py-2 text-center w-14">Déjà</th>}
+                      <th className="px-1 py-2 text-center w-14">Déjà</th>
                       <th className="px-1 py-2 text-center w-16">Expédié</th>
                       <th className="px-1 py-2 text-center w-14">B/O</th>
                     </tr>
@@ -1254,7 +1253,7 @@ export default function DeliveryNoteForm({
                       const code = m.code || m.product_code || m.product?.product_id || m.product_id || '';
 
                       return (
-                        <tr key={idx} className={bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}>
+                        <tr key={idx}>
                           <td className="px-2 py-2">
                             {code && (
                               <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
@@ -1264,9 +1263,24 @@ export default function DeliveryNoteForm({
                             </span>
                           </td>
                           <td className="px-1 py-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">{ordered}</td>
-                          {showPrevDelivered && (
-                            <td className="px-1 py-2 text-center text-xs text-gray-500 dark:text-gray-400">{prevDel}</td>
-                          )}
+                          <td className="px-1 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.previously_delivered ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], previously_delivered: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              className="w-14 text-center text-xs text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
                           <td className="px-1 py-2 text-center">
                             <input
                               type="number"
@@ -1285,12 +1299,8 @@ export default function DeliveryNoteForm({
                               min="0"
                             />
                           </td>
-                          <td className={`px-1 py-2 text-center text-xs font-bold ${
-                            bo > 0
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-green-600 dark:text-green-400'
-                          }`}>
-                            {bo > 0 ? `${bo} ⚠️` : '0 ✅'}
+                          <td className="px-1 py-2 text-center text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            {bo}
                           </td>
                         </tr>
                       );
@@ -1308,7 +1318,7 @@ export default function DeliveryNoteForm({
                       <th className="px-3 py-2 text-left">Description</th>
                       <th className="px-3 py-2 text-center">U/M</th>
                       <th className="px-3 py-2 text-center">Commandé</th>
-                      {showPrevDelivered && <th className="px-3 py-2 text-center">Déjà livré</th>}
+                      <th className="px-3 py-2 text-center">Déjà livré</th>
                       <th className="px-3 py-2 text-center">Expédié</th>
                       <th className="px-3 py-2 text-center">B/O</th>
                     </tr>
@@ -1322,7 +1332,7 @@ export default function DeliveryNoteForm({
                       const matIndex = materials.findIndex(mat => mat === m);
 
                       return (
-                        <tr key={idx} className={bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}>
+                        <tr key={idx}>
                           <td className="px-3 py-2 font-mono text-xs font-bold text-gray-900 dark:text-gray-100">
                             {m.code || m.product_code || m.product?.product_id || m.product_id || '—'}
                           </td>
@@ -1333,9 +1343,24 @@ export default function DeliveryNoteForm({
                             {m.unit || m.product?.unit || 'UN'}
                           </td>
                           <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">{ordered}</td>
-                          {showPrevDelivered && (
-                            <td className="px-3 py-2 text-center text-gray-500 dark:text-gray-400">{prevDel}</td>
-                          )}
+                          <td className="px-3 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.previously_delivered ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], previously_delivered: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              className="w-20 text-center text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
                           <td className="px-3 py-2 text-center">
                             <input
                               type="number"
@@ -1354,12 +1379,8 @@ export default function DeliveryNoteForm({
                               min="0"
                             />
                           </td>
-                          <td className={`px-3 py-2 text-center font-bold ${
-                            bo > 0
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-green-600 dark:text-green-400'
-                          }`}>
-                            {bo > 0 ? `${bo} ⚠️` : '0 ✅'}
+                          <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">
+                            {bo}
                           </td>
                         </tr>
                       );

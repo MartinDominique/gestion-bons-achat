@@ -9,9 +9,11 @@
  *              - Auto-fermeture après signature + envoi email
  *              - Affichage colonnes backorder (BO) en lecture seule
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.6.0
+ * @version 2.7.0
  * @date 2026-03-06
  * @changelog
+ *   2.7.0 - Refonte affichage BO client: tableau compact unifié (Code/Desc/U/M/Reçu/À suivre)
+ *           identique au format formulaire Martin, items non-BO en cartes séparées
  *   2.6.0 - Masquer colonne "À suivre" si aucun item n'a de BO restant
  *   2.5.0 - Simplification vue client BO: colonnes Reçu/À suivre uniquement
  *           Suppression termes internes (CMD, Ce BL, Reste), note pré-signature BO
@@ -462,9 +464,10 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
         {!deliveryNote.is_prix_jobe && deliveryNote.materials && deliveryNote.materials.length > 0 && (
           <div className="mb-4 sm:mb-6">
             {(() => {
-              const hasAnyBO = deliveryNote.materials.some(m => m.ordered_quantity != null && m.ordered_quantity > 0);
-              const hasRemainingBO = deliveryNote.materials.some(m => {
-                if (!(m.ordered_quantity != null && m.ordered_quantity > 0)) return false;
+              const boMaterials = deliveryNote.materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+              const nonBoMaterials = deliveryNote.materials.filter(m => !(m.ordered_quantity != null && m.ordered_quantity > 0));
+              const hasAnyBO = boMaterials.length > 0;
+              const hasRemainingBO = boMaterials.some(m => {
                 const bo = parseFloat(m.ordered_quantity) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
                 return bo > 0;
               });
@@ -476,191 +479,189 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                   {hasAnyBO ? 'Détail de la commande' : 'Matériaux Livrés'}
                 </h2>
 
-                {/* Version MOBILE */}
-                <div className="md:hidden bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
-                  {deliveryNote.materials.map((material, index) => {
-                    const matHasBO = material.ordered_quantity != null && material.ordered_quantity > 0;
-                    const prevDelivered = parseFloat(material.previously_delivered) || 0;
-                    const currentQty = parseFloat(material.quantity) || 0;
-                    const orderedQty = parseFloat(material.ordered_quantity) || 0;
-                    const bo = matHasBO ? Math.max(0, orderedQty - prevDelivered - currentQty) : 0;
-                    const isFullyDelivered = matHasBO && currentQty === 0 && (prevDelivered >= orderedQty);
+                {/* Tableau compact BO — items avec ordered_quantity */}
+                {hasAnyBO && (
+                  <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden mb-4">
+                    {/* Version mobile/tablette */}
+                    <div className="lg:hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <th className="px-2 py-2 text-left">Article</th>
+                            <th className="px-1 py-2 text-center w-14">Reçu</th>
+                            {hasRemainingBO && <th className="px-1 py-2 text-center w-16">À suivre</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {boMaterials.map((material, index) => {
+                            const currentQty = parseFloat(material.quantity) || 0;
+                            const orderedQty = parseFloat(material.ordered_quantity) || 0;
+                            const prevDelivered = parseFloat(material.previously_delivered) || 0;
+                            const bo = Math.max(0, orderedQty - prevDelivered - currentQty);
+                            const isFullyDelivered = currentQty === 0 && (prevDelivered >= orderedQty);
+                            const code = material.product_code || material.product?.product_id || material.product_id || '';
 
-                    return (
-                    <div key={index} className={`p-3 ${
-                      isFullyDelivered
-                        ? 'bg-gray-50 dark:bg-gray-800/50 opacity-70'
-                        : matHasBO && bo > 0
-                          ? 'bg-amber-50/50 dark:bg-amber-900/10'
-                          : ''
-                    }`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-mono text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
-                          {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {isFullyDelivered && (
-                            <span className="text-xs font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
-                              Complet
-                            </span>
-                          )}
-                          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                            {currentQty} {material.unit || material.product?.unit || 'UN'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
-                        {material.description || material.product?.description || 'Sans description'}
-                      </p>
-
-                      {material.notes && (
-                        <p className="text-xs text-gray-900 dark:text-gray-100 mt-1">
-                          {material.notes}
-                        </p>
-                      )}
-
-                      {/* BO info — afficher "À suivre" seulement si reste > 0 */}
-                      {matHasBO && bo > 0 && (
-                        <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                          <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
-                            À suivre : {bo} {material.unit || material.product?.unit || 'UN'}
-                          </p>
-                        </div>
-                      )}
-
-                      {material.show_price && (material.product?.selling_price || material.unit_price) && currentQty > 0 && (
-                        <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-gray-600 text-xs">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            Prix unit.: {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
-                          </span>
-                          <span className="font-bold text-green-700 dark:text-green-400">
-                            Total: {formatCurrency(currentQty * (material.product?.selling_price || material.unit_price || 0))}
-                          </span>
-                        </div>
-                      )}
+                            return (
+                              <tr key={`bo-${index}`} className={
+                                isFullyDelivered
+                                  ? 'bg-gray-50 dark:bg-gray-800/50 opacity-70'
+                                  : bo > 0
+                                    ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                                    : ''
+                              }>
+                                <td className="px-2 py-2">
+                                  {code && (
+                                    <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
+                                  )}
+                                  <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
+                                    {material.description || material.product?.description || 'Sans description'}
+                                  </span>
+                                </td>
+                                <td className="px-1 py-2 text-center text-sm font-bold text-gray-900 dark:text-gray-100">
+                                  {currentQty}
+                                </td>
+                                {hasRemainingBO && (
+                                  <td className={`px-1 py-2 text-center text-sm font-bold ${
+                                    bo > 0
+                                      ? 'text-amber-600 dark:text-amber-400'
+                                      : 'text-gray-400 dark:text-gray-500'
+                                  }`}>
+                                    {bo > 0 ? bo : '—'}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                    );
-                  })}
 
-                  {hasAnyPrices && (
-                    <div className="p-3 bg-green-50 dark:bg-green-900/20 border-t-2 dark:border-gray-600">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-green-900 dark:text-green-200">Total matériaux:</span>
-                        <span className="text-lg font-bold text-green-900 dark:text-green-200">
-                          {formatCurrency(calculateTotal())}
-                        </span>
-                      </div>
+                    {/* Version desktop */}
+                    <div className="hidden lg:block">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <th className="px-4 py-3 text-left">Code</th>
+                            <th className="px-4 py-3 text-left">Description</th>
+                            <th className="px-4 py-3 text-center">U/M</th>
+                            <th className="px-4 py-3 text-center">Reçu</th>
+                            {hasRemainingBO && <th className="px-4 py-3 text-center">À suivre</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {boMaterials.map((material, index) => {
+                            const currentQty = parseFloat(material.quantity) || 0;
+                            const orderedQty = parseFloat(material.ordered_quantity) || 0;
+                            const prevDelivered = parseFloat(material.previously_delivered) || 0;
+                            const bo = Math.max(0, orderedQty - prevDelivered - currentQty);
+                            const isFullyDelivered = currentQty === 0 && (prevDelivered >= orderedQty);
+
+                            return (
+                              <tr key={`bo-${index}`} className={
+                                isFullyDelivered
+                                  ? 'bg-gray-50 dark:bg-gray-800/50 opacity-60'
+                                  : bo > 0
+                                    ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                                    : ''
+                              }>
+                                <td className="px-4 py-3 font-mono text-sm font-bold dark:text-gray-100">
+                                  {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="text-sm text-gray-800 dark:text-gray-200">
+                                    {material.description || material.product?.description || 'Sans description'}
+                                  </p>
+                                  {material.notes && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{material.notes}</p>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">
+                                  {material.unit || material.product?.unit || 'UN'}
+                                </td>
+                                <td className="px-4 py-3 text-center font-semibold dark:text-gray-100">{currentQty}</td>
+                                {hasRemainingBO && (
+                                  <td className={`px-4 py-3 text-center font-semibold ${
+                                    bo > 0
+                                      ? 'text-amber-600 dark:text-amber-400'
+                                      : 'text-gray-400 dark:text-gray-500'
+                                  }`}>
+                                    {bo > 0 ? bo : '—'}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Version DESKTOP */}
-                <div className="hidden md:block bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        <th className="px-4 py-3 text-left">Code</th>
-                        <th className="px-4 py-3 text-left">Description</th>
-                        <th className="px-4 py-3 text-center">{hasAnyBO ? 'Reçu' : 'Quantité'}</th>
-                        <th className="px-4 py-3 text-center">Unité</th>
-                        {hasRemainingBO && (
-                          <th className="px-4 py-3 text-center">À suivre</th>
-                        )}
-                        {hasAnyPrices && (
-                          <>
-                            <th className="px-4 py-3 text-right">Prix Unit.</th>
-                            <th className="px-4 py-3 text-right">Total</th>
-                          </>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {deliveryNote.materials.map((material, index) => {
-                        const matHasBO = material.ordered_quantity != null && material.ordered_quantity > 0;
-                        const prevDelivered = parseFloat(material.previously_delivered) || 0;
+                {/* Items sans BO (ajout manuel) — format cartes */}
+                {nonBoMaterials.length > 0 && (
+                  <>
+                    {hasAnyBO && (
+                      <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 mt-4">
+                        Autres matériaux
+                      </h3>
+                    )}
+                    <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
+                      {nonBoMaterials.map((material, index) => {
                         const currentQty = parseFloat(material.quantity) || 0;
-                        const orderedQty = parseFloat(material.ordered_quantity) || 0;
-                        const bo = matHasBO ? Math.max(0, orderedQty - prevDelivered - currentQty) : 0;
-                        const isFullyDelivered = matHasBO && currentQty === 0 && (prevDelivered >= orderedQty);
 
                         return (
-                        <tr key={index} className={`border-t dark:border-gray-700 ${
-                          isFullyDelivered
-                            ? 'bg-gray-50 dark:bg-gray-800/50 opacity-60'
-                            : matHasBO && bo > 0
-                              ? 'bg-amber-50/50 dark:bg-amber-900/10'
-                              : ''
-                        }`}>
-                          <td className="px-4 py-3 font-mono text-sm font-bold dark:text-gray-100">
-                            {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div>
-                                <p className="text-sm text-gray-800 dark:text-gray-200">
-                                  {material.description || material.product?.description || 'Sans description'}
-                                </p>
-                                {material.notes && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    {material.notes}
-                                  </p>
-                                )}
-                              </div>
-                              {isFullyDelivered && (
-                                <span className="text-xs font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded whitespace-nowrap">
-                                  Complet
-                                </span>
-                              )}
+                          <div key={`nonbo-${index}`} className="p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-mono text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
+                                {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
+                              </span>
+                              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                {currentQty} {material.unit || material.product?.unit || 'UN'}
+                              </span>
                             </div>
-                          </td>
-                          <td className="px-4 py-3 text-center font-semibold">{currentQty}</td>
-                          <td className="px-4 py-3 text-center">
-                            {material.unit || material.product?.unit || 'UN'}
-                          </td>
-                          {hasRemainingBO && (
-                            <td className={`px-4 py-3 text-center font-semibold ${
-                              matHasBO && bo > 0
-                                ? 'text-amber-600 dark:text-amber-400'
-                                : 'text-gray-400 dark:text-gray-500'
-                            }`}>
-                              {matHasBO && bo > 0 ? bo : '—'}
-                            </td>
-                          )}
-                          {hasAnyPrices && (
-                            <>
-                              <td className="px-4 py-3 text-right">
-                                {material.show_price && currentQty > 0 ?
-                                  formatCurrency(material.product?.selling_price || material.unit_price || 0) :
-                                  ''
-                                }
-                              </td>
-                              <td className="px-4 py-3 text-right font-semibold">
-                                {material.show_price && currentQty > 0 ?
-                                  formatCurrency(currentQty * (material.product?.selling_price || material.unit_price || 0)) :
-                                  ''
-                                }
-                              </td>
-                            </>
-                          )}
-                        </tr>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                              {material.description || material.product?.description || 'Sans description'}
+                            </p>
+                            {material.notes && (
+                              <p className="text-xs text-gray-900 dark:text-gray-100 mt-1">{material.notes}</p>
+                            )}
+                            {material.show_price && (material.product?.selling_price || material.unit_price) && currentQty > 0 && (
+                              <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-gray-600 text-xs">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  Prix unit.: {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
+                                </span>
+                                <span className="font-bold text-green-700 dark:text-green-400">
+                                  Total: {formatCurrency(currentQty * (material.product?.selling_price || material.unit_price || 0))}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
-                    </tbody>
-                    {hasAnyPrices && (
-                      <tfoot className="bg-gray-50 dark:bg-gray-700 border-t-2 dark:border-gray-600">
-                        <tr>
-                          <td colSpan={3 + (hasRemainingBO ? 1 : 0)} className="px-4 py-3 text-right font-bold">
-                            Total:
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-lg">
-                            {formatCurrency(calculateTotal())}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    )}
-                  </table>
-                </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Total prix si applicable */}
+                {hasAnyPrices && (
+                  <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-green-900 dark:text-green-200">Total matériaux:</span>
+                      <span className="text-lg font-bold text-green-900 dark:text-green-200">
+                        {formatCurrency(calculateTotal())}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Note BO en bas de la liste */}
+                {hasRemainingBO && (
+                  <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      📦 Certains items seront livrés ultérieurement. Un bon de livraison de suivi sera émis.
+                    </p>
+                  </div>
+                )}
               </>
               );
             })()}
