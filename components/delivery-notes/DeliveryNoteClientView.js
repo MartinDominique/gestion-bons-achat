@@ -9,9 +9,10 @@
  *              - Auto-fermeture après signature + envoi email
  *              - Affichage colonnes backorder (BO) en lecture seule
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.5.0
- * @date 2026-03-05
+ * @version 2.6.0
+ * @date 2026-03-06
  * @changelog
+ *   2.6.0 - Masquer colonne "À suivre" si aucun item n'a de BO restant
  *   2.5.0 - Simplification vue client BO: colonnes Reçu/À suivre uniquement
  *           Suppression termes internes (CMD, Ce BL, Reste), note pré-signature BO
  *   2.4.0 - Fix affichage liste produits: toujours visible même avec items quantity=0
@@ -462,6 +463,11 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
           <div className="mb-4 sm:mb-6">
             {(() => {
               const hasAnyBO = deliveryNote.materials.some(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+              const hasRemainingBO = deliveryNote.materials.some(m => {
+                if (!(m.ordered_quantity != null && m.ordered_quantity > 0)) return false;
+                const bo = parseFloat(m.ordered_quantity) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
+                return bo > 0;
+              });
               const hasAnyPrices = deliveryNote.materials.some(m => m.show_price === true);
 
               return (
@@ -558,7 +564,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                         <th className="px-4 py-3 text-left">Description</th>
                         <th className="px-4 py-3 text-center">{hasAnyBO ? 'Reçu' : 'Quantité'}</th>
                         <th className="px-4 py-3 text-center">Unité</th>
-                        {hasAnyBO && (
+                        {hasRemainingBO && (
                           <th className="px-4 py-3 text-center">À suivre</th>
                         )}
                         {hasAnyPrices && (
@@ -612,7 +618,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                           <td className="px-4 py-3 text-center">
                             {material.unit || material.product?.unit || 'UN'}
                           </td>
-                          {hasAnyBO && (
+                          {hasRemainingBO && (
                             <td className={`px-4 py-3 text-center font-semibold ${
                               matHasBO && bo > 0
                                 ? 'text-amber-600 dark:text-amber-400'
@@ -644,7 +650,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                     {hasAnyPrices && (
                       <tfoot className="bg-gray-50 dark:bg-gray-700 border-t-2 dark:border-gray-600">
                         <tr>
-                          <td colSpan={3 + (hasAnyBO ? 1 : 0)} className="px-4 py-3 text-right font-bold">
+                          <td colSpan={3 + (hasRemainingBO ? 1 : 0)} className="px-4 py-3 text-right font-bold">
                             Total:
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-lg">

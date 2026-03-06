@@ -9,9 +9,13 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.9.0
- * @date 2026-03-05
+ * @version 3.0.0
+ * @date 2026-03-06
  * @changelog
+ *   3.0.0 - Refonte affichage BO: suppression section dupliquée "SUIVI COMMANDE / BACKORDER",
+ *           fusion en une seule liste (tableau compact BO + cartes manuelles via MaterialSelector),
+ *           bandeau livraison partielle déplacé en haut du formulaire, colonne "Déjà livré"
+ *           conditionnelle (uniquement si BL de suivi avec previously_delivered > 0)
  *   2.9.0 - Champ "Déjà livré" éditable dans tableau résumé BO (transition + corrections)
  *   2.8.1 - Fix: permettre quantité 0 dans buildPayload (|| 1 convertissait 0 en 1)
  *   2.8.0 - Ajout support backorder (BO): tableau résumé BO après MaterialSelector,
@@ -842,6 +846,26 @@ export default function DeliveryNoteForm({
         </div>
       )}
 
+      {/* Bandeau livraison partielle — affiché en haut si des items BO ont un reste > 0 */}
+      {(() => {
+        const boItems = materials.filter(m => {
+          if (!(m.ordered_quantity != null && m.ordered_quantity > 0)) return false;
+          const bo = (parseFloat(m.ordered_quantity) || 0) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
+          return bo > 0;
+        });
+        if (boItems.length === 0) return null;
+        return (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-3 mb-4 flex items-start gap-2">
+            <AlertTriangle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                Livraison partielle — {boItems.length} item(s) à suivre. Un BL de suivi sera créé après signature.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Header avec boutons - identique au BT */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -1200,162 +1224,165 @@ export default function DeliveryNoteForm({
           </button>
         </div>
 
-        <MaterialSelector
-          materials={materials}
-          onMaterialsChange={(newMaterials) => { setMaterials(newMaterials); onFormChange?.(); }}
-        />
-
-        {/* Résumé Backorder (BO) - affiché uniquement quand des items ont ordered_quantity */}
+        {/* Tableau compact BO — items importés avec ordered_quantity */}
         {(() => {
           const boMaterials = materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
           if (boMaterials.length === 0) return null;
-
-          const itemsWithBO = boMaterials.filter(m => {
-            const bo = (parseFloat(m.ordered_quantity) || 0) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
-            return bo > 0;
-          });
+          const showPrevDelivered = boMaterials.some(m => (parseFloat(m.previously_delivered) || 0) > 0);
 
           return (
-            <div className="mt-4">
-              {/* Bandeau BO */}
-              {itemsWithBO.length > 0 && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-3 mb-3 flex items-start gap-2">
-                  <AlertTriangle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
-                  <div>
-                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                      Livraison partielle — {itemsWithBO.length} item(s) en backorder
-                    </p>
-                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                      Un BL de suivi sera créé automatiquement après signature du client.
-                    </p>
-                  </div>
-                </div>
-              )}
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-4">
+              {/* Version mobile/tablette */}
+              <div className="lg:hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                      <th className="px-2 py-2 text-left">Article</th>
+                      <th className="px-1 py-2 text-center w-14">CMD</th>
+                      {showPrevDelivered && <th className="px-1 py-2 text-center w-14">Déjà</th>}
+                      <th className="px-1 py-2 text-center w-16">Expédié</th>
+                      <th className="px-1 py-2 text-center w-14">B/O</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {boMaterials.map((m, idx) => {
+                      const ordered = parseFloat(m.ordered_quantity) || 0;
+                      const prevDel = parseFloat(m.previously_delivered) || 0;
+                      const qty = parseFloat(m.quantity) || 0;
+                      const bo = Math.max(0, ordered - prevDel - qty);
+                      const matIndex = materials.findIndex(mat => mat === m);
+                      const code = m.code || m.product_code || m.product?.product_id || m.product_id || '';
 
-              {/* Tableau résumé BO */}
-              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                <div className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">Suivi commande / Backorder</h4>
-                </div>
-
-                {/* Version mobile (stacked) */}
-                <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-                  {boMaterials.map((m, idx) => {
-                    const ordered = parseFloat(m.ordered_quantity) || 0;
-                    const prevDel = parseFloat(m.previously_delivered) || 0;
-                    const qty = parseFloat(m.quantity) || 0;
-                    const bo = ordered - prevDel - qty;
-                    const matIndex = materials.findIndex(mat => mat === m);
-
-                    return (
-                      <div key={idx} className={`p-3 ${bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}`}>
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2 truncate">
-                          {m.description || m.product?.description || 'Article'}
-                        </p>
-                        <div className="grid grid-cols-4 gap-2 text-center">
-                          <div>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Commandé</p>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{ordered}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Déjà livré</p>
+                      return (
+                        <tr key={idx} className={bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}>
+                          <td className="px-2 py-2">
+                            {code && (
+                              <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
+                            )}
+                            <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
+                              {m.description || m.product?.description || 'Article'}
+                            </span>
+                          </td>
+                          <td className="px-1 py-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">{ordered}</td>
+                          {showPrevDelivered && (
+                            <td className="px-1 py-2 text-center text-xs text-gray-500 dark:text-gray-400">{prevDel}</td>
+                          )}
+                          <td className="px-1 py-2 text-center">
                             <input
                               type="number"
                               inputMode="numeric"
-                              value={m.previously_delivered ?? 0}
+                              value={m.quantity ?? 0}
                               onFocus={(e) => e.target.select()}
                               onChange={(e) => {
                                 const val = Math.max(0, parseFloat(e.target.value) || 0);
                                 const updated = [...materials];
-                                updated[matIndex] = { ...updated[matIndex], previously_delivered: val };
+                                updated[matIndex] = { ...updated[matIndex], quantity: val };
                                 setMaterials(updated);
                                 onFormChange?.();
                               }}
-                              className="w-full text-center text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5"
-                              style={{ minHeight: '32px' }}
+                              className="w-14 text-center text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
+                              style={{ minHeight: '44px' }}
                               min="0"
                             />
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Ce BL</p>
-                            <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{qty}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">BO</p>
-                            <p className={`text-sm font-bold ${
-                              bo > 0
-                                ? 'text-amber-600 dark:text-amber-400'
-                                : 'text-green-600 dark:text-green-400'
-                            }`}>
-                              {bo > 0 ? bo : 0} {bo <= 0 ? '✓' : ''}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                          </td>
+                          <td className={`px-1 py-2 text-center text-xs font-bold ${
+                            bo > 0
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-green-600 dark:text-green-400'
+                          }`}>
+                            {bo > 0 ? `${bo} ⚠️` : '0 ✅'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-                {/* Version desktop (tableau) */}
-                <div className="hidden md:block">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                        <th className="px-3 py-2 text-left">Description</th>
-                        <th className="px-3 py-2 text-center">Commandé</th>
-                        <th className="px-3 py-2 text-center">Déjà livré</th>
-                        <th className="px-3 py-2 text-center">Qté ce BL</th>
-                        <th className="px-3 py-2 text-center">BO</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {boMaterials.map((m, idx) => {
-                        const ordered = parseFloat(m.ordered_quantity) || 0;
-                        const prevDel = parseFloat(m.previously_delivered) || 0;
-                        const qty = parseFloat(m.quantity) || 0;
-                        const bo = ordered - prevDel - qty;
-                        const matIndex = materials.findIndex(mat => mat === m);
+              {/* Version desktop */}
+              <div className="hidden lg:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                      <th className="px-3 py-2 text-left">Code</th>
+                      <th className="px-3 py-2 text-left">Description</th>
+                      <th className="px-3 py-2 text-center">U/M</th>
+                      <th className="px-3 py-2 text-center">Commandé</th>
+                      {showPrevDelivered && <th className="px-3 py-2 text-center">Déjà livré</th>}
+                      <th className="px-3 py-2 text-center">Expédié</th>
+                      <th className="px-3 py-2 text-center">B/O</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {boMaterials.map((m, idx) => {
+                      const ordered = parseFloat(m.ordered_quantity) || 0;
+                      const prevDel = parseFloat(m.previously_delivered) || 0;
+                      const qty = parseFloat(m.quantity) || 0;
+                      const bo = Math.max(0, ordered - prevDel - qty);
+                      const matIndex = materials.findIndex(mat => mat === m);
 
-                        return (
-                          <tr key={idx} className={bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}>
-                            <td className="px-3 py-2 text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
-                              {m.description || m.product?.description || 'Article'}
-                            </td>
-                            <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">{ordered}</td>
-                            <td className="px-3 py-2 text-center">
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                value={m.previously_delivered ?? 0}
-                                onFocus={(e) => e.target.select()}
-                                onChange={(e) => {
-                                  const val = Math.max(0, parseFloat(e.target.value) || 0);
-                                  const updated = [...materials];
-                                  updated[matIndex] = { ...updated[matIndex], previously_delivered: val };
-                                  setMaterials(updated);
-                                  onFormChange?.();
-                                }}
-                                className="w-20 text-center text-sm font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
-                                style={{ minHeight: '32px' }}
-                                min="0"
-                              />
-                            </td>
-                            <td className="px-3 py-2 text-center font-bold text-blue-700 dark:text-blue-300">{qty}</td>
-                            <td className={`px-3 py-2 text-center font-bold ${
-                              bo > 0
-                                ? 'text-amber-600 dark:text-amber-400'
-                                : 'text-green-600 dark:text-green-400'
-                            }`}>
-                              {bo > 0 ? bo : 0} {bo <= 0 ? '✓' : ''}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                      return (
+                        <tr key={idx} className={bo > 0 ? 'bg-amber-50/50 dark:bg-amber-900/10' : ''}>
+                          <td className="px-3 py-2 font-mono text-xs font-bold text-gray-900 dark:text-gray-100">
+                            {m.code || m.product_code || m.product?.product_id || m.product_id || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-900 dark:text-gray-100 truncate max-w-[280px]">
+                            {m.description || m.product?.description || 'Article'}
+                          </td>
+                          <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">
+                            {m.unit || m.product?.unit || 'UN'}
+                          </td>
+                          <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">{ordered}</td>
+                          {showPrevDelivered && (
+                            <td className="px-3 py-2 text-center text-gray-500 dark:text-gray-400">{prevDel}</td>
+                          )}
+                          <td className="px-3 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.quantity ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], quantity: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              className="w-20 text-center text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
+                          <td className={`px-3 py-2 text-center font-bold ${
+                            bo > 0
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-green-600 dark:text-green-400'
+                          }`}>
+                            {bo > 0 ? `${bo} ⚠️` : '0 ✅'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
+          );
+        })()}
+
+        {/* MaterialSelector — items manuels (sans ordered_quantity) */}
+        {(() => {
+          const nonBoMaterials = materials.filter(m => !(m.ordered_quantity != null && m.ordered_quantity > 0));
+          const boMaterials = materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+          return (
+            <MaterialSelector
+              materials={nonBoMaterials}
+              onMaterialsChange={(newNonBo) => {
+                setMaterials([...boMaterials, ...newNonBo]);
+                onFormChange?.();
+              }}
+            />
           );
         })()}
       </div>

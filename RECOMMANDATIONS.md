@@ -1266,6 +1266,20 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
   - `app/bons-travail/page.js` v2.3.0 — Badge BO
   - `lib/services/email-service.js` v3.1.0 — PDF BO
 
+### 2026-03-06 - Correction affichage Backorder (BO) dans les Bons de Livraison
+- **Decision:** Suppression liste dupliquee BO, fusion en une seule liste de materiaux
+- **Raison:** Items importes apparaissaient en double (cartes MaterialSelector + tableau BO separe)
+- **Corrections apportees:**
+  - Formulaire Martin: tableau compact BO (Code/Description/U/M/Commande/Expedie/B/O) + cartes pour items manuels
+  - Vue client: colonne "A suivre" masquee si aucun BO restant
+  - PDF: colonnes renommees Code/Description/U/M/Commande/Expedie/B/O
+  - Bandeau livraison partielle deplace en haut du formulaire
+  - Colonne "Deja livre" conditionnelle (uniquement BL de suivi)
+- **Fichiers modifies:**
+  - `components/delivery-notes/DeliveryNoteForm.js` v3.0.0 — Refonte affichage BO
+  - `components/delivery-notes/DeliveryNoteClientView.js` v2.6.0 — Masquage colonne A suivre
+  - `lib/services/email-service.js` v3.2.0 — Colonnes PDF BO corrigees
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-03-03 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-03-06 par Claude AI*

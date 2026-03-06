@@ -591,15 +591,15 @@ CRON_SECRET                   # Auth pour cron jobs
     - `tailwind.config.js` — Animations slide-up + slide-in-right
     - Fix: panneau SplitView invisible sur tablette → mode overlay avec backdrop
 
-16. ~~**Gestion Backorder (BO) dans les Bons de Livraison**~~ - ✅ COMPLÉTÉ 2026-03-03
+16. ~~**Gestion Backorder (BO) dans les Bons de Livraison**~~ - ✅ COMPLÉTÉ 2026-03-03, corrigé 2026-03-06
     - `supabase/migrations/20260303_add_backorder_columns.sql` — parent_bl_id, child_bl_id, ordered_quantity, previously_delivered
     - `app/api/delivery-notes/route.js` v1.2.0 — POST accepte parent_bl_id + BO fields, GET inclut parent/child, DELETE nettoie child_bl_id
     - `app/api/delivery-notes/[id]/route.js` v1.1.0 — GET charge parent/child bl_number, PUT accepte BO fields
     - `app/api/delivery-notes/[id]/complete-signature/route.js` v1.3.0 — Détection BO, création auto BL suivi brouillon, lien parent↔child
-    - `components/delivery-notes/DeliveryNoteForm.js` v2.8.0 — Tableau résumé BO, bandeau livraison partielle, liens parent/child, BO dans import soumission/AF
-    - `components/delivery-notes/DeliveryNoteClientView.js` v2.3.0 — Colonnes BO lecture seule (mobile + desktop), bandeau BO
+    - `components/delivery-notes/DeliveryNoteForm.js` v3.0.0 — Tableau compact BO unifié (Code/Desc/U/M/Commandé/Expédié/B/O), cartes MaterialSelector pour items manuels
+    - `components/delivery-notes/DeliveryNoteClientView.js` v2.6.0 — Colonnes Reçu/À suivre, colonne masquée si aucun BO restant
     - `app/bons-travail/page.js` v2.3.0 — Badge "BO" orange, indicateur "Suite" pour BL de suivi
-    - `lib/services/email-service.js` v3.1.0 — PDF BL avec colonnes CMD/Livré/BO conditionnelles + note backorder
+    - `lib/services/email-service.js` v3.2.0 — PDF BL avec colonnes Code/Desc/U/M/Commandé/Expédié/B/O conditionnelles
     - Note: Migration SQL à exécuter manuellement dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)
