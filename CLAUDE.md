@@ -745,3 +745,12 @@ de type numérique pour sélectionner automatiquement le contenu au clic/tap (mo
 ## Comportement mobile - Pull-to-refresh
 Toujours inclure `overscroll-behavior-y: contain` sur `html, body` dans `globals.css` 
 pour désactiver le pull-to-refresh natif du navigateur (perte de données en cours).
+
+## Curseur textarea - Stabilité du curseur
+Ne jamais utiliser `value={state}` directement sur un `<textarea>` sans gérer la position 
+du curseur. Utiliser `defaultValue` pour les champs non-contrôlés, ou s'assurer que le 
+state update ne force pas un re-render inutile du composant parent.
+Si le curseur saute à la fin après chaque frappe, vérifier :
+1. Que le `<textarea>` n'est pas recréé à chaque render (éviter les composants inline)
+2. Utiliser `useCallback` sur le handler `onChange`
+3. En dernier recours, utiliser une ref pour sauvegarder/restaurer la position du curseur
