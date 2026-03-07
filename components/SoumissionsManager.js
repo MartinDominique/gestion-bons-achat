@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.8.1
+ * @version 1.8.2
  * @date 2026-03-07
  * @changelog
+ *   1.8.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.8.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.8.0 - Ajout classes dark mode Tailwind CSS
  *   1.7.1 - Forcer majuscules sur code produit et description des items non-inventaire
@@ -2087,7 +2088,9 @@ const cleanupFilesForSubmission = async (files) => {
                     <input
                       type="text"
                       value={submissionForm.description}
-                      onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value.toUpperCase()})}
+                      onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value})}
+                      onBlur={(e) => setSubmissionForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                      style={{ textTransform: 'uppercase' }}
                       className="block w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Description de la soumission..."
                       required
@@ -2322,7 +2325,9 @@ const cleanupFilesForSubmission = async (files) => {
                             <input
                               type="text"
                               value={quickProductForm.product_id}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, product_id: e.target.value.toUpperCase()})}
+                              onChange={(e) => setQuickProductForm({...quickProductForm, product_id: e.target.value})}
+                              onBlur={(e) => setQuickProductForm(prev => ({...prev, product_id: prev.product_id.toUpperCase()}))}
+                              style={{ textTransform: 'uppercase' }}
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Ex: TEMP-001"
                               required
@@ -2350,7 +2355,9 @@ const cleanupFilesForSubmission = async (files) => {
                             <input
                               type="text"
                               value={quickProductForm.description}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value.toUpperCase()})}
+                              onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value})}
+                              onBlur={(e) => setQuickProductForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                              style={{ textTransform: 'uppercase' }}
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Description du produit..."
                               required

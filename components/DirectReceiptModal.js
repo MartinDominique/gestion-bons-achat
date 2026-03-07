@@ -7,9 +7,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.3.1
+ * @version 1.3.2
  * @date 2026-03-07
  * @changelog
+ *   1.3.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.3.0 - Ajout support dark mode
  *   1.2.0 - Ajout prix vendant + % marge par article (calcul auto), auto-sélection champs numériques
@@ -610,7 +611,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                   <input
                     type="text"
                     value={newItemForm.product_id}
-                    onChange={(e) => setNewItemForm(prev => ({ ...prev, product_id: e.target.value.toUpperCase() }))}
+                    onChange={(e) => setNewItemForm(prev => ({ ...prev, product_id: e.target.value }))}
+                    onBlur={(e) => setNewItemForm(prev => ({ ...prev, product_id: prev.product_id.toUpperCase() }))}
+                    style={{ textTransform: 'uppercase' }}
                     placeholder="Ex: PROD-001"
                     autoCorrect="off"
                     autoCapitalize="off"
@@ -886,7 +889,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                   <input
                     type="text"
                     value={supplierDeliveryNumber}
-                    onChange={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
+                    onChange={(e) => setSupplierDeliveryNumber(e.target.value)}
+                    onBlur={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
+                    style={{ textTransform: 'uppercase' }}
                     placeholder="Ex: BL-12345"
                     autoCorrect="off"
                     autoCapitalize="off"

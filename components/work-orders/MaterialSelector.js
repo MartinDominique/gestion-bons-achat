@@ -5,9 +5,10 @@
  *              - Ajout rapide de produits non-inventaire
  *              - Clavier numérique pour saisie quantités (optimisé tablette)
  *              - Affichage/masquage prix par article
- * @version 1.3.0
+ * @version 1.3.1
  * @date 2026-03-07
  * @changelog
+ *   1.3.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.3.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.2.0 - Permettre quantité 0 à l'édition pour items backorder (ordered_quantity)
  *   1.1.0 - Ajout support dark mode
@@ -1103,12 +1104,14 @@ const deleteMaterialFromModal = () => {
                   value={quickAddForm.product_id}
                   onChange={(e) => setQuickAddForm({
                     ...quickAddForm,
-                    product_id: e.target.value.toUpperCase()
+                    product_id: e.target.value
                   })}
+                  onBlur={(e) => setQuickAddForm(prev => ({...prev, product_id: prev.product_id.toUpperCase()}))}
                   placeholder="Ex: TEMP-001, SERVICE-XYZ"
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck={false}
+                  style={{ textTransform: 'uppercase' }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100 uppercase"
                   maxLength={50}
                   autoFocus

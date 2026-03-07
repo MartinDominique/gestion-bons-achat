@@ -5,9 +5,10 @@
  *              - Intégration TimeTracker (suivi temps) et MaterialSelector (matériaux)
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion emails et workflow signature client
- * @version 1.2.0
+ * @version 1.2.1
  * @date 2026-03-07
  * @changelog
+ *   1.2.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.2.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.0 - Ajout support dark mode
  *   1.0.0 - Version initiale
@@ -980,24 +981,19 @@ const getFilteredSupplierPurchases = () => {
   // ========================================
 
   const handleDescriptionChange = (index, value) => {
-    // Capturer la position du curseur AVANT la mise à jour
-    const textarea = document.activeElement;
-    const cursorPosition = textarea?.selectionStart;
-    
     const newDescriptions = [...descriptions];
-    newDescriptions[index] = value.toUpperCase();
+    newDescriptions[index] = value;
     setDescriptions(newDescriptions);
-    
-    // Restaurer la position du curseur APRÈS le re-render
-    requestAnimationFrame(() => {
-      if (textarea && cursorPosition !== undefined) {
-        textarea.setSelectionRange(cursorPosition, cursorPosition);
-      }
-    });
-    
+
     if (onFormChange && !isInitializing) {
       onFormChange();
     }
+  };
+
+  const handleDescriptionBlur = (index) => {
+    const newDescriptions = [...descriptions];
+    newDescriptions[index] = (newDescriptions[index] || '').toUpperCase();
+    setDescriptions(newDescriptions);
   };
 
   const addDescription = () => {
@@ -1652,6 +1648,7 @@ const getFilteredSupplierPurchases = () => {
                   placeholder={index === 0 ? "DESCRIPTION PRINCIPALE DES TRAVAUX EFFECTUÉS..." : "DESCRIPTION ADDITIONNELLE..."}
                   value={description}
                   onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                  onBlur={() => handleDescriptionBlur(index)}
                   style={{ textTransform: 'uppercase' }}
                   autoCorrect="on"
                   autoCapitalize="sentences"
@@ -1694,7 +1691,8 @@ const getFilteredSupplierPurchases = () => {
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 uppercase"
             placeholder="OBSERVATIONS, RECOMMANDATIONS, PROCHAINES ÉTAPES..."
             value={formData.additional_notes}
-            onChange={(e) => handleChange('additional_notes', e.target.value.toUpperCase())}
+            onChange={(e) => handleChange('additional_notes', e.target.value)}
+            onBlur={(e) => handleChange('additional_notes', e.target.value.toUpperCase())}
             style={{ textTransform: 'uppercase' }}
             autoCorrect="on"
             autoCapitalize="sentences"

@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.3.1
+ * @version 3.3.2
  * @date 2026-03-07
  * @changelog
+ *   3.3.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   3.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   3.3.0 - Prix coûtant et vendant côte à côte, auto-sélection champs numériques au focus
  *   3.2.1 - Ajout traduction 'direct_receipt' → 'Réception directe' dans historique mouvements
@@ -871,7 +872,9 @@ export default function InventoryManager() {
                     <input
                       type="text"
                       value={editForm.description}
-                      onChange={(e) => setEditForm({...editForm, description: e.target.value.toUpperCase()})}
+                      onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                      onBlur={(e) => setEditForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                      style={{ textTransform: 'uppercase' }}
                       autoCorrect="on"
                       autoCapitalize="sentences"
                       spellCheck={true}
@@ -887,7 +890,9 @@ export default function InventoryManager() {
                     <input
                       type="text"
                       value={editForm.supplier}
-                      onChange={(e) => setEditForm({...editForm, supplier: e.target.value.toUpperCase()})}
+                      onChange={(e) => setEditForm({...editForm, supplier: e.target.value})}
+                      onBlur={(e) => setEditForm(prev => ({...prev, supplier: (prev.supplier || '').toUpperCase()}))}
+                      style={{ textTransform: 'uppercase' }}
                       autoCorrect="on"
                       autoCapitalize="sentences"
                       spellCheck={true}

@@ -6,9 +6,10 @@
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
  *              - Badge BO et indicateur BL de suivi
- * @version 2.3.1
+ * @version 2.3.2
  * @date 2026-03-07
  * @changelog
+ *   2.3.2 - Retrait notification redondante après suppression BT/BL (confirm suffit)
  *   2.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur champ recherche
  *   2.3.0 - Ajout badge BO orange pour BL avec child_bl_id (backorder en cours)
  *           Ajout indicateur "Suite de BL-XXXX" pour BL de suivi (parent_bl_id)
@@ -212,7 +213,7 @@ export default function BonsTravailPage() {
         } else {
           setDeliveryNotes(prev => prev.filter(bl => bl.id !== item.id));
         }
-        alert(`${label} supprimé avec succès.`);
+
       } else {
         const error = await response.json();
         alert(`Erreur suppression: ${error.error}`);

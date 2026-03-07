@@ -5,9 +5,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire (IN)
  *              - Décale l'historique des prix (shift) si le cost_price change
- * @version 1.2.2
+ * @version 1.2.3
  * @date 2026-03-07
  * @changelog
+ *   1.2.3 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.2.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.2.1 - Ajout onFocus select sur champ quantité (auto-sélection)
  *   1.2.0 - Ajout support dark mode
@@ -584,7 +585,9 @@ export default function SupplierReceiptModal({
                 <input
                   type="text"
                   value={supplierDeliveryNumber}
-                  onChange={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
+                  onChange={(e) => setSupplierDeliveryNumber(e.target.value)}
+                  onBlur={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
+                  style={{ textTransform: 'uppercase' }}
                   placeholder="Ex: BL-12345, 987654..."
                   autoCorrect="off"
                   autoCapitalize="off"

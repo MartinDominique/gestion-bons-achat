@@ -5,9 +5,10 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.1.2
+ * @version 1.1.3
  * @date 2026-03-07
  * @changelog
+ *   1.1.3 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.1.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.1 - Fix boutons Fermer: texte invisible au survol en dark mode (hover:bg-gray-100 → dark:hover:bg-gray-700 + dark:text-gray-100)
  *   1.1.0 - Ajout classes dark mode Tailwind CSS
@@ -1819,7 +1820,9 @@ setTimeout(() => {
                       type="text"
                       name="po_number"
                       value={formData.po_number}
-                      onChange={(e) => setFormData(prev => ({ ...prev, po_number: e.target.value.toUpperCase() }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, po_number: e.target.value }))}
+                      onBlur={(e) => setFormData(prev => ({ ...prev, po_number: prev.po_number.toUpperCase() }))}
+                      style={{ textTransform: 'uppercase' }}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Ex: PO-2025-001"
                       autoCorrect="off"
@@ -1903,7 +1906,9 @@ setTimeout(() => {
                       <textarea
                         name="description"
                         value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value.toUpperCase() }))}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        onBlur={(e) => setFormData(prev => ({ ...prev, description: (prev.description || '').toUpperCase() }))}
+                        style={{ textTransform: 'uppercase' }}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                         placeholder="Description détaillée du bon d'achat..."
                         autoCorrect="on"
@@ -1921,7 +1926,9 @@ setTimeout(() => {
                     type="text"
                     name="special_instructions"
                     value={formData.special_instructions}
-                    onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value.toUpperCase() }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value }))}
+                    onBlur={(e) => setFormData(prev => ({ ...prev, special_instructions: (prev.special_instructions || '').toUpperCase() }))}
+                    style={{ textTransform: 'uppercase' }}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Notes additionnelles, instructions spéciales..."
                     autoCorrect="on"
