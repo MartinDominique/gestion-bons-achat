@@ -9,6 +9,11 @@
   }
 }
 
+/* Désactiver le pull-to-refresh natif du navigateur mobile */
+html, body {
+  overscroll-behavior-y: contain;
+}
+
 /* Ajouter ces styles à la fin de globals.css */
 
 /* Styles d'impression professionnels */
