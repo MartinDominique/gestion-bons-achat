@@ -6,9 +6,10 @@
  *              - 5 signataires autorisés
  *              - Formatage automatique des numéros de téléphone
  *              - email_admin optionnel
- * @version 2.0.1
- * @date 2026-02-27
+ * @version 2.1.0
+ * @date 2026-03-07
  * @changelog
+ *   2.1.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   2.0.1 - Fix: ContactSection causait perte de focus (rendu fonction au lieu de composant)
  *   2.0.0 - Ajout Tarification + Contact #3 + email_admin optionnel (Phase A)
  *   1.1.0 - Ajout support dark mode
@@ -252,6 +253,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                 onChange={type === 'tel' ? onPhoneChange(key) : onChange(key)}
                 placeholder={placeholder}
                 autoComplete={type === 'email' ? 'email' : type === 'tel' ? 'tel' : undefined}
+                autoCorrect={type === 'text' ? 'on' : 'off'}
+                autoCapitalize={type === 'text' ? 'sentences' : 'off'}
+                spellCheck={type === 'text'}
               />
             </div>
           ))}
@@ -333,6 +337,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       placeholder="ex: Concrea, A Toulouse, Belvédère du Lac"
                       required
                       autoFocus
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
                   <div>
@@ -345,6 +352,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       onChange={onChange('address')}
                       placeholder="ex: 3197, 42e Rue Nord, St-Georges, QC, G5Z 0V9"
                       rows="2"
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
                   <div>
@@ -361,6 +371,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         onFocus={(e) => e.target.select()}
                         placeholder="ex: 30"
                         inputMode="numeric"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                       <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap px-2">
                         = {(form.travel_minutes / 60 * 10).toFixed(1)} /10h
@@ -418,6 +431,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         onFocus={(e) => e.target.select()}
                         placeholder={defaultRate ? `${defaultRate.toFixed(2)}` : '0.00'}
                         inputMode="decimal"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400">$/h</span>
                     </div>
@@ -442,6 +458,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         onFocus={(e) => e.target.select()}
                         placeholder="0.00"
                         inputMode="decimal"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400">$</span>
                     </div>
@@ -462,6 +481,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       onChange={onChange('email_billing')}
                       placeholder="facture@exemple.com"
                       autoComplete="email"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                     />
                     <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                       Vide = utilise admin / principal
@@ -504,6 +526,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         value={form[`signatory_${n}`]}
                         onChange={onChange(`signatory_${n}`)}
                         placeholder="Nom complet"
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        spellCheck={true}
                       />
                     </div>
                   ))}

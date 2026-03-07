@@ -245,6 +245,35 @@ Tous les champs `<input>` de type nombre (prix, quantités, pourcentages) DOIVEN
 - `SupplierPurchaseManager.js` / `SupplierReceiptModal.js`
 - Tout autre formulaire avec des champs numériques
 
+### Attributs des champs texte (OBLIGATOIRE)
+
+Tous les champs `<input>` et `<textarea>` DOIVENT avoir les attributs appropriés selon leur type de contenu.
+
+**Champs texte libre** (descriptions, noms, adresses, notes, commentaires, instructions) :
+```javascript
+<input
+  type="text"
+  autoCorrect="on"
+  autoCapitalize="sentences"
+  spellCheck={true}
+  // ... autres props
+/>
+```
+
+**Champs codes/références/montants** (codes produits, numéros, emails, téléphones, recherche, mots de passe, codes postaux, prix) :
+```javascript
+<input
+  type="text"
+  autoCorrect="off"
+  autoCapitalize="off"
+  spellCheck={false}
+  // ... autres props
+/>
+```
+
+**Note:** Les champs `type="number"`, `type="email"`, `type="tel"`, `type="password"` sont toujours CODE/REFERENCE.
+Les champs `type="date"`, `type="time"`, `type="checkbox"`, `type="radio"`, `type="file"`, `readOnly` sont exemptés.
+
 ### Gestion d'Erreurs
 
 Pattern standard pour les réponses API:

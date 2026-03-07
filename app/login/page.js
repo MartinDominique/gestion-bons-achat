@@ -62,6 +62,9 @@ export default function LoginPage() {
               onChange={e => setEmail(e.target.value)}
               required
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-200"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
           <div>
@@ -72,6 +75,9 @@ export default function LoginPage() {
               onChange={e => setPassword(e.target.value)}
               required
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-gray-200"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
           {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}

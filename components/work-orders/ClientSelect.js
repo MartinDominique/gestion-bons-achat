@@ -194,6 +194,9 @@ export default function ClientSelect({
                 type="text"
                 placeholder="Rechercher par nom, adresse, email..."
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.3.0
- * @date 2026-02-19
+ * @version 3.3.1
+ * @date 2026-03-07
  * @changelog
+ *   3.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   3.3.0 - Prix coûtant et vendant côte à côte, auto-sélection champs numériques au focus
  *   3.2.1 - Ajout traduction 'direct_receipt' → 'Réception directe' dans historique mouvements
  *   3.2.0 - Toast 2s au lieu de alert(), majuscules Description + Fournisseur,
@@ -593,6 +594,9 @@ export default function InventoryManager() {
             placeholder="Rechercher par code ou description (min. 2 caractères)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             className="w-full pl-10 pr-10 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base"
           />
           {searchLoading && (
@@ -868,6 +872,9 @@ export default function InventoryManager() {
                       type="text"
                       value={editForm.description}
                       onChange={(e) => setEditForm({...editForm, description: e.target.value.toUpperCase()})}
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                       className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="Description du produit"
                     />
@@ -881,6 +888,9 @@ export default function InventoryManager() {
                       type="text"
                       value={editForm.supplier}
                       onChange={(e) => setEditForm({...editForm, supplier: e.target.value.toUpperCase()})}
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                       className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="Mis à jour automatiquement lors d'un AF"
                     />
@@ -900,6 +910,9 @@ export default function InventoryManager() {
                         value={editForm.cost_price}
                         onChange={(e) => setEditForm({...editForm, cost_price: e.target.value})}
                         onFocus={(e) => e.target.select()}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                         placeholder="0.00"
                       />
@@ -916,6 +929,9 @@ export default function InventoryManager() {
                         value={editForm.selling_price}
                         onChange={(e) => setEditForm({...editForm, selling_price: e.target.value})}
                         onFocus={(e) => e.target.select()}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                         placeholder="0.00"
                         required
@@ -938,6 +954,9 @@ export default function InventoryManager() {
                           value={marginPercent}
                           onChange={(e) => setMarginPercent(e.target.value)}
                           onFocus={(e) => e.target.select()}
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                           className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2"
                           placeholder="Ex: 25"
                         />
@@ -974,6 +993,9 @@ export default function InventoryManager() {
                       value={editForm.stock_qty}
                       onChange={(e) => setEditForm({...editForm, stock_qty: e.target.value})}
                       onFocus={(e) => e.target.select()}
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
                       placeholder="0"
                     />

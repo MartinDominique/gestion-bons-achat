@@ -5,9 +5,10 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.1.1
- * @date 2026-02-22
+ * @version 1.1.2
+ * @date 2026-03-07
  * @changelog
+ *   1.1.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.1 - Fix boutons Fermer: texte invisible au survol en dark mode (hover:bg-gray-100 → dark:hover:bg-gray-700 + dark:text-gray-100)
  *   1.1.0 - Ajout classes dark mode Tailwind CSS
  *   1.0.0 - Version initiale
@@ -840,6 +841,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
                 if (searchResults.length > 0) setShowSuggestions(true);
               }}
               placeholder="Code..."
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               className="w-full px-1 py-1 text-xs border rounded dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             />
             
@@ -864,6 +868,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
               value={localItem.description}
               onChange={(e) => setLocalItem({...localItem, description: e.target.value})}
               placeholder="Description"
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck={true}
               className="w-full px-1 py-1 text-xs border rounded dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             />
           </td>
@@ -1815,6 +1822,9 @@ setTimeout(() => {
                       onChange={(e) => setFormData(prev => ({ ...prev, po_number: e.target.value.toUpperCase() }))}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Ex: PO-2025-001"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       required
                     />
                   </div>
@@ -1830,6 +1840,9 @@ setTimeout(() => {
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100 dark:bg-gray-700 dark:text-gray-400"
                       placeholder="Sera rempli par import soumission"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       readOnly
                     />
                   </div>
@@ -1893,6 +1906,9 @@ setTimeout(() => {
                         onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value.toUpperCase() }))}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                         placeholder="Description détaillée du bon d'achat..."
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        spellCheck={true}
                         rows="3"
                       />
                     </div>
@@ -1908,6 +1924,9 @@ setTimeout(() => {
                     onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value.toUpperCase() }))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Notes additionnelles, instructions spéciales..."
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    spellCheck={true}
                   />
                 </div>
 
@@ -2944,6 +2963,9 @@ setTimeout(() => {
                     }
                   }}
                   placeholder="Ex: PROD-001 ou tapez pour chercher..."
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
                 
@@ -2986,6 +3008,9 @@ setTimeout(() => {
                   value={editingItemData?.description || ''}
                   onChange={(e) => setEditingItemData(prev => ({...prev, description: e.target.value}))}
                   placeholder="Description de l'article"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   rows="3"
                 />

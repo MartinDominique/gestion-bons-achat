@@ -1,3 +1,15 @@
+/**
+ * @file components/SupplierPurchaseManager.js
+ * @description Gestion des achats fournisseurs (AF)
+ *              - Liste, création, modification, suppression des AF
+ *              - Réception directe et réception AF
+ *              - Gestion des adresses de livraison fournisseur
+ * @version 1.0.1
+ * @date 2026-03-07
+ * @changelog
+ *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
+ *   1.0.0 - Version initiale
+ */
 import React, { useState } from 'react';
 import SupplierReceiptModal from './SupplierReceiptModal';
 import DirectReceiptModal from './DirectReceiptModal';
@@ -478,6 +490,9 @@ export default function SupplierPurchaseManager() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
             </div>
@@ -1242,6 +1257,9 @@ const AddressFormModal = ({
                 className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="Ex: Bureau principal, Entrepôt..."
                 required
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
             
@@ -1256,6 +1274,9 @@ const AddressFormModal = ({
                 className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="123 Rue Principale, App. 456"
                 required
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
             
@@ -1269,6 +1290,9 @@ const AddressFormModal = ({
                 onChange={(e) => setAddressForm({...addressForm, city: e.target.value})}
                 className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 required
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
             
@@ -1309,6 +1333,9 @@ const AddressFormModal = ({
                 className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="H1A 1A1"
                 pattern="[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
             

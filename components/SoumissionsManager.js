@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.8.0
- * @date 2026-02-22
+ * @version 1.8.1
+ * @date 2026-03-07
  * @changelog
+ *   1.8.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.8.0 - Ajout classes dark mode Tailwind CSS
  *   1.7.1 - Forcer majuscules sur code produit et description des items non-inventaire
  *   1.7.0 - Header répété sur pages 2+ dans le PDF jsPDF (version Client)
@@ -2090,6 +2091,9 @@ const cleanupFilesForSubmission = async (files) => {
                       className="block w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Description de la soumission..."
                       required
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
                 </div>
@@ -2134,6 +2138,9 @@ const cleanupFilesForSubmission = async (files) => {
                           onKeyDown={handleProductKeyDown}
                           className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 dark:border-indigo-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base dark:bg-gray-800 dark:text-gray-100"
                           autoComplete="off"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                         />
                       </div>
                     </div>
@@ -2251,6 +2258,9 @@ const cleanupFilesForSubmission = async (files) => {
                             onFocus={(e) => e.target.select()} // ✅ AJOUT: Sélectionne au focus
                                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                             autoFocus
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             />
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
@@ -2316,6 +2326,9 @@ const cleanupFilesForSubmission = async (files) => {
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Ex: TEMP-001"
                               required
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                             />
                           </div>
                           <div>
@@ -2341,6 +2354,9 @@ const cleanupFilesForSubmission = async (files) => {
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Description du produit..."
                               required
+                              autoCorrect="on"
+                              autoCapitalize="sentences"
+                              spellCheck={true}
                             />
                           </div>
                           
@@ -2357,6 +2373,9 @@ const cleanupFilesForSubmission = async (files) => {
                                 className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                                 placeholder="0.00"
                                 required
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                               />
                               <button
                                 type="button"
@@ -2423,6 +2442,9 @@ const cleanupFilesForSubmission = async (files) => {
                                       onChange={(e) => setUsdAmount(e.target.value)}
                                       placeholder="Montant USD"
                                       className="flex-1 rounded border-blue-300 dark:border-blue-700 text-sm p-2 dark:bg-gray-800 dark:text-gray-100"
+                                      autoCorrect="off"
+                                      autoCapitalize="off"
+                                      spellCheck={false}
                                     />
                                     <span className="text-sm text-blue-700">USD</span>
                                     <span className="text-sm">=</span>
@@ -2456,6 +2478,9 @@ const cleanupFilesForSubmission = async (files) => {
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="0.00"
                               required
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                             />
                             
                             {/* BOUTONS DE PROFIT */}
@@ -2573,6 +2598,9 @@ const cleanupFilesForSubmission = async (files) => {
                             }}
                             className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3 text-lg dark:bg-gray-800 dark:text-gray-100"
                             autoFocus
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                           />
                         </div>
 
@@ -2594,6 +2622,9 @@ const cleanupFilesForSubmission = async (files) => {
                               }
                             }}
                             className="w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 dark:bg-gray-800 dark:text-gray-100"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                           />
                         </div>
 
@@ -2615,6 +2646,9 @@ const cleanupFilesForSubmission = async (files) => {
                               }
                             }}
                             className="w-full rounded-lg border-orange-300 dark:border-orange-700 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3 dark:bg-gray-800 dark:text-gray-100"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                           />
                         </div>
 
@@ -2629,6 +2663,9 @@ const cleanupFilesForSubmission = async (files) => {
                             className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3 dark:bg-gray-800 dark:text-gray-100"
                             rows={2}
                             placeholder="Note pour cet article..."
+                            autoCorrect="on"
+                            autoCapitalize="sentences"
+                            spellCheck={true}
                           />
                         </div>
 
@@ -2707,6 +2744,9 @@ const cleanupFilesForSubmission = async (files) => {
                               onChange={(e) => setTempComment(e.target.value)}
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 h-24 resize-none dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Ajouter un commentaire pour ce produit..."
+                              autoCorrect="on"
+                              autoCapitalize="sentences"
+                              spellCheck={true}
                             />
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Ce commentaire apparaîtra sur la soumission imprimée
@@ -2791,6 +2831,9 @@ const cleanupFilesForSubmission = async (files) => {
                                       }
                                     }}
                                     className="w-16 text-center rounded border-gray-300 dark:border-gray-600 text-sm dark:bg-gray-800 dark:text-gray-100"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                   />
                                 </td>
                                 <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
@@ -2801,6 +2844,9 @@ const cleanupFilesForSubmission = async (files) => {
                                     value={item.selling_price}
                                     onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
                                     className="w-20 text-right rounded border-green-300 dark:border-green-700 text-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                   />
                                 </td>
                                 <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
@@ -2811,6 +2857,9 @@ const cleanupFilesForSubmission = async (files) => {
                                     value={item.cost_price}
                                     onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
                                     className="w-20 text-right rounded border-orange-300 dark:border-orange-700 text-sm focus:border-orange-500 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                   />
                                 </td>
                                 <td className="p-2 text-right font-medium text-green-700">
@@ -3153,6 +3202,9 @@ const cleanupFilesForSubmission = async (files) => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base dark:bg-gray-800 dark:text-gray-100"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
           </div>

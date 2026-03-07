@@ -9,9 +9,10 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 3.0.0
- * @date 2026-03-06
+ * @version 3.1.0
+ * @date 2026-03-07
  * @changelog
+ *   3.1.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   3.0.0 - Refonte affichage BO: suppression section dupliquée "SUIVI COMMANDE / BACKORDER",
  *           fusion en une seule liste (tableau compact BO + cartes manuelles via MaterialSelector),
  *           bandeau livraison partielle déplacé en haut du formulaire, colonne "Déjà livré"
@@ -1163,6 +1164,9 @@ export default function DeliveryNoteForm({
                 value={linkedPoId}
                 onChange={(e) => { setLinkedPoId(e.target.value.toUpperCase()); onFormChange?.(); }}
                 placeholder="Entrer le # BA ou Job client"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base uppercase bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 style={{ minHeight: '44px' }}
               />
@@ -1180,6 +1184,9 @@ export default function DeliveryNoteForm({
             onChange={(e) => { setDeliveryDescription(e.target.value.toUpperCase()); onFormChange?.(); }}
             placeholder="DESCRIPTION DU MATÉRIEL LIVRÉ..."
             rows={3}
+            autoCorrect="on"
+            autoCapitalize="sentences"
+            spellCheck={true}
             className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base resize-none uppercase bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
@@ -1276,6 +1283,9 @@ export default function DeliveryNoteForm({
                                 setMaterials(updated);
                                 onFormChange?.();
                               }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                               className="w-14 text-center text-xs text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
                               style={{ minHeight: '44px' }}
                               min="0"
@@ -1294,6 +1304,9 @@ export default function DeliveryNoteForm({
                                 setMaterials(updated);
                                 onFormChange?.();
                               }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                               className="w-14 text-center text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
                               style={{ minHeight: '44px' }}
                               min="0"
@@ -1356,6 +1369,9 @@ export default function DeliveryNoteForm({
                                 setMaterials(updated);
                                 onFormChange?.();
                               }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                               className="w-20 text-center text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
                               style={{ minHeight: '44px' }}
                               min="0"
@@ -1374,6 +1390,9 @@ export default function DeliveryNoteForm({
                                 setMaterials(updated);
                                 onFormChange?.();
                               }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                               className="w-20 text-center text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
                               style={{ minHeight: '44px' }}
                               min="0"

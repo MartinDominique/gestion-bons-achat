@@ -4,9 +4,10 @@
  *              - Section Apparence (thème clair/sombre)
  *              - Section Taux & Tarifs horaires (taux régulier, 1.5x, 2x, augmentation)
  *              - Section Facturation (numéros taxes, taux TPS/TVQ, conditions, N° facture)
- * @version 2.0.0
- * @date 2026-02-27
+ * @version 2.0.1
+ * @date 2026-03-07
  * @changelog
+ *   2.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur les champs texte
  *   2.0.0 - Ajout sections Taux & Tarifs et Facturation (Phase A Fondations)
  *   1.0.0 - Version initiale - Sélecteur de thème
  */
@@ -233,6 +234,9 @@ export default function ParametresPage() {
                     onFocus={(e) => e.target.select()}
                     inputMode="decimal"
                     placeholder="0.00"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">$/h</span>
                 </div>
@@ -290,6 +294,9 @@ export default function ParametresPage() {
                       onFocus={(e) => e.target.select()}
                       inputMode="decimal"
                       placeholder="0.0"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">%</span>
                   </div>
@@ -343,6 +350,9 @@ export default function ParametresPage() {
                   onChange={(e) => updateField('invoice_tps_number', e.target.value)}
                   onFocus={(e) => e.target.select()}
                   placeholder="123456789 RT0001"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
               <div>
@@ -356,6 +366,9 @@ export default function ParametresPage() {
                   onChange={(e) => updateField('invoice_tvq_number', e.target.value)}
                   onFocus={(e) => e.target.select()}
                   placeholder="1234567890 TQ0001"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
             </div>
@@ -377,6 +390,9 @@ export default function ParametresPage() {
                     onChange={(e) => updateField('tps_rate', parseFloat(e.target.value) || 0)}
                     onFocus={(e) => e.target.select()}
                     inputMode="decimal"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">%</span>
                 </div>
@@ -396,6 +412,9 @@ export default function ParametresPage() {
                     onChange={(e) => updateField('tvq_rate', parseFloat(e.target.value) || 0)}
                     onFocus={(e) => e.target.select()}
                     inputMode="decimal"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">%</span>
                 </div>
@@ -429,6 +448,9 @@ export default function ParametresPage() {
                 value={settings?.invoice_footer_note ?? ''}
                 onChange={(e) => updateField('invoice_footer_note', e.target.value)}
                 placeholder="Merci de votre confiance!"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
 
@@ -446,6 +468,9 @@ export default function ParametresPage() {
                   onChange={(e) => updateField('invoice_next_number', parseInt(e.target.value) || 1)}
                   onFocus={(e) => e.target.select()}
                   inputMode="numeric"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Entrez le numéro courant d&apos;Acomba. S&apos;incrémente automatiquement après chaque facture.
