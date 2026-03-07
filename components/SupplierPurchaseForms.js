@@ -9,9 +9,10 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.0.1
+ * @version 1.0.2
  * @date 2026-03-07
  * @changelog
+ *   1.0.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.0.0 - Version initiale
  */
@@ -684,7 +685,9 @@ Merci!`;
                 </label>
                 <textarea
                   value={purchaseForm.notes}
-                  onChange={(e) => setPurchaseForm({...purchaseForm, notes: e.target.value.toUpperCase()})}
+                  onChange={(e) => setPurchaseForm({...purchaseForm, notes: e.target.value})}
+                  onBlur={(e) => setPurchaseForm(prev => ({...prev, notes: (prev.notes || '').toUpperCase()}))}
+                  style={{ textTransform: 'uppercase' }}
                   className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-gray-500 focus:ring-gray-500 text-base p-3"
                   rows="3"
                   placeholder="Notes additionnelles..."
@@ -958,7 +961,9 @@ export const NonInventoryModal = ({
               <input
                 type="text"
                 value={nonInventoryForm.product_id}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, product_id: e.target.value.toUpperCase()})}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, product_id: e.target.value})}
+                onBlur={(e) => setNonInventoryForm(prev => ({...prev, product_id: prev.product_id.toUpperCase()}))}
+                style={{ textTransform: 'uppercase' }}
                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Ex: TEMP-001"
                 required
@@ -990,7 +995,9 @@ export const NonInventoryModal = ({
               <input
                 type="text"
                 value={nonInventoryForm.description}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, description: e.target.value.toUpperCase()})}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, description: e.target.value})}
+                onBlur={(e) => setNonInventoryForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                style={{ textTransform: 'uppercase' }}
                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Description du produit..."
                 required
@@ -1006,7 +1013,9 @@ export const NonInventoryModal = ({
               <input
                 type="text"
                 value={nonInventoryForm.supplier || ''}
-                onChange={(e) => setNonInventoryForm({...nonInventoryForm, supplier: e.target.value.toUpperCase()})}
+                onChange={(e) => setNonInventoryForm({...nonInventoryForm, supplier: e.target.value})}
+                onBlur={(e) => setNonInventoryForm(prev => ({...prev, supplier: (prev.supplier || '').toUpperCase()}))}
+                style={{ textTransform: 'uppercase' }}
                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Rempli automatiquement depuis l'AF en cours"
                 autoCorrect="on"
