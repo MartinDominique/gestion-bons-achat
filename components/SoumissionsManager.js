@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.8.2
+ * @version 1.9.0
  * @date 2026-03-07
  * @changelog
+ *   1.9.0 - Forcer majuscules sur description au save + notification auto-dismiss (remplace alert OK)
  *   1.8.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.8.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.8.0 - Ajout classes dark mode Tailwind CSS
@@ -786,8 +787,8 @@ export default function SoumissionsManager() {
     
     try {
       const nonInventoryData = {
-        product_id: quickProductForm.product_id,
-        description: quickProductForm.description,
+        product_id: quickProductForm.product_id.trim().toUpperCase(),
+        description: quickProductForm.description.trim().toUpperCase(),
         selling_price: parseFloat(quickProductForm.selling_price),
         cost_price: parseFloat(quickProductForm.cost_price),
         unit: quickProductForm.unit,
@@ -799,7 +800,7 @@ export default function SoumissionsManager() {
       const { data: existingItem, error: checkError } = await supabase
         .from('non_inventory_items')
         .select('*')
-        .eq('product_id', quickProductForm.product_id)
+        .eq('product_id', nonInventoryData.product_id)
         .single();
 
       if (checkError && checkError.code !== 'PGRST116') {
@@ -811,7 +812,7 @@ export default function SoumissionsManager() {
         const { data, error } = await supabase
           .from('non_inventory_items')
           .update(nonInventoryData)
-          .eq('product_id', quickProductForm.product_id)
+          .eq('product_id', nonInventoryData.product_id)
           .select();
         result = data;
         if (error) throw error;
@@ -833,7 +834,21 @@ export default function SoumissionsManager() {
           stock_qty: 0
         };
         addItemToSubmission(savedItem, 1);
-        alert('✅ Produit non-inventaire sauvegardé !');
+        const notification = document.createElement('div');
+        notification.innerHTML = '✅ Produit non-inventaire sauvegardé !';
+        notification.style.cssText = `
+          position: fixed; top: 20px; right: 20px;
+          background: #10b981; color: white;
+          padding: 16px 24px; border-radius: 8px;
+          font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          z-index: 9999;
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+          if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+          }
+        }, 3000);
       }
       
     } catch (error) {
