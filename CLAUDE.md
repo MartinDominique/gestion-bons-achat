@@ -712,3 +712,36 @@ curl -H "Authorization: Bearer $CRON_SECRET" $VERCEL_URL/api/cron/backup
 **Téléphone:** (418) 225-3875
 **Email rapports:** servicestmt@gmail.com
 **Email bureau:** info.servicestmt@gmail.com
+
+
+---
+
+Ajout par MArtin T. (propriétaire/user/programmer)
+
+## Attributs des champs texte
+- Champs texte libre : `autoCorrect="on" autoCapitalize="sentences" spellCheck={true}`
+- Champs codes/références/montants : `autoCorrect="off" autoCapitalize="off" spellCheck={false}`
+
+## Feedback visuel des actions async
+Toujours afficher un état de chargement (spinner, bouton désactivé) pendant les appels API 
+pour éviter les double-soumissions sur mobile.
+
+## Sauvegarde avant navigation
+Avertir l'utilisateur s'il tente de quitter une page avec des modifications non sauvegardées 
+(utiliser `beforeunload` ou équivalent Next.js avec `useRouter`).
+
+## Confirmation avant action destructive
+Toujours afficher une confirmation explicite avant toute suppression ou action irréversible.
+Ne jamais supprimer directement au premier clic/tap.
+
+## Locale et timezone
+Toujours utiliser la locale `fr-CA` et le timezone `America/Toronto` pour tous 
+les formats de date, heure et nombres.
+
+## Champs numériques - Auto-select au focus
+Toujours ajouter `onFocus={(e) => e.target.select()}` sur tous les champs `<input>` 
+de type numérique pour sélectionner automatiquement le contenu au clic/tap (mobile-first).
+
+## Comportement mobile - Pull-to-refresh
+Toujours inclure `overscroll-behavior-y: contain` sur `html, body` dans `globals.css` 
+pour désactiver le pull-to-refresh natif du navigateur (perte de données en cours).
