@@ -5,9 +5,10 @@
  *              - Ajout rapide de produits non-inventaire
  *              - Clavier numérique pour saisie quantités (optimisé tablette)
  *              - Affichage/masquage prix par article
- * @version 1.3.1
+ * @version 1.4.0
  * @date 2026-03-07
  * @changelog
+ *   1.4.0 - Forcer majuscules sur description produit non-inventaire (onBlur toUpperCase + CSS textTransform + uppercase au save)
  *   1.3.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.3.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.2.0 - Permettre quantité 0 à l'édition pour items backorder (ordered_quantity)
@@ -441,7 +442,7 @@ const deleteMaterialFromModal = () => {
         try {
           const nonInventoryData = {
             product_id: quickAddForm.product_id.trim().toUpperCase(),
-            description: quickAddForm.description.trim(),
+            description: quickAddForm.description.trim().toUpperCase(),
             unit: quickAddForm.unit || 'UN',
             product_group: 'Non-Inventaire',
             selling_price: 0,
@@ -1133,6 +1134,8 @@ const deleteMaterialFromModal = () => {
                     ...quickAddForm,
                     description: e.target.value
                   })}
+                  onBlur={(e) => setQuickAddForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                  style={{ textTransform: 'uppercase' }}
                   placeholder="Description détaillée du produit ou service..."
                   autoCorrect="on"
                   autoCapitalize="sentences"

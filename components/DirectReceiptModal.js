@@ -7,9 +7,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.3.2
+ * @version 1.4.0
  * @date 2026-03-07
  * @changelog
+ *   1.4.0 - Forcer majuscules sur description produit (onBlur toUpperCase + CSS textTransform + uppercase au save)
  *   1.3.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.3.0 - Ajout support dark mode
@@ -192,8 +193,8 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
         const { error: insertError } = await supabase
           .from('products')
           .insert({
-            product_id,
-            description,
+            product_id: product_id.toUpperCase(),
+            description: description.toUpperCase(),
             cost_price: parseFloat(cost_price),
             selling_price: parseFloat(selling_price),
             unit: newItemForm.unit || 'Un',
@@ -627,6 +628,8 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     type="text"
                     value={newItemForm.description}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, description: e.target.value }))}
+                    onBlur={(e) => setNewItemForm(prev => ({ ...prev, description: prev.description.toUpperCase() }))}
+                    style={{ textTransform: 'uppercase' }}
                     placeholder="Description du produit"
                     autoCorrect="on"
                     autoCapitalize="sentences"

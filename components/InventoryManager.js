@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.3.2
+ * @version 3.4.0
  * @date 2026-03-07
  * @changelog
+ *   3.4.0 - Forcer majuscules sur description au save (toUpperCase au trim)
  *   3.3.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   3.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   3.3.0 - Prix coûtant et vendant côte à côte, auto-sélection champs numériques au focus
@@ -445,7 +446,7 @@ export default function InventoryManager() {
       setSaving(true);
 
       const updates = {
-        description: editForm.description.trim(),
+        description: editForm.description.trim().toUpperCase(),
         supplier: editForm.supplier.trim() || null,
         cost_price: parseFloat(editForm.cost_price) || 0,
         selling_price: parseFloat(editForm.selling_price) || 0,
