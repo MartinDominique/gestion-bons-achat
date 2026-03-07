@@ -6,9 +6,10 @@
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
  *              - Badge BO et indicateur BL de suivi
- * @version 2.3.0
- * @date 2026-03-03
+ * @version 2.3.1
+ * @date 2026-03-07
  * @changelog
+ *   2.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur champ recherche
  *   2.3.0 - Ajout badge BO orange pour BL avec child_bl_id (backorder en cours)
  *           Ajout indicateur "Suite de BL-XXXX" pour BL de suivi (parent_bl_id)
  *   2.2.0 - Indicateur facture distingue Acomba (ambre) vs App (vert)
@@ -457,6 +458,9 @@ export default function BonsTravailPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder={getSearchPlaceholder()}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
             </div>

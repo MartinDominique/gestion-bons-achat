@@ -5,9 +5,10 @@
  *              - Lignes: main d'oeuvre, transport, matériaux, forfait, autre
  *              - Calculs TPS/TVQ en temps réel
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 1.0.0
- * @date 2026-02-27
+ * @version 1.0.1
+ * @date 2026-03-07
  * @changelog
+ *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
 
@@ -500,6 +501,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         onChange={(e) => updateLine(index, 'description', e.target.value)}
                         className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm"
                         placeholder="Description"
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        spellCheck={true}
                       />
                       <button
                         onClick={() => removeLine(index)}
@@ -519,6 +523,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-center"
                           inputMode="decimal"
                           step="0.01"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                         />
                       </div>
                       <div>
@@ -531,6 +538,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right"
                           inputMode="decimal"
                           step="0.01"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                         />
                       </div>
                       <div>
@@ -551,6 +561,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         onChange={(e) => updateLine(index, 'description', e.target.value)}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm"
                         placeholder="Description"
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        spellCheck={true}
                       />
                     </div>
                     <div className="col-span-2">
@@ -560,6 +573,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         onChange={(e) => updateLine(index, 'detail', e.target.value)}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm"
                         placeholder="Détail"
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        spellCheck={true}
                       />
                     </div>
                     <div className="col-span-2 text-center">
@@ -571,6 +587,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-center"
                         inputMode="decimal"
                         step="0.01"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                     </div>
                     <div className="col-span-2 text-right">
@@ -582,6 +601,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right"
                         inputMode="decimal"
                         step="0.01"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                     </div>
                     <div className="col-span-1 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -650,6 +672,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               rows={2}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
               placeholder="Notes optionnelles..."
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck={true}
             />
           </div>
         </div>

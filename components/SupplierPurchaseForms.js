@@ -1,3 +1,20 @@
+/**
+ * @file components/SupplierPurchaseForms.js
+ * @description Formulaires pour la gestion des achats fournisseurs (AF)
+ *              - PurchaseForm: formulaire principal AF
+ *              - ProductSearch: recherche produits inventaire
+ *              - QuantityModal: modal saisie quantité
+ *              - NonInventoryModal: modal produit non-inventaire
+ *              - SelectedItemsTable: tableau articles sélectionnés
+ *              - PriceUpdateModal: modal mise à jour prix
+ *              - SupplierFormModal: formulaire fournisseur (dialog)
+ *              - QuickSupplierModal: formulaire rapide fournisseur
+ * @version 1.0.1
+ * @date 2026-03-07
+ * @changelog
+ *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
+ *   1.0.0 - Version initiale
+ */
 import React from 'react';
 import {
   MoreVertical, Eye, Edit, Trash2, FileText, Download, Search,
@@ -430,6 +447,9 @@ Merci!`;
                     onChange={(e) => setPurchaseForm({...purchaseForm, ba_acomba: e.target.value})}
                     className="block w-full rounded-lg border-purple-300 dark:border-purple-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
                     placeholder="BA Acomba..."
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                   />
                 </div>
 
@@ -443,6 +463,9 @@ Merci!`;
                     onChange={(e) => setPurchaseForm({...purchaseForm, supplier_quote_reference: e.target.value})}
                     className="block w-full rounded-lg border-yellow-300 dark:border-yellow-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3"
                     placeholder="Réf. soumission fournisseur"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                   />
                 </div>
 
@@ -547,6 +570,9 @@ Merci!`;
                         onChange={(e) => setPurchaseForm({...purchaseForm, shipping_account: e.target.value})}
                         className="block w-full rounded-lg border-orange-300 dark:border-orange-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                         placeholder="N° compte..."
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                     </div>
                   </div>
@@ -662,6 +688,9 @@ Merci!`;
                   className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-gray-500 focus:ring-gray-500 text-base p-3"
                   rows="3"
                   placeholder="Notes additionnelles..."
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                 />
               </div>
 
@@ -741,6 +770,9 @@ export const ProductSearch = ({
               onKeyDown={handleProductKeyDown}
               className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 dark:border-indigo-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base"
               autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
         </div>
@@ -930,6 +962,9 @@ export const NonInventoryModal = ({
                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Ex: TEMP-001"
                 required
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
 
@@ -959,6 +994,9 @@ export const NonInventoryModal = ({
                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Description du produit..."
                 required
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
 
@@ -971,6 +1009,9 @@ export const NonInventoryModal = ({
                 onChange={(e) => setNonInventoryForm({...nonInventoryForm, supplier: e.target.value.toUpperCase()})}
                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                 placeholder="Rempli automatiquement depuis l'AF en cours"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
               {nonInventoryForm.supplier && (
                 <p className="text-xs text-gray-500 mt-1">Auto-rempli depuis l'AF en cours</p>
@@ -1243,6 +1284,9 @@ export const SelectedItemsTable = ({
                     onChange={(e) => updateItemNotes(item.product_id, e.target.value)}
                     className="w-32 rounded border-gray-300 text-sm p-1"
                     placeholder="Notes..."
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    spellCheck={true}
                   />
                 </td>
                 <td className="p-2 text-center">
@@ -1593,9 +1637,12 @@ export const SupplierFormModal = ({
                 onChange={(e) => setSupplierForm({...supplierForm, company_name: e.target.value})}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 required
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nom du contact
@@ -1605,9 +1652,12 @@ export const SupplierFormModal = ({
                 value={supplierForm.contact_name}
                 onChange={(e) => setSupplierForm({...supplierForm, contact_name: e.target.value})}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -1617,9 +1667,12 @@ export const SupplierFormModal = ({
                 value={supplierForm.email}
                 onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Téléphone
@@ -1630,9 +1683,12 @@ export const SupplierFormModal = ({
                 onChange={handlePhoneChange}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 placeholder="(418) 225-3875"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
-            
+
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Adresse
@@ -1642,6 +1698,9 @@ export const SupplierFormModal = ({
                 value={supplierForm.address}
                 onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
 
@@ -1677,6 +1736,9 @@ export const SupplierFormModal = ({
                 value={supplierForm.city}
                 onChange={(e) => setSupplierForm({...supplierForm, city: e.target.value})}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
 
@@ -1701,6 +1763,9 @@ export const SupplierFormModal = ({
                   onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                   placeholder={supplierForm.country === 'USA' ? 'Ex: California, Texas...' : 'État/Province'}
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                 />
               )}
             </div>
@@ -1725,6 +1790,9 @@ export const SupplierFormModal = ({
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 placeholder={getPostalCodePlaceholder(supplierForm.country)}
                 pattern={getPostalCodePattern(supplierForm.country)}
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
             
@@ -1737,6 +1805,9 @@ export const SupplierFormModal = ({
                 onChange={(e) => setSupplierForm({...supplierForm, notes: e.target.value})}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 rows="3"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
 
@@ -1785,6 +1856,9 @@ export const SupplierFormModal = ({
                   onChange={(e) => setSupplierForm({...supplierForm, tax_id: e.target.value})}
                   className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                   placeholder="12-3456789"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
             )}
@@ -1859,8 +1933,11 @@ export const SupplierFormSimpleModal = ({
             onChange={(e) => setSupplierForm({...supplierForm, company_name: e.target.value})}
             className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 p-3"
             required
+            autoCorrect="on"
+            autoCapitalize="sentences"
+            spellCheck={true}
           />
-          
+
           <div className="grid grid-cols-2 gap-4">
             <input
               type="email"
@@ -1868,6 +1945,9 @@ export const SupplierFormSimpleModal = ({
               value={supplierForm.email}
               onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
               className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 p-3"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
             <input
               type="tel"
@@ -1875,6 +1955,9 @@ export const SupplierFormSimpleModal = ({
               value={supplierForm.phone}
               onChange={handlePhoneChange}
               className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 p-3"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
 

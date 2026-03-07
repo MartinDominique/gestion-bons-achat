@@ -152,6 +152,9 @@ export default function RestorePage() {
                 className="border rounded px-3 py-2 w-full mb-4"
                 placeholder="RESTAURER"
                 disabled={isRestoring}
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
               <button
                 onClick={handleRestore}

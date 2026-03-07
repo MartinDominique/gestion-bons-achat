@@ -7,9 +7,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.3.0
- * @date 2026-02-22
+ * @version 1.3.1
+ * @date 2026-03-07
  * @changelog
+ *   1.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.3.0 - Ajout support dark mode
  *   1.2.0 - Ajout prix vendant + % marge par article (calcul auto), auto-sélection champs numériques
  *   1.1.0 - Retrait checkbox non-inventaire du formulaire création (items toujours dans products)
@@ -514,6 +515,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                 }}
                 onKeyDown={handleSearchKeyDown}
                 placeholder="Rechercher par code ou description..."
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               />
               {searching && (
@@ -608,6 +612,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     value={newItemForm.product_id}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, product_id: e.target.value.toUpperCase() }))}
                     placeholder="Ex: PROD-001"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -618,6 +625,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     value={newItemForm.description}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Description du produit"
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    spellCheck={true}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -632,6 +642,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, cost_price: e.target.value }))}
                     onFocus={(e) => e.target.select()}
                     placeholder="0.00"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -646,6 +659,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, selling_price: e.target.value }))}
                     onFocus={(e) => e.target.select()}
                     placeholder="0.00"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -674,6 +690,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     value={newItemForm.product_group}
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, product_group: e.target.value }))}
                     placeholder="Ex: Électrique, Plomberie..."
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    spellCheck={true}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -759,6 +778,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                           value={item.cost_price || ''}
                           onChange={(e) => updateItemCostPrice(item.product_id, e.target.value)}
                           onFocus={(e) => e.target.select()}
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-center text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
@@ -785,6 +807,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                             ));
                           }}
                           onFocus={(e) => e.target.select()}
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-center text-sm bg-green-50 dark:bg-green-900/20 text-gray-900 dark:text-gray-100"
                           placeholder="%"
                         />
@@ -800,6 +825,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                           value={item.selling_price || ''}
                           onChange={(e) => updateItemSellingPrice(item.product_id, e.target.value)}
                           onFocus={(e) => e.target.select()}
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-center text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                         />
                       </div>
@@ -816,6 +844,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                           value={item.quantity || ''}
                           onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
                           onFocus={(e) => e.target.select()}
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                           className={`w-full px-2 py-1.5 border rounded text-center font-medium text-sm ${
                             item.quantity < 0 ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                           }`}
@@ -842,6 +873,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     value={supplierName}
                     onChange={(e) => setSupplierName(e.target.value)}
                     placeholder="Nom du fournisseur"
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    spellCheck={true}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -854,6 +888,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     value={supplierDeliveryNumber}
                     onChange={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
                     placeholder="Ex: BL-12345"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -867,6 +904,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                 value={receiptNotes}
                 onChange={(e) => setReceiptNotes(e.target.value)}
                 placeholder={isAdjustment ? 'Ex: Prise d\'inventaire février 2026' : 'Ex: Achat direct au comptoir...'}
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 rows={2}
               />

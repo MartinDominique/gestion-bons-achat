@@ -4,9 +4,10 @@
  *              - Création, édition, conversion depuis soumissions
  *              - Gestion des livraisons par BA
  *              - Interface desktop et mobile
- * @version 1.1.0
- * @date 2026-02-22
+ * @version 1.1.1
+ * @date 2026-03-07
  * @changelog
+ *   1.1.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.0 - Ajout classes dark mode Tailwind CSS
  *   1.0.0 - Version initiale
  */
@@ -464,6 +465,9 @@ export default function ClientPOManager() {
                     className="block w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Description du bon d'achat..."
                     required
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    spellCheck={true}
                   />
                 </div>
               </div>
@@ -519,6 +523,9 @@ export default function ClientPOManager() {
                   className="block w-full rounded-lg border-yellow-300 dark:border-yellow-700 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="0.00"
                   required
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
                 <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-2">
                   💡 Montant calculé automatiquement si soumission sélectionnée
@@ -536,12 +543,15 @@ export default function ClientPOManager() {
                       type="text"
                       value={formData.delivery_address.street}
                       onChange={(e) => setFormData({
-                        ...formData, 
+                        ...formData,
                         delivery_address: {...formData.delivery_address, street: e.target.value}
                       })}
                       className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="123 Rue Principale"
                       required
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
 
@@ -551,12 +561,15 @@ export default function ClientPOManager() {
                       type="text"
                       value={formData.delivery_address.city}
                       onChange={(e) => setFormData({
-                        ...formData, 
+                        ...formData,
                         delivery_address: {...formData.delivery_address, city: e.target.value}
                       })}
                       className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Saint-Georges"
                       required
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
 
@@ -566,12 +579,15 @@ export default function ClientPOManager() {
                       type="text"
                       value={formData.delivery_address.contact_name}
                       onChange={(e) => setFormData({
-                        ...formData, 
+                        ...formData,
                         delivery_address: {...formData.delivery_address, contact_name: e.target.value}
                       })}
                       className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Nom du contact"
                       required
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
 
@@ -581,11 +597,14 @@ export default function ClientPOManager() {
                       type="tel"
                       value={formData.delivery_address.phone}
                       onChange={(e) => setFormData({
-                        ...formData, 
+                        ...formData,
                         delivery_address: {...formData.delivery_address, phone: e.target.value}
                       })}
                       className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="(418) 555-0199"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                     />
                   </div>
                 </div>
@@ -595,12 +614,15 @@ export default function ClientPOManager() {
                   <textarea
                     value={formData.delivery_address.special_instructions}
                     onChange={(e) => setFormData({
-                      ...formData, 
+                      ...formData,
                       delivery_address: {...formData.delivery_address, special_instructions: e.target.value}
                     })}
                     className="block w-full rounded-lg border-purple-300 dark:border-purple-700 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Instructions pour la livraison..."
                     rows="3"
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    spellCheck={true}
                   />
                 </div>
               </div>
@@ -731,6 +753,9 @@ export default function ClientPOManager() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base dark:bg-gray-800 dark:text-gray-100"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
           </div>

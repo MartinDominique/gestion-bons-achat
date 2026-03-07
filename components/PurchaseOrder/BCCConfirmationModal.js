@@ -5,9 +5,10 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.5.0
- * @date 2026-02-22
+ * @version 1.5.1
+ * @date 2026-03-07
  * @changelog
+ *   1.5.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur textarea notes
  *   1.5.0 - Ajout support dark mode
  *   1.4.0 - Ajout comptabilisation des BL (delivery_note_materials) dans colonne "Livrée"
  *   1.3.0 - Historique BCC détaillé: articles dépliables (code, qté, délai) + bouton "Renvoyer" orange
@@ -818,6 +819,9 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Message additionnel pour le client..."
                   rows={3}
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                   className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>

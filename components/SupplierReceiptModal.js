@@ -5,9 +5,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire (IN)
  *              - Décale l'historique des prix (shift) si le cost_price change
- * @version 1.2.1
- * @date 2026-02-27
+ * @version 1.2.2
+ * @date 2026-03-07
  * @changelog
+ *   1.2.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.2.1 - Ajout onFocus select sur champ quantité (auto-sélection)
  *   1.2.0 - Ajout support dark mode
  *   1.1.0 - Ajout décalage historique prix (price shift) lors de la réception AF
@@ -562,6 +563,9 @@ export default function SupplierReceiptModal({
                           onChange={(e) => updateQuantityToReceive(item.index, e.target.value)}
                           onFocus={(e) => e.target.select()}
                           disabled={item.quantity_remaining === 0}
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                           className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-center font-medium disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-400 dark:disabled:text-gray-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                           placeholder="0"
                         />
@@ -582,6 +586,9 @@ export default function SupplierReceiptModal({
                   value={supplierDeliveryNumber}
                   onChange={(e) => setSupplierDeliveryNumber(e.target.value.toUpperCase())}
                   placeholder="Ex: BL-12345, 987654..."
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
@@ -595,6 +602,9 @@ export default function SupplierReceiptModal({
                   value={receiptNotes}
                   onChange={(e) => setReceiptNotes(e.target.value)}
                   placeholder="Ex: Colis endommagé, manque 2 pièces, etc."
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   rows={2}
                 />

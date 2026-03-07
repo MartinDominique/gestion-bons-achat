@@ -5,9 +5,10 @@
  *              - Intégration TimeTracker (suivi temps) et MaterialSelector (matériaux)
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion emails et workflow signature client
- * @version 1.1.0
- * @date 2026-02-22
+ * @version 1.2.0
+ * @date 2026-03-07
  * @changelog
+ *   1.2.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.0 - Ajout support dark mode
  *   1.0.0 - Version initiale
  */
@@ -1560,6 +1561,9 @@ const getFilteredSupplierPurchases = () => {
                     setManualPOValue(e.target.value);
                     handleChange('linked_po_id', e.target.value);
                   }}
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               )}
             </div>
@@ -1649,6 +1653,9 @@ const getFilteredSupplierPurchases = () => {
                   value={description}
                   onChange={(e) => handleDescriptionChange(index, e.target.value)}
                   style={{ textTransform: 'uppercase' }}
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                 />
               </div>
               {descriptions.length > 1 && (
@@ -1689,6 +1696,9 @@ const getFilteredSupplierPurchases = () => {
             value={formData.additional_notes}
             onChange={(e) => handleChange('additional_notes', e.target.value.toUpperCase())}
             style={{ textTransform: 'uppercase' }}
+            autoCorrect="on"
+            autoCapitalize="sentences"
+            spellCheck={true}
           />
         </div>
 
@@ -1990,6 +2000,9 @@ const getFilteredSupplierPurchases = () => {
                         value={supplierSearchTerm}
                         onChange={(e) => setSupplierSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:text-gray-100"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                     </div>
                     
