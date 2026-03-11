@@ -6,9 +6,10 @@
  *              - Colonnes: N° Facture, Date, Client, Référence, Vente mat.,
  *                Vente temps, Vente dépl., Sous-total, TPS, TVQ, Total
  *              - Ligne TOTAUX en bas du rapport
- * @version 1.0.0
- * @date 2026-02-27
+ * @version 1.0.1
+ * @date 2026-03-11
  * @changelog
+ *   1.0.1 - Fix largeurs colonnes PDF dépassant la zone imprimable (colonnes coupées à droite)
  *   1.0.0 - Version initiale (Phase C — Rapport Acomba)
  */
 
@@ -17,7 +18,7 @@ import 'jspdf-autotable';
 import {
   drawHeader, drawFooter, drawSeparatorLine,
   loadLogoBase64Client, formatCurrency as pdfFormatCurrency,
-  PAGE, COLORS, FONT
+  PAGE, CONTENT_WIDTH, COLORS, FONT
 } from '../../lib/services/pdf-common';
 
 // ============================================
@@ -108,7 +109,7 @@ export async function generateAcombaReportPDF(reportData) {
   const body = invoices.map(inv => ({
     number: inv.invoice_number,
     date: formatDateShort(inv.invoice_date),
-    client: (inv.client_name || '').substring(0, 20),
+    client: (inv.client_name || '').substring(0, 18),
     reference: inv.source_number || '',
     materials: pdfFormatCurrency(inv.total_materials),
     labor: pdfFormatCurrency(inv.total_labor),
@@ -139,9 +140,10 @@ export async function generateAcombaReportPDF(reportData) {
     columns,
     body,
     theme: 'grid',
+    tableWidth: CONTENT_WIDTH,
     styles: {
-      fontSize: 6.5,
-      cellPadding: { top: 1.5, right: 1.5, bottom: 1.5, left: 1.5 },
+      fontSize: 6,
+      cellPadding: { top: 1.5, right: 1, bottom: 1.5, left: 1 },
       lineColor: COLORS.black,
       lineWidth: 0.2,
       textColor: COLORS.black,
@@ -154,20 +156,20 @@ export async function generateAcombaReportPDF(reportData) {
       textColor: COLORS.black,
       fontStyle: 'bold',
       halign: 'center',
-      fontSize: 6.5,
+      fontSize: 6,
     },
     columnStyles: {
-      number: { cellWidth: 16, halign: 'center', font: 'courier' },
-      date: { cellWidth: 18, halign: 'center' },
-      client: { cellWidth: 25 },
-      reference: { cellWidth: 20, halign: 'center', font: 'courier' },
-      materials: { cellWidth: 18, halign: 'right', font: 'courier' },
-      labor: { cellWidth: 18, halign: 'right', font: 'courier' },
-      transport: { cellWidth: 18, halign: 'right', font: 'courier' },
-      subtotal: { cellWidth: 18, halign: 'right', font: 'courier' },
-      tps: { cellWidth: 16, halign: 'right', font: 'courier' },
-      tvq: { cellWidth: 16, halign: 'right', font: 'courier' },
-      total: { cellWidth: 20, halign: 'right', font: 'courier' },
+      number: { cellWidth: 14, halign: 'center', font: 'courier' },
+      date: { cellWidth: 16, halign: 'center' },
+      client: { cellWidth: 24 },
+      reference: { cellWidth: 17, halign: 'center', font: 'courier' },
+      materials: { cellWidth: 16, halign: 'right', font: 'courier' },
+      labor: { cellWidth: 16, halign: 'right', font: 'courier' },
+      transport: { cellWidth: 16, halign: 'right', font: 'courier' },
+      subtotal: { cellWidth: 17, halign: 'right', font: 'courier' },
+      tps: { cellWidth: 13, halign: 'right', font: 'courier' },
+      tvq: { cellWidth: 13, halign: 'right', font: 'courier' },
+      total: { cellWidth: 17, halign: 'right', font: 'courier' },
     },
     margin: { left: PAGE.margin.left, right: PAGE.margin.right },
     showHead: 'everyPage',
