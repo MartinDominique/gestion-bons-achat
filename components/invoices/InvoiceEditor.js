@@ -4,10 +4,14 @@
  *              - Pré-remplit les lignes depuis un BT ou BL source
  *              - Lignes: main d'oeuvre, transport, matériaux, forfait, autre
  *              - Calculs TPS/TVQ en temps réel
+ *              - Affiche coûtant unitaire et quantité en main pour les matériaux
+ *              - Code produit cliquable pour ouvrir la fiche produit (modal)
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 1.1.0
+ * @version 2.0.0
  * @date 2026-03-12
  * @changelog
+ *   2.0.0 - Ajout coûtant unitaire + qté en main sur lignes matériaux,
+ *           code produit cliquable ouvrant modal fiche produit (lecture seule)
  *   1.1.0 - Facture envoyée (sent) verrouillée en lecture seule
  *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
@@ -16,7 +20,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock } from 'lucide-react';
+import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock, Package, History, ExternalLink } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Calcule le taux horaire selon le type de surcharge
@@ -119,6 +124,7 @@ function generateBTLines(bt, settings) {
         quantity: qty,
         unit_price: price,
         total: Math.round(qty * price * 100) / 100,
+        product_id: mat.product_id || mat.code || null,
       });
     });
   }
@@ -144,6 +150,7 @@ function generateBLLines(bl) {
         quantity: qty,
         unit_price: price,
         total: Math.round(qty * price * 100) / 100,
+        product_id: mat.product_id || null,
       });
     });
   }
@@ -166,6 +173,13 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  // Product data map: product_id → { cost_price, stock_qty, description, supplier, ... }
+  const [productDataMap, setProductDataMap] = useState({});
+  const [productModalItem, setProductModalItem] = useState(null);
+  const [productModalLoading, setProductModalLoading] = useState(false);
+  const [productModalMovements, setProductModalMovements] = useState([]);
+  const [productModalTab, setProductModalTab] = useState('info');
 
   // Tax rates from settings
   const tpsRate = settings?.tps_rate || 5.0;
@@ -216,6 +230,121 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       setNotes(settings?.invoice_footer_note || '');
     }
   }, [invoice, sourceData, source?.type, settings]);
+
+  // Fetch product data (cost_price, stock_qty) for material lines
+  useEffect(() => {
+    if (lineItems.length === 0) return;
+
+    const materialProductIds = lineItems
+      .filter(l => l.type === 'material' && l.product_id)
+      .map(l => l.product_id)
+      .filter((id, idx, arr) => arr.indexOf(id) === idx); // unique
+
+    if (materialProductIds.length === 0) return;
+
+    // Also check detail field for existing invoices that may not have product_id
+    const detailIds = lineItems
+      .filter(l => l.type === 'material' && !l.product_id && l.detail)
+      .map(l => l.detail)
+      .filter((id, idx, arr) => arr.indexOf(id) === idx);
+
+    const allIds = [...materialProductIds, ...detailIds];
+    if (allIds.length === 0) return;
+
+    const fetchProductData = async () => {
+      try {
+        // Query products table for all material product_ids
+        const { data: products } = await supabase
+          .from('products')
+          .select('product_id, description, cost_price, selling_price, stock_qty, supplier')
+          .in('product_id', allIds);
+
+        // Also check non_inventory_items
+        const { data: nonInvProducts } = await supabase
+          .from('non_inventory_items')
+          .select('product_id, description, cost_price, selling_price, stock_qty, supplier')
+          .in('product_id', allIds);
+
+        const map = {};
+        if (products) {
+          products.forEach(p => {
+            map[p.product_id] = { ...p, source: 'inventory' };
+          });
+        }
+        if (nonInvProducts) {
+          nonInvProducts.forEach(p => {
+            if (!map[p.product_id]) {
+              map[p.product_id] = { ...p, source: 'non_inventory' };
+            }
+          });
+        }
+        setProductDataMap(map);
+      } catch (err) {
+        console.error('Erreur chargement données produits:', err);
+      }
+    };
+
+    fetchProductData();
+  }, [lineItems]);
+
+  // Open product modal
+  const handleOpenProductModal = useCallback(async (productId) => {
+    if (!productId) return;
+
+    const cached = productDataMap[productId];
+    if (cached) {
+      setProductModalItem(cached);
+      setProductModalTab('info');
+      setProductModalMovements([]);
+      // Load movements
+      loadProductMovements(productId);
+    } else {
+      // Fetch from DB
+      setProductModalLoading(true);
+      try {
+        const { data: product } = await supabase
+          .from('products')
+          .select('*')
+          .eq('product_id', productId)
+          .single();
+
+        if (product) {
+          setProductModalItem({ ...product, source: 'inventory' });
+        } else {
+          const { data: nonInv } = await supabase
+            .from('non_inventory_items')
+            .select('*')
+            .eq('product_id', productId)
+            .single();
+          if (nonInv) {
+            setProductModalItem({ ...nonInv, source: 'non_inventory' });
+          }
+        }
+        setProductModalTab('info');
+        setProductModalMovements([]);
+        loadProductMovements(productId);
+      } catch (err) {
+        console.error('Erreur chargement produit:', err);
+      } finally {
+        setProductModalLoading(false);
+      }
+    }
+  }, [productDataMap]);
+
+  // Load product movements
+  const loadProductMovements = async (productId) => {
+    try {
+      const { data: movements } = await supabase
+        .from('inventory_movements')
+        .select('*')
+        .eq('product_id', productId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setProductModalMovements(movements || []);
+    } catch (err) {
+      console.error('Erreur chargement mouvements:', err);
+    }
+  };
 
   // Calculs automatiques
   const totals = useMemo(() => {
@@ -275,7 +404,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     }]);
   }, []);
 
-  // Sauvegarder
+  // Sauvegarder (ne pas inclure product_id dans les données sauvegardées — usage interne seulement)
   const handleSave = async (andSend = false) => {
     if (andSend) {
       setSending(true);
@@ -283,6 +412,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       setSaving(true);
     }
     setError(null);
+
+    // Nettoyer les line_items avant sauvegarde (retirer product_id qui est interne)
+    const cleanedLineItems = lineItems.map(({ product_id, ...rest }) => rest);
 
     try {
       let invoiceId = invoice?.id;
@@ -295,7 +427,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           body: JSON.stringify({
             invoice_date: invoiceDate,
             payment_terms: paymentTerms,
-            line_items: lineItems,
+            line_items: cleanedLineItems,
             subtotal: totals.subtotal,
             tps_rate: tpsRate,
             tvq_rate: tvqRate,
@@ -331,7 +463,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             source_number: source.type === 'bt' ? btOrBl.bt_number : btOrBl.bl_number,
             invoice_date: invoiceDate,
             payment_terms: paymentTerms,
-            line_items: lineItems,
+            line_items: cleanedLineItems,
             subtotal: totals.subtotal,
             tps_rate: tpsRate,
             tvq_rate: tvqRate,
@@ -387,6 +519,36 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(amount || 0);
+  };
+
+  // Helper: get product info for a material line
+  const getProductInfo = (line) => {
+    const pid = line.product_id || line.detail;
+    return pid ? productDataMap[pid] : null;
+  };
+
+  // Helper: format margin
+  const getMarginInfo = (costPrice, sellingPrice) => {
+    const cost = parseFloat(costPrice) || 0;
+    const sell = parseFloat(sellingPrice) || 0;
+    if (cost <= 0) return null;
+    const margin = ((sell - cost) / cost) * 100;
+    return {
+      percent: margin.toFixed(1),
+      color: margin < 10 ? 'text-red-600 dark:text-red-400' : margin < 25 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400',
+    };
+  };
+
+  // Movement type translation
+  const getMovementLabel = (type) => {
+    const labels = {
+      work_order: 'Bon de travail',
+      delivery_note: 'Bon de livraison',
+      supplier_purchase: 'Achat fournisseur',
+      direct_receipt: 'Réception directe',
+      adjustment: 'Ajustement',
+    };
+    return labels[type] || type;
   };
 
   // Source info
@@ -493,10 +655,15 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             {/* Lignes */}
             {lineItems.length === 0 ? (
               <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-                Aucune ligne. Cliquez "+ Ajouter ligne" pour commencer.
+                Aucune ligne. Cliquez &quot;+ Ajouter ligne&quot; pour commencer.
               </div>
             ) : (
-              lineItems.map((line, index) => (
+              lineItems.map((line, index) => {
+                const productInfo = line.type === 'material' ? getProductInfo(line) : null;
+                const marginInfo = productInfo ? getMarginInfo(productInfo.cost_price, line.unit_price) : null;
+                const productCode = line.product_id || line.detail;
+
+                return (
                 <div
                   key={line.id || index}
                   className={`border-t dark:border-gray-700 px-3 py-2 ${
@@ -530,6 +697,16 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         </button>
                       )}
                     </div>
+                    {/* Mobile: product code clickable */}
+                    {line.type === 'material' && productCode && (
+                      <button
+                        onClick={() => handleOpenProductModal(productCode)}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-mono flex items-center gap-1"
+                      >
+                        <Package className="w-3 h-3" />
+                        {productCode}
+                      </button>
+                    )}
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="text-xs text-gray-500 dark:text-gray-400">Qté</label>
@@ -570,83 +747,123 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         </div>
                       </div>
                     </div>
+                    {/* Mobile: cost price + stock info */}
+                    {line.type === 'material' && productInfo && (
+                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded px-2 py-1.5">
+                        <span>Coûtant: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(productInfo.cost_price)}</span></span>
+                        <span>En main: <span className="font-medium text-gray-700 dark:text-gray-300">{parseFloat(productInfo.stock_qty) || 0}</span></span>
+                        {marginInfo && (
+                          <span className={`font-medium ${marginInfo.color}`}>Marge: {marginInfo.percent}%</span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Desktop layout */}
-                  <div className="hidden sm:grid grid-cols-12 gap-2 items-center">
-                    <div className="col-span-4">
-                      <input
-                        type="text"
-                        value={line.description}
-                        onChange={(e) => updateLine(index, 'description', e.target.value)}
-                        readOnly={isLocked}
-                        className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`}
-                        placeholder="Description"
-                        autoCorrect="on"
-                        autoCapitalize="sentences"
-                        spellCheck={true}
-                      />
+                  <div className="hidden sm:block">
+                    <div className="grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-4">
+                        <input
+                          type="text"
+                          value={line.description}
+                          onChange={(e) => updateLine(index, 'description', e.target.value)}
+                          readOnly={isLocked}
+                          className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`}
+                          placeholder="Description"
+                          autoCorrect="on"
+                          autoCapitalize="sentences"
+                          spellCheck={true}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        {line.type === 'material' && productCode ? (
+                          <button
+                            onClick={() => handleOpenProductModal(productCode)}
+                            className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-600 rounded bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-left truncate flex items-center gap-1 cursor-pointer"
+                            title="Voir la fiche produit"
+                          >
+                            <Package className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="truncate font-mono text-xs">{productCode}</span>
+                          </button>
+                        ) : (
+                          <input
+                            type="text"
+                            value={line.detail || ''}
+                            onChange={(e) => updateLine(index, 'detail', e.target.value)}
+                            readOnly={isLocked}
+                            className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`}
+                            placeholder="Détail"
+                            autoCorrect="on"
+                            autoCapitalize="sentences"
+                            spellCheck={true}
+                          />
+                        )}
+                      </div>
+                      <div className="col-span-2 text-center">
+                        <input
+                          type="number"
+                          value={line.quantity}
+                          onChange={(e) => updateLine(index, 'quantity', e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          readOnly={isLocked}
+                          className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-center ${isLocked ? 'opacity-60' : ''}`}
+                          inputMode="decimal"
+                          step="0.01"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
+                        />
+                      </div>
+                      <div className="col-span-2 text-right">
+                        <input
+                          type="number"
+                          value={line.unit_price}
+                          onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          readOnly={isLocked}
+                          className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right ${isLocked ? 'opacity-60' : ''}`}
+                          inputMode="decimal"
+                          step="0.01"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
+                        />
+                      </div>
+                      <div className="col-span-1 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {formatCurrency(line.total)}
+                      </div>
+                      <div className="col-span-1 text-center">
+                        {!isLocked && (
+                          <button
+                            onClick={() => removeLine(index)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                            title="Supprimer la ligne"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <input
-                        type="text"
-                        value={line.detail || ''}
-                        onChange={(e) => updateLine(index, 'detail', e.target.value)}
-                        readOnly={isLocked}
-                        className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`}
-                        placeholder="Détail"
-                        autoCorrect="on"
-                        autoCapitalize="sentences"
-                        spellCheck={true}
-                      />
-                    </div>
-                    <div className="col-span-2 text-center">
-                      <input
-                        type="number"
-                        value={line.quantity}
-                        onChange={(e) => updateLine(index, 'quantity', e.target.value)}
-                        onFocus={(e) => e.target.select()}
-                        readOnly={isLocked}
-                        className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-center ${isLocked ? 'opacity-60' : ''}`}
-                        inputMode="decimal"
-                        step="0.01"
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                      />
-                    </div>
-                    <div className="col-span-2 text-right">
-                      <input
-                        type="number"
-                        value={line.unit_price}
-                        onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
-                        onFocus={(e) => e.target.select()}
-                        readOnly={isLocked}
-                        className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right ${isLocked ? 'opacity-60' : ''}`}
-                        inputMode="decimal"
-                        step="0.01"
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                      />
-                    </div>
-                    <div className="col-span-1 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(line.total)}
-                    </div>
-                    <div className="col-span-1 text-center">
-                      {!isLocked && (
-                        <button
-                          onClick={() => removeLine(index)}
-                          className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                          title="Supprimer la ligne"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+                    {/* Desktop: cost price + stock info row */}
+                    {line.type === 'material' && productInfo && (
+                      <div className="grid grid-cols-12 gap-2 mt-0.5">
+                        <div className="col-span-4"></div>
+                        <div className="col-span-8 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 pl-1">
+                          <span>Coûtant: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(productInfo.cost_price)}</span></span>
+                          <span>En main: <span className="font-medium text-gray-700 dark:text-gray-300">{parseFloat(productInfo.stock_qty) || 0}</span></span>
+                          {marginInfo && (
+                            <span className={`font-medium ${marginInfo.color}`}>Marge: {marginInfo.percent}%</span>
+                          )}
+                          {productInfo.supplier && (
+                            <span>Fourn.: <span className="font-medium text-gray-700 dark:text-gray-300">{productInfo.supplier}</span></span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
 
             {/* Bouton ajouter */}
@@ -738,6 +955,158 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           )}
         </div>
       </div>
+
+      {/* Modal fiche produit (lecture seule) */}
+      {productModalItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]" onClick={() => setProductModalItem(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="bg-blue-50 dark:bg-blue-950 px-5 py-3 border-b dark:border-gray-700 rounded-t-lg">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-base font-semibold text-blue-900 dark:text-blue-200 font-mono">
+                    {productModalItem.product_id}
+                  </h3>
+                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-0.5">
+                    {productModalItem.description}
+                  </p>
+                </div>
+                <button onClick={() => setProductModalItem(null)} className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900 rounded">
+                  <X className="w-5 h-5 text-blue-800 dark:text-blue-300" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex border-b dark:border-gray-700">
+              <button
+                onClick={() => setProductModalTab('info')}
+                className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  productModalTab === 'info'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <Package className="w-4 h-4 inline mr-1" />
+                Fiche
+              </button>
+              <button
+                onClick={() => setProductModalTab('movements')}
+                className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  productModalTab === 'movements'
+                    ? 'border-gray-700 dark:border-gray-300 text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <History className="w-4 h-4 inline mr-1" />
+                Mouvements
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {productModalTab === 'info' && (
+                <div className="space-y-4">
+                  {/* Prix */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Prix coûtant</div>
+                      <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {formatCurrency(productModalItem.cost_price)}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Prix vendant</div>
+                      <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {formatCurrency(productModalItem.selling_price)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Marge */}
+                  {(() => {
+                    const mi = getMarginInfo(productModalItem.cost_price, productModalItem.selling_price);
+                    if (!mi) return null;
+                    return (
+                      <div className={`text-sm font-medium ${mi.color} bg-gray-50 dark:bg-gray-800 rounded-lg p-3`}>
+                        Marge: {mi.percent}%
+                      </div>
+                    );
+                  })()}
+
+                  {/* Quantités */}
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
+                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Quantités</div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700 dark:text-gray-300">En main (stock)</span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">{parseFloat(productModalItem.stock_qty) || 0}</span>
+                    </div>
+                  </div>
+
+                  {/* Fournisseur */}
+                  {productModalItem.supplier && (
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Dernier fournisseur</div>
+                      <div className="text-sm text-gray-900 dark:text-gray-100">{productModalItem.supplier}</div>
+                    </div>
+                  )}
+
+                  {/* Source */}
+                  <div className="text-xs text-gray-400 dark:text-gray-500">
+                    Source: {productModalItem.source === 'inventory' ? 'Inventaire' : 'Non-inventaire'}
+                  </div>
+                </div>
+              )}
+
+              {productModalTab === 'movements' && (
+                <div>
+                  {productModalMovements.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">Aucun mouvement enregistré</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {productModalMovements.map((mv, idx) => (
+                        <div key={mv.id || idx} className="flex items-center justify-between text-sm border-b dark:border-gray-700 pb-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                                mv.movement_type === 'IN'
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                              }`}>
+                                {mv.movement_type}
+                              </span>
+                              <span className="text-gray-700 dark:text-gray-300">{getMovementLabel(mv.reference_type)}</span>
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              {mv.reference_number && <span>{mv.reference_number} — </span>}
+                              {new Date(mv.created_at).toLocaleDateString('fr-CA')}
+                            </div>
+                          </div>
+                          <div className={`font-medium ${
+                            mv.movement_type === 'IN' ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
+                          }`}>
+                            {mv.movement_type === 'IN' ? '+' : '-'}{mv.quantity}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t dark:border-gray-700 px-5 py-3 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+              <button
+                onClick={() => setProductModalItem(null)}
+                className="w-full px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
