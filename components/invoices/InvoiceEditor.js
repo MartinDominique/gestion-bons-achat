@@ -21,7 +21,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock, Package, History, ExternalLink } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 /**
  * Calcule le taux horaire selon le type de surcharge
