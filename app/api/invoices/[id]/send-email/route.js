@@ -6,9 +6,11 @@
  *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.1.0
- * @date 2026-02-27
+ * @version 1.2.0
+ * @date 2026-03-12
  * @changelog
+ *   1.2.0 - Ajustements PDF: labels BT/BL, référence BA, suppression N° et DÉTAILS,
+ *           TPS/TVQ numbers au bas, message propriété configurable
  *   1.1.0 - Ajout upload PDF vers Supabase Storage + pdf_url
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
@@ -42,10 +44,14 @@ function generateInvoicePDF(invoice, settings) {
   const doc = new jsPDF({ format: 'letter' });
 
   // ---- EN-TÊTE ----
+  // Label basé sur le type de source (BT ou BL)
+  const sourceLabel = invoice.source_type === 'work_order' ? 'Bon de Travail:' : 'Bon de Livraison:';
+
   const headerFields = [
-    { value: `N° ${invoice.invoice_number}` },
+    { value: invoice.invoice_number },
     { label: 'Date:', value: pdfCommon.formatDate(invoice.invoice_date) },
-    { label: 'Référence:', value: invoice.source_number || '' },
+    { label: sourceLabel, value: invoice.source_number || '' },
+    { label: 'Référence:', value: invoice.po_number || '________________' },
   ];
 
   if (invoice.payment_terms) {
@@ -67,34 +73,8 @@ function generateInvoicePDF(invoice, settings) {
         invoice.client_address || '',
       ].filter(Boolean),
     },
-    right: {
-      title: 'DÉTAILS',
-      lines: [
-        { text: `Facture: ${invoice.invoice_number}`, bold: true },
-        `Date: ${pdfCommon.formatDate(invoice.invoice_date)}`,
-        invoice.due_date ? `Échéance: ${pdfCommon.formatDate(invoice.due_date)}` : null,
-        invoice.payment_terms ? `Termes: ${invoice.payment_terms}` : null,
-      ].filter(Boolean),
-    },
     separator: true,
   });
-
-  // ---- NUMÉROS TPS/TVQ ----
-  if (settings && (settings.invoice_tps_number || settings.invoice_tvq_number)) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    if (settings.invoice_tps_number) {
-      doc.text(`TPS: ${settings.invoice_tps_number}`, pdfCommon.PAGE.margin.left, y);
-      y += 4;
-    }
-    if (settings.invoice_tvq_number) {
-      doc.text(`TVQ: ${settings.invoice_tvq_number}`, pdfCommon.PAGE.margin.left, y);
-      y += 4;
-    }
-    doc.setTextColor(0, 0, 0);
-    y += 3;
-  }
 
   // ---- TABLE DES ARTICLES ----
   const lineItems = invoice.line_items || [];
@@ -102,7 +82,6 @@ function generateInvoicePDF(invoice, settings) {
   if (lineItems.length > 0) {
     const columns = [
       { header: 'DESCRIPTION', dataKey: 'description' },
-      { header: 'DÉTAIL', dataKey: 'detail' },
       { header: 'QTÉ', dataKey: 'quantity' },
       { header: 'PRIX UNIT.', dataKey: 'unit_price' },
       { header: 'TOTAL', dataKey: 'total' },
@@ -110,7 +89,6 @@ function generateInvoicePDF(invoice, settings) {
 
     const body = lineItems.map(line => ({
       description: line.description || '',
-      detail: line.detail || '',
       quantity: line.quantity != null ? String(line.quantity) : '',
       unit_price: line.unit_price != null ? pdfCommon.formatCurrency(line.unit_price) : '',
       total: line.total != null ? pdfCommon.formatCurrency(line.total) : '',
@@ -118,7 +96,6 @@ function generateInvoicePDF(invoice, settings) {
 
     const columnStyles = {
       description: { cellWidth: 'auto' },
-      detail: { cellWidth: 35, halign: 'left' },
       quantity: { cellWidth: 18, halign: 'center' },
       unit_price: { cellWidth: 25, halign: 'right' },
       total: { cellWidth: 28, halign: 'right' },
@@ -136,10 +113,11 @@ function generateInvoicePDF(invoice, settings) {
   const tpsLabel = `TPS (${invoice.tps_rate || 5}%)`;
   const tvqLabel = `TVQ (${invoice.tvq_rate || 9.975}%)`;
 
-  y = pdfCommon.checkPageBreak(doc, y, 45);
+  y = pdfCommon.checkPageBreak(doc, y, 55);
 
   const rightX = pdfCommon.PAGE.width - pdfCommon.PAGE.margin.right;
   const labelX = rightX - 65;
+  const leftX = pdfCommon.PAGE.margin.left;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(pdfCommon.FONT.body);
@@ -150,12 +128,26 @@ function generateInvoicePDF(invoice, settings) {
   doc.text(pdfCommon.formatCurrency(invoice.subtotal), rightX, y, { align: 'right' });
   y += 6;
 
-  // TPS
+  // TPS — numéro TPS à gauche, montant à droite
+  if (settings && settings.invoice_tps_number) {
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`TPS: ${settings.invoice_tps_number}`, leftX, y);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(pdfCommon.FONT.body);
+  }
   doc.text(tpsLabel + ':', labelX, y);
   doc.text(pdfCommon.formatCurrency(invoice.tps_amount), rightX, y, { align: 'right' });
   y += 6;
 
-  // TVQ
+  // TVQ — numéro TVQ à gauche, montant à droite
+  if (settings && settings.invoice_tvq_number) {
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`TVQ: ${settings.invoice_tvq_number}`, leftX, y);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(pdfCommon.FONT.body);
+  }
   doc.text(tvqLabel + ':', labelX, y);
   doc.text(pdfCommon.formatCurrency(invoice.tvq_amount), rightX, y, { align: 'right' });
   y += 6;
@@ -193,7 +185,18 @@ function generateInvoicePDF(invoice, settings) {
     doc.setTextColor(100, 100, 100);
     const footerLines = doc.splitTextToSize(settings.invoice_footer_note, pdfCommon.CONTENT_WIDTH);
     doc.text(footerLines, pdfCommon.PAGE.margin.left, y);
+    y += footerLines.length * 4 + 3;
     doc.setTextColor(0, 0, 0);
+  }
+
+  // Message de propriété (settings)
+  if (settings && settings.invoice_ownership_note) {
+    y = pdfCommon.checkPageBreak(doc, y, 15);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    const ownershipLines = doc.splitTextToSize(settings.invoice_ownership_note, pdfCommon.CONTENT_WIDTH);
+    doc.text(ownershipLines, pdfCommon.PAGE.margin.left, y);
   }
 
   // ---- FOOTER (toutes les pages) ----
@@ -235,6 +238,25 @@ export async function POST(request, { params }) {
       .select('*')
       .eq('id', 1)
       .single();
+
+    // 2b. Récupérer le numéro de BA (purchase order) lié au BT/BL source
+    if (invoice.source_type && invoice.source_id) {
+      const sourceTable = invoice.source_type === 'work_order' ? 'work_orders' : 'delivery_notes';
+      const { data: sourceDoc } = await supabaseAdmin
+        .from(sourceTable)
+        .select('linked_po_id')
+        .eq('id', invoice.source_id)
+        .single();
+
+      if (sourceDoc?.linked_po_id) {
+        const { data: po } = await supabaseAdmin
+          .from('purchase_orders')
+          .select('po_number')
+          .eq('id', sourceDoc.linked_po_id)
+          .single();
+        invoice.po_number = po?.po_number || null;
+      }
+    }
 
     // 3. Déterminer les adresses email (cascade)
     let emailAddresses = [];
