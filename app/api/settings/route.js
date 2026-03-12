@@ -4,9 +4,10 @@
  *              - GET: Récupère les paramètres (taux horaires, taxes, facturation)
  *              - PUT: Met à jour les paramètres
  *              - Table singleton (id=1 toujours)
- * @version 1.0.0
- * @date 2026-02-27
+ * @version 1.1.0
+ * @date 2026-03-12
  * @changelog
+ *   1.1.0 - Ajout champ invoice_ownership_note (message propriété marchandises)
  *   1.0.0 - Version initiale (Phase A Fondations)
  */
 
@@ -44,6 +45,7 @@ export async function GET() {
             invoice_tvq_number: '',
             default_payment_terms: 'Net 30 jours',
             invoice_footer_note: '',
+            invoice_ownership_note: '',
             invoice_next_number: 1,
           }
         });
@@ -80,6 +82,7 @@ export async function PUT(request) {
       'invoice_tvq_number',
       'default_payment_terms',
       'invoice_footer_note',
+      'invoice_ownership_note',
       'invoice_next_number',
     ];
 

@@ -5,9 +5,10 @@
  *              - Lignes: main d'oeuvre, transport, matériaux, forfait, autre
  *              - Calculs TPS/TVQ en temps réel
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 1.0.1
- * @date 2026-03-07
+ * @version 1.1.0
+ * @date 2026-03-12
  * @changelog
+ *   1.1.0 - Facture envoyée (sent) verrouillée en lecture seule
  *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
@@ -15,7 +16,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock } from 'lucide-react';
 
 /**
  * Calcule le taux horaire selon le type de surcharge
@@ -169,6 +170,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   // Tax rates from settings
   const tpsRate = settings?.tps_rate || 5.0;
   const tvqRate = settings?.tvq_rate || 9.975;
+
+  // Facture envoyée = verrouillée en lecture seule
+  const isLocked = invoice?.status === 'sent' || invoice?.status === 'paid';
 
   // Initialize from source or existing invoice
   useEffect(() => {
@@ -414,6 +418,14 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
         <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
 
+          {/* Bannière lecture seule */}
+          {isLocked && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+              <Lock className="w-4 h-4 flex-shrink-0" />
+              Cette facture a été envoyée et ne peut plus être modifiée.
+            </div>
+          )}
+
           {/* Messages */}
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
@@ -435,7 +447,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 type="date"
                 value={invoiceDate}
                 onChange={(e) => setInvoiceDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                disabled={isLocked}
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
             <div>
@@ -443,7 +456,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               <select
                 value={paymentTerms}
                 onChange={(e) => setPaymentTerms(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                disabled={isLocked}
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 <option value="Net 30 jours">Net 30 jours</option>
                 <option value="2% 10 Net 30 jours">2% 10 Net 30 jours</option>
@@ -451,12 +465,13 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               </select>
             </div>
             <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className={`flex items-center gap-2 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   checked={isPrixJobe}
                   onChange={(e) => setIsPrixJobe(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500"
+                  disabled={isLocked}
+                  className={`w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500 ${isLocked ? 'opacity-60' : ''}`}
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Prix forfaitaire (Jobe)</span>
               </label>
@@ -499,18 +514,21 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         type="text"
                         value={line.description}
                         onChange={(e) => updateLine(index, 'description', e.target.value)}
-                        className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm"
+                        readOnly={isLocked}
+                        className={`flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`}
                         placeholder="Description"
                         autoCorrect="on"
                         autoCapitalize="sentences"
                         spellCheck={true}
                       />
-                      <button
-                        onClick={() => removeLine(index)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isLocked && (
+                        <button
+                          onClick={() => removeLine(index)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
@@ -520,7 +538,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                           value={line.quantity}
                           onChange={(e) => updateLine(index, 'quantity', e.target.value)}
                           onFocus={(e) => e.target.select()}
-                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-center"
+                          readOnly={isLocked}
+                          className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-center ${isLocked ? 'opacity-60' : ''}`}
                           inputMode="decimal"
                           step="0.01"
                           autoCorrect="off"
@@ -535,7 +554,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                           value={line.unit_price}
                           onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
                           onFocus={(e) => e.target.select()}
-                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right"
+                          readOnly={isLocked}
+                          className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right ${isLocked ? 'opacity-60' : ''}`}
                           inputMode="decimal"
                           step="0.01"
                           autoCorrect="off"
@@ -559,7 +579,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         type="text"
                         value={line.description}
                         onChange={(e) => updateLine(index, 'description', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm"
+                        readOnly={isLocked}
+                        className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`}
                         placeholder="Description"
                         autoCorrect="on"
                         autoCapitalize="sentences"
@@ -571,7 +592,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         type="text"
                         value={line.detail || ''}
                         onChange={(e) => updateLine(index, 'detail', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm"
+                        readOnly={isLocked}
+                        className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`}
                         placeholder="Détail"
                         autoCorrect="on"
                         autoCapitalize="sentences"
@@ -584,7 +606,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         value={line.quantity}
                         onChange={(e) => updateLine(index, 'quantity', e.target.value)}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-center"
+                        readOnly={isLocked}
+                        className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-center ${isLocked ? 'opacity-60' : ''}`}
                         inputMode="decimal"
                         step="0.01"
                         autoCorrect="off"
@@ -598,7 +621,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         value={line.unit_price}
                         onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right"
+                        readOnly={isLocked}
+                        className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right ${isLocked ? 'opacity-60' : ''}`}
                         inputMode="decimal"
                         step="0.01"
                         autoCorrect="off"
@@ -610,13 +634,15 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                       {formatCurrency(line.total)}
                     </div>
                     <div className="col-span-1 text-center">
-                      <button
-                        onClick={() => removeLine(index)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                        title="Supprimer la ligne"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isLocked && (
+                        <button
+                          onClick={() => removeLine(index)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                          title="Supprimer la ligne"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -624,14 +650,16 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             )}
 
             {/* Bouton ajouter */}
-            <div className="border-t dark:border-gray-700 px-3 py-2">
-              <button
-                onClick={addLine}
-                className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" /> Ajouter ligne
-              </button>
-            </div>
+            {!isLocked && (
+              <div className="border-t dark:border-gray-700 px-3 py-2">
+                <button
+                  onClick={addLine}
+                  className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" /> Ajouter ligne
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Totaux */}
@@ -670,7 +698,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+              readOnly={isLocked}
+              className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm ${isLocked ? 'opacity-60' : ''}`}
               placeholder="Notes optionnelles..."
               autoCorrect="on"
               autoCapitalize="sentences"
@@ -685,24 +714,28 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             onClick={() => onClose(false)}
             className="px-4 py-2.5 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
           >
-            Annuler
+            {isLocked ? 'Fermer' : 'Annuler'}
           </button>
-          <button
-            onClick={() => handleSave(false)}
-            disabled={saving || sending}
-            className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-          </button>
-          <button
-            onClick={() => handleSave(true)}
-            disabled={saving || sending}
-            className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            <Send className="w-4 h-4" />
-            {sending ? 'Envoi...' : 'Sauvegarder & Envoyer'}
-          </button>
+          {!isLocked && (
+            <>
+              <button
+                onClick={() => handleSave(false)}
+                disabled={saving || sending}
+                className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              </button>
+              <button
+                onClick={() => handleSave(true)}
+                disabled={saving || sending}
+                className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+                {sending ? 'Envoi...' : 'Sauvegarder & Envoyer'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
