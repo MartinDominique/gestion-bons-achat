@@ -7,9 +7,11 @@
  *              - Affiche coûtant unitaire et quantité en main pour les matériaux
  *              - Code produit cliquable ouvrant le vrai modal d'inventaire (éditable)
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 2.1.0
- * @date 2026-03-12
+ * @version 2.2.0
+ * @date 2026-03-13
  * @changelog
+ *   2.2.0 - Actualisation auto du prix vendant sur les lignes facture après modification
+ *           du produit dans le modal inventaire (coûtant, vendant, qté en main)
  *   2.1.0 - Modal produit remplacé par le vrai modal d'inventaire (éditable, 3 onglets)
  *           Fix affichage coûtant/qté en main sur lignes matériaux
  *   2.0.0 - Ajout coûtant unitaire + qté en main sur lignes matériaux,
@@ -367,10 +369,24 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
       if (saveError) throw saveError;
 
-      // Update local product data map
+      // Update local product data map + mettre à jour le prix vendant sur les lignes de facture
       if (data && data.length > 0) {
         const updatedProduct = { ...data[0], _source: editingProduct._source };
         setProductDataMap(prev => ({ ...prev, [editingProduct.product_id]: updatedProduct }));
+
+        // Actualiser unit_price sur toutes les lignes matériaux qui utilisent ce produit
+        const newSellingPrice = parseFloat(updatedProduct.selling_price) || 0;
+        setLineItems(prev => prev.map(line => {
+          if (line.type !== 'material') return line;
+          const pid = line.product_id || line.detail;
+          if (pid !== editingProduct.product_id) return line;
+          const qty = parseFloat(line.quantity) || 0;
+          return {
+            ...line,
+            unit_price: newSellingPrice,
+            total: Math.round(qty * newSellingPrice * 100) / 100,
+          };
+        }));
       }
 
       setEditingProduct(null);
