@@ -5,11 +5,13 @@
  *              - Lignes: main d'oeuvre, transport, matériaux, forfait, autre
  *              - Calculs TPS/TVQ en temps réel
  *              - Affiche coûtant unitaire et quantité en main pour les matériaux
- *              - Code produit cliquable pour ouvrir la fiche produit (modal)
+ *              - Code produit cliquable ouvrant le vrai modal d'inventaire (éditable)
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 2.0.0
+ * @version 2.1.0
  * @date 2026-03-12
  * @changelog
+ *   2.1.0 - Modal produit remplacé par le vrai modal d'inventaire (éditable, 3 onglets)
+ *           Fix affichage coûtant/qté en main sur lignes matériaux
  *   2.0.0 - Ajout coûtant unitaire + qté en main sur lignes matériaux,
  *           code produit cliquable ouvrant modal fiche produit (lecture seule)
  *   1.1.0 - Facture envoyée (sent) verrouillée en lecture seule
@@ -20,8 +22,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock, Package, History, ExternalLink } from 'lucide-react';
+import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
 
 /**
  * Calcule le taux horaire selon le type de surcharge
@@ -96,7 +99,6 @@ function generateBTLines(bt, settings) {
           session_date: entry.date,
         });
       } else if (entry.include_transport_fee && transportFee === 0) {
-        // Transport sans montant — Dominique éditera manuellement
         lines.push({
           id: `transport-${entry.date}-${idx}`,
           type: 'transport',
@@ -116,15 +118,16 @@ function generateBTLines(bt, settings) {
     bt.materials.forEach((mat) => {
       const qty = mat.quantity || 0;
       const price = mat.unit_price || mat.product?.selling_price || 0;
+      const pid = mat.product_id || mat.code || null;
       lines.push({
-        id: `mat-${mat.product_id || mat.id || Math.random()}`,
+        id: `mat-${pid || mat.id || Math.random()}`,
         type: 'material',
         description: mat.description || mat.product?.description || 'Article',
         detail: mat.product_code || mat.code || mat.product_id || '',
         quantity: qty,
         unit_price: price,
         total: Math.round(qty * price * 100) / 100,
-        product_id: mat.product_id || mat.code || null,
+        product_id: pid,
       });
     });
   }
@@ -142,15 +145,16 @@ function generateBLLines(bl) {
     bl.materials.forEach((mat) => {
       const qty = mat.quantity || 0;
       const price = mat.unit_price || 0;
+      const pid = mat.product_id || null;
       lines.push({
-        id: `mat-${mat.product_id || mat.id || Math.random()}`,
+        id: `mat-${pid || mat.id || Math.random()}`,
         type: 'material',
         description: mat.description || 'Article',
         detail: mat.product_code || mat.product_id || '',
         quantity: qty,
         unit_price: price,
         total: Math.round(qty * price * 100) / 100,
-        product_id: mat.product_id || null,
+        product_id: pid,
       });
     });
   }
@@ -174,12 +178,17 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Product data map: product_id → { cost_price, stock_qty, description, supplier, ... }
+  // Product data map: product_id → { cost_price, stock_qty, ... }
   const [productDataMap, setProductDataMap] = useState({});
-  const [productModalItem, setProductModalItem] = useState(null);
-  const [productModalLoading, setProductModalLoading] = useState(false);
-  const [productModalMovements, setProductModalMovements] = useState([]);
-  const [productModalTab, setProductModalTab] = useState('info');
+
+  // Product modal (vrai modal inventaire éditable)
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productEditForm, setProductEditForm] = useState({ description: '', supplier: '', cost_price: '', selling_price: '', stock_qty: '' });
+  const [productSaving, setProductSaving] = useState(false);
+  const [productModalTab, setProductModalTab] = useState('edit');
+  const [productMarginPercent, setProductMarginPercent] = useState('');
+  const [productHistoryMovements, setProductHistoryMovements] = useState([]);
+  const [productHistoryLoading, setProductHistoryLoading] = useState(false);
 
   // Tax rates from settings
   const tpsRate = settings?.tps_rate || 5.0;
@@ -191,20 +200,17 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   // Initialize from source or existing invoice
   useEffect(() => {
     if (invoice) {
-      // Editing existing invoice
       setLineItems(invoice.line_items || []);
       setInvoiceDate(invoice.invoice_date || new Date().toISOString().split('T')[0]);
       setPaymentTerms(invoice.payment_terms || 'Net 30 jours');
       setNotes(invoice.notes || '');
       setIsPrixJobe(invoice.is_prix_jobe || false);
     } else if (sourceData) {
-      // Creating from BT or BL
       const btOrBl = sourceData;
       const isPJ = btOrBl.is_prix_jobe || false;
       setIsPrixJobe(isPJ);
 
       if (isPJ) {
-        // Prix Jobe: une seule ligne forfaitaire
         setLineItems([{
           id: 'forfait-1',
           type: 'forfait',
@@ -215,18 +221,14 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           total: 0,
         }]);
       } else {
-        // Générer les lignes selon le type
         const lines = source.type === 'bt'
           ? generateBTLines(btOrBl, settings)
           : generateBLLines(btOrBl);
         setLineItems(lines);
       }
 
-      // Déterminer les conditions de paiement (client override → settings default)
       const clientTerms = btOrBl.client?.payment_terms;
       setPaymentTerms(clientTerms || settings?.default_payment_terms || 'Net 30 jours');
-
-      // Notes par défaut
       setNotes(settings?.invoice_footer_note || '');
     }
   }, [invoice, sourceData, source?.type, settings]);
@@ -235,47 +237,35 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   useEffect(() => {
     if (lineItems.length === 0) return;
 
-    const materialProductIds = lineItems
-      .filter(l => l.type === 'material' && l.product_id)
-      .map(l => l.product_id)
-      .filter((id, idx, arr) => arr.indexOf(id) === idx); // unique
+    // Collect all product_ids from material lines
+    const allIds = [];
+    lineItems.forEach(l => {
+      if (l.type !== 'material') return;
+      const pid = l.product_id || l.detail;
+      if (pid && !allIds.includes(pid)) allIds.push(pid);
+    });
 
-    if (materialProductIds.length === 0) return;
-
-    // Also check detail field for existing invoices that may not have product_id
-    const detailIds = lineItems
-      .filter(l => l.type === 'material' && !l.product_id && l.detail)
-      .map(l => l.detail)
-      .filter((id, idx, arr) => arr.indexOf(id) === idx);
-
-    const allIds = [...materialProductIds, ...detailIds];
     if (allIds.length === 0) return;
 
     const fetchProductData = async () => {
       try {
-        // Query products table for all material product_ids
         const { data: products } = await supabase
           .from('products')
-          .select('product_id, description, cost_price, selling_price, stock_qty, supplier')
+          .select('product_id, description, cost_price, selling_price, stock_qty, supplier, cost_price_1st, selling_price_1st, cost_price_2nd, selling_price_2nd, cost_price_3rd, selling_price_3rd')
           .in('product_id', allIds);
 
-        // Also check non_inventory_items
         const { data: nonInvProducts } = await supabase
           .from('non_inventory_items')
-          .select('product_id, description, cost_price, selling_price, stock_qty, supplier')
+          .select('product_id, description, cost_price, selling_price, stock_qty, supplier, cost_price_1st, selling_price_1st, cost_price_2nd, selling_price_2nd, cost_price_3rd, selling_price_3rd')
           .in('product_id', allIds);
 
         const map = {};
         if (products) {
-          products.forEach(p => {
-            map[p.product_id] = { ...p, source: 'inventory' };
-          });
+          products.forEach(p => { map[p.product_id] = { ...p, _source: 'products' }; });
         }
         if (nonInvProducts) {
           nonInvProducts.forEach(p => {
-            if (!map[p.product_id]) {
-              map[p.product_id] = { ...p, source: 'non_inventory' };
-            }
+            if (!map[p.product_id]) map[p.product_id] = { ...p, _source: 'non_inventory_items' };
           });
         }
         setProductDataMap(map);
@@ -287,63 +277,115 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     fetchProductData();
   }, [lineItems]);
 
-  // Open product modal
+  // Open product modal (same as InventoryManager)
   const handleOpenProductModal = useCallback(async (productId) => {
     if (!productId) return;
 
-    const cached = productDataMap[productId];
-    if (cached) {
-      setProductModalItem(cached);
-      setProductModalTab('info');
-      setProductModalMovements([]);
-      // Load movements
-      loadProductMovements(productId);
-    } else {
-      // Fetch from DB
-      setProductModalLoading(true);
-      try {
-        const { data: product } = await supabase
-          .from('products')
+    // Try to find from cache first, otherwise fetch
+    let product = productDataMap[productId];
+
+    if (!product) {
+      const { data } = await supabase
+        .from('products')
+        .select('*')
+        .eq('product_id', productId)
+        .single();
+
+      if (data) {
+        product = { ...data, _source: 'products' };
+      } else {
+        const { data: nonInv } = await supabase
+          .from('non_inventory_items')
           .select('*')
           .eq('product_id', productId)
           .single();
-
-        if (product) {
-          setProductModalItem({ ...product, source: 'inventory' });
-        } else {
-          const { data: nonInv } = await supabase
-            .from('non_inventory_items')
-            .select('*')
-            .eq('product_id', productId)
-            .single();
-          if (nonInv) {
-            setProductModalItem({ ...nonInv, source: 'non_inventory' });
-          }
+        if (nonInv) {
+          product = { ...nonInv, _source: 'non_inventory_items' };
         }
-        setProductModalTab('info');
-        setProductModalMovements([]);
-        loadProductMovements(productId);
-      } catch (err) {
-        console.error('Erreur chargement produit:', err);
-      } finally {
-        setProductModalLoading(false);
       }
     }
-  }, [productDataMap]);
 
-  // Load product movements
-  const loadProductMovements = async (productId) => {
+    if (!product) return;
+
+    setEditingProduct(product);
+    setProductEditForm({
+      description: product.description || '',
+      supplier: product.supplier || '',
+      cost_price: product.cost_price?.toString() || '',
+      selling_price: product.selling_price?.toString() || '',
+      stock_qty: product.stock_qty?.toString() || '',
+    });
+    setProductModalTab('edit');
+    setProductMarginPercent('');
+
+    // Load movement history
+    setProductHistoryLoading(true);
+    setProductHistoryMovements([]);
     try {
       const { data: movements } = await supabase
         .from('inventory_movements')
         .select('*')
         .eq('product_id', productId)
         .order('created_at', { ascending: false })
-        .limit(20);
-      setProductModalMovements(movements || []);
+        .limit(100);
+      setProductHistoryMovements(movements || []);
     } catch (err) {
-      console.error('Erreur chargement mouvements:', err);
+      console.error('Erreur chargement historique:', err);
+    } finally {
+      setProductHistoryLoading(false);
     }
+  }, [productDataMap]);
+
+  // Save product changes (same logic as InventoryManager)
+  const saveProductChanges = async () => {
+    if (!editingProduct) return;
+
+    try {
+      setProductSaving(true);
+      const tableName = editingProduct._source === 'products' ? 'products' : 'non_inventory_items';
+
+      const updates = {
+        description: productEditForm.description.trim().toUpperCase(),
+        supplier: productEditForm.supplier.trim() || null,
+        cost_price: parseFloat(productEditForm.cost_price) || 0,
+        selling_price: parseFloat(productEditForm.selling_price) || 0,
+        stock_qty: parseInt(productEditForm.stock_qty) || 0,
+      };
+
+      // Price shift
+      const priceShiftUpdates = buildPriceShiftUpdates(editingProduct, {
+        cost_price: updates.cost_price,
+        selling_price: updates.selling_price,
+      });
+      Object.assign(updates, priceShiftUpdates);
+
+      const { data, error: saveError } = await supabase
+        .from(tableName)
+        .update(updates)
+        .eq('product_id', editingProduct.product_id)
+        .select();
+
+      if (saveError) throw saveError;
+
+      // Update local product data map
+      if (data && data.length > 0) {
+        const updatedProduct = { ...data[0], _source: editingProduct._source };
+        setProductDataMap(prev => ({ ...prev, [editingProduct.product_id]: updatedProduct }));
+      }
+
+      setEditingProduct(null);
+    } catch (err) {
+      console.error('Erreur sauvegarde produit:', err);
+    } finally {
+      setProductSaving(false);
+    }
+  };
+
+  const closeProductModal = () => {
+    setEditingProduct(null);
+    setProductEditForm({ description: '', supplier: '', cost_price: '', selling_price: '', stock_qty: '' });
+    setProductModalTab('edit');
+    setProductMarginPercent('');
   };
 
   // Calculs automatiques
@@ -353,45 +395,32 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     const tvq = Math.round(subtotal * (tvqRate / 100) * 100) / 100;
     const total = Math.round((subtotal + tps + tvq) * 100) / 100;
 
-    // Ventilation
-    const totalLabor = lineItems
-      .filter(l => l.type === 'labor')
-      .reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0);
-    const totalTransport = lineItems
-      .filter(l => l.type === 'transport')
-      .reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0);
-    const totalMaterials = lineItems
-      .filter(l => l.type === 'material')
-      .reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0);
+    const totalLabor = lineItems.filter(l => l.type === 'labor').reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0);
+    const totalTransport = lineItems.filter(l => l.type === 'transport').reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0);
+    const totalMaterials = lineItems.filter(l => l.type === 'material').reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0);
 
     return { subtotal, tps, tvq, total, totalLabor, totalTransport, totalMaterials };
   }, [lineItems, tpsRate, tvqRate]);
 
-  // Modifier une ligne
   const updateLine = useCallback((index, field, value) => {
     setLineItems(prev => {
       const updated = [...prev];
       const line = { ...updated[index] };
       line[field] = value;
-
-      // Recalculer le total si quantité ou prix change
       if (field === 'quantity' || field === 'unit_price') {
         const qty = parseFloat(field === 'quantity' ? value : line.quantity) || 0;
         const price = parseFloat(field === 'unit_price' ? value : line.unit_price) || 0;
         line.total = Math.round(qty * price * 100) / 100;
       }
-
       updated[index] = line;
       return updated;
     });
   }, []);
 
-  // Supprimer une ligne
   const removeLine = useCallback((index) => {
     setLineItems(prev => prev.filter((_, i) => i !== index));
   }, []);
 
-  // Ajouter une ligne manuelle
   const addLine = useCallback(() => {
     setLineItems(prev => [...prev, {
       id: `other-${Date.now()}`,
@@ -404,23 +433,17 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     }]);
   }, []);
 
-  // Sauvegarder (ne pas inclure product_id dans les données sauvegardées — usage interne seulement)
+  // Sauvegarder facture (retirer product_id des line_items avant sauvegarde)
   const handleSave = async (andSend = false) => {
-    if (andSend) {
-      setSending(true);
-    } else {
-      setSaving(true);
-    }
+    if (andSend) { setSending(true); } else { setSaving(true); }
     setError(null);
 
-    // Nettoyer les line_items avant sauvegarde (retirer product_id qui est interne)
     const cleanedLineItems = lineItems.map(({ product_id, ...rest }) => rest);
 
     try {
       let invoiceId = invoice?.id;
 
       if (isEditing) {
-        // Mise à jour
         const res = await fetch(`/api/invoices/${invoiceId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -444,12 +467,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         const data = await res.json();
         if (!data.success) {
           setError(data.error || 'Erreur mise à jour');
-          setSaving(false);
-          setSending(false);
+          setSaving(false); setSending(false);
           return;
         }
       } else {
-        // Création
         const btOrBl = sourceData;
         const res = await fetch('/api/invoices', {
           method: 'POST',
@@ -480,14 +501,12 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         const data = await res.json();
         if (!data.success) {
           setError(data.error || 'Erreur création');
-          setSaving(false);
-          setSending(false);
+          setSaving(false); setSending(false);
           return;
         }
         invoiceId = data.data.id;
       }
 
-      // Envoyer par email si demandé
       if (andSend && invoiceId) {
         const sendRes = await fetch(`/api/invoices/${invoiceId}/send-email`, {
           method: 'POST',
@@ -496,16 +515,13 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         });
         const sendData = await sendRes.json();
         if (!sendData.success) {
-          // Facture sauvegardée mais envoi échoué
           setError(`Facture sauvegardée, mais erreur envoi: ${sendData.error}`);
-          setSaving(false);
-          setSending(false);
+          setSaving(false); setSending(false);
           return;
         }
         setSuccess(sendData.message || 'Facture envoyée');
       }
 
-      // Fermer après un court délai pour montrer le succès
       setTimeout(() => onClose(true), 500);
 
     } catch (err) {
@@ -521,37 +537,36 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     return new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(amount || 0);
   };
 
+  const formatMovementDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('fr-CA', {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  };
+
+  const getMarginColor = (costPrice, sellingPrice) => {
+    const cost = parseFloat(costPrice) || 0;
+    const selling = parseFloat(sellingPrice) || 0;
+    if (cost === 0) return 'text-gray-400';
+    const margin = ((selling - cost) / cost) * 100;
+    if (margin < 10) return 'text-red-600 dark:text-red-400';
+    if (margin < 25) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-green-600 dark:text-green-400';
+  };
+
+  const getMarginPercentage = (costPrice, sellingPrice) => {
+    const cost = parseFloat(costPrice) || 0;
+    const selling = parseFloat(sellingPrice) || 0;
+    if (cost === 0) return '-%';
+    return `${(((selling - cost) / cost) * 100).toFixed(1)}%`;
+  };
+
   // Helper: get product info for a material line
   const getProductInfo = (line) => {
     const pid = line.product_id || line.detail;
     return pid ? productDataMap[pid] : null;
   };
 
-  // Helper: format margin
-  const getMarginInfo = (costPrice, sellingPrice) => {
-    const cost = parseFloat(costPrice) || 0;
-    const sell = parseFloat(sellingPrice) || 0;
-    if (cost <= 0) return null;
-    const margin = ((sell - cost) / cost) * 100;
-    return {
-      percent: margin.toFixed(1),
-      color: margin < 10 ? 'text-red-600 dark:text-red-400' : margin < 25 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400',
-    };
-  };
-
-  // Movement type translation
-  const getMovementLabel = (type) => {
-    const labels = {
-      work_order: 'Bon de travail',
-      delivery_note: 'Bon de livraison',
-      supplier_purchase: 'Achat fournisseur',
-      direct_receipt: 'Réception directe',
-      adjustment: 'Ajustement',
-    };
-    return labels[type] || type;
-  };
-
-  // Source info
   const sourceNumber = invoice?.source_number || (sourceData && (source.type === 'bt' ? sourceData.bt_number : sourceData.bl_number)) || '';
   const clientName = invoice?.client_name || sourceData?.client?.name || sourceData?.client_name || '';
 
@@ -580,7 +595,6 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
         <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
 
-          {/* Bannière lecture seule */}
           {isLocked && (
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
               <Lock className="w-4 h-4 flex-shrink-0" />
@@ -588,7 +602,6 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             </div>
           )}
 
-          {/* Messages */}
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -652,7 +665,6 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               <div className="col-span-1 text-center"></div>
             </div>
 
-            {/* Lignes */}
             {lineItems.length === 0 ? (
               <div className="p-6 text-center text-gray-500 dark:text-gray-400">
                 Aucune ligne. Cliquez &quot;+ Ajouter ligne&quot; pour commencer.
@@ -660,7 +672,6 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             ) : (
               lineItems.map((line, index) => {
                 const productInfo = line.type === 'material' ? getProductInfo(line) : null;
-                const marginInfo = productInfo ? getMarginInfo(productInfo.cost_price, line.unit_price) : null;
                 const productCode = line.product_id || line.detail;
 
                 return (
@@ -752,9 +763,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                       <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded px-2 py-1.5">
                         <span>Coûtant: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(productInfo.cost_price)}</span></span>
                         <span>En main: <span className="font-medium text-gray-700 dark:text-gray-300">{parseFloat(productInfo.stock_qty) || 0}</span></span>
-                        {marginInfo && (
-                          <span className={`font-medium ${marginInfo.color}`}>Marge: {marginInfo.percent}%</span>
-                        )}
+                        <span className={`font-medium ${getMarginColor(productInfo.cost_price, line.unit_price)}`}>
+                          {getMarginPercentage(productInfo.cost_price, line.unit_price)}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -851,9 +862,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         <div className="col-span-8 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 pl-1">
                           <span>Coûtant: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(productInfo.cost_price)}</span></span>
                           <span>En main: <span className="font-medium text-gray-700 dark:text-gray-300">{parseFloat(productInfo.stock_qty) || 0}</span></span>
-                          {marginInfo && (
-                            <span className={`font-medium ${marginInfo.color}`}>Marge: {marginInfo.percent}%</span>
-                          )}
+                          <span className={`font-medium ${getMarginColor(productInfo.cost_price, line.unit_price)}`}>
+                            Marge: {getMarginPercentage(productInfo.cost_price, line.unit_price)}
+                          </span>
                           {productInfo.supplier && (
                             <span>Fourn.: <span className="font-medium text-gray-700 dark:text-gray-300">{productInfo.supplier}</span></span>
                           )}
@@ -866,7 +877,6 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               })
             )}
 
-            {/* Bouton ajouter */}
             {!isLocked && (
               <div className="border-t dark:border-gray-700 px-3 py-2">
                 <button
@@ -900,7 +910,6 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               </div>
             </div>
 
-            {/* Ventilation */}
             <div className="mt-3 pt-3 border-t dark:border-gray-600 flex gap-4 text-xs text-gray-500 dark:text-gray-400 justify-end flex-wrap">
               <span>M.O.: {formatCurrency(totals.totalLabor)}</span>
               <span>Transport: {formatCurrency(totals.totalTransport)}</span>
@@ -956,44 +965,44 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         </div>
       </div>
 
-      {/* Modal fiche produit (lecture seule) */}
-      {productModalItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]" onClick={() => setProductModalItem(null)}>
-          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div className="bg-blue-50 dark:bg-blue-950 px-5 py-3 border-b dark:border-gray-700 rounded-t-lg">
+      {/* ====== Modal produit — Vrai modal inventaire (éditable, 3 onglets) ====== */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl max-h-[95vh] flex flex-col shadow-xl">
+            {/* Header */}
+            <div className="bg-blue-50 dark:bg-blue-950 px-6 py-4 border-b dark:border-gray-700">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-base font-semibold text-blue-900 dark:text-blue-200 font-mono">
-                    {productModalItem.product_id}
+                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-200">
+                    {editingProduct.product_id}
                   </h3>
-                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-0.5">
-                    {productModalItem.description}
+                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                    {editingProduct.description}
                   </p>
                 </div>
-                <button onClick={() => setProductModalItem(null)} className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900 rounded">
+                <button onClick={closeProductModal} className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900 rounded">
                   <X className="w-5 h-5 text-blue-800 dark:text-blue-300" />
                 </button>
               </div>
             </div>
 
-            {/* Modal Tabs */}
+            {/* Onglets */}
             <div className="flex border-b dark:border-gray-700">
               <button
-                onClick={() => setProductModalTab('info')}
-                className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
-                  productModalTab === 'info'
+                onClick={() => setProductModalTab('edit')}
+                className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  productModalTab === 'edit'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
-                <Package className="w-4 h-4 inline mr-1" />
-                Fiche
+                <Edit className="w-4 h-4 inline mr-1" />
+                Modifier
               </button>
               <button
-                onClick={() => setProductModalTab('movements')}
-                className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
-                  productModalTab === 'movements'
+                onClick={() => setProductModalTab('history')}
+                className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  productModalTab === 'history'
                     ? 'border-gray-700 dark:border-gray-300 text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
@@ -1001,108 +1010,380 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 <History className="w-4 h-4 inline mr-1" />
                 Mouvements
               </button>
+              <button
+                onClick={() => setProductModalTab('prices')}
+                className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  productModalTab === 'prices'
+                    ? 'border-green-500 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <DollarSign className="w-4 h-4 inline mr-1" />
+                Hist. Prix
+              </button>
             </div>
 
-            {/* Modal Content */}
+            {/* Contenu scrollable */}
             <div className="flex-1 overflow-y-auto p-5">
-              {productModalTab === 'info' && (
+
+              {/* === ONGLET MODIFIER === */}
+              {productModalTab === 'edit' && (
                 <div className="space-y-4">
-                  {/* Prix */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={productEditForm.description}
+                      onChange={(e) => setProductEditForm({...productEditForm, description: e.target.value})}
+                      onBlur={() => setProductEditForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                      style={{ textTransform: 'uppercase' }}
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
+                      className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      placeholder="Description du produit"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dernier fournisseur</label>
+                    <input
+                      type="text"
+                      value={productEditForm.supplier}
+                      onChange={(e) => setProductEditForm({...productEditForm, supplier: e.target.value})}
+                      onBlur={() => setProductEditForm(prev => ({...prev, supplier: (prev.supplier || '').toUpperCase()}))}
+                      style={{ textTransform: 'uppercase' }}
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
+                      className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      placeholder="Mis à jour automatiquement lors d'un AF"
+                    />
+                  </div>
+
+                  {/* Prix coûtant + vendant côte à côte */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Prix coûtant</div>
-                      <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {formatCurrency(productModalItem.cost_price)}
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prix coûtant</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={productEditForm.cost_price}
+                        onChange={(e) => setProductEditForm({...productEditForm, cost_price: e.target.value})}
+                        onFocus={(e) => e.target.select()}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                        placeholder="0.00"
+                      />
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Prix vendant</div>
-                      <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {formatCurrency(productModalItem.selling_price)}
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prix vendant *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={productEditForm.selling_price}
+                        onChange={(e) => setProductEditForm({...productEditForm, selling_price: e.target.value})}
+                        onFocus={(e) => e.target.select()}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                        placeholder="0.00"
+                        required
+                      />
                     </div>
                   </div>
 
-                  {/* Marge */}
-                  {(() => {
-                    const mi = getMarginInfo(productModalItem.cost_price, productModalItem.selling_price);
-                    if (!mi) return null;
-                    return (
-                      <div className={`text-sm font-medium ${mi.color} bg-gray-50 dark:bg-gray-800 rounded-lg p-3`}>
-                        Marge: {mi.percent}%
+                  {/* Calcul automatique de marge */}
+                  {productEditForm.cost_price && parseFloat(productEditForm.cost_price) > 0 && (
+                    <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
+                      <label className="block text-sm font-medium text-green-800 dark:text-green-300 mb-2">Calcul automatique par marge %</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          inputMode="numeric"
+                          value={productMarginPercent}
+                          onChange={(e) => setProductMarginPercent(e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
+                          className="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-green-500 focus:ring-green-500 p-2"
+                          placeholder="Ex: 25"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cost = parseFloat(productEditForm.cost_price) || 0;
+                            const margin = parseFloat(productMarginPercent) || 0;
+                            if (cost > 0 && margin > 0) {
+                              const newSellingPrice = cost * (1 + margin / 100);
+                              setProductEditForm({...productEditForm, selling_price: newSellingPrice.toFixed(2)});
+                            }
+                          }}
+                          disabled={!productMarginPercent || parseFloat(productMarginPercent) <= 0}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                          OK
+                        </button>
                       </div>
-                    );
-                  })()}
-
-                  {/* Quantités */}
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
-                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Quantités</div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700 dark:text-gray-300">En main (stock)</span>
-                      <span className="font-semibold text-gray-900 dark:text-gray-100">{parseFloat(productModalItem.stock_qty) || 0}</span>
-                    </div>
-                  </div>
-
-                  {/* Fournisseur */}
-                  {productModalItem.supplier && (
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-1">Dernier fournisseur</div>
-                      <div className="text-sm text-gray-900 dark:text-gray-100">{productModalItem.supplier}</div>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">Entrez le % de marge désiré et cliquez OK</p>
                     </div>
                   )}
 
-                  {/* Source */}
-                  <div className="text-xs text-gray-400 dark:text-gray-500">
-                    Source: {productModalItem.source === 'inventory' ? 'Inventaire' : 'Non-inventaire'}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantité en stock</label>
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={productEditForm.stock_qty}
+                      onChange={(e) => setProductEditForm({...productEditForm, stock_qty: e.target.value})}
+                      onFocus={(e) => e.target.select()}
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      placeholder="0"
+                    />
                   </div>
+
+                  {/* Aperçu marge */}
+                  {productEditForm.cost_price && productEditForm.selling_price && (
+                    <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Aperçu marge:</div>
+                      <div className={`text-lg font-medium ${getMarginColor(productEditForm.cost_price, productEditForm.selling_price)}`}>
+                        {getMarginPercentage(productEditForm.cost_price, productEditForm.selling_price)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {productModalTab === 'movements' && (
+              {/* === ONGLET HISTORIQUE MOUVEMENTS === */}
+              {productModalTab === 'history' && (
                 <div>
-                  {productModalMovements.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">Aucun mouvement enregistré</p>
+                  {productHistoryLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+                      <span className="ml-3 text-gray-600 dark:text-gray-400">Chargement...</span>
+                    </div>
+                  ) : productHistoryMovements.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>Aucun mouvement enregistré pour ce produit</p>
+                    </div>
                   ) : (
-                    <div className="space-y-2">
-                      {productModalMovements.map((mv, idx) => (
-                        <div key={mv.id || idx} className="flex items-center justify-between text-sm border-b dark:border-gray-700 pb-2">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                                mv.movement_type === 'IN'
-                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                              }`}>
-                                {mv.movement_type}
-                              </span>
-                              <span className="text-gray-700 dark:text-gray-300">{getMovementLabel(mv.reference_type)}</span>
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                              {mv.reference_number && <span>{mv.reference_number} — </span>}
-                              {new Date(mv.created_at).toLocaleDateString('fr-CA')}
-                            </div>
+                    <>
+                      {/* Résumé IN/OUT */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 text-center">
+                          <ArrowDownCircle className="w-5 h-5 mx-auto mb-1 text-green-600 dark:text-green-400" />
+                          <div className="text-lg font-bold text-green-700 dark:text-green-300">
+                            {productHistoryMovements.filter(m => m.movement_type === 'IN').reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0).toFixed(2)}
                           </div>
-                          <div className={`font-medium ${
-                            mv.movement_type === 'IN' ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
-                          }`}>
-                            {mv.movement_type === 'IN' ? '+' : '-'}{mv.quantity}
+                          <div className="text-xs text-green-600 dark:text-green-400">Total entré (IN)</div>
+                        </div>
+                        <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3 text-center">
+                          <ArrowUpCircle className="w-5 h-5 mx-auto mb-1 text-red-600 dark:text-red-400" />
+                          <div className="text-lg font-bold text-red-700 dark:text-red-300">
+                            {productHistoryMovements.filter(m => m.movement_type === 'OUT').reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0).toFixed(2)}
+                          </div>
+                          <div className="text-xs text-red-600 dark:text-red-400">Total sorti (OUT)</div>
+                        </div>
+                      </div>
+
+                      {/* Liste des mouvements */}
+                      <div className="space-y-2">
+                        {productHistoryMovements.map((movement, idx) => {
+                          const isIn = movement.movement_type === 'IN';
+                          return (
+                            <div
+                              key={movement.id || idx}
+                              className={`border rounded-lg p-3 ${
+                                isIn ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
+                                      isIn ? 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200' : 'bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200'
+                                    }`}>
+                                      {isIn ? '+ IN' : '- OUT'}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                      {parseFloat(movement.quantity).toFixed(2)} {movement.unit}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                    {movement.notes || movement.reference_number || '-'}
+                                  </p>
+                                  {movement.reference_type && (
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase">
+                                      {movement.reference_type === 'supplier_purchase' && 'Achat fournisseur'}
+                                      {movement.reference_type === 'work_order' && 'Bon de travail'}
+                                      {movement.reference_type === 'delivery_note' && 'Bon de livraison'}
+                                      {movement.reference_type === 'delivery_slip' && 'Bon de livraison'}
+                                      {movement.reference_type === 'direct_receipt' && 'Réception directe'}
+                                      {movement.reference_type === 'adjustment' && 'Ajustement'}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment'].includes(movement.reference_type) && movement.reference_type}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-right ml-3 shrink-0">
+                                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                    {formatMovementDate(movement.created_at)}
+                                  </div>
+                                  {movement.unit_cost > 0 && (
+                                    <div className="text-[10px] text-gray-400 dark:text-gray-500">
+                                      {formatCurrency(movement.unit_cost)}/{movement.unit}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* === ONGLET HISTORIQUE PRIX === */}
+              {productModalTab === 'prices' && (
+                <div className="space-y-4">
+                  {/* Prix actuel */}
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="text-xs font-medium text-blue-500 dark:text-blue-400 uppercase tracking-wide mb-2">Prix actuel</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Coûtant</div>
+                        <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCurrency(editingProduct.cost_price)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Vendant</div>
+                        <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCurrency(editingProduct.selling_price)}</div>
+                      </div>
+                    </div>
+                    <div className={`text-sm font-medium mt-1 ${getMarginColor(editingProduct.cost_price, editingProduct.selling_price)}`}>
+                      Marge: {getMarginPercentage(editingProduct.cost_price, editingProduct.selling_price)}
+                    </div>
+                  </div>
+
+                  {/* Historique des prix */}
+                  {(editingProduct.cost_price_1st != null || editingProduct.selling_price_1st != null) ? (
+                    <div className="space-y-3">
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Historique (du plus récent au plus ancien)</div>
+
+                      {(editingProduct.cost_price_1st != null || editingProduct.selling_price_1st != null) && (
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                          <div className="text-xs font-medium text-gray-400 mb-1">Prix précédent (n-1)</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <div className="text-xs text-gray-400">Coûtant</div>
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {editingProduct.cost_price_1st != null ? formatCurrency(editingProduct.cost_price_1st) : '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400">Vendant</div>
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {editingProduct.selling_price_1st != null ? formatCurrency(editingProduct.selling_price_1st) : '-'}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      ))}
+                      )}
+
+                      {(editingProduct.cost_price_2nd != null || editingProduct.selling_price_2nd != null) && (
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                          <div className="text-xs font-medium text-gray-400 mb-1">Avant-dernier (n-2)</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <div className="text-xs text-gray-400">Coûtant</div>
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {editingProduct.cost_price_2nd != null ? formatCurrency(editingProduct.cost_price_2nd) : '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400">Vendant</div>
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {editingProduct.selling_price_2nd != null ? formatCurrency(editingProduct.selling_price_2nd) : '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(editingProduct.cost_price_3rd != null || editingProduct.selling_price_3rd != null) && (
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                          <div className="text-xs font-medium text-gray-400 mb-1">Plus ancien (n-3)</div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <div className="text-xs text-gray-400">Coûtant</div>
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {editingProduct.cost_price_3rd != null ? formatCurrency(editingProduct.cost_price_3rd) : '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-400">Vendant</div>
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {editingProduct.selling_price_3rd != null ? formatCurrency(editingProduct.selling_price_3rd) : '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>Aucun historique de prix enregistré</p>
+                      <p className="text-xs mt-1">L&apos;historique se remplira au prochain changement de prix</p>
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="border-t dark:border-gray-700 px-5 py-3 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+            {/* Footer avec boutons */}
+            <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex gap-3 border-t dark:border-gray-700">
               <button
-                onClick={() => setProductModalItem(null)}
-                className="w-full px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                onClick={closeProductModal}
+                disabled={productSaving}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 disabled:opacity-50"
               >
-                Fermer
+                {productModalTab === 'edit' ? 'Annuler' : 'Fermer'}
               </button>
+              {productModalTab === 'edit' && (
+                <button
+                  onClick={saveProductChanges}
+                  disabled={productSaving || !productEditForm.selling_price}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {productSaving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Sauvegarder
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
