@@ -6,9 +6,12 @@
  *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.2.0
- * @date 2026-03-12
+ * @version 1.3.0
+ * @date 2026-03-16
  * @changelog
+ *   1.3.0 - Ajout mode print_only: génère PDF + upload Storage + marque envoyée
+ *           sans envoyer d'email (pour clients sans adresse email / envoi postal)
+ *           Ajout source_description (work_description/delivery_description) sur PDF
  *   1.2.0 - Ajustements PDF: labels BT/BL, référence BA, suppression N° et DÉTAILS,
  *           TPS/TVQ numbers au bas, message propriété configurable
  *   1.1.0 - Ajout upload PDF vers Supabase Storage + pdf_url
@@ -75,6 +78,22 @@ function generateInvoicePDF(invoice, settings) {
     },
     separator: true,
   });
+
+  // ---- DESCRIPTION (work_description / delivery_description) ----
+  if (invoice.source_description) {
+    y = pdfCommon.checkPageBreak(doc, y, 15);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 51, 51);
+    doc.text('Description:', pdfCommon.PAGE.margin.left, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(pdfCommon.FONT.body);
+    doc.setTextColor(0, 0, 0);
+    const descLines = doc.splitTextToSize(invoice.source_description, pdfCommon.CONTENT_WIDTH);
+    doc.text(descLines, pdfCommon.PAGE.margin.left, y);
+    y += descLines.length * 4.5 + 4;
+  }
 
   // ---- TABLE DES ARTICLES ----
   const lineItems = invoice.line_items || [];
@@ -213,7 +232,7 @@ export async function POST(request, { params }) {
   try {
     const { id } = params;
     const body = await request.json();
-    const { emails: customEmails } = body;
+    const { emails: customEmails, print_only } = body;
 
     // 1. Récupérer la facture
     const { data: invoice, error: invoiceError } = await supabaseAdmin
@@ -239,45 +258,53 @@ export async function POST(request, { params }) {
       .eq('id', 1)
       .single();
 
-    // 2b. Récupérer le numéro de BA (purchase order) lié au BT/BL source
+    // 2b. Récupérer le numéro de BA et la description du BT/BL source
     if (invoice.source_type && invoice.source_id) {
       const sourceTable = invoice.source_type === 'work_order' ? 'work_orders' : 'delivery_notes';
+      const descField = invoice.source_type === 'work_order' ? 'work_description' : 'delivery_description';
       const { data: sourceDoc } = await supabaseAdmin
         .from(sourceTable)
-        .select('linked_po_id')
+        .select(`linked_po_id, ${descField}`)
         .eq('id', invoice.source_id)
         .single();
 
-      if (sourceDoc?.linked_po_id) {
-        const { data: po } = await supabaseAdmin
-          .from('purchase_orders')
-          .select('po_number')
-          .eq('id', sourceDoc.linked_po_id)
-          .single();
-        invoice.po_number = po?.po_number || null;
+      if (sourceDoc) {
+        // Description du BT/BL
+        invoice.source_description = sourceDoc[descField] || null;
+
+        if (sourceDoc.linked_po_id) {
+          const { data: po } = await supabaseAdmin
+            .from('purchase_orders')
+            .select('po_number')
+            .eq('id', sourceDoc.linked_po_id)
+            .single();
+          invoice.po_number = po?.po_number || null;
+        }
       }
     }
 
-    // 3. Déterminer les adresses email (cascade)
+    // 3. Déterminer les adresses email (cascade) — sauf en mode print_only
     let emailAddresses = [];
 
-    if (customEmails && customEmails.length > 0) {
-      emailAddresses = customEmails;
-    } else {
-      const client = invoice.client;
-      if (client) {
-        if (client.email_billing) emailAddresses.push(client.email_billing);
-        else if (client.email_admin) emailAddresses.push(client.email_admin);
-        else if (client.email) emailAddresses.push(client.email);
-        else if (client.email_2) emailAddresses.push(client.email_2);
+    if (!print_only) {
+      if (customEmails && customEmails.length > 0) {
+        emailAddresses = customEmails;
+      } else {
+        const client = invoice.client;
+        if (client) {
+          if (client.email_billing) emailAddresses.push(client.email_billing);
+          else if (client.email_admin) emailAddresses.push(client.email_admin);
+          else if (client.email) emailAddresses.push(client.email);
+          else if (client.email_2) emailAddresses.push(client.email_2);
+        }
       }
-    }
 
-    if (emailAddresses.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Aucune adresse email disponible pour ce client. La facture est sauvegardée en brouillon.' },
-        { status: 400 }
-      );
+      if (emailAddresses.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Aucune adresse email disponible pour ce client. Utilisez "Imprimer" pour générer le PDF sans envoi email.' },
+          { status: 400 }
+        );
+      }
     }
 
     // 4. Générer le PDF
@@ -316,60 +343,62 @@ export async function POST(request, { params }) {
       console.error('Erreur Storage (non bloquante):', storageErr.message);
     }
 
-    // 6. Envoyer l'email
-    const companyName = pdfCommon.COMPANY.name;
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@servicestmt.com';
+    // 6. Envoyer l'email (sauf en mode print_only)
+    if (!print_only) {
+      const companyName = pdfCommon.COMPANY.name;
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@servicestmt.com';
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px;">
-          <h2 style="color: #333; margin-bottom: 20px;">Facture ${invoice.invoice_number}</h2>
-          <p>Bonjour,</p>
-          <p>Veuillez trouver ci-joint la facture <strong>${invoice.invoice_number}</strong>
-             d'un montant de <strong>${Number(invoice.total).toFixed(2)} $</strong>
-             en référence au document <strong>${invoice.source_number}</strong>.</p>
-          ${invoice.payment_terms ? `<p><strong>Conditions:</strong> ${invoice.payment_terms}</p>` : ''}
-          ${invoice.due_date ? `<p><strong>Échéance:</strong> ${invoice.due_date}</p>` : ''}
-          <p>N'hésitez pas à nous contacter pour toute question.</p>
-          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-          <p style="color: #666; font-size: 13px;">
-            ${companyName}<br>
-            ${pdfCommon.COMPANY.address}, ${pdfCommon.COMPANY.city}<br>
-            Tél: ${pdfCommon.COMPANY.phone}<br>
-            ${pdfCommon.COMPANY.email}
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+          <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px;">
+            <h2 style="color: #333; margin-bottom: 20px;">Facture ${invoice.invoice_number}</h2>
+            <p>Bonjour,</p>
+            <p>Veuillez trouver ci-joint la facture <strong>${invoice.invoice_number}</strong>
+               d'un montant de <strong>${Number(invoice.total).toFixed(2)} $</strong>
+               en référence au document <strong>${invoice.source_number}</strong>.</p>
+            ${invoice.payment_terms ? `<p><strong>Conditions:</strong> ${invoice.payment_terms}</p>` : ''}
+            ${invoice.due_date ? `<p><strong>Échéance:</strong> ${invoice.due_date}</p>` : ''}
+            <p>N'hésitez pas à nous contacter pour toute question.</p>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+            <p style="color: #666; font-size: 13px;">
+              ${companyName}<br>
+              ${pdfCommon.COMPANY.address}, ${pdfCommon.COMPANY.city}<br>
+              Tél: ${pdfCommon.COMPANY.phone}<br>
+              ${pdfCommon.COMPANY.email}
+            </p>
+          </div>
+        </body>
+        </html>
+      `;
 
-    const emailConfig = {
-      from: `${companyName} <${fromEmail}>`,
-      to: emailAddresses,
-      subject: `Facture ${invoice.invoice_number} — ${companyName}`,
-      html: htmlContent,
-      attachments: [{
-        filename: `Facture_${invoice.invoice_number}.pdf`,
-        content: pdfBufferNode,
-        contentType: 'application/pdf',
-      }],
-    };
+      const emailConfig = {
+        from: `${companyName} <${fromEmail}>`,
+        to: emailAddresses,
+        subject: `Facture ${invoice.invoice_number} — ${companyName}`,
+        html: htmlContent,
+        attachments: [{
+          filename: `Facture_${invoice.invoice_number}.pdf`,
+          content: pdfBufferNode,
+          contentType: 'application/pdf',
+        }],
+      };
 
-    // CC au bureau
-    if (process.env.COMPANY_EMAIL) {
-      emailConfig.cc = [process.env.COMPANY_EMAIL];
-    }
+      // CC au bureau
+      if (process.env.COMPANY_EMAIL) {
+        emailConfig.cc = [process.env.COMPANY_EMAIL];
+      }
 
-    const result = await resend.emails.send(emailConfig);
+      const result = await resend.emails.send(emailConfig);
 
-    if (result.error) {
-      console.error('Erreur envoi email Resend:', result.error);
-      return NextResponse.json(
-        { success: false, error: `Erreur envoi email: ${result.error.message}` },
-        { status: 500 }
-      );
+      if (result.error) {
+        console.error('Erreur envoi email Resend:', result.error);
+        return NextResponse.json(
+          { success: false, error: `Erreur envoi email: ${result.error.message}` },
+          { status: 500 }
+        );
+      }
     }
 
     // 7. Mettre à jour le statut de la facture + pdf_url
@@ -387,11 +416,19 @@ export async function POST(request, { params }) {
       .update(updateData)
       .eq('id', parseInt(id));
 
+    if (print_only) {
+      return NextResponse.json({
+        success: true,
+        message: `Facture ${invoice.invoice_number} prête pour impression`,
+        pdf_url: pdfUrl,
+        print_only: true,
+      });
+    }
+
     return NextResponse.json({
       success: true,
       message: `Facture ${invoice.invoice_number} envoyée à ${emailAddresses.join(', ')}`,
       sentTo: emailAddresses,
-      messageId: result.data?.id,
     });
 
   } catch (error) {

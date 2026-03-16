@@ -6,9 +6,10 @@
  *              - Actions: créer, voir, renvoyer, marquer payée
  *              - Rapport Acomba: export PDF + CSV mensuel ventilé
  *              - Numéros de référence cliquables (SplitView)
- * @version 1.5.0
- * @date 2026-03-01
+ * @version 1.6.0
+ * @date 2026-03-16
  * @changelog
+ *   1.6.0 - Ajout bouton "Imprimer" sur factures (génère PDF + marque envoyée, sans email)
  *   1.5.0 - Fix: handleCreateInvoice utilise endpoint individuel pour récupérer matériaux + client complet (transport_fee, hourly_rate)
  *   1.4.0 - Ajout ReferenceLink sur N° BT/BL (Phase E — Numéros cliquables)
  *   1.3.0 - Ajout Rapport Acomba (PDF + CSV) + sélecteur de mois (Phase C)
@@ -286,6 +287,36 @@ export default function InvoiceManager() {
       setActionLoading(prev => {
         const n = { ...prev };
         delete n[`paid-${invoice.id}`];
+        return n;
+      });
+    }
+  };
+
+  // Imprimer (générer PDF sans email, marquer envoyée)
+  const handlePrintInvoice = async (invoice) => {
+    setActionLoading(prev => ({ ...prev, [`print-${invoice.id}`]: true }));
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ print_only: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.pdf_url) {
+          window.open(data.pdf_url, '_blank');
+        }
+        setSuccess(data.message || 'PDF généré');
+        fetchData();
+      } else {
+        setError(data.error || 'Erreur génération PDF');
+      }
+    } catch (err) {
+      setError('Erreur connexion');
+    } finally {
+      setActionLoading(prev => {
+        const n = { ...prev };
+        delete n[`print-${invoice.id}`];
         return n;
       });
     }
@@ -777,6 +808,14 @@ export default function InvoiceManager() {
                           {invoice.status !== 'paid' && (
                             <>
                               <button
+                                onClick={() => handlePrintInvoice(invoice)}
+                                disabled={actionLoading[`print-${invoice.id}`]}
+                                className="flex-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 py-1.5 rounded text-xs font-medium hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                {actionLoading[`print-${invoice.id}`] ? '...' : 'Imprimer'}
+                              </button>
+                              <button
                                 onClick={() => handleResend(invoice)}
                                 disabled={actionLoading[`send-${invoice.id}`]}
                                 className="flex-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 py-1.5 rounded text-xs font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
@@ -871,6 +910,14 @@ export default function InvoiceManager() {
                                 )}
                                 {invoice.status !== 'paid' && (
                                   <>
+                                    <button
+                                      onClick={() => handlePrintInvoice(invoice)}
+                                      disabled={actionLoading[`print-${invoice.id}`]}
+                                      className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50"
+                                      title="Imprimer (sans email)"
+                                    >
+                                      <Printer className="w-4 h-4" />
+                                    </button>
                                     <button
                                       onClick={() => handleResend(invoice)}
                                       disabled={actionLoading[`send-${invoice.id}`]}

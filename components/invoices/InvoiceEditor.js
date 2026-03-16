@@ -7,9 +7,12 @@
  *              - Affiche coûtant unitaire et quantité en main pour les matériaux
  *              - Code produit cliquable ouvrant le vrai modal d'inventaire (éditable)
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 2.2.0
- * @date 2026-03-13
+ * @version 2.3.0
+ * @date 2026-03-16
  * @changelog
+ *   2.3.0 - Ajout bouton "Imprimer" (génère PDF + marque envoyée, sans email)
+ *           Affichage description BT/BL dans l'éditeur de facture
+ *           Description BT/BL incluse dans le PDF facture
  *   2.2.0 - Actualisation auto du prix vendant sur les lignes facture après modification
  *           du produit dans le modal inventaire (coûtant, vendant, qté en main)
  *   2.1.0 - Modal produit remplacé par le vrai modal d'inventaire (éditable, 3 onglets)
@@ -24,7 +27,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
 
@@ -177,8 +180,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [isPrixJobe, setIsPrixJobe] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [sourceDescription, setSourceDescription] = useState('');
 
   // Product data map: product_id → { cost_price, stock_qty, ... }
   const [productDataMap, setProductDataMap] = useState({});
@@ -207,10 +212,29 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       setPaymentTerms(invoice.payment_terms || 'Net 30 jours');
       setNotes(invoice.notes || '');
       setIsPrixJobe(invoice.is_prix_jobe || false);
+      // Charger la description du BT/BL source si disponible
+      if (invoice.source_type && invoice.source_id) {
+        const endpoint = invoice.source_type === 'work_order'
+          ? `/api/work-orders/${invoice.source_id}`
+          : `/api/delivery-notes/${invoice.source_id}`;
+        fetch(endpoint)
+          .then(r => r.json())
+          .then(result => {
+            if (result.success && result.data) {
+              const desc = result.data.work_description || result.data.delivery_description || '';
+              setSourceDescription(desc);
+            }
+          })
+          .catch(() => {});
+      }
     } else if (sourceData) {
       const btOrBl = sourceData;
       const isPJ = btOrBl.is_prix_jobe || false;
       setIsPrixJobe(isPJ);
+
+      // Récupérer la description du BT/BL
+      const desc = btOrBl.work_description || btOrBl.delivery_description || '';
+      setSourceDescription(desc);
 
       if (isPJ) {
         setLineItems([{
@@ -546,6 +570,110 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     } finally {
       setSaving(false);
       setSending(false);
+    }
+  };
+
+  // Imprimer: sauvegarder + générer PDF sans email + ouvrir PDF
+  const handlePrint = async () => {
+    setPrinting(true);
+    setError(null);
+
+    const cleanedLineItems = lineItems.map(({ product_id, ...rest }) => rest);
+
+    try {
+      let invoiceId = invoice?.id;
+
+      // Sauvegarder d'abord
+      if (isEditing) {
+        const res = await fetch(`/api/invoices/${invoiceId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            invoice_date: invoiceDate,
+            payment_terms: paymentTerms,
+            line_items: cleanedLineItems,
+            subtotal: totals.subtotal,
+            tps_rate: tpsRate,
+            tvq_rate: tvqRate,
+            tps_amount: totals.tps,
+            tvq_amount: totals.tvq,
+            total: totals.total,
+            total_materials: totals.totalMaterials,
+            total_labor: totals.totalLabor,
+            total_transport: totals.totalTransport,
+            is_prix_jobe: isPrixJobe,
+            notes,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setError(data.error || 'Erreur mise à jour');
+          setPrinting(false);
+          return;
+        }
+      } else {
+        const btOrBl = sourceData;
+        const res = await fetch('/api/invoices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: btOrBl.client_id || btOrBl.client?.id,
+            client_name: btOrBl.client?.name || btOrBl.client_name || '',
+            client_address: btOrBl.client?.address || '',
+            source_type: source.type === 'bt' ? 'work_order' : 'delivery_note',
+            source_id: btOrBl.id,
+            source_number: source.type === 'bt' ? btOrBl.bt_number : btOrBl.bl_number,
+            invoice_date: invoiceDate,
+            payment_terms: paymentTerms,
+            line_items: cleanedLineItems,
+            subtotal: totals.subtotal,
+            tps_rate: tpsRate,
+            tvq_rate: tvqRate,
+            tps_amount: totals.tps,
+            tvq_amount: totals.tvq,
+            total: totals.total,
+            total_materials: totals.totalMaterials,
+            total_labor: totals.totalLabor,
+            total_transport: totals.totalTransport,
+            is_prix_jobe: isPrixJobe,
+            notes,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setError(data.error || 'Erreur création');
+          setPrinting(false);
+          return;
+        }
+        invoiceId = data.data.id;
+      }
+
+      // Appeler send-email en mode print_only
+      const sendRes = await fetch(`/api/invoices/${invoiceId}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ print_only: true }),
+      });
+      const sendData = await sendRes.json();
+      if (!sendData.success) {
+        setError(`Facture sauvegardée, mais erreur génération PDF: ${sendData.error}`);
+        setPrinting(false);
+        return;
+      }
+
+      // Ouvrir le PDF pour impression
+      if (sendData.pdf_url) {
+        window.open(sendData.pdf_url, '_blank');
+      }
+
+      setSuccess(sendData.message || 'Facture prête pour impression');
+      setTimeout(() => onClose(true), 1000);
+
+    } catch (err) {
+      console.error('Erreur impression:', err);
+      setError('Erreur de connexion au serveur');
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -933,6 +1061,18 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             </div>
           </div>
 
+          {/* Description BT/BL */}
+          {sourceDescription && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description ({sourceType === 'bt' ? 'BT' : 'BL'})
+              </label>
+              <div className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {sourceDescription}
+              </div>
+            </div>
+          )}
+
           {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
@@ -962,15 +1102,24 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             <>
               <button
                 onClick={() => handleSave(false)}
-                disabled={saving || sending}
+                disabled={saving || sending || printing}
                 className="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {saving ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
               <button
+                onClick={handlePrint}
+                disabled={saving || sending || printing}
+                className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
+                title="Générer le PDF et marquer comme envoyée (sans email)"
+              >
+                <Printer className="w-4 h-4" />
+                {printing ? 'Impression...' : 'Imprimer'}
+              </button>
+              <button
                 onClick={() => handleSave(true)}
-                disabled={saving || sending}
+                disabled={saving || sending || printing}
                 className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
