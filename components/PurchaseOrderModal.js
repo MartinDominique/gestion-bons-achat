@@ -2025,7 +2025,7 @@ setTimeout(() => {
                         {items.map((item, index) => (
                           <div key={item.id || index} className="p-4 bg-white dark:bg-gray-900">
                             <div className="flex justify-between items-start mb-2">
-                              <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{item.product_id}</div>
+                              <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate max-w-[200px]">{item.product_id}</div>
                               <div className="flex gap-1">
                                 <button
                                   onClick={() => startEditingItem(index)}

@@ -1,5 +1,17 @@
+/**
+ * @file components/PurchaseOrderManager.js
+ * @description Gestionnaire des bons d'achat client (BA)
+ *              - Liste compacte 2 lignes avec statut modifiable inline
+ *              - Filtre multi-sélection avec mémoire localStorage
+ *              - Vue responsive optimisée mobile/tablette
+ * @version 1.1.0
+ * @date 2026-03-20
+ * @changelog
+ *   1.1.0 - Filtre multi-sélection (toggle buttons) avec mémoire localStorage, fix mobile overflow/client name
+ *   1.0.0 - Version initiale
+ */
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Truck, BarChart3, Edit, Users, DollarSign, Loader2 } from 'lucide-react';
+import { Search, Plus, FileText, Truck, BarChart3, Edit, Users, DollarSign, Loader2, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // Importer seulement vos composants existants
@@ -9,23 +21,28 @@ import PurchaseOrderModal from './PurchaseOrderModal';
 import { formatCurrency, formatDate, getStatusEmoji } from './PurchaseOrder/utils/formatting';
 import ReferenceLink from './SplitView/ReferenceLink';
 
+const STORAGE_KEY_STATUS_FILTERS = 'ba_statusFilters';
+
 const PurchaseOrderManager = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedPO, setSelectedPO] = useState(null);
-  
+
   // États pour la gestion des BAs (logique directe au lieu de hooks)
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [deliveryCounts, setDeliveryCounts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState(() => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('ba_statusFilter') || 'all';
-  }
-  return 'all';
-});
+  const [activeStatusFilters, setActiveStatusFilters] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY_STATUS_FILTERS);
+        if (saved) return JSON.parse(saved);
+      } catch (e) { /* ignore */ }
+    }
+    return ['in_progress', 'partial'];
+  });
   const [filteredPOs, setFilteredPOs] = useState([]);
   
   // États pour les modifications de statut rapides
@@ -146,34 +163,48 @@ const PurchaseOrderManager = () => {
     }
   };
 
-// Filtrer les BAs
+  // Toggle un filtre de statut
+  const toggleStatusFilter = (status) => {
+    setActiveStatusFilters(prev => {
+      let next;
+      if (prev.includes(status)) {
+        next = prev.filter(s => s !== status);
+      } else {
+        next = [...prev, status];
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_STATUS_FILTERS, JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  // Filtrer les BAs
   useEffect(() => {
     let filtered = purchaseOrders;
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(po => 
+      filtered = filtered.filter(po =>
         po.po_number?.toLowerCase().includes(term) ||
         po.client_name?.toLowerCase().includes(term) ||
         po.submission_no?.toLowerCase().includes(term)
       );
     }
 
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'in_progress') {
-        filtered = filtered.filter(po => po.status === 'in_progress');
-      } else if (statusFilter === 'partial') {
-        filtered = filtered.filter(po => 
-          po.status === 'partial' || 
-          po.status === 'partially_delivered'
-        );
-      } else {
-        filtered = filtered.filter(po => po.status === statusFilter);
-      }
+    // Multi-select: si aucun filtre actif = tout montrer
+    if (activeStatusFilters.length > 0) {
+      filtered = filtered.filter(po => {
+        if (activeStatusFilters.includes('partial')) {
+          return activeStatusFilters.includes(po.status) ||
+                 (po.status === 'partially_delivered');
+        }
+        return activeStatusFilters.includes(po.status);
+      });
     }
 
     setFilteredPOs(filtered);
-  }, [purchaseOrders, searchTerm, statusFilter]);
+  }, [purchaseOrders, searchTerm, activeStatusFilters]);
 
   // Charger au montage
   useEffect(() => {
@@ -344,19 +375,37 @@ const PurchaseOrderManager = () => {
                 className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500 transition-all duration-200 text-sm"
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                localStorage.setItem('ba_statusFilter', e.target.value);
-              }}
-              className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-800 focus:bg-white dark:focus:bg-gray-700 dark:text-gray-100 min-w-[160px] sm:min-w-[200px] transition-all duration-200 text-sm"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="in_progress">🔵 En cours</option>
-              <option value="partial">🚚 Partiellement livré</option>
-              <option value="completed">✅ Complété</option>
-            </select>
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center">
+              {[
+                { value: 'in_progress', label: 'En cours', shortLabel: 'En cours', color: 'blue' },
+                { value: 'partial', label: 'Partiel', shortLabel: 'Partiel', color: 'yellow' },
+                { value: 'completed', label: 'Complété', shortLabel: 'Complété', color: 'green' }
+              ].map(opt => {
+                const isActive = activeStatusFilters.includes(opt.value);
+                const colorClasses = {
+                  blue: isActive
+                    ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:border-blue-500'
+                    : 'bg-white text-blue-700 border-blue-300 dark:bg-gray-800 dark:text-blue-400 dark:border-blue-700',
+                  yellow: isActive
+                    ? 'bg-yellow-500 text-white border-yellow-500 dark:bg-yellow-600 dark:border-yellow-600'
+                    : 'bg-white text-yellow-700 border-yellow-300 dark:bg-gray-800 dark:text-yellow-400 dark:border-yellow-700',
+                  green: isActive
+                    ? 'bg-green-600 text-white border-green-600 dark:bg-green-500 dark:border-green-500'
+                    : 'bg-white text-green-700 border-green-300 dark:bg-gray-800 dark:text-green-400 dark:border-green-700',
+                };
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggleStatusFilter(opt.value)}
+                    className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all duration-150 touch-manipulation ${colorClasses[opt.color]}`}
+                  >
+                    {isActive && <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                    {opt.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -392,32 +441,32 @@ const PurchaseOrderManager = () => {
                 }`}
               >
                 {/* LIGNE 1: Informations principales */}
-                <div className="flex items-center gap-2 sm:gap-3 mb-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 min-w-0">
                   {/* #BA */}
-                  <div className="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 px-2 py-1 rounded flex-shrink-0">
-                    <div className="font-mono text-xs font-bold text-blue-700 dark:text-blue-400">#{po.po_number}</div>
+                  <div className="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded flex-shrink-0">
+                    <div className="font-mono text-[10px] sm:text-xs font-bold text-blue-700 dark:text-blue-400">#{po.po_number}</div>
                   </div>
 
-                  {/* CLIENT */}
-                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate flex-1 min-w-0">
+                  {/* CLIENT - full name visible */}
+                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm truncate flex-1 min-w-0" title={po.client_name}>
                     {po.client_name || 'N/A'}
                   </div>
 
-                  {/* BCC */}
+                  {/* BCC - icône seule sur mobile */}
                   {(po.bcc_sent_count || 0) > 0 && (
-                    <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full flex-shrink-0" title={`${po.bcc_sent_count} BCC envoyé(s)`}>
+                    <div className="flex items-center gap-0.5 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full flex-shrink-0" title={`${po.bcc_sent_count} BCC envoyé(s)`}>
                       <FileText className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{po.bcc_sent_count}</span>
+                      <span className="text-[10px] sm:text-xs font-medium text-emerald-700 dark:text-emerald-400">{po.bcc_sent_count}</span>
                     </div>
                   )}
 
-                  {/* DATE */}
+                  {/* DATE - hidden on mobile */}
                   <div className="text-xs font-medium text-gray-700 dark:text-gray-400 flex-shrink-0 hidden sm:block">
                     {formatDate(po.date)}
                   </div>
 
                   {/* MONTANT */}
-                  <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
+                  <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap flex-shrink-0">
                     {formatCurrency(po.amount)}
                   </div>
 
@@ -431,7 +480,7 @@ const PurchaseOrderManager = () => {
                       <select
                         value={po.status}
                         onChange={(e) => updatePOStatus(po.id, e.target.value, po)}
-                        className={`text-[10px] sm:text-xs font-medium rounded-full border-0 py-0.5 px-2 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all ${getStatusColor(po.status)}`}
+                        className={`text-[10px] sm:text-xs font-medium rounded-full border-0 py-0.5 px-1.5 sm:px-2 focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all ${getStatusColor(po.status)}`}
                       >
                         {statusOptions.map(option => (
                           <option key={option.value} value={option.value}>
@@ -443,14 +492,14 @@ const PurchaseOrderManager = () => {
                   </div>
 
                   {/* LIVRAISON */}
-                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                  <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full flex-shrink-0">
                     <Truck className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{deliveryCounts[po.id] || 0}</span>
+                    <span className="text-[10px] sm:text-xs font-medium text-gray-700 dark:text-gray-300">{deliveryCounts[po.id] || 0}</span>
                   </div>
                 </div>
 
                 {/* LIGNE 2: Description + Soumission */}
-                <div className="text-xs text-gray-600 dark:text-gray-400 pl-2 truncate" onClick={(e) => { if (po.submission_no) e.stopPropagation(); }}>
+                <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 pl-1 sm:pl-2 truncate" onClick={(e) => { if (po.submission_no) e.stopPropagation(); }}>
                   {po.submission_no && (
                     <>
                       <ReferenceLink
