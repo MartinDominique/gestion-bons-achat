@@ -4,9 +4,10 @@
  *              - Liste compacte 2 lignes avec statut modifiable inline
  *              - Filtre multi-sélection avec mémoire localStorage
  *              - Vue responsive optimisée mobile/tablette
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-03-20
  * @changelog
+ *   1.2.0 - Ligne dédiée nom client sur mobile (3 lignes: badges / client / description)
  *   1.1.0 - Filtre multi-sélection (toggle buttons) avec mémoire localStorage, fix mobile overflow/client name
  *   1.0.0 - Version initiale
  */
@@ -420,7 +421,7 @@ const PurchaseOrderManager = () => {
               </div>
               <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Aucun bon d'achat trouvé</h3>
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 sm:mb-6">
-                {searchTerm || statusFilter !== 'all'
+                {searchTerm || activeStatusFilters.length > 0
                   ? 'Aucun résultat ne correspond à vos critères de recherche.'
                   : 'Commencez par créer votre premier bon d\'achat.'}
               </p>
@@ -440,19 +441,19 @@ const PurchaseOrderManager = () => {
                   index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800/50'
                 }`}
               >
-                {/* LIGNE 1: Informations principales */}
-                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 min-w-0">
+                {/* LIGNE 1: #BA + badges compacts */}
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1 min-w-0 flex-wrap">
                   {/* #BA */}
                   <div className="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded flex-shrink-0">
                     <div className="font-mono text-[10px] sm:text-xs font-bold text-blue-700 dark:text-blue-400">#{po.po_number}</div>
                   </div>
 
-                  {/* CLIENT - full name visible */}
-                  <div className="font-semibold text-gray-900 dark:text-gray-100 text-xs sm:text-sm truncate flex-1 min-w-0" title={po.client_name}>
+                  {/* CLIENT - visible seulement sur desktop (ligne 1), sur mobile c'est ligne 2 */}
+                  <div className="hidden sm:block font-semibold text-gray-900 dark:text-gray-100 text-sm truncate flex-1 min-w-0" title={po.client_name}>
                     {po.client_name || 'N/A'}
                   </div>
 
-                  {/* BCC - icône seule sur mobile */}
+                  {/* BCC */}
                   {(po.bcc_sent_count || 0) > 0 && (
                     <div className="flex items-center gap-0.5 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded-full flex-shrink-0" title={`${po.bcc_sent_count} BCC envoyé(s)`}>
                       <FileText className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
@@ -498,7 +499,12 @@ const PurchaseOrderManager = () => {
                   </div>
                 </div>
 
-                {/* LIGNE 2: Description + Soumission */}
+                {/* LIGNE 2 (mobile seulement): Nom du client complet */}
+                <div className="sm:hidden text-sm font-semibold text-gray-900 dark:text-gray-100 pl-1 mb-0.5 truncate" title={po.client_name}>
+                  {po.client_name || 'N/A'}
+                </div>
+
+                {/* LIGNE 3 (mobile) / LIGNE 2 (desktop): Description + Soumission */}
                 <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 pl-1 sm:pl-2 truncate" onClick={(e) => { if (po.submission_no) e.stopPropagation(); }}>
                   {po.submission_no && (
                     <>
