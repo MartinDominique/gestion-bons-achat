@@ -3,9 +3,10 @@
  * @description Wrapper to render Soumission details inside the split view panel.
  *              - Shows soumission details in read mode
  *              - Could be extended for edit mode
- * @version 1.0.0
- * @date 2026-02-14
+ * @version 1.1.0
+ * @date 2026-03-24
  * @changelog
+ *   1.1.0 - Bouton "Retour à la liste" quand ouvert depuis PanelSoumissionsList
  *   1.0.0 - Version initiale
  */
 
@@ -14,7 +15,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSplitView } from './SplitViewContext';
-import { FileText, Calendar, DollarSign, User } from 'lucide-react';
+import { FileText, Calendar, DollarSign, User, ArrowLeft } from 'lucide-react';
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('fr-CA', {
@@ -33,9 +34,10 @@ const formatDate = (dateStr) => {
 };
 
 export default function PanelSoumission({ data }) {
-  const { closePanel } = useSplitView();
+  const { closePanel, replacePanel } = useSplitView();
   const [soumission, setSoumission] = useState(null);
   const [loading, setLoading] = useState(true);
+  const cameFromList = data?._fromList;
 
   useEffect(() => {
     if (data?.soumissionId) {
@@ -118,6 +120,17 @@ export default function PanelSoumission({ data }) {
 
   return (
     <div className="p-4 space-y-4">
+      {/* Bouton retour à la liste */}
+      {cameFromList && (
+        <button
+          onClick={() => replacePanel('soumissions-list', {})}
+          className="flex items-center gap-1.5 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-medium transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Retour à la liste
+        </button>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-4 text-white">
         <div className="flex items-center justify-between">

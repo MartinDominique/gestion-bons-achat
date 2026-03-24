@@ -7,6 +7,7 @@
  * @version 1.0.0
  * @date 2026-03-24
  * @changelog
+ *   1.0.1 - Ligne entière cliquable pour ouvrir le détail de la soumission
  *   1.0.0 - Version initiale
  */
 
@@ -171,18 +172,17 @@ export default function PanelSoumissionsList({ data }) {
             return (
               <div
                 key={submission.id}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
+                onClick={() => replacePanel('soumission', { submissionNumber: submission.submission_number, _fromList: true })}
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2.5 hover:border-purple-300 dark:hover:border-purple-600 transition-colors cursor-pointer"
               >
                 {/* Ligne 1: N° + Client + Statut */}
                 <div className="flex items-center gap-2">
                   {submission.submission_number && (
-                    <button
-                      onClick={() => replacePanel('soumission', { submissionNumber: submission.submission_number })}
-                      className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs font-mono font-bold hover:bg-purple-200 transition-colors flex-shrink-0"
-                      title="Voir le détail"
+                    <span
+                      className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs font-mono font-bold flex-shrink-0"
                     >
                       {submission.submission_number}
-                    </button>
+                    </span>
                   )}
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate flex-1 min-w-0">
                     {submission.client_name}
