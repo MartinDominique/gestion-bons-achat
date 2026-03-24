@@ -9,9 +9,10 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.0.2
- * @date 2026-03-07
+ * @version 1.1.0
+ * @date 2026-03-24
  * @changelog
+ *   1.1.0 - Ajout bouton "Gestion des Soumissions" à côté de Frais de livraison (ouvre SplitView)
  *   1.0.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.0.0 - Version initiale
@@ -36,6 +37,31 @@ import {
   exportPDF,
   generatePurchaseNumber
 } from './SupplierPurchaseServices';
+
+// ===== BOUTON GESTION SOUMISSIONS (SplitView) =====
+const SoumissionsButton = () => {
+  let splitView;
+  try {
+    splitView = useSplitView();
+  } catch {
+    splitView = null;
+  }
+
+  if (!splitView) return null;
+
+  return (
+    <div className="flex items-end">
+      <button
+        type="button"
+        onClick={() => splitView.openPanel('soumissions-list', {})}
+        className="bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 px-4 py-3 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+      >
+        <FileText className="w-4 h-4" />
+        Gestion des Soumissions
+      </button>
+    </div>
+  );
+};
 
 // ===== COMPOSANT PRINCIPAL DU FORMULAIRE D'ACHAT =====
 export const PurchaseForm = ({ 
@@ -580,7 +606,7 @@ Merci!`;
                 </div>
               </div>
 
-              {/* Frais de livraison */}
+              {/* Frais de livraison + Gestion Soumissions */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-200 dark:border-red-700">
                   <label className="block text-sm font-semibold text-red-800 dark:text-red-300 mb-2">
@@ -597,6 +623,7 @@ Merci!`;
                     placeholder="0.00"
                   />
                 </div>
+                <SoumissionsButton />
               </div>
 
               {/* Recherche produits AVEC BOUTON IMPORT SOUMISSION */}
