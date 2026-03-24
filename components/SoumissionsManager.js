@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.9.0
- * @date 2026-03-07
+ * @version 2.0.0
+ * @date 2026-03-24
  * @changelog
+ *   2.0.0 - Desktop: ligne cliquable ouvre soumission + dropdown statut inline sans ouvrir le formulaire
  *   1.9.0 - Forcer majuscules sur description au save + notification auto-dismiss (remplace alert OK)
  *   1.8.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.8.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -233,6 +234,7 @@ export default function SoumissionsManager() {
   });
   const [sendingReport, setSendingReport] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState(null);
+  const [statusDropdownId, setStatusDropdownId] = useState(null);
   
   // États pour la gestion des fichiers uploaded
   const [uploadingFiles, setUploadingFiles] = useState(false);
@@ -270,6 +272,14 @@ export default function SoumissionsManager() {
   const [exchangeRateError, setExchangeRateError] = useState('');
 
   // Debounce pour la recherche produits
+  // Fermer le dropdown statut au clic extérieur
+  useEffect(() => {
+    if (!statusDropdownId) return;
+    const handleClickOutside = () => setStatusDropdownId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [statusDropdownId]);
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (productSearchTerm.length >= 2) {
@@ -443,6 +453,25 @@ export default function SoumissionsManager() {
       console.error('Erreur lors du chargement des soumissions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Changement de statut inline (sans ouvrir le formulaire)
+  const handleInlineStatusChange = async (submissionId, newStatus) => {
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .update({ status: newStatus })
+        .eq('id', submissionId);
+
+      if (error) throw error;
+
+      setSoumissions(prev => prev.map(s =>
+        s.id === submissionId ? { ...s, status: newStatus } : s
+      ));
+      setStatusDropdownId(null);
+    } catch (error) {
+      console.error('Erreur mise à jour statut:', error);
     }
   };
 
@@ -3281,7 +3310,28 @@ const cleanupFilesForSubmission = async (files) => {
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredSoumissions.map((submission) => (
-                <tr key={submission.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <tr
+                  key={submission.id}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                  onClick={() => {
+                    setEditingSubmission(submission);
+                    setSubmissionForm({
+                      client_name: submission.client_name,
+                      description: submission.description,
+                      amount: submission.amount,
+                      status: submission.status,
+                      items: submission.items || [],
+                      submission_number: submission.submission_number || '',
+                      files: submission.files || []
+                    });
+                    setSelectedItems(submission.items || []);
+                    const existingCostTotal = (submission.items || []).reduce((sum, item) =>
+                      sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
+                    );
+                    setCalculatedCostTotal(existingCostTotal);
+                    setShowForm(true);
+                  }}
+                >
                   <td className="px-3 py-4 whitespace-nowrap">
                     <div className="text-sm space-y-1">
                       {submission.submission_number && (
@@ -3309,45 +3359,54 @@ const cleanupFilesForSubmission = async (files) => {
                       {formatCurrency(submission.amount)}
                     </div>
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                      submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
+                  <td className="px-3 py-4 whitespace-nowrap text-center relative" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setStatusDropdownId(statusDropdownId === submission.id ? null : submission.id)}
+                      className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:ring-2 hover:ring-purple-300 transition-all ${
+                        submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                        submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                        'bg-green-100 text-green-800'
+                      }`}
+                      title="Cliquer pour changer le statut"
+                    >
                       {submission.status === 'sent' ? '📤' :
                        submission.status === 'draft' ? '📝' : '✅'}
-                    </span>
+                      <ChevronDown className="w-3 h-3 inline-block ml-0.5" />
+                    </button>
+                    {statusDropdownId === submission.id && (
+                      <div className="absolute z-50 mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-1 min-w-[140px]">
+                        <button
+                          onClick={() => handleInlineStatusChange(submission.id, 'draft')}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                            submission.status === 'draft' ? 'font-bold bg-gray-50 dark:bg-gray-700' : ''
+                          }`}
+                        >
+                          📝 Brouillon
+                        </button>
+                        <button
+                          onClick={() => handleInlineStatusChange(submission.id, 'sent')}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                            submission.status === 'sent' ? 'font-bold bg-blue-50 dark:bg-gray-700' : ''
+                          }`}
+                        >
+                          📤 Envoyée
+                        </button>
+                        <button
+                          onClick={() => handleInlineStatusChange(submission.id, 'accepted')}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                            submission.status === 'accepted' ? 'font-bold bg-green-50 dark:bg-gray-700' : ''
+                          }`}
+                        >
+                          ✅ Acceptée
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(submission.created_at)}
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                  <td className="px-3 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-center space-x-1">
-                      <button
-                        onClick={() => {
-                          setEditingSubmission(submission);
-                          setSubmissionForm({
-                            client_name: submission.client_name,
-                            description: submission.description,
-                            amount: submission.amount,
-                            status: submission.status,
-                            items: submission.items || [],
-                            submission_number: submission.submission_number || '',
-                            files: submission.files || []
-                          });
-                          setSelectedItems(submission.items || []);
-                          const existingCostTotal = (submission.items || []).reduce((sum, item) => 
-                            sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
-                          );
-                          setCalculatedCostTotal(existingCostTotal);
-                          setShowForm(true);
-                        }}
-                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 p-2 rounded-lg transition-colors"
-                        title="Modifier"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
                       <button
                         onClick={() => handleDeleteSubmission(submission.id)}
                         className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
