@@ -2,9 +2,10 @@
  * @file components/SupplierPurchaseServices.js
  * @description Services pour la gestion des achats fournisseurs (AF)
  *              PDF standardisé via pdf-common.js, envoi email, CRUD Supabase
- * @version 2.1.0
- * @date 2026-02-12
+ * @version 2.2.0
+ * @date 2026-03-25
  * @changelog
+ *   2.2.0 - PDF: ajout Transporteur + N° Compte sous adresse livraison, fix date N/A
  *   2.1.0 - Ajout quantités inventaire (en main, en commande, réservé) dans recherche produits
  *   2.0.0 - Standardisation PDF avec pdf-common.js, suppression html2canvas
  *   1.5.0 - Sync supplier_name, corrections
@@ -694,7 +695,7 @@ export const generatePurchasePDF = async (purchase, options = {}) => {
   // === En-tête standardisé ===
   const headerFields = [
     { value: purchase.purchase_number || 'N/A' },
-    { label: 'Date:', value: pdfFormatDate(purchase.created_at) },
+    { label: 'Date:', value: pdfFormatDate(purchase.created_at || new Date().toISOString()) },
   ];
   if (purchase.supplier_quote_reference) {
     headerFields.push({ label: 'Soumission:', value: purchase.supplier_quote_reference });
@@ -745,6 +746,27 @@ export const generatePurchasePDF = async (purchase, options = {}) => {
     left: { title: 'Fournisseur:', lines: leftLines },
     right: { title: 'Livrer à :', lines: rightLines },
   });
+
+  // === Transport (Transporteur + N° Compte) ===
+  if (purchase.shipping_company || purchase.shipping_account) {
+    const midX = PAGE.margin.left + (PAGE.width - PAGE.margin.left - PAGE.margin.right) / 2 + 5;
+    doc.setFontSize(9);
+    if (purchase.shipping_company) {
+      doc.setFont('helvetica', 'bold');
+      const labelW = doc.getTextWidth('Transporteur: ');
+      doc.text('Transporteur: ', PAGE.margin.left, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(purchase.shipping_company, PAGE.margin.left + labelW, currentY);
+    }
+    if (purchase.shipping_account) {
+      doc.setFont('helvetica', 'bold');
+      const labelW = doc.getTextWidth('N° Compte: ');
+      doc.text('N° Compte: ', midX, currentY);
+      doc.setFont('helvetica', 'normal');
+      doc.text(purchase.shipping_account, midX + labelW, currentY);
+    }
+    currentY += 8;
+  }
 
   // === Tableau des articles ===
   if (purchase.items && purchase.items.length > 0) {
