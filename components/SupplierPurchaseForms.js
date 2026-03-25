@@ -9,9 +9,10 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.1.0
- * @date 2026-03-24
+ * @version 1.2.0
+ * @date 2026-03-25
  * @changelog
+ *   1.2.0 - Sauvegarde automatique avant impression/envoi PDF pour corriger date N/A
  *   1.1.0 - Ajout bouton "Gestion des Soumissions" à côté de Frais de livraison (ouvre SplitView)
  *   1.0.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -162,9 +163,14 @@ export const PurchaseForm = ({
 
   const handlePrint = async () => {
     try {
+      // Sauvegarder avant impression pour avoir created_at et purchase_number
+      let savedData = editingPurchase;
+      if (savePurchaseOnly) {
+        savedData = await savePurchaseOnly();
+      }
       // Inclure les selectedItems actuels dans purchaseForm pour le PDF
       const formWithItems = { ...purchaseForm, items: selectedItems };
-      await exportPDF('download', editingPurchase, formWithItems, {
+      await exportPDF('download', savedData, formWithItems, {
         supplier: selectedSupplier,
         deliveryAddress: selectedAddress,
       });
@@ -209,14 +215,15 @@ export const PurchaseForm = ({
 
     try {
       // Sauvegarder l'AF avant de générer le PDF
+      let savedData = editingPurchase;
       if (savePurchaseOnly) {
-        await savePurchaseOnly();
+        savedData = await savePurchaseOnly();
         console.log('AF sauvegardé avant envoi email fournisseur');
       }
 
       // Générer et sauvegarder le PDF via jsPDF (inclure selectedItems actuels)
       const formWithItems = { ...purchaseForm, items: selectedItems };
-      await exportPDF('download', editingPurchase, formWithItems, {
+      await exportPDF('download', savedData, formWithItems, {
         supplier: selectedSupplier,
         deliveryAddress: selectedAddress,
       });
