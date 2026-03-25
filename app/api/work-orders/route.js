@@ -286,6 +286,7 @@ export async function GET(request) {
         work_description,
         status,
         time_entries,
+        invoice_id,
         client:clients(id, name),
         linked_po:purchase_orders(id, po_number)
       `, { count: 'exact' })

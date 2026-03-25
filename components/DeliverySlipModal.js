@@ -5,9 +5,10 @@
  *              - Déduction automatique du stock (products/non_inventory_items)
  *              - Création des mouvements d'inventaire (inventory_movements)
  *              - Génération PDF avec 2 copies (Client + STMT)
- * @version 1.2.0
- * @date 2026-02-22
+ * @version 1.2.1
+ * @date 2026-03-07
  * @changelog
+ *   1.2.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.2.0 - Ajout classes dark mode Tailwind CSS
  *   1.1.0 - Ajout déduction inventaire (stock_qty) et mouvements (inventory_movements) lors de la création du BL
  *   1.0.0 - Version initiale
@@ -646,6 +647,9 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                   onChange={(e) => setFormData(prev => ({ ...prev, transport_company: e.target.value }))}
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Ex: Purolator, UPS, FedEx..."
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                 />
               </div>
 
@@ -659,6 +663,9 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                   onChange={(e) => setFormData(prev => ({ ...prev, tracking_number: e.target.value }))}
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Numéro de transport du transporteur"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
 
@@ -672,6 +679,9 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                   onChange={(e) => setFormData(prev => ({ ...prev, delivery_contact: e.target.value }))}
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   placeholder="Nom du contact pour la réception"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                 />
               </div>
             </div>
@@ -686,6 +696,9 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                 rows={2}
                 className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="Instructions particulières pour la livraison..."
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
               />
             </div>
 

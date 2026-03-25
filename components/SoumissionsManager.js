@@ -4,9 +4,13 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 1.8.0
- * @date 2026-02-22
+ * @version 2.0.0
+ * @date 2026-03-24
  * @changelog
+ *   2.0.0 - Desktop: ligne cliquable ouvre soumission + dropdown statut inline sans ouvrir le formulaire
+ *   1.9.0 - Forcer majuscules sur description au save + notification auto-dismiss (remplace alert OK)
+ *   1.8.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
+ *   1.8.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.8.0 - Ajout classes dark mode Tailwind CSS
  *   1.7.1 - Forcer majuscules sur code produit et description des items non-inventaire
  *   1.7.0 - Header répété sur pages 2+ dans le PDF jsPDF (version Client)
@@ -230,6 +234,7 @@ export default function SoumissionsManager() {
   });
   const [sendingReport, setSendingReport] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState(null);
+  const [statusDropdownId, setStatusDropdownId] = useState(null);
   
   // États pour la gestion des fichiers uploaded
   const [uploadingFiles, setUploadingFiles] = useState(false);
@@ -267,6 +272,14 @@ export default function SoumissionsManager() {
   const [exchangeRateError, setExchangeRateError] = useState('');
 
   // Debounce pour la recherche produits
+  // Fermer le dropdown statut au clic extérieur
+  useEffect(() => {
+    if (!statusDropdownId) return;
+    const handleClickOutside = () => setStatusDropdownId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [statusDropdownId]);
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (productSearchTerm.length >= 2) {
@@ -440,6 +453,25 @@ export default function SoumissionsManager() {
       console.error('Erreur lors du chargement des soumissions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Changement de statut inline (sans ouvrir le formulaire)
+  const handleInlineStatusChange = async (submissionId, newStatus) => {
+    try {
+      const { error } = await supabase
+        .from('submissions')
+        .update({ status: newStatus })
+        .eq('id', submissionId);
+
+      if (error) throw error;
+
+      setSoumissions(prev => prev.map(s =>
+        s.id === submissionId ? { ...s, status: newStatus } : s
+      ));
+      setStatusDropdownId(null);
+    } catch (error) {
+      console.error('Erreur mise à jour statut:', error);
     }
   };
 
@@ -784,8 +816,8 @@ export default function SoumissionsManager() {
     
     try {
       const nonInventoryData = {
-        product_id: quickProductForm.product_id,
-        description: quickProductForm.description,
+        product_id: quickProductForm.product_id.trim().toUpperCase(),
+        description: quickProductForm.description.trim().toUpperCase(),
         selling_price: parseFloat(quickProductForm.selling_price),
         cost_price: parseFloat(quickProductForm.cost_price),
         unit: quickProductForm.unit,
@@ -797,7 +829,7 @@ export default function SoumissionsManager() {
       const { data: existingItem, error: checkError } = await supabase
         .from('non_inventory_items')
         .select('*')
-        .eq('product_id', quickProductForm.product_id)
+        .eq('product_id', nonInventoryData.product_id)
         .single();
 
       if (checkError && checkError.code !== 'PGRST116') {
@@ -809,7 +841,7 @@ export default function SoumissionsManager() {
         const { data, error } = await supabase
           .from('non_inventory_items')
           .update(nonInventoryData)
-          .eq('product_id', quickProductForm.product_id)
+          .eq('product_id', nonInventoryData.product_id)
           .select();
         result = data;
         if (error) throw error;
@@ -831,7 +863,21 @@ export default function SoumissionsManager() {
           stock_qty: 0
         };
         addItemToSubmission(savedItem, 1);
-        alert('✅ Produit non-inventaire sauvegardé !');
+        const notification = document.createElement('div');
+        notification.innerHTML = '✅ Produit non-inventaire sauvegardé !';
+        notification.style.cssText = `
+          position: fixed; top: 20px; right: 20px;
+          background: #10b981; color: white;
+          padding: 16px 24px; border-radius: 8px;
+          font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          z-index: 9999;
+        `;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+          if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+          }
+        }, 3000);
       }
       
     } catch (error) {
@@ -2086,10 +2132,15 @@ const cleanupFilesForSubmission = async (files) => {
                     <input
                       type="text"
                       value={submissionForm.description}
-                      onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value.toUpperCase()})}
+                      onChange={(e) => setSubmissionForm({...submissionForm, description: e.target.value})}
+                      onBlur={(e) => setSubmissionForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                      style={{ textTransform: 'uppercase' }}
                       className="block w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Description de la soumission..."
                       required
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
                 </div>
@@ -2134,6 +2185,9 @@ const cleanupFilesForSubmission = async (files) => {
                           onKeyDown={handleProductKeyDown}
                           className="block w-full pl-10 pr-4 py-3 rounded-lg border-indigo-300 dark:border-indigo-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base dark:bg-gray-800 dark:text-gray-100"
                           autoComplete="off"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                         />
                       </div>
                     </div>
@@ -2251,6 +2305,9 @@ const cleanupFilesForSubmission = async (files) => {
                             onFocus={(e) => e.target.select()} // ✅ AJOUT: Sélectionne au focus
                                 className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                             autoFocus
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             />
                           </div>
                           <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
@@ -2312,10 +2369,15 @@ const cleanupFilesForSubmission = async (files) => {
                             <input
                               type="text"
                               value={quickProductForm.product_id}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, product_id: e.target.value.toUpperCase()})}
+                              onChange={(e) => setQuickProductForm({...quickProductForm, product_id: e.target.value})}
+                              onBlur={(e) => setQuickProductForm(prev => ({...prev, product_id: prev.product_id.toUpperCase()}))}
+                              style={{ textTransform: 'uppercase' }}
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Ex: TEMP-001"
                               required
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                             />
                           </div>
                           <div>
@@ -2337,10 +2399,15 @@ const cleanupFilesForSubmission = async (files) => {
                             <input
                               type="text"
                               value={quickProductForm.description}
-                              onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value.toUpperCase()})}
+                              onChange={(e) => setQuickProductForm({...quickProductForm, description: e.target.value})}
+                              onBlur={(e) => setQuickProductForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                              style={{ textTransform: 'uppercase' }}
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Description du produit..."
                               required
+                              autoCorrect="on"
+                              autoCapitalize="sentences"
+                              spellCheck={true}
                             />
                           </div>
                           
@@ -2357,6 +2424,9 @@ const cleanupFilesForSubmission = async (files) => {
                                 className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                                 placeholder="0.00"
                                 required
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                               />
                               <button
                                 type="button"
@@ -2423,6 +2493,9 @@ const cleanupFilesForSubmission = async (files) => {
                                       onChange={(e) => setUsdAmount(e.target.value)}
                                       placeholder="Montant USD"
                                       className="flex-1 rounded border-blue-300 dark:border-blue-700 text-sm p-2 dark:bg-gray-800 dark:text-gray-100"
+                                      autoCorrect="off"
+                                      autoCapitalize="off"
+                                      spellCheck={false}
                                     />
                                     <span className="text-sm text-blue-700">USD</span>
                                     <span className="text-sm">=</span>
@@ -2456,6 +2529,9 @@ const cleanupFilesForSubmission = async (files) => {
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3 dark:bg-gray-800 dark:text-gray-100"
                               placeholder="0.00"
                               required
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
                             />
                             
                             {/* BOUTONS DE PROFIT */}
@@ -2573,6 +2649,9 @@ const cleanupFilesForSubmission = async (files) => {
                             }}
                             className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3 text-lg dark:bg-gray-800 dark:text-gray-100"
                             autoFocus
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                           />
                         </div>
 
@@ -2594,6 +2673,9 @@ const cleanupFilesForSubmission = async (files) => {
                               }
                             }}
                             className="w-full rounded-lg border-green-300 dark:border-green-700 shadow-sm focus:border-green-500 focus:ring-green-500 p-3 dark:bg-gray-800 dark:text-gray-100"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                           />
                         </div>
 
@@ -2615,6 +2697,9 @@ const cleanupFilesForSubmission = async (files) => {
                               }
                             }}
                             className="w-full rounded-lg border-orange-300 dark:border-orange-700 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3 dark:bg-gray-800 dark:text-gray-100"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                           />
                         </div>
 
@@ -2629,6 +2714,9 @@ const cleanupFilesForSubmission = async (files) => {
                             className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 p-3 dark:bg-gray-800 dark:text-gray-100"
                             rows={2}
                             placeholder="Note pour cet article..."
+                            autoCorrect="on"
+                            autoCapitalize="sentences"
+                            spellCheck={true}
                           />
                         </div>
 
@@ -2707,6 +2795,9 @@ const cleanupFilesForSubmission = async (files) => {
                               onChange={(e) => setTempComment(e.target.value)}
                               className="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 h-24 resize-none dark:bg-gray-800 dark:text-gray-100"
                               placeholder="Ajouter un commentaire pour ce produit..."
+                              autoCorrect="on"
+                              autoCapitalize="sentences"
+                              spellCheck={true}
                             />
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                               Ce commentaire apparaîtra sur la soumission imprimée
@@ -2791,6 +2882,9 @@ const cleanupFilesForSubmission = async (files) => {
                                       }
                                     }}
                                     className="w-16 text-center rounded border-gray-300 dark:border-gray-600 text-sm dark:bg-gray-800 dark:text-gray-100"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                   />
                                 </td>
                                 <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
@@ -2801,6 +2895,9 @@ const cleanupFilesForSubmission = async (files) => {
                                     value={item.selling_price}
                                     onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
                                     className="w-20 text-right rounded border-green-300 dark:border-green-700 text-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                   />
                                 </td>
                                 <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
@@ -2811,6 +2908,9 @@ const cleanupFilesForSubmission = async (files) => {
                                     value={item.cost_price}
                                     onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
                                     className="w-20 text-right rounded border-orange-300 dark:border-orange-700 text-sm focus:border-orange-500 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck={false}
                                   />
                                 </td>
                                 <td className="p-2 text-right font-medium text-green-700">
@@ -3153,6 +3253,9 @@ const cleanupFilesForSubmission = async (files) => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base dark:bg-gray-800 dark:text-gray-100"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
               />
             </div>
           </div>
@@ -3207,7 +3310,28 @@ const cleanupFilesForSubmission = async (files) => {
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredSoumissions.map((submission) => (
-                <tr key={submission.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <tr
+                  key={submission.id}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                  onClick={() => {
+                    setEditingSubmission(submission);
+                    setSubmissionForm({
+                      client_name: submission.client_name,
+                      description: submission.description,
+                      amount: submission.amount,
+                      status: submission.status,
+                      items: submission.items || [],
+                      submission_number: submission.submission_number || '',
+                      files: submission.files || []
+                    });
+                    setSelectedItems(submission.items || []);
+                    const existingCostTotal = (submission.items || []).reduce((sum, item) =>
+                      sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
+                    );
+                    setCalculatedCostTotal(existingCostTotal);
+                    setShowForm(true);
+                  }}
+                >
                   <td className="px-3 py-4 whitespace-nowrap">
                     <div className="text-sm space-y-1">
                       {submission.submission_number && (
@@ -3235,45 +3359,54 @@ const cleanupFilesForSubmission = async (files) => {
                       {formatCurrency(submission.amount)}
                     </div>
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                      submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
+                  <td className="px-3 py-4 whitespace-nowrap text-center relative" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setStatusDropdownId(statusDropdownId === submission.id ? null : submission.id)}
+                      className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:ring-2 hover:ring-purple-300 transition-all ${
+                        submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                        submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                        'bg-green-100 text-green-800'
+                      }`}
+                      title="Cliquer pour changer le statut"
+                    >
                       {submission.status === 'sent' ? '📤' :
                        submission.status === 'draft' ? '📝' : '✅'}
-                    </span>
+                      <ChevronDown className="w-3 h-3 inline-block ml-0.5" />
+                    </button>
+                    {statusDropdownId === submission.id && (
+                      <div className="absolute z-50 mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-1 min-w-[140px]">
+                        <button
+                          onClick={() => handleInlineStatusChange(submission.id, 'draft')}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                            submission.status === 'draft' ? 'font-bold bg-gray-50 dark:bg-gray-700' : ''
+                          }`}
+                        >
+                          📝 Brouillon
+                        </button>
+                        <button
+                          onClick={() => handleInlineStatusChange(submission.id, 'sent')}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                            submission.status === 'sent' ? 'font-bold bg-blue-50 dark:bg-gray-700' : ''
+                          }`}
+                        >
+                          📤 Envoyée
+                        </button>
+                        <button
+                          onClick={() => handleInlineStatusChange(submission.id, 'accepted')}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+                            submission.status === 'accepted' ? 'font-bold bg-green-50 dark:bg-gray-700' : ''
+                          }`}
+                        >
+                          ✅ Acceptée
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(submission.created_at)}
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                  <td className="px-3 py-4 whitespace-nowrap text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-center space-x-1">
-                      <button
-                        onClick={() => {
-                          setEditingSubmission(submission);
-                          setSubmissionForm({
-                            client_name: submission.client_name,
-                            description: submission.description,
-                            amount: submission.amount,
-                            status: submission.status,
-                            items: submission.items || [],
-                            submission_number: submission.submission_number || '',
-                            files: submission.files || []
-                          });
-                          setSelectedItems(submission.items || []);
-                          const existingCostTotal = (submission.items || []).reduce((sum, item) => 
-                            sum + ((item.cost_price || 0) * (item.quantity || 0)), 0
-                          );
-                          setCalculatedCostTotal(existingCostTotal);
-                          setShowForm(true);
-                        }}
-                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 p-2 rounded-lg transition-colors"
-                        title="Modifier"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
                       <button
                         onClick={() => handleDeleteSubmission(submission.id)}
                         className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"

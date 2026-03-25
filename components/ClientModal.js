@@ -6,9 +6,11 @@
  *              - 5 signataires autorisés
  *              - Formatage automatique des numéros de téléphone
  *              - email_admin optionnel
- * @version 2.0.0
- * @date 2026-02-27
+ * @version 2.1.0
+ * @date 2026-03-07
  * @changelog
+ *   2.1.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
+ *   2.0.1 - Fix: ContactSection causait perte de focus (rendu fonction au lieu de composant)
  *   2.0.0 - Ajout Tarification + Contact #3 + email_admin optionnel (Phase A)
  *   1.1.0 - Ajout support dark mode
  *   1.0.0 - Version initiale
@@ -202,51 +204,58 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
   /* ---------- render helpers ---------- */
   const inputBase = "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100";
 
-  const ContactSection = ({ title, icon: Icon, color, fields }) => {
-    const borderColor = {
-      green: 'border-green-300 dark:border-green-600 focus:border-green-500 focus:ring-green-200 dark:focus:ring-green-800',
-      blue: 'border-blue-300 dark:border-blue-600 focus:border-blue-500 focus:ring-blue-200 dark:focus:ring-blue-800',
-      indigo: 'border-indigo-300 dark:border-indigo-600 focus:border-indigo-500 focus:ring-indigo-200 dark:focus:ring-indigo-800',
-      purple: 'border-purple-300 dark:border-purple-600 focus:border-purple-500 focus:ring-purple-200 dark:focus:ring-purple-800',
-    }[color];
-    const bgColor = {
-      green: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700',
-      blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700',
-      indigo: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700',
-      purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700',
-    }[color];
-    const textColor = {
-      green: 'text-green-800 dark:text-green-300',
-      blue: 'text-blue-800 dark:text-blue-300',
-      indigo: 'text-indigo-800 dark:text-indigo-300',
-      purple: 'text-purple-800 dark:text-purple-300',
-    }[color];
-    const iconColor = {
-      green: 'text-green-600 dark:text-green-400',
-      blue: 'text-blue-600 dark:text-blue-400',
-      indigo: 'text-indigo-600 dark:text-indigo-400',
-      purple: 'text-purple-600 dark:text-purple-400',
-    }[color];
+  const colorStyles = {
+    green: {
+      border: 'border-green-300 dark:border-green-600 focus:border-green-500 focus:ring-green-200 dark:focus:ring-green-800',
+      bg: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700',
+      text: 'text-green-800 dark:text-green-300',
+      icon: 'text-green-600 dark:text-green-400',
+    },
+    blue: {
+      border: 'border-blue-300 dark:border-blue-600 focus:border-blue-500 focus:ring-blue-200 dark:focus:ring-blue-800',
+      bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700',
+      text: 'text-blue-800 dark:text-blue-300',
+      icon: 'text-blue-600 dark:text-blue-400',
+    },
+    indigo: {
+      border: 'border-indigo-300 dark:border-indigo-600 focus:border-indigo-500 focus:ring-indigo-200 dark:focus:ring-indigo-800',
+      bg: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700',
+      text: 'text-indigo-800 dark:text-indigo-300',
+      icon: 'text-indigo-600 dark:text-indigo-400',
+    },
+    purple: {
+      border: 'border-purple-300 dark:border-purple-600 focus:border-purple-500 focus:ring-purple-200 dark:focus:ring-purple-800',
+      bg: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700',
+      text: 'text-purple-800 dark:text-purple-300',
+      icon: 'text-purple-600 dark:text-purple-400',
+    },
+  };
 
+  // Fonction de rendu (PAS un composant React — évite le remount à chaque render)
+  const renderContactSection = (title, Icon, color, fields) => {
+    const styles = colorStyles[color];
     return (
-      <div className={`${bgColor} border p-4 rounded-lg`}>
-        <h3 className={`text-lg font-semibold ${textColor} mb-4 flex items-center`}>
-          <Icon className={`w-5 h-5 mr-2 ${iconColor}`} />
+      <div className={`${styles.bg} border p-4 rounded-lg`}>
+        <h3 className={`text-lg font-semibold ${styles.text} mb-4 flex items-center`}>
+          <Icon className={`w-5 h-5 mr-2 ${styles.icon}`} />
           {title}
         </h3>
         <div className="space-y-3">
           {fields.map(({ label, key, type = 'text', placeholder, required }) => (
             <div key={key}>
-              <label className={`block text-sm font-medium ${textColor} mb-1`}>
+              <label className={`block text-sm font-medium ${styles.text} mb-1`}>
                 {label} {required && <span className="text-red-600">*</span>}
               </label>
               <input
                 type={type}
-                className={`${inputBase} ${borderColor}`}
+                className={`${inputBase} ${styles.border}`}
                 value={form[key]}
                 onChange={type === 'tel' ? onPhoneChange(key) : onChange(key)}
                 placeholder={placeholder}
                 autoComplete={type === 'email' ? 'email' : type === 'tel' ? 'tel' : undefined}
+                autoCorrect={type === 'text' ? 'on' : 'off'}
+                autoCapitalize={type === 'text' ? 'sentences' : 'off'}
+                spellCheck={type === 'text'}
               />
             </div>
           ))}
@@ -328,6 +337,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       placeholder="ex: Concrea, A Toulouse, Belvédère du Lac"
                       required
                       autoFocus
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
                   <div>
@@ -340,6 +352,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       onChange={onChange('address')}
                       placeholder="ex: 3197, 42e Rue Nord, St-Georges, QC, G5Z 0V9"
                       rows="2"
+                      autoCorrect="on"
+                      autoCapitalize="sentences"
+                      spellCheck={true}
                     />
                   </div>
                   <div>
@@ -356,6 +371,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         onFocus={(e) => e.target.select()}
                         placeholder="ex: 30"
                         inputMode="numeric"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                       <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap px-2">
                         = {(form.travel_minutes / 60 * 10).toFixed(1)} /10h
@@ -367,46 +385,26 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
 
               {/* Grid des 4 contacts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ContactSection
-                  title="Contact Principal"
-                  icon={User}
-                  color="green"
-                  fields={[
-                    { label: 'Nom du contact', key: 'contact_name', placeholder: 'ex: Jean Tremblay' },
-                    { label: 'Courriel', key: 'email', type: 'email', placeholder: 'contact@exemple.com' },
-                    { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '(418) 225-3875' },
-                  ]}
-                />
-                <ContactSection
-                  title="Contact #2"
-                  icon={Users}
-                  color="blue"
-                  fields={[
-                    { label: 'Nom du contact', key: 'contact_name_2', placeholder: 'ex: Marie Dupont' },
-                    { label: 'Courriel', key: 'email_2', type: 'email', placeholder: 'contact2@exemple.com' },
-                    { label: 'Téléphone', key: 'contact_2', type: 'tel', placeholder: '(418) 225-3875' },
-                  ]}
-                />
-                <ContactSection
-                  title="Contact #3"
-                  icon={Users}
-                  color="indigo"
-                  fields={[
-                    { label: 'Nom du contact', key: 'contact_name_3', placeholder: 'ex: Pierre Roy' },
-                    { label: 'Courriel', key: 'email_3', type: 'email', placeholder: 'contact3@exemple.com' },
-                    { label: 'Téléphone', key: 'contact_3', type: 'tel', placeholder: '(418) 225-3875' },
-                  ]}
-                />
-                <ContactSection
-                  title="Administration"
-                  icon={Building}
-                  color="purple"
-                  fields={[
-                    { label: 'Nom Admin', key: 'contact_name_admin', placeholder: 'ex: Julie Comptabilité' },
-                    { label: 'Courriel Admin', key: 'email_admin', type: 'email', placeholder: 'admin@exemple.com' },
-                    { label: 'Contact Admin', key: 'contact_admin', type: 'tel', placeholder: '(418) 225-3875' },
-                  ]}
-                />
+                {renderContactSection("Contact Principal", User, "green", [
+                  { label: 'Nom du contact', key: 'contact_name', placeholder: 'ex: Jean Tremblay' },
+                  { label: 'Courriel', key: 'email', type: 'email', placeholder: 'contact@exemple.com' },
+                  { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '(418) 225-3875' },
+                ])}
+                {renderContactSection("Contact #2", Users, "blue", [
+                  { label: 'Nom du contact', key: 'contact_name_2', placeholder: 'ex: Marie Dupont' },
+                  { label: 'Courriel', key: 'email_2', type: 'email', placeholder: 'contact2@exemple.com' },
+                  { label: 'Téléphone', key: 'contact_2', type: 'tel', placeholder: '(418) 225-3875' },
+                ])}
+                {renderContactSection("Contact #3", Users, "indigo", [
+                  { label: 'Nom du contact', key: 'contact_name_3', placeholder: 'ex: Pierre Roy' },
+                  { label: 'Courriel', key: 'email_3', type: 'email', placeholder: 'contact3@exemple.com' },
+                  { label: 'Téléphone', key: 'contact_3', type: 'tel', placeholder: '(418) 225-3875' },
+                ])}
+                {renderContactSection("Administration", Building, "purple", [
+                  { label: 'Nom Admin', key: 'contact_name_admin', placeholder: 'ex: Julie Comptabilité' },
+                  { label: 'Courriel Admin', key: 'email_admin', type: 'email', placeholder: 'admin@exemple.com' },
+                  { label: 'Contact Admin', key: 'contact_admin', type: 'tel', placeholder: '(418) 225-3875' },
+                ])}
               </div>
 
               {/* SECTION - Tarification */}
@@ -433,6 +431,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         onFocus={(e) => e.target.select()}
                         placeholder={defaultRate ? `${defaultRate.toFixed(2)}` : '0.00'}
                         inputMode="decimal"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400">$/h</span>
                     </div>
@@ -457,6 +458,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         onFocus={(e) => e.target.select()}
                         placeholder="0.00"
                         inputMode="decimal"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400">$</span>
                     </div>
@@ -477,6 +481,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                       onChange={onChange('email_billing')}
                       placeholder="facture@exemple.com"
                       autoComplete="email"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                     />
                     <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                       Vide = utilise admin / principal
@@ -519,6 +526,9 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         value={form[`signatory_${n}`]}
                         onChange={onChange(`signatory_${n}`)}
                         placeholder="Nom complet"
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        spellCheck={true}
                       />
                     </div>
                   ))}

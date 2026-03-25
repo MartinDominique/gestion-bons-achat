@@ -817,6 +817,8 @@ await supabase
 - [ ] Drill-down (detail par document dans panneau lateral)
 - [ ] Graphiques visuels (revenus/couts par mois, marge, repartition clients)
 - [ ] Filtres avances (BA lie, statut, Prix Jobe)
+- [x] Sous-onglet Financier base sur les factures (Phase D) ✅ COMPLETE (2026-02-27)
+  - Revenus par mois, par client, factures en attente, export PDF
 
 **Phase 3 - Rapports avances (futurs):**
 - [ ] Rapport par produit (par groupe ou individuellement)
@@ -1042,6 +1044,13 @@ Pas de tests automatises detectes.
 - [x] #7: Export PDF rapport via `pdf-common.js`
 
 ### Phase 13 - Rapports & Statistiques Phase 2 (Ameliorations)
+- [x] Sous-onglet Financier (factures) dans Statistiques ✅ COMPLETE (2026-02-27)
+  - `app/api/statistics/financial/route.js` — API statistiques financieres
+  - `components/statistics/FinancialStatistics.js` — Orchestrateur
+  - `components/statistics/FinancialFilters.js` — Filtres financiers
+  - `components/statistics/FinancialReport.js` — 3 vues (par mois, par client, en attente)
+  - `components/statistics/FinancialPDFExport.js` — Export PDF
+  - `components/statistics/StatisticsManager.js` v2.0.0 — 2 sous-onglets
 - [ ] #8: Migration SQL `cost_price` sur materiaux BT/BL
 - [ ] #9: Drill-down detail par document
 - [ ] #10: Graphiques visuels (Recharts ou Chart.js)
@@ -1113,6 +1122,19 @@ bg-yellow-50  → dark:bg-yellow-900/20 (avertissements)
 - [ ] Verifier les badges de statut (couleurs pastel en mode sombre)
 - [ ] `WorkOrderList.js` et `WorkOrderClientView.js` non migres (pages peu utilisees)
 - [ ] Ajuster si des couleurs semblent incorrectes apres test terrain
+
+### ~~Phase 14 - Navigation mobile + SplitView tablette~~ ✅ COMPLETE (2026-03-01)
+- [x] #1: Navigation mobile Option A - Menu "Plus" pour modules bureau (bottom sheet)
+- [x] #2: Fix SplitView tablette - panneau overlay glissant depuis la droite
+- [x] #3: Fix SplitView mobile - overlay plein ecran
+- [x] #4: Animations slide-up (bottom sheet) et slide-in-right (panneau overlay)
+
+**Implementation completee (2026-03-01):**
+- `components/Navigation.js` (v2.0.0) - Mobile: BA + BT + Clients + bouton "Plus" → bottom sheet avec Soumissions, Inventaire, Achat, Stats, Facturation, Parametres
+- `components/SplitView/ClientSplitViewWrapper.js` (v2.0.0) - Desktop: 55/45 split inchange. Tablette/Mobile: overlay fixe avec backdrop, fermeture au clic exterieur
+- `tailwind.config.js` - Ajout animations `slide-up` et `slide-in-right`
+
+**Probleme resolu:** Sur tablette (<1024px), le panneau SplitView etait cache (`hidden lg:block`) mais `panelOpen=true` retrecissait le contenu principal a 55%. Le panneau etait invisible et impossible a fermer. Solution: detection JS de la taille d'ecran, mode overlay sur tablette/mobile.
 
 ---
 
@@ -1228,6 +1250,36 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 - **Architecture:** `DirectReceiptModal.js` avec 2 modes: Reception (IN) et Ajustement (+/-)
 - **Flux inventaire:** Mouvements `direct_receipt` + decalage historique prix
 
+### 2026-03-03 - Gestion Backorder (BO) dans les Bons de Livraison
+- **Decision:** Livraisons partielles avec creation automatique de BL de suivi apres signature
+- **Raison:** Permettre de livrer partiellement une commande, visualiser ce qui manque, et generer un BL brouillon avec les quantites restantes
+- **Architecture:** Colonnes `parent_bl_id`/`child_bl_id` sur delivery_notes, `ordered_quantity`/`previously_delivered` sur delivery_note_materials
+- **Flux:** Import soumission/AF → set ordered_quantity → livrer partiellement → signature → auto-creation BL suivi en brouillon
+- **Cascade:** Si le BL de suivi est lui aussi partiel → le meme mecanisme cree un 3e BL, etc.
+- **Fichiers modifies:**
+  - `supabase/migrations/20260303_add_backorder_columns.sql` — Migration SQL
+  - `app/api/delivery-notes/route.js` v1.2.0 — POST/GET/DELETE
+  - `app/api/delivery-notes/[id]/route.js` v1.1.0 — GET/PUT
+  - `app/api/delivery-notes/[id]/complete-signature/route.js` v1.3.0 — Logique BO principale
+  - `components/delivery-notes/DeliveryNoteForm.js` v2.8.0 — UI BO
+  - `components/delivery-notes/DeliveryNoteClientView.js` v2.3.0 — Vue client BO
+  - `app/bons-travail/page.js` v2.3.0 — Badge BO
+  - `lib/services/email-service.js` v3.1.0 — PDF BO
+
+### 2026-03-06 - Correction affichage Backorder (BO) dans les Bons de Livraison
+- **Decision:** Suppression liste dupliquee BO, fusion en une seule liste de materiaux
+- **Raison:** Items importes apparaissaient en double (cartes MaterialSelector + tableau BO separe)
+- **Corrections apportees:**
+  - Formulaire Martin: tableau compact BO (Code/Description/U/M/Commande/Expedie/B/O) + cartes pour items manuels
+  - Vue client: colonne "A suivre" masquee si aucun BO restant
+  - PDF: colonnes renommees Code/Description/U/M/Commande/Expedie/B/O
+  - Bandeau livraison partielle deplace en haut du formulaire
+  - Colonne "Deja livre" conditionnelle (uniquement BL de suivi)
+- **Fichiers modifies:**
+  - `components/delivery-notes/DeliveryNoteForm.js` v3.0.0 — Refonte affichage BO
+  - `components/delivery-notes/DeliveryNoteClientView.js` v2.6.0 — Masquage colonne A suivre
+  - `lib/services/email-service.js` v3.2.0 — Colonnes PDF BO corrigees
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-02-22 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-03-06 par Claude AI*

@@ -21,6 +21,8 @@ const SplitViewContext = createContext(null);
  * - 'purchase-order' : BA (Bon d'Achat Client) - PurchaseOrderModal in panel mode
  * - 'supplier-purchase' : AF (Achat Fournisseur) - SupplierPurchaseManager in panel mode
  * - 'soumission' : Soumission - SoumissionsManager in panel mode
+ * - 'work-order' : BT (Bon de Travail) - Read-only panel
+ * - 'delivery-note' : BL (Bon de Livraison) - Read-only panel
  */
 
 export function SplitViewProvider({ children }) {

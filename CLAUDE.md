@@ -245,6 +245,35 @@ Tous les champs `<input>` de type nombre (prix, quantités, pourcentages) DOIVEN
 - `SupplierPurchaseManager.js` / `SupplierReceiptModal.js`
 - Tout autre formulaire avec des champs numériques
 
+### Attributs des champs texte (OBLIGATOIRE)
+
+Tous les champs `<input>` et `<textarea>` DOIVENT avoir les attributs appropriés selon leur type de contenu.
+
+**Champs texte libre** (descriptions, noms, adresses, notes, commentaires, instructions) :
+```javascript
+<input
+  type="text"
+  autoCorrect="on"
+  autoCapitalize="sentences"
+  spellCheck={true}
+  // ... autres props
+/>
+```
+
+**Champs codes/références/montants** (codes produits, numéros, emails, téléphones, recherche, mots de passe, codes postaux, prix) :
+```javascript
+<input
+  type="text"
+  autoCorrect="off"
+  autoCapitalize="off"
+  spellCheck={false}
+  // ... autres props
+/>
+```
+
+**Note:** Les champs `type="number"`, `type="email"`, `type="tel"`, `type="password"` sont toujours CODE/REFERENCE.
+Les champs `type="date"`, `type="time"`, `type="checkbox"`, `type="radio"`, `type="file"`, `readOnly` sont exemptés.
+
 ### Gestion d'Erreurs
 
 Pattern standard pour les réponses API:
@@ -291,6 +320,7 @@ const total = subtotal + tps + tvq;
 /(protected)/inventaire          → Gestion inventaire
 /(protected)/soumissions         → Soumissions/devis
 /(protected)/statistiques        → Rapports & Statistiques de Ventes
+/(protected)/facturation         → Module Facturation (À facturer + Factures)
 ```
 
 ### API Endpoints Critiques
@@ -311,7 +341,12 @@ const total = subtotal + tps + tvq;
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
+/api/statistics/financial              → Statistiques financières (GET: par mois, par client, en attente)
 /api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
+/api/invoices                          → CRUD Factures (GET liste + POST création)
+/api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
+/api/invoices/[id]/send-email          → Envoi facture PDF par email au client
+/api/invoices/report                   → Rapport Acomba mensuel (GET avec mois)
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -339,12 +374,19 @@ components/SupplierReceiptModal.js            → Réception AF (partielle/compl
 components/DirectReceiptModal.js              → Réception directe sans AF + ajustement inventaire
 components/InventoryManager.js                → Gestion inventaire (recherche serveur, modal unifié)
 components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation commande client)
-components/SplitView/                         → Panneau latéral (BA/AF/Soumission inline)
+components/SplitView/                         → Panneau latéral (BA/AF/Soumission/BT/BL inline)
 components/ClientManager.js                   → Gestion clients
-components/statistics/StatisticsManager.js    → Composant principal Statistiques de Ventes
-components/statistics/StatisticsFilters.js    → Filtres de recherche (type, dates, client, etc.)
+components/statistics/StatisticsManager.js    → Composant principal Statistiques (2 sous-onglets: Opérationnel + Financier)
+components/statistics/StatisticsFilters.js    → Filtres de recherche opérationnel (type, dates, client, etc.)
 components/statistics/SalesReport.js          → Tableau ventes + bandeau résumé + pagination
-components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes
+components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes opérationnel
+components/statistics/FinancialStatistics.js  → Orchestrateur sous-onglet Financier (factures)
+components/statistics/FinancialFilters.js     → Filtres financiers (période, client, statut, vue)
+components/statistics/FinancialReport.js      → Rapport financier (par mois, par client, en attente)
+components/statistics/FinancialPDFExport.js   → Export PDF rapport financier
+components/invoices/InvoiceManager.js         → Module Facturation (2 onglets: À facturer + Factures + Rapport Acomba)
+components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ)
+components/invoices/AcombaReportExport.js     → Export PDF + CSV rapport mensuel Acomba
 ```
 
 ---
@@ -353,12 +395,13 @@ components/statistics/StatisticsPDFExport.js  → Export PDF rapport de ventes
 
 ### work_orders (BT)
 ```sql
-id, bt_number, client_id, linked_po_id,
+id, bt_number, client_id, linked_po_id, invoice_id,
 work_date, time_entries (JSONB), total_hours,
 work_description, status, is_prix_jobe,
 signature_data, signature_timestamp, client_signature_name
 ```
 **Statuts:** draft, signed, pending_send, completed
+**Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `invoice_id IS NOT NULL` → facturé (vert)
 
 ### clients
 ```sql
@@ -385,14 +428,30 @@ items (JSONB), subtotal, tps, tvq, total_amount, status
 
 ### delivery_notes (BL)
 ```sql
-id, bl_number, client_id, client_name, linked_po_id,
+id, bl_number, client_id, client_name, linked_po_id, invoice_id,
 delivery_date, delivery_description, status,
 is_prix_jobe, signature_data, signature_timestamp,
 client_signature_name, recipient_emails (JSONB),
+parent_bl_id, child_bl_id,
 user_id, created_at, updated_at
 ```
 **Statuts:** draft, ready_for_signature, signed, pending_send, sent
-**Matériaux:** Table séparée `delivery_note_materials` (product_id, quantity, unit, unit_price, etc.)
+**Matériaux:** Table séparée `delivery_note_materials` (product_id, quantity, unit, unit_price, ordered_quantity, previously_delivered, etc.)
+**Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `invoice_id IS NOT NULL` → facturé (vert)
+**Backorder:** `parent_bl_id` = BL d'origine (si suivi), `child_bl_id` = BL de suivi (si BO créé)
+
+### invoices (Factures)
+```sql
+id, invoice_number, client_id, client_name, client_address,
+source_type ('work_order'|'delivery_note'), source_id, source_number,
+invoice_date, due_date, payment_terms,
+line_items (JSONB), subtotal, tps_rate, tvq_rate, tps_amount, tvq_amount, total,
+total_materials, total_labor, total_transport,
+status, is_prix_jobe, notes, pdf_url,
+sent_at, paid_at, user_id, created_at, updated_at
+```
+**Statuts:** draft, sent, paid
+**Line items types:** labor, transport, material, forfait, other
 
 ### products / non_inventory_items
 ```sql
@@ -513,12 +572,66 @@ CRON_SECRET                   # Auth pour cron jobs
     - Décisions confirmées: Dimanche 1.5x, Fériés 2x, Navigation Option A, Transport ligne 0$
     - Conditions paiement: Net 30 jours / 2% 10 Net 30 jours / Payable sur réception
 
+11. ~~**Facturation MVP (Phase B)**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `supabase/migrations/20260227_create_invoices.sql` — Table invoices + invoice_id sur BT/BL
+    - `supabase/migrations/20260227_create_invoices_storage.sql` — Bucket Supabase Storage 'invoices' (privé)
+    - `app/api/invoices/route.js` — API GET (liste) + POST (création avec auto-numéro)
+    - `app/api/invoices/[id]/route.js` — API GET/PUT/DELETE facture individuelle
+    - `app/api/invoices/[id]/send-email/route.js` — Envoi PDF + upload Storage + sauvegarde pdf_url
+    - `components/invoices/InvoiceManager.js` — 2 onglets: "À facturer" + "Factures" + bouton Télécharger PDF
+    - `components/invoices/InvoiceEditor.js` — Éditeur lignes (M.O., transport, matériaux, forfait)
+    - `app/(protected)/facturation/page.js` — Page protégée Facturation
+    - `components/Navigation.js` — Ajout onglet Facturation (icône Receipt)
+    - `app/bons-travail/page.js` — Indicateurs rouge/vert facturé sur BT/BL
+    - `app/api/work-orders/route.js` + `delivery-notes/route.js` — Ajout invoice_id au SELECT
+    - **Stockage PDF:** Lors de l'envoi, le PDF est uploadé dans `invoices/YYYY/MM/facture-{numero}.pdf`
+      et l'URL signée est sauvegardée dans `invoices.pdf_url` pour téléchargement ultérieur
+    - Note: Les 2 migrations SQL doivent être exécutées manuellement dans Supabase Dashboard
+
+12. ~~**Rapport Acomba (Phase C)**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `app/api/invoices/report/route.js` — API GET rapport mensuel avec ventilation + totaux agrégés
+    - `components/invoices/AcombaReportExport.js` — Export PDF (jsPDF autoTable) + CSV (point-virgule, BOM UTF-8)
+    - `components/invoices/InvoiceManager.js` v1.3.0 — Sélecteur mois + boutons Rapport Acomba PDF + Export CSV
+    - Colonnes: N° Fact., Date, Client, Réf., Vente mat., Vente temps, Vente dépl., Sous-total, TPS, TVQ, Total
+    - Ligne TOTAUX en gras en bas du rapport
+
+13. ~~**Statistiques Phase 2 (Phase D)**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `app/api/statistics/financial/route.js` — API GET statistiques financières (résumé, par mois, par client, en attente)
+    - `components/statistics/FinancialStatistics.js` — Orchestrateur sous-onglet Financier
+    - `components/statistics/FinancialFilters.js` — Filtres: période, client, statut, vue (Par mois/Par client/En attente)
+    - `components/statistics/FinancialReport.js` — 3 vues: revenus par mois, revenus par client, factures en attente
+    - `components/statistics/FinancialPDFExport.js` — Export PDF rapport financier (3 modes)
+    - `components/statistics/StatisticsManager.js` v2.0.0 — 2 sous-onglets: Opérationnel (BT/BL) + Financier (Factures)
+    - Bandeau résumé: total facturé, payé, en attente, brouillon, ventilation matériaux/M.O./transport
+    - Vue En attente: suivi échéances, détection retards
+
+14. ~~**Numéros cliquables SplitView (Phase E)**~~ - ✅ COMPLÉTÉ 2026-02-27
+    - `components/SplitView/PanelWorkOrder.js` — Panneau lecture BT (nouveau)
+    - `components/SplitView/PanelDeliveryNote.js` — Panneau lecture BL (nouveau)
+    - `components/SplitView/SplitViewPanel.js` v1.1.0 — Support types work-order et delivery-note
+    - `components/invoices/InvoiceManager.js` v1.4.0 — ReferenceLink sur N° BT/BL (À facturer + Factures)
+    - `components/statistics/SalesReport.js` v1.1.0 — ReferenceLink sur N° documents (BT/BL/Soumission)
+    - `components/statistics/FinancialReport.js` v1.1.0 — ReferenceLink sur N° référence (vue En attente)
+    - Pattern: clic sur un N° BT/BL/Soumission ouvre le panneau latéral SplitView en lecture
+
+15. ~~**Navigation mobile Option A + SplitView tablette**~~ - ✅ COMPLÉTÉ 2026-03-01
+    - `components/Navigation.js` v2.0.0 — Mobile: BA + BT + Clients + bouton "Plus" (bottom sheet)
+    - `components/SplitView/ClientSplitViewWrapper.js` v2.0.0 — Overlay mode tablette/mobile
+    - `tailwind.config.js` — Animations slide-up + slide-in-right
+    - Fix: panneau SplitView invisible sur tablette → mode overlay avec backdrop
+
+16. ~~**Gestion Backorder (BO) dans les Bons de Livraison**~~ - ✅ COMPLÉTÉ 2026-03-03, corrigé 2026-03-06
+    - `supabase/migrations/20260303_add_backorder_columns.sql` — parent_bl_id, child_bl_id, ordered_quantity, previously_delivered
+    - `app/api/delivery-notes/route.js` v1.2.0 — POST accepte parent_bl_id + BO fields, GET inclut parent/child, DELETE nettoie child_bl_id
+    - `app/api/delivery-notes/[id]/route.js` v1.1.0 — GET charge parent/child bl_number, PUT accepte BO fields
+    - `app/api/delivery-notes/[id]/complete-signature/route.js` v1.3.0 — Détection BO, création auto BL suivi brouillon, lien parent↔child
+    - `components/delivery-notes/DeliveryNoteForm.js` v3.0.0 — Tableau compact BO unifié (Code/Desc/U/M/Commandé/Expédié/B/O), cartes MaterialSelector pour items manuels
+    - `components/delivery-notes/DeliveryNoteClientView.js` v2.6.0 — Colonnes Reçu/À suivre, colonne masquée si aucun BO restant
+    - `app/bons-travail/page.js` v2.3.0 — Badge "BO" orange, indicateur "Suite" pour BL de suivi
+    - `lib/services/email-service.js` v3.2.0 — PDF BL avec colonnes Code/Desc/U/M/Commandé/Expédié/B/O conditionnelles
+    - Note: Migration SQL à exécuter manuellement dans Supabase Dashboard
+
 ### À faire (priorité utilisateur)
-1. **Facturation MVP (Phase B)** - Module complet de facturation (voir `Facturation_Taux_Statistiques.md`)
-2. **Rapport Acomba (Phase C)** - Rapport mensuel ventilé pour saisie dans Acomba
-3. **Statistiques Phase 2 (Phase D)** - Sous-onglet Financier basé sur les factures
-4. **Navigation mobile Option A** - Menu "Plus" pour modules bureau
-5. **Numéros cliquables SplitView** - ReferenceLink.js partout dans l'app
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
@@ -638,6 +751,8 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
   },
   linked_po_id: 789,
   linked_po: { po_number: "PO-2026-001" },
+  parent_bl_id: null,        // Réf. BL parent (si c'est un suivi BO)
+  child_bl_id: null,         // Réf. BL de suivi (si BO créé après signature)
   delivery_date: "2026-02-07",
   delivery_description: "Livraison matériels électriques - Phase 1",
   materials: [
@@ -648,7 +763,9 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
       unit: "UN",
       unit_price: 50.00,
       show_price: true,
-      notes: "Note optionnelle"
+      notes: "Note optionnelle",
+      ordered_quantity: 10,     // Qté commandée d'origine (null si ajout manuel)
+      previously_delivered: 0   // Qté déjà livrée dans BL précédents
     }
   ],
   status: "sent",
@@ -658,8 +775,6 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
   signature_timestamp: "2026-02-07T14:30:00Z",
   client_signature_name: "Jean Tremblay"
 }
-
-
 ```
 
 **Différences clés BL vs BT:**
@@ -667,6 +782,7 @@ await emailService.sendWorkOrderEmail(workOrder, { clientEmail: emails });
 - Pas de `work_description` → `delivery_description` à la place
 - Pas de `work_date` → `delivery_date` à la place
 - Numérotation BL-YYMM-### au lieu de BT-YYMM-###
+- Support backorder (BO) via `ordered_quantity`, `previously_delivered`, `parent_bl_id`, `child_bl_id`
 
 ---
 

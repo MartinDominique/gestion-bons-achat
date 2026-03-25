@@ -5,9 +5,11 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.1.1
- * @date 2026-02-22
+ * @version 1.1.3
+ * @date 2026-03-07
  * @changelog
+ *   1.1.3 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
+ *   1.1.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.1 - Fix boutons Fermer: texte invisible au survol en dark mode (hover:bg-gray-100 → dark:hover:bg-gray-700 + dark:text-gray-100)
  *   1.1.0 - Ajout classes dark mode Tailwind CSS
  *   1.0.0 - Version initiale
@@ -840,6 +842,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
                 if (searchResults.length > 0) setShowSuggestions(true);
               }}
               placeholder="Code..."
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               className="w-full px-1 py-1 text-xs border rounded dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             />
             
@@ -864,6 +869,9 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
               value={localItem.description}
               onChange={(e) => setLocalItem({...localItem, description: e.target.value})}
               placeholder="Description"
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck={true}
               className="w-full px-1 py-1 text-xs border rounded dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600"
             />
           </td>
@@ -1812,9 +1820,14 @@ setTimeout(() => {
                       type="text"
                       name="po_number"
                       value={formData.po_number}
-                      onChange={(e) => setFormData(prev => ({ ...prev, po_number: e.target.value.toUpperCase() }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, po_number: e.target.value }))}
+                      onBlur={(e) => setFormData(prev => ({ ...prev, po_number: prev.po_number.toUpperCase() }))}
+                      style={{ textTransform: 'uppercase' }}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                       placeholder="Ex: PO-2025-001"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       required
                     />
                   </div>
@@ -1830,6 +1843,9 @@ setTimeout(() => {
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100 dark:bg-gray-700 dark:text-gray-400"
                       placeholder="Sera rempli par import soumission"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       readOnly
                     />
                   </div>
@@ -1890,9 +1906,14 @@ setTimeout(() => {
                       <textarea
                         name="description"
                         value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value.toUpperCase() }))}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        onBlur={(e) => setFormData(prev => ({ ...prev, description: (prev.description || '').toUpperCase() }))}
+                        style={{ textTransform: 'uppercase' }}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                         placeholder="Description détaillée du bon d'achat..."
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        spellCheck={true}
                         rows="3"
                       />
                     </div>
@@ -1905,9 +1926,14 @@ setTimeout(() => {
                     type="text"
                     name="special_instructions"
                     value={formData.special_instructions}
-                    onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value.toUpperCase() }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, special_instructions: e.target.value }))}
+                    onBlur={(e) => setFormData(prev => ({ ...prev, special_instructions: (prev.special_instructions || '').toUpperCase() }))}
+                    style={{ textTransform: 'uppercase' }}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                     placeholder="Notes additionnelles, instructions spéciales..."
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    spellCheck={true}
                   />
                 </div>
 
@@ -1999,7 +2025,7 @@ setTimeout(() => {
                         {items.map((item, index) => (
                           <div key={item.id || index} className="p-4 bg-white dark:bg-gray-900">
                             <div className="flex justify-between items-start mb-2">
-                              <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">{item.product_id}</div>
+                              <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate max-w-[200px]">{item.product_id}</div>
                               <div className="flex gap-1">
                                 <button
                                   onClick={() => startEditingItem(index)}
@@ -2944,6 +2970,9 @@ setTimeout(() => {
                     }
                   }}
                   placeholder="Ex: PROD-001 ou tapez pour chercher..."
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
                 
@@ -2986,6 +3015,9 @@ setTimeout(() => {
                   value={editingItemData?.description || ''}
                   onChange={(e) => setEditingItemData(prev => ({...prev, description: e.target.value}))}
                   placeholder="Description de l'article"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                   rows="3"
                 />

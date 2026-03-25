@@ -1,9 +1,14 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
- * @description Signature complète + envoi automatique du BL
- * @version 1.2.0
- * @date 2026-02-27
+ * @description Signature complète + envoi automatique du BL + création BL suivi backorder
+ * @version 1.4.0
+ * @date 2026-03-04
  * @changelog
+ *   1.4.0 - Fix BO: inclure TOUS les items dans le BL de suivi (pas seulement les BO),
+ *           items complétés avec quantity=0 pour vue complète commande côté client
+ *   1.3.0 - Ajout gestion backorder (BO): après signature, si des items ont ordered_quantity
+ *           et qu'il reste des quantités non livrées, crée automatiquement un BL de suivi
+ *           en brouillon avec les quantités restantes et lie parent↔child
  *   1.2.0 - Inventaire déduit à la signature (avant envoi email), pas seulement si email réussit
  *           Protection anti-doublon via vérification inventory_movements existants
  *   1.1.0 - Ajout mise à jour delivered_quantity dans client_po_items (cohérence avec send-email)
@@ -226,6 +231,93 @@ export async function POST(request, { params }) {
       }
     }
 
+    // 2d. Gestion Backorder (BO): créer BL de suivi si quantités restantes
+    let backorderResult = null;
+    if (deliveryNote.materials && deliveryNote.materials.length > 0) {
+      // Filtrer les items qui ont un suivi BO (ordered_quantity défini)
+      const trackedItems = deliveryNote.materials.filter(m => m.ordered_quantity);
+      const boItems = trackedItems.filter(m => {
+        const totalDelivered = (parseFloat(m.previously_delivered) || 0) + (parseFloat(m.quantity) || 0);
+        return totalDelivered < parseFloat(m.ordered_quantity);
+      });
+
+      if (boItems.length > 0) {
+        try {
+          console.log(`📦 BO détecté: ${boItems.length} item(s) en backorder pour BL ${deliveryNote.bl_number}`);
+
+          // Créer le BL de suivi en brouillon
+          const followUpData = {
+            client_id: deliveryNote.client_id,
+            client_name: deliveryNote.client_name,
+            linked_po_id: deliveryNote.linked_po_id || null,
+            delivery_date: new Date().toISOString().split('T')[0],
+            delivery_description: `SUITE ${deliveryNote.bl_number} — BACKORDER`,
+            status: 'draft',
+            is_prix_jobe: deliveryNote.is_prix_jobe || false,
+            recipient_emails: deliveryNote.recipient_emails || [],
+            parent_bl_id: deliveryNoteId,
+          };
+
+          const { data: followUpBL, error: followUpError } = await supabaseAdmin
+            .from('delivery_notes')
+            .insert([followUpData])
+            .select()
+            .single();
+
+          if (followUpError) {
+            console.error('Erreur création BL suivi BO:', followUpError);
+          } else {
+            console.log(`✅ BL suivi créé: ${followUpBL.bl_number} (id: ${followUpBL.id})`);
+
+            // Inclure TOUS les items avec ordered_quantity (pas seulement les BO)
+            // Items complétés auront quantity=0, ce qui permet de voir la commande complète
+            const followUpMaterials = trackedItems.map(m => {
+              const prevDelivered = parseFloat(m.previously_delivered) || 0;
+              const currentDelivered = parseFloat(m.quantity) || 0;
+              const orderedQty = parseFloat(m.ordered_quantity);
+              const remainingQty = Math.max(0, orderedQty - prevDelivered - currentDelivered);
+
+              return {
+                delivery_note_id: followUpBL.id,
+                product_id: m.product_id || null,
+                product_code: m.product_code || null,
+                description: m.description || null,
+                quantity: remainingQty,
+                unit: m.unit || 'UN',
+                unit_price: parseFloat(m.unit_price) || 0,
+                show_price: m.show_price || false,
+                notes: m.notes || null,
+                ordered_quantity: orderedQty,
+                previously_delivered: prevDelivered + currentDelivered,
+              };
+            });
+
+            const { error: matError } = await supabaseAdmin
+              .from('delivery_note_materials')
+              .insert(followUpMaterials);
+
+            if (matError) {
+              console.error('Erreur création matériaux BL suivi:', matError);
+            }
+
+            // Lier parent → child
+            await supabaseAdmin
+              .from('delivery_notes')
+              .update({ child_bl_id: followUpBL.id })
+              .eq('id', deliveryNoteId);
+
+            backorderResult = {
+              followUpBlId: followUpBL.id,
+              followUpBlNumber: followUpBL.bl_number,
+              boItemCount: boItems.length,
+            };
+          }
+        } catch (boError) {
+          console.error('Erreur gestion backorder:', boError);
+        }
+      }
+    }
+
     // 3. Vérifier si envoi automatique possible
     const autoSendCheck = checkCanAutoSend(deliveryNote);
 
@@ -245,7 +337,8 @@ export async function POST(request, { params }) {
           needsManualSend: true,
           reason: autoSendCheck.reason
         },
-        status: 'pending_send'
+        status: 'pending_send',
+        backorder: backorderResult
       });
     }
 
@@ -279,7 +372,8 @@ export async function POST(request, { params }) {
           needsManualSend: true,
           reason: 'Aucun email configuré'
         },
-        status: 'pending_send'
+        status: 'pending_send',
+        backorder: backorderResult
       });
     }
 
@@ -353,7 +447,8 @@ export async function POST(request, { params }) {
           messageId: result.messageId,
           sentTo: recipientEmails.join(', ')
         },
-        status: 'sent'
+        status: 'sent',
+        backorder: backorderResult
       });
     } else {
       const { error: pendErr3 } = await supabaseAdmin
@@ -371,7 +466,8 @@ export async function POST(request, { params }) {
           needsManualSend: true,
           error: result.error
         },
-        status: 'pending_send'
+        status: 'pending_send',
+        backorder: backorderResult
       });
     }
 
