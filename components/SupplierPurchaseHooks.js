@@ -724,7 +724,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         const { data: existingProduct } = await supabase
           .from('non_inventory_items')
           .select('product_id')
-          .eq('product_id', nonInventoryForm.product_id)
+          .eq('product_id', nonInventoryForm.product_id.trim().toUpperCase())
           .single();
     
         // Si le produit n'existe pas, le créer dans la BD
@@ -732,8 +732,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
           const { error: insertError } = await supabase
             .from('non_inventory_items')
             .insert({
-              product_id: nonInventoryForm.product_id,
-              description: nonInventoryForm.description,
+              product_id: nonInventoryForm.product_id.trim().toUpperCase(),
+              description: nonInventoryForm.description.trim().toUpperCase(),
               cost_price: parseFloat(nonInventoryForm.cost_price),
               selling_price: parseFloat(nonInventoryForm.selling_price),
               unit: nonInventoryForm.unit || 'Un',
@@ -754,8 +754,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     
         // Ajouter au BA en cours
         const newItem = {
-          product_id: nonInventoryForm.product_id,
-          description: nonInventoryForm.description,
+          product_id: nonInventoryForm.product_id.trim().toUpperCase(),
+          description: nonInventoryForm.description.trim().toUpperCase(),
           cost_price: parseFloat(nonInventoryForm.cost_price),
           selling_price: parseFloat(nonInventoryForm.selling_price),
           unit: nonInventoryForm.unit,

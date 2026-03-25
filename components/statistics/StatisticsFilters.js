@@ -4,9 +4,10 @@
  *              - Filtres: type document, période, client, n° document, description, produit
  *              - Combinaison AND des filtres
  *              - Bouton réinitialiser
- * @version 1.0.0
- * @date 2026-02-24
+ * @version 1.0.1
+ * @date 2026-03-07
  * @changelog
+ *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur champs texte
  *   1.0.0 - Version initiale - Phase 1 MVP
  */
 
@@ -188,6 +189,9 @@ export default function StatisticsFilters({ filters, onFiltersChange, onSearch, 
               onChange={(e) => handleChange('documentNumber', e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="BT-2602-..."
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
             />
           </div>
@@ -201,6 +205,9 @@ export default function StatisticsFilters({ filters, onFiltersChange, onSearch, 
               onChange={(e) => handleChange('search', e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Recherche dans la description..."
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck={true}
               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
             />
           </div>
@@ -215,6 +222,9 @@ export default function StatisticsFilters({ filters, onFiltersChange, onSearch, 
               onKeyDown={handleKeyDown}
               placeholder="Code ou description..."
               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
             />
           </div>
 

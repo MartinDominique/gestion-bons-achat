@@ -7,10 +7,23 @@
  *              - Zone de signature tactile
  *              - Envoi automatique après signature
  *              - Auto-fermeture après signature + envoi email
+ *              - Affichage colonnes backorder (BO) en lecture seule
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.2.1
- * @date 2026-02-27
+ * @version 2.9.0
+ * @date 2026-03-06
  * @changelog
+ *   2.9.0 - Suppression bannière BO, suppression colonne CMD, ajout U/M mobile, fix code dupliqué
+ *   2.8.0 - Colonnes BO client: Commandé/Expédié/B/O (remplace Reçu/À suivre)
+ *   2.7.0 - Refonte affichage BO client: tableau compact unifié (Code/Desc/U/M/Reçu/À suivre)
+ *           identique au format formulaire Martin, items non-BO en cartes séparées
+ *   2.6.0 - Masquer colonne "À suivre" si aucun item n'a de BO restant
+ *   2.5.0 - Simplification vue client BO: colonnes Reçu/À suivre uniquement
+ *           Suppression termes internes (CMD, Ce BL, Reste), note pré-signature BO
+ *   2.4.0 - Fix affichage liste produits: toujours visible même avec items quantity=0
+ *           Section "Détail de la commande" avec colonnes CMD/Déjà livré/Ce BL/Reste
+ *           Items complétés grisés avec badge "Complet", vue mobile + desktop améliorées
+ *   2.3.0 - Ajout affichage colonnes backorder (BO) en lecture seule: Commandé/Livré/BO
+ *           Bandeau livraison partielle, lien vers BL parent si suivi
  *   2.2.1 - Fix canvas signature toujours blanc pour visibilité en dark mode
  *           (noir sur blanc = compatible PDF, toujours lisible)
  *   2.2.0 - Ajout support dark mode (Tailwind dark: variants)
@@ -415,138 +428,242 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
           </div>
         )}
 
-        {/* Matériaux livrés */}
-        {!deliveryNote.is_prix_jobe && deliveryNote.materials && deliveryNote.materials.length > 0 && (
-          <div className="mb-4 sm:mb-6">
-            <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 dark:text-gray-100">Matériaux Livrés</h2>
-
-            {/* Version MOBILE */}
-            <div className="md:hidden bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
-              {deliveryNote.materials.map((material, index) => (
-                <div key={index} className="p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
-                      {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
-                    </span>
-                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                      Qté: {material.quantity} {material.unit || material.product?.unit || 'UN'}
-                    </span>
-                  </div>
-
-                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
-                    {material.description || material.product?.description || 'Sans description'}
-                  </p>
-
-                  {material.notes && (
-                    <p className="text-xs text-gray-900 dark:text-gray-100 mt-1">
-                      {material.notes}
-                    </p>
-                  )}
-
-                  {material.show_price && (material.product?.selling_price || material.unit_price) && (
-                    <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-gray-600 text-xs">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Prix unit.: {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
-                      </span>
-                      <span className="font-bold text-green-700 dark:text-green-400">
-                        Total: {formatCurrency(material.quantity * (material.product?.selling_price || material.unit_price || 0))}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {deliveryNote.materials.some(m => m.show_price === true) && (
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 border-t-2 dark:border-gray-600">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-green-900 dark:text-green-200">Total matériaux:</span>
-                    <span className="text-lg font-bold text-green-900 dark:text-green-200">
-                      {formatCurrency(calculateTotal())}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Version DESKTOP */}
-            <div className="hidden md:block bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Code</th>
-                    <th className="px-4 py-3 text-left">Matériau / Description</th>
-                    <th className="px-4 py-3 text-center">Quantité</th>
-                    <th className="px-4 py-3 text-center">Unité</th>
-                    {(deliveryNote.materials && deliveryNote.materials.some(m => m.show_price === true)) && (
-                      <>
-                        <th className="px-4 py-3 text-right">Prix Unit.</th>
-                        <th className="px-4 py-3 text-right">Total</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {deliveryNote.materials.map((material, index) => (
-                    <tr key={index} className="border-t dark:border-gray-700">
-                      <td className="px-4 py-3 font-mono text-sm font-bold dark:text-gray-100">
-                        {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-semibold">
-                            {material.product_code || material.product?.product_id || material.product_id || 'Matériau sans code'}
-                          </p>
-                          {(material.description || material.product?.description) && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {material.description || material.product?.description}
-                            </p>
-                          )}
-                          {material.notes && (
-                            <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
-                              {material.notes}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center font-semibold">{material.quantity}</td>
-                      <td className="px-4 py-3 text-center">
-                        {material.unit || material.product?.unit || 'UN'}
-                      </td>
-                      {(deliveryNote.materials && deliveryNote.materials.some(m => m.show_price === true)) && (
-                        <>
-                          <td className="px-4 py-3 text-right">
-                            {material.show_price ?
-                              formatCurrency(material.product?.selling_price || material.unit_price || 0) :
-                              ''
-                            }
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold">
-                            {material.show_price ?
-                              formatCurrency(material.quantity * (material.product?.selling_price || material.unit_price || 0)) :
-                              ''
-                            }
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-                {(deliveryNote.materials && deliveryNote.materials.some(m => m.show_price === true)) && (
-                  <tfoot className="bg-gray-50 dark:bg-gray-700 border-t-2 dark:border-gray-600">
-                    <tr>
-                      <td colSpan="4" className="px-4 py-3 text-right font-bold">
-                        Total:
-                      </td>
-                      <td className="px-4 py-3 text-right font-bold text-lg">
-                        {formatCurrency(calculateTotal())}
-                      </td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
+        {/* Lien BL parent si c'est un suivi BO */}
+        {deliveryNote.parent_bl_id && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 flex items-center gap-2">
+            <Package className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={16} />
+            <span className="text-sm text-blue-800 dark:text-blue-200">
+              Suite de {deliveryNote.parent_bl_number || `BL #${deliveryNote.parent_bl_id}`} — Backorder
+            </span>
           </div>
         )}
+
+        {/* Matériaux / Détail de la commande */}
+        {!deliveryNote.is_prix_jobe && deliveryNote.materials && deliveryNote.materials.length > 0 && (
+          <div className="mb-4 sm:mb-6">
+            {(() => {
+              const boMaterials = deliveryNote.materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+              const nonBoMaterials = deliveryNote.materials.filter(m => !(m.ordered_quantity != null && m.ordered_quantity > 0));
+              const hasAnyBO = boMaterials.length > 0;
+              const hasRemainingBO = boMaterials.some(m => {
+                const bo = parseFloat(m.ordered_quantity) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
+                return bo > 0;
+              });
+              const hasAnyPrices = deliveryNote.materials.some(m => m.show_price === true);
+
+              return (
+              <>
+                <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 dark:text-gray-100">
+                  {hasAnyBO ? 'Détail de la commande' : 'Matériaux Livrés'}
+                </h2>
+
+                {/* Tableau compact BO — items avec ordered_quantity */}
+                {hasAnyBO && (
+                  <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg overflow-hidden mb-4">
+                    {/* Version mobile/tablette */}
+                    <div className="lg:hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <th className="px-2 py-2 text-left">Article</th>
+                            <th className="px-1 py-2 text-center w-12">U/M</th>
+                            <th className="px-1 py-2 text-center w-14">Expédié</th>
+                            {hasRemainingBO && <th className="px-1 py-2 text-center w-14">B/O</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {boMaterials.map((material, index) => {
+                            const currentQty = parseFloat(material.quantity) || 0;
+                            const orderedQty = parseFloat(material.ordered_quantity) || 0;
+                            const prevDelivered = parseFloat(material.previously_delivered) || 0;
+                            const bo = Math.max(0, orderedQty - prevDelivered - currentQty);
+                            const isFullyDelivered = currentQty === 0 && (prevDelivered >= orderedQty);
+                            const code = material.product_code || material.product?.product_id || material.product_id || '';
+
+                            return (
+                              <tr key={`bo-${index}`} className={
+                                isFullyDelivered
+                                  ? 'bg-gray-50 dark:bg-gray-800/50 opacity-70'
+                                  : bo > 0
+                                    ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                                    : ''
+                              }>
+                                <td className="px-2 py-2">
+                                  <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
+                                    {material.description || material.product?.description || 'Sans description'}
+                                  </span>
+                                </td>
+                                <td className="px-1 py-2 text-center text-xs text-gray-600 dark:text-gray-400">
+                                  {material.unit || material.product?.unit || 'UN'}
+                                </td>
+                                <td className="px-1 py-2 text-center text-sm font-bold text-gray-900 dark:text-gray-100">
+                                  {currentQty}
+                                </td>
+                                {hasRemainingBO && (
+                                  <td className={`px-1 py-2 text-center text-sm font-bold ${
+                                    bo > 0
+                                      ? 'text-amber-600 dark:text-amber-400'
+                                      : 'text-gray-400 dark:text-gray-500'
+                                  }`}>
+                                    {bo > 0 ? bo : '—'}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Version desktop */}
+                    <div className="hidden lg:block">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <th className="px-4 py-3 text-left">Code</th>
+                            <th className="px-4 py-3 text-left">Description</th>
+                            <th className="px-4 py-3 text-center">U/M</th>
+                            <th className="px-4 py-3 text-center">Expédié</th>
+                            {hasRemainingBO && <th className="px-4 py-3 text-center">B/O</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {boMaterials.map((material, index) => {
+                            const currentQty = parseFloat(material.quantity) || 0;
+                            const orderedQty = parseFloat(material.ordered_quantity) || 0;
+                            const prevDelivered = parseFloat(material.previously_delivered) || 0;
+                            const bo = Math.max(0, orderedQty - prevDelivered - currentQty);
+                            const isFullyDelivered = currentQty === 0 && (prevDelivered >= orderedQty);
+
+                            return (
+                              <tr key={`bo-${index}`} className={
+                                isFullyDelivered
+                                  ? 'bg-gray-50 dark:bg-gray-800/50 opacity-60'
+                                  : bo > 0
+                                    ? 'bg-amber-50/50 dark:bg-amber-900/10'
+                                    : ''
+                              }>
+                                <td className="px-4 py-3 font-mono text-sm font-bold dark:text-gray-100">
+                                  {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="text-sm text-gray-800 dark:text-gray-200">
+                                    {material.description || material.product?.description || 'Sans description'}
+                                  </p>
+                                  {material.notes && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{material.notes}</p>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">
+                                  {material.unit || material.product?.unit || 'UN'}
+                                </td>
+                                <td className="px-4 py-3 text-center font-semibold dark:text-gray-100">{currentQty}</td>
+                                {hasRemainingBO && (
+                                  <td className={`px-4 py-3 text-center font-semibold ${
+                                    bo > 0
+                                      ? 'text-amber-600 dark:text-amber-400'
+                                      : 'text-gray-400 dark:text-gray-500'
+                                  }`}>
+                                    {bo > 0 ? bo : '—'}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Items sans BO (ajout manuel) — format cartes */}
+                {nonBoMaterials.length > 0 && (
+                  <>
+                    {hasAnyBO && (
+                      <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 mt-4">
+                        Autres matériaux
+                      </h3>
+                    )}
+                    <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg divide-y dark:divide-gray-700">
+                      {nonBoMaterials.map((material, index) => {
+                        const currentQty = parseFloat(material.quantity) || 0;
+
+                        return (
+                          <div key={`nonbo-${index}`} className="p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-mono text-xs font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
+                                {material.product_code || material.product?.product_id || material.product_id || 'N/A'}
+                              </span>
+                              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                {currentQty} {material.unit || material.product?.unit || 'UN'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                              {material.description || material.product?.description || 'Sans description'}
+                            </p>
+                            {material.notes && (
+                              <p className="text-xs text-gray-900 dark:text-gray-100 mt-1">{material.notes}</p>
+                            )}
+                            {material.show_price && (material.product?.selling_price || material.unit_price) && currentQty > 0 && (
+                              <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-gray-600 text-xs">
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  Prix unit.: {formatCurrency(material.product?.selling_price || material.unit_price || 0)}
+                                </span>
+                                <span className="font-bold text-green-700 dark:text-green-400">
+                                  Total: {formatCurrency(currentQty * (material.product?.selling_price || material.unit_price || 0))}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {/* Total prix si applicable */}
+                {hasAnyPrices && (
+                  <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-green-900 dark:text-green-200">Total matériaux:</span>
+                      <span className="text-lg font-bold text-green-900 dark:text-green-200">
+                        {formatCurrency(calculateTotal())}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Note BO en bas de la liste */}
+                {hasRemainingBO && (
+                  <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                      📦 Certains items seront livrés ultérieurement. Un bon de livraison de suivi sera émis.
+                    </p>
+                  </div>
+                )}
+              </>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Note pré-signature BO */}
+        {deliveryNote.status === 'ready_for_signature' && deliveryNote.materials && (() => {
+          const boCount = deliveryNote.materials.filter(m => {
+            if (!m.ordered_quantity) return false;
+            const bo = parseFloat(m.ordered_quantity) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
+            return bo > 0;
+          }).length;
+          if (boCount === 0) return null;
+          return (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 flex items-start gap-2">
+              <Package className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" size={18} />
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Certains items seront livrés ultérieurement. Un bon de livraison de suivi sera émis.
+              </p>
+            </div>
+          );
+        })()}
 
         {/* Zone de signature - statut ready_for_signature */}
         {deliveryNote.status === 'ready_for_signature' && (
@@ -681,6 +798,9 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                                     placeholder="Ex: Jean Tremblay"
                                     className="w-full px-3 py-2 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                     maxLength={50}
+                                    autoCorrect="off"
+                                    autoCapitalize="words"
+                                    spellCheck={false}
                                   />
                                 </div>
                               </label>
@@ -736,6 +856,9 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
                                     placeholder="Ex: Jean Tremblay"
                                     className="w-full px-3 py-2 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                                     maxLength={50}
+                                    autoCorrect="off"
+                                    autoCapitalize="words"
+                                    spellCheck={false}
                                   />
                                 </div>
                               </label>

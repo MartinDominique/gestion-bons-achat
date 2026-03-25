@@ -7,10 +7,22 @@
  *              - Date de livraison + description (MAJUSCULES)
  *              - BA client manuel (MAJUSCULES)
  *              - Matériaux (réutilise MaterialSelector)
+ *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.7.0
- * @date 2026-02-22
+ * @version 3.1.1
+ * @date 2026-03-07
  * @changelog
+ *   3.1.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
+ *   3.1.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
+ *   3.0.0 - Refonte affichage BO: suppression section dupliquée "SUIVI COMMANDE / BACKORDER",
+ *           fusion en une seule liste (tableau compact BO + cartes manuelles via MaterialSelector),
+ *           bandeau livraison partielle déplacé en haut du formulaire, colonne "Déjà livré"
+ *           conditionnelle (uniquement si BL de suivi avec previously_delivered > 0)
+ *   2.9.0 - Champ "Déjà livré" éditable dans tableau résumé BO (transition + corrections)
+ *   2.8.1 - Fix: permettre quantité 0 dans buildPayload (|| 1 convertissait 0 en 1)
+ *   2.8.0 - Ajout support backorder (BO): tableau résumé BO après MaterialSelector,
+ *           bandeau livraison partielle, liens parent/child BL, ordered_quantity
+ *           et previously_delivered dans buildPayload et import soumission/AF
  *   2.7.0 - Ajout support dark mode (Tailwind dark: variants)
  *   2.6.0 - Fix: sélection emails par noms de champs (__fields: metadata dans
  *           recipient_emails) au lieu de matching par adresses. Résout le cas
@@ -47,7 +59,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Package, Calendar, FileText, User, Mail,
-  Save, Eye, X, Plus, Truck, PenTool, Check
+  Save, Eye, X, Plus, Truck, PenTool, Check, AlertTriangle, Link2
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
@@ -224,7 +236,7 @@ export default function DeliveryNoteForm({
         }
       }
 
-      // Charger les matériaux
+      // Charger les matériaux (avec support BO)
       if (deliveryNote.materials && deliveryNote.materials.length > 0) {
         const formattedMaterials = deliveryNote.materials.map((m, idx) => ({
           id: m.id || `existing-${idx}`,
@@ -238,6 +250,9 @@ export default function DeliveryNoteForm({
           show_price: m.show_price || false,
           notes: m.notes || '',
           product: m.product || null,
+          // Champs backorder
+          ordered_quantity: m.ordered_quantity != null ? parseFloat(m.ordered_quantity) : null,
+          previously_delivered: m.previously_delivered != null ? parseFloat(m.previously_delivered) : 0,
         }));
         setMaterials(formattedMaterials);
       }
@@ -455,27 +470,40 @@ export default function DeliveryNoteForm({
   // =============================================
 
   const buildPayload = () => {
-    return {
+    const payload = {
       client_id: clientId,
       client_name: selectedClient?.name || '',
       linked_po_id: linkedPoId || null,
       is_manual_po: isManualPo,
       delivery_date: deliveryDate,
       delivery_description: deliveryDescription,
-      materials: materials.map(m => ({
-        product_id: m.product_id || m.code || null,
-        code: m.code || m.product_id || '',
-        description: m.description || '',
-        quantity: parseFloat(m.quantity) || 1,
-        unit: m.unit || 'UN',
-        unit_price: parseFloat(m.unit_price) || 0,
-        showPrice: m.showPrice || m.show_price || false,
-        show_price: m.showPrice || m.show_price || false,
-        notes: m.notes || '',
-      })),
+      materials: materials.map(m => {
+        const mat = {
+          product_id: m.product_id || m.code || null,
+          code: m.code || m.product_id || '',
+          description: m.description || '',
+          quantity: isNaN(parseFloat(m.quantity)) ? 1 : parseFloat(m.quantity),
+          unit: m.unit || 'UN',
+          unit_price: parseFloat(m.unit_price) || 0,
+          showPrice: m.showPrice || m.show_price || false,
+          show_price: m.showPrice || m.show_price || false,
+          notes: m.notes || '',
+        };
+        // Champs backorder (uniquement si ordered_quantity existe)
+        if (m.ordered_quantity != null) {
+          mat.ordered_quantity = parseFloat(m.ordered_quantity);
+          mat.previously_delivered = parseFloat(m.previously_delivered) || 0;
+        }
+        return mat;
+      }),
       is_prix_jobe: isPrixJobe,
       recipient_emails: getSelectedEmailAddresses(),
     };
+    // Lien parent BL si c'est un suivi BO
+    if (deliveryNote?.parent_bl_id) {
+      payload.parent_bl_id = deliveryNote.parent_bl_id;
+    }
+    return payload;
   };
 
   // =============================================
@@ -554,6 +582,7 @@ export default function DeliveryNoteForm({
         const sourceCode = item.product_id || item.code || '';
         const description = item.name || item.description || 'Article importé depuis soumission';
 
+        const qty = parseFloat(item.quantity || 0);
         return {
           id: 'sub-' + Date.now() + '-' + arrayIndex,
           product_id: sourceCode || null,
@@ -566,14 +595,17 @@ export default function DeliveryNoteForm({
             selling_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
             unit: item.unit || 'UN',
           },
-          quantity: parseFloat(item.quantity || 0),
+          quantity: qty,
           unit: item.unit || 'UN',
           unit_price: parseFloat(item.price || item.selling_price || item.unit_price || 0),
           showPrice: false,
           show_price: false,
           notes: `Importé de soumission #${selectedSubmissionForImport.submission_number}`,
           from_submission: true,
-          submission_number: selectedSubmissionForImport.submission_number
+          submission_number: selectedSubmissionForImport.submission_number,
+          // Backorder: quantité commandée = quantité de la soumission
+          ordered_quantity: qty,
+          previously_delivered: 0,
         };
       });
 
@@ -692,6 +724,7 @@ export default function DeliveryNoteForm({
         const sourceCode = supplierItem.product_id || supplierItem.code || supplierItem.sku || '';
         const description = supplierItem.description || supplierItem.name || supplierItem.product_name || 'Article importé';
 
+        const qty = parseFloat(supplierItem.quantity || supplierItem.qty || 1);
         return {
           id: 'supplier-' + Date.now() + '-' + arrayIndex,
           product_id: sourceCode || null,
@@ -704,14 +737,17 @@ export default function DeliveryNoteForm({
             selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
             unit: supplierItem.unit || supplierItem.unity || 'UN',
           },
-          quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
+          quantity: qty,
           unit: supplierItem.unit || supplierItem.unity || 'UN',
           unit_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
           showPrice: false,
           show_price: false,
           notes: `Importé de AF #${selectedPurchaseForImport.purchase_number}`,
           from_supplier_purchase: true,
-          supplier_purchase_number: selectedPurchaseForImport.purchase_number
+          supplier_purchase_number: selectedPurchaseForImport.purchase_number,
+          // Backorder: quantité commandée = quantité de l'AF
+          ordered_quantity: qty,
+          previously_delivered: 0,
         };
       });
 
@@ -778,6 +814,59 @@ export default function DeliveryNoteForm({
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 max-w-4xl mx-auto">
+
+      {/* Liens parent/child BO */}
+      {deliveryNote?.parent_bl_id && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 flex items-center gap-2">
+          <Link2 className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={16} />
+          <span className="text-sm text-blue-800 dark:text-blue-200">
+            Suite de{' '}
+            <button
+              type="button"
+              onClick={() => router.push(`/bons-travail/bl/${deliveryNote.parent_bl_id}/modifier`)}
+              className="font-bold underline hover:text-blue-600 dark:hover:text-blue-300"
+            >
+              {deliveryNote.parent_bl_number || `BL #${deliveryNote.parent_bl_id}`}
+            </button>
+            {' '}— Backorder
+          </span>
+        </div>
+      )}
+      {deliveryNote?.child_bl_id && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4 flex items-center gap-2">
+          <Package className="text-orange-600 dark:text-orange-400 flex-shrink-0" size={16} />
+          <span className="text-sm text-orange-800 dark:text-orange-200">
+            BL de suivi :{' '}
+            <button
+              type="button"
+              onClick={() => router.push(`/bons-travail/bl/${deliveryNote.child_bl_id}/modifier`)}
+              className="font-bold underline hover:text-orange-600 dark:hover:text-orange-300"
+            >
+              {deliveryNote.child_bl_number || `BL #${deliveryNote.child_bl_id}`}
+            </button>
+          </span>
+        </div>
+      )}
+
+      {/* Bandeau livraison partielle — affiché en haut si des items BO ont un reste > 0 */}
+      {(() => {
+        const boItems = materials.filter(m => {
+          if (!(m.ordered_quantity != null && m.ordered_quantity > 0)) return false;
+          const bo = (parseFloat(m.ordered_quantity) || 0) - (parseFloat(m.previously_delivered) || 0) - (parseFloat(m.quantity) || 0);
+          return bo > 0;
+        });
+        if (boItems.length === 0) return null;
+        return (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-3 mb-4 flex items-start gap-2">
+            <AlertTriangle className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" size={18} />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                Livraison partielle — {boItems.length} item(s) à suivre. Un BL de suivi sera créé après signature.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Header avec boutons - identique au BT */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -1074,10 +1163,14 @@ export default function DeliveryNoteForm({
               <input
                 type="text"
                 value={linkedPoId}
-                onChange={(e) => { setLinkedPoId(e.target.value.toUpperCase()); onFormChange?.(); }}
+                onChange={(e) => { setLinkedPoId(e.target.value); onFormChange?.(); }}
+                onBlur={(e) => setLinkedPoId(e.target.value.toUpperCase())}
                 placeholder="Entrer le # BA ou Job client"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
                 className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base uppercase bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                style={{ minHeight: '44px' }}
+                style={{ minHeight: '44px', textTransform: 'uppercase' }}
               />
             )}
           </div>
@@ -1090,10 +1183,15 @@ export default function DeliveryNoteForm({
           </label>
           <textarea
             value={deliveryDescription}
-            onChange={(e) => { setDeliveryDescription(e.target.value.toUpperCase()); onFormChange?.(); }}
+            onChange={(e) => { setDeliveryDescription(e.target.value); onFormChange?.(); }}
+            onBlur={(e) => setDeliveryDescription(e.target.value.toUpperCase())}
             placeholder="DESCRIPTION DU MATÉRIEL LIVRÉ..."
             rows={3}
+            autoCorrect="on"
+            autoCapitalize="sentences"
+            spellCheck={true}
             className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-base resize-none uppercase bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            style={{ textTransform: 'uppercase' }}
           />
         </div>
       </div>
@@ -1137,10 +1235,200 @@ export default function DeliveryNoteForm({
           </button>
         </div>
 
-        <MaterialSelector
-          materials={materials}
-          onMaterialsChange={(newMaterials) => { setMaterials(newMaterials); onFormChange?.(); }}
-        />
+        {/* Tableau compact BO — items importés avec ordered_quantity */}
+        {(() => {
+          const boMaterials = materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+          if (boMaterials.length === 0) return null;
+
+          return (
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-4">
+              {/* Version mobile/tablette */}
+              <div className="lg:hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                      <th className="px-2 py-2 text-left">Article</th>
+                      <th className="px-1 py-2 text-center w-14">CMD</th>
+                      <th className="px-1 py-2 text-center w-14">Déjà</th>
+                      <th className="px-1 py-2 text-center w-16">Expédié</th>
+                      <th className="px-1 py-2 text-center w-14">B/O</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {boMaterials.map((m, idx) => {
+                      const ordered = parseFloat(m.ordered_quantity) || 0;
+                      const prevDel = parseFloat(m.previously_delivered) || 0;
+                      const qty = parseFloat(m.quantity) || 0;
+                      const bo = Math.max(0, ordered - prevDel - qty);
+                      const matIndex = materials.findIndex(mat => mat === m);
+                      const code = m.code || m.product_code || m.product?.product_id || m.product_id || '';
+
+                      return (
+                        <tr key={idx}>
+                          <td className="px-2 py-2">
+                            {code && (
+                              <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
+                            )}
+                            <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
+                              {m.description || m.product?.description || 'Article'}
+                            </span>
+                          </td>
+                          <td className="px-1 py-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">{ordered}</td>
+                          <td className="px-1 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.previously_delivered ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], previously_delivered: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                              className="w-14 text-center text-xs text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
+                          <td className="px-1 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.quantity ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], quantity: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                              className="w-14 text-center text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
+                          <td className="px-1 py-2 text-center text-xs font-semibold text-gray-900 dark:text-gray-100">
+                            {bo}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Version desktop */}
+              <div className="hidden lg:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                      <th className="px-3 py-2 text-left">Code</th>
+                      <th className="px-3 py-2 text-left">Description</th>
+                      <th className="px-3 py-2 text-center">U/M</th>
+                      <th className="px-3 py-2 text-center">Commandé</th>
+                      <th className="px-3 py-2 text-center">Déjà livré</th>
+                      <th className="px-3 py-2 text-center">Expédié</th>
+                      <th className="px-3 py-2 text-center">B/O</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {boMaterials.map((m, idx) => {
+                      const ordered = parseFloat(m.ordered_quantity) || 0;
+                      const prevDel = parseFloat(m.previously_delivered) || 0;
+                      const qty = parseFloat(m.quantity) || 0;
+                      const bo = Math.max(0, ordered - prevDel - qty);
+                      const matIndex = materials.findIndex(mat => mat === m);
+
+                      return (
+                        <tr key={idx}>
+                          <td className="px-3 py-2 font-mono text-xs font-bold text-gray-900 dark:text-gray-100">
+                            {m.code || m.product_code || m.product?.product_id || m.product_id || '—'}
+                          </td>
+                          <td className="px-3 py-2 text-gray-900 dark:text-gray-100 truncate max-w-[280px]">
+                            {m.description || m.product?.description || 'Article'}
+                          </td>
+                          <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">
+                            {m.unit || m.product?.unit || 'UN'}
+                          </td>
+                          <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">{ordered}</td>
+                          <td className="px-3 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.previously_delivered ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], previously_delivered: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                              className="w-20 text-center text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.quantity ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], quantity: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                              className="w-20 text-center text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">
+                            {bo}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* MaterialSelector — items manuels (sans ordered_quantity) */}
+        {(() => {
+          const nonBoMaterials = materials.filter(m => !(m.ordered_quantity != null && m.ordered_quantity > 0));
+          const boMaterials = materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+          return (
+            <MaterialSelector
+              materials={nonBoMaterials}
+              onMaterialsChange={(newNonBo) => {
+                setMaterials([...boMaterials, ...newNonBo]);
+                onFormChange?.();
+              }}
+            />
+          );
+        })()}
       </div>
 
       {/* ==========================================

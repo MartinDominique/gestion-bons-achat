@@ -5,9 +5,15 @@
  *              - Filtre par type (BT/BL), statut, recherche
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
- * @version 2.1.0
- * @date 2026-02-14
+ *              - Badge BO et indicateur BL de suivi
+ * @version 2.3.2
+ * @date 2026-03-07
  * @changelog
+ *   2.3.2 - Retrait notification redondante après suppression BT/BL (confirm suffit)
+ *   2.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur champ recherche
+ *   2.3.0 - Ajout badge BO orange pour BL avec child_bl_id (backorder en cours)
+ *           Ajout indicateur "Suite de BL-XXXX" pour BL de suivi (parent_bl_id)
+ *   2.2.0 - Indicateur facture distingue Acomba (ambre) vs App (vert)
  *   2.1.0 - Fix filtre type multi-select + restauration layout tablette style main
  *   2.0.0 - Ajout support BL dans la liste unifiée
  *   1.0.0 - Version initiale (BT seulement)
@@ -18,7 +24,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye, Search, Truck, Package } from 'lucide-react';
+import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye, Search, Truck, Package, DollarSign } from 'lucide-react';
 import ConnectionStatus from '../../components/ConnectionStatus';
 
 export default function BonsTravailPage() {
@@ -137,6 +143,8 @@ export default function BonsTravailPage() {
       _description: bl.delivery_description,
       _clientName: bl.client?.name || bl.client_name || 'Client inconnu',
       _sortDate: bl.delivery_date || bl.created_at || '',
+      _hasBackorder: !!bl.child_bl_id,
+      _isFollowUp: !!bl.parent_bl_id,
     }));
 
     const all = [...btItems, ...blItems];
@@ -205,7 +213,7 @@ export default function BonsTravailPage() {
         } else {
           setDeliveryNotes(prev => prev.filter(bl => bl.id !== item.id));
         }
-        alert(`${label} supprimé avec succès.`);
+
       } else {
         const error = await response.json();
         alert(`Erreur suppression: ${error.error}`);
@@ -451,6 +459,9 @@ export default function BonsTravailPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder={getSearchPlaceholder()}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                 />
               </div>
             </div>
@@ -524,24 +535,56 @@ export default function BonsTravailPage() {
                         isOld ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-l-red-500' : ''
                       }`}
                     >
-                      {/* Ligne 1: BT/BL# + Statut */}
+                      {/* Ligne 1: BT/BL# + Indicateur facture + Statut */}
                       <div className="flex items-center justify-between mb-2">
-                        <span className={`font-mono text-sm font-bold flex items-center gap-1.5 ${
-                          isBL
-                            ? 'text-orange-600'
-                            : 'bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent'
-                        }`}>
-                          {item._number}
-                          {!isBL && item.has_active_session && (
-                            <span className="relative flex h-2.5 w-2.5" title="Session en cours">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-mono text-sm font-bold flex items-center gap-1.5 ${
+                            isBL
+                              ? 'text-orange-600'
+                              : 'bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent'
+                          }`}>
+                            {item._number}
+                            {!isBL && item.has_active_session && (
+                              <span className="relative flex h-2.5 w-2.5" title="Session en cours">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
+                              </span>
+                            )}
+                          </span>
+                          {isBL && item._hasBackorder && (
+                            <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded" title="Backorder en cours">
+                              BO
                             </span>
                           )}
-                        </span>
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
-                          {getStatusLabel(item.status)}
-                        </span>
+                          {isBL && item._isFollowUp && (
+                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium" title="BL de suivi backorder">
+                              Suite
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {['signed', 'completed', 'sent'].includes(item.status) && (
+                            <span
+                              className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                                item.invoice_id === -1
+                                  ? 'bg-amber-500'
+                                  : item.invoice_id
+                                    ? 'bg-green-500'
+                                    : 'bg-red-500'
+                              }`}
+                              title={
+                                item.invoice_id === -1
+                                  ? 'Facturé (Acomba)'
+                                  : item.invoice_id
+                                    ? 'Facturé'
+                                    : 'Non facturé'
+                              }
+                            />
+                          )}
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
+                            {getStatusLabel(item.status)}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Ligne 2: Client */}
@@ -606,17 +649,47 @@ export default function BonsTravailPage() {
                           isOld ? 'bg-red-100 dark:bg-red-900/20 border-l-4 border-l-red-500' : index % 2 === 0 ? 'bg-white/50 dark:bg-gray-800/50' : 'bg-gray-50/50 dark:bg-gray-900/30'
                         }`}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`font-mono text-sm font-bold flex items-center gap-2 ${
-                              isBL ? 'text-orange-600' : 'bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent'
-                            }`}>
-                              {item._number}
-                              {!isBL && item.has_active_session && (
-                                <span className="relative flex h-3 w-3" title="Session en cours">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                            <div className="flex items-center gap-2">
+                              <span className={`font-mono text-sm font-bold flex items-center gap-2 ${
+                                isBL ? 'text-orange-600' : 'bg-gradient-to-r from-teal-500 to-blue-600 bg-clip-text text-transparent'
+                              }`}>
+                                {['signed', 'completed', 'sent'].includes(item.status) && (
+                                  <span
+                                    className={`inline-flex h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                                      item.invoice_id === -1
+                                        ? 'bg-amber-500'
+                                        : item.invoice_id
+                                          ? 'bg-green-500'
+                                          : 'bg-red-500'
+                                    }`}
+                                    title={
+                                      item.invoice_id === -1
+                                        ? 'Facturé (Acomba)'
+                                        : item.invoice_id
+                                          ? 'Facturé'
+                                          : 'Non facturé'
+                                    }
+                                  />
+                                )}
+                                {item._number}
+                                {!isBL && item.has_active_session && (
+                                  <span className="relative flex h-3 w-3" title="Session en cours">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                                  </span>
+                                )}
+                              </span>
+                              {isBL && item._hasBackorder && (
+                                <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded" title="Backorder en cours">
+                                  BO
                                 </span>
                               )}
-                            </span>
+                              {isBL && item._isFollowUp && (
+                                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium" title="BL de suivi backorder">
+                                  Suite
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             <span className="text-gray-900 dark:text-gray-100 font-medium">{item._clientName}</span>

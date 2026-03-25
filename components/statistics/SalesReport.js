@@ -5,13 +5,16 @@
  *              - Bandeau résumé des totaux de la sélection filtrée
  *              - Vue responsive: tableau desktop, cartes mobile
  *              - Pagination côté serveur
- * @version 1.0.0
- * @date 2026-02-24
+ *              - Numéros de documents cliquables (SplitView)
+ * @version 1.1.0
+ * @date 2026-02-27
  * @changelog
+ *   1.1.0 - Ajout ReferenceLink sur N° documents (Phase E — Numéros cliquables)
  *   1.0.0 - Version initiale - Phase 1 MVP
  */
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ReferenceLink } from '../SplitView';
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('fr-CA', {
@@ -57,6 +60,19 @@ function getStatusLabel(status) {
     refused: 'Refusée',
   };
   return labels[status] || status;
+}
+
+function getDocRefProps(doc) {
+  switch (doc.type) {
+    case 'BT':
+      return { type: 'work-order', variant: 'green', data: { btNumber: doc.documentNumber, workOrderId: doc.id } };
+    case 'BL':
+      return { type: 'delivery-note', variant: 'orange', data: { blNumber: doc.documentNumber, deliveryNoteId: doc.id } };
+    case 'Soum.':
+      return { type: 'soumission', variant: 'purple', data: { submissionNumber: doc.documentNumber } };
+    default:
+      return null;
+  }
 }
 
 function getMarginColor(marginPercent) {
@@ -151,7 +167,16 @@ export default function SalesReport({ documents, summary, pagination, onPageChan
                       {doc.type}
                     </span>
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-900 dark:text-gray-100">{doc.documentNumber}</td>
+                  <td className="px-3 py-2">
+                    {(() => {
+                      const ref = getDocRefProps(doc);
+                      return ref ? (
+                        <ReferenceLink type={ref.type} label={doc.documentNumber} data={ref.data} variant={ref.variant} />
+                      ) : (
+                        <span className="font-mono text-xs text-gray-900 dark:text-gray-100">{doc.documentNumber}</span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDate(doc.date)}</td>
                   <td className="px-3 py-2 text-gray-900 dark:text-gray-100 max-w-[150px] truncate">{doc.clientName}</td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-400 max-w-[200px] truncate hidden lg:table-cell">
@@ -196,7 +221,14 @@ export default function SalesReport({ documents, summary, pagination, onPageChan
                   <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getTypeBadgeColor(doc.type)}`}>
                     {doc.type}
                   </span>
-                  <span className="font-mono text-xs text-gray-900 dark:text-gray-100">{doc.documentNumber}</span>
+                  {(() => {
+                    const ref = getDocRefProps(doc);
+                    return ref ? (
+                      <ReferenceLink type={ref.type} label={doc.documentNumber} data={ref.data} variant={ref.variant} />
+                    ) : (
+                      <span className="font-mono text-xs text-gray-900 dark:text-gray-100">{doc.documentNumber}</span>
+                    );
+                  })()}
                 </div>
                 <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(doc.date)}</span>
               </div>

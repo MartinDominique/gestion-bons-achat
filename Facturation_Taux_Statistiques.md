@@ -624,12 +624,67 @@ const tvq = Math.round(subtotal * (settings.tvq_rate / 100) * 100) / 100;
 
 **Note:** La migration SQL doit être exécutée manuellement dans Supabase Dashboard avant utilisation.
 
-### Phase B — Facturation MVP (en attente)
-### Phase C — Rapport Acomba (en attente)
-### Phase D — Statistiques Phase 2 (en attente)
-### Phase E — Améliorations globales (en attente)
+### ~~Phase B — Facturation MVP~~ ✅ COMPLÉTÉE (2026-02-27)
+1. ✅ `supabase/migrations/20260227_create_invoices.sql` — Table invoices + invoice_id sur BT/BL
+2. ✅ `supabase/migrations/20260227_create_invoices_storage.sql` — Bucket Storage 'invoices' (privé) + policies
+3. ✅ `app/api/invoices/route.js` — API GET (liste + filtres + pagination) + POST (création + auto-numéro)
+4. ✅ `app/api/invoices/[id]/route.js` — API GET/PUT/DELETE facture individuelle
+5. ✅ `app/api/invoices/[id]/send-email/route.js` — PDF + upload Storage + pdf_url + envoi email (cascade)
+6. ✅ `components/invoices/InvoiceManager.js` — 2 onglets + bouton Télécharger PDF (depuis Storage)
+7. ✅ `components/invoices/InvoiceEditor.js` — Éditeur lignes avec calculs auto (M.O., transport, matériaux, forfait)
+8. ✅ `app/(protected)/facturation/page.js` — Page protégée
+9. ✅ `components/Navigation.js` — Ajout onglet Facturation (icône Receipt) + route protégée
+10. ✅ `app/bons-travail/page.js` — Indicateurs rouge/vert facturé (mobile + desktop)
+11. ✅ `app/api/work-orders/route.js` + `delivery-notes/route.js` — Ajout invoice_id au SELECT
+12. ✅ CLAUDE.md mis à jour (endpoints, composants, table invoices, roadmap, stockage PDF)
+
+**Stockage PDF:** Lors de l'envoi, le PDF est uploadé dans `invoices/YYYY/MM/facture-{numero}.pdf`
+(bucket privé Supabase Storage) et l'URL signée est sauvegardée dans `invoices.pdf_url`.
+Bouton "Télécharger PDF" visible dans la liste des factures (mobile + desktop).
+
+**Note:** Les 2 migrations SQL doivent être exécutées manuellement dans Supabase Dashboard.
+
+### ~~Phase C — Rapport Acomba~~ ✅ COMPLÉTÉE (2026-02-27)
+1. ✅ `app/api/invoices/report/route.js` — API GET rapport mensuel (toutes factures du mois + totaux agrégés)
+2. ✅ `components/invoices/AcombaReportExport.js` — Export PDF (jsPDF autoTable, en-tête/footer pdf-common.js, ligne TOTAUX gras) + Export CSV (séparateur point-virgule, BOM UTF-8 pour Excel français)
+3. ✅ `components/invoices/InvoiceManager.js` v1.3.0 — Sélecteur de mois `<input type="month">` + bouton "Rapport Acomba" (PDF) + bouton "Export CSV" dans l'onglet Factures
+4. ✅ CLAUDE.md mis à jour (endpoint, composant, roadmap)
+
+**Colonnes du rapport:** N° Facture | Date | Client | Référence | Vente mat. | Vente temps | Vente dépl. | Sous-total | TPS | TVQ | Total
+**Ligne TOTAUX** en gras avec fond gris en bas du tableau.
+**Fichiers:** `Rapport-Acomba_YYYY-MM.pdf` et `Rapport-Acomba_YYYY-MM.csv`
+
+### ~~Phase D — Statistiques Phase 2~~ ✅ COMPLÉTÉE (2026-02-27)
+1. ✅ `app/api/statistics/financial/route.js` — API GET statistiques financières (résumé global, par mois, par client, factures en attente)
+2. ✅ `components/statistics/FinancialStatistics.js` — Orchestrateur sous-onglet Financier (gestion état, API, PDF)
+3. ✅ `components/statistics/FinancialFilters.js` — Filtres: période (défaut 12 mois), client, statut, vue (Par mois / Par client / En attente)
+4. ✅ `components/statistics/FinancialReport.js` — 3 vues responsive (desktop tableau, mobile cartes):
+   - **Par mois:** Ventilation matériaux/M.O./transport + sous-total + TPS/TVQ + total + compteurs payé/en attente
+   - **Par client:** Total par client + ventilation + payé/en attente + % du total
+   - **En attente:** Factures non payées triées par ancienneté + jours restants/retard + détection échéance dépassée
+5. ✅ `components/statistics/FinancialPDFExport.js` — Export PDF (3 modes) avec en-tête/footer pdf-common.js
+6. ✅ `components/statistics/StatisticsManager.js` v2.0.0 — 2 sous-onglets: Opérationnel (BT/BL) + Financier (Factures)
+7. ✅ CLAUDE.md mis à jour (endpoint, composants, roadmap)
+
+**Bandeau résumé:** Total facturé, Payé, En attente, Brouillon, Moy./facture, Ventilation matériaux/M.O./transport
+**Vue En attente:** Retards en rouge, icône alerte, jours avant/après échéance
+
+### ~~Phase E — Numéros cliquables SplitView~~ ✅ COMPLÉTÉE (2026-02-27)
+1. ✅ `components/SplitView/PanelWorkOrder.js` — Panneau lecture seule BT (temps, matériaux, description)
+2. ✅ `components/SplitView/PanelDeliveryNote.js` — Panneau lecture seule BL (matériaux, description)
+3. ✅ `components/SplitView/SplitViewPanel.js` v1.1.0 — Support types 'work-order' et 'delivery-note'
+4. ✅ `components/SplitView/SplitViewContext.js` — JSDoc mis à jour (5 types)
+5. ✅ `components/invoices/InvoiceManager.js` v1.4.0 — ReferenceLink sur N° BT/BL (onglets À facturer + Factures)
+6. ✅ `components/statistics/SalesReport.js` v1.1.0 — ReferenceLink sur N° documents (BT/BL/Soumission)
+7. ✅ `components/statistics/FinancialReport.js` v1.1.0 — ReferenceLink sur N° référence (vue En attente)
+8. ✅ CLAUDE.md mis à jour (roadmap, composants)
+
+**Fonctionnement:** Clic sur un numéro BT/BL/Soumission ouvre le document en lecture dans le panneau latéral SplitView.
+**Types supportés:** work-order (BT, vert), delivery-note (BL, orange), purchase-order (BA, bleu), supplier-purchase (AF, orange), soumission (violet)
+
+**Note:** La navigation mobile (Option A — menu "Plus") reste à faire séparément.
 
 ---
 
-*Document créé le 2026-02-26 — Révision 3 avec réponses confirmées et Phase A complétée.*
-*Prochaine étape: Exécuter la migration SQL, puis Phase B (Facturation MVP).*
+*Document créé le 2026-02-26 — Révision 7 avec Phases A, B, C, D et E complétées.*
+*Toutes les phases du plan sont complétées. Reste: Navigation mobile (Option A).*

@@ -2,12 +2,14 @@
  * @file components/SplitView/SplitViewPanel.js
  * @description Right-side split view panel component.
  *              - Renders content in a sliding panel on the right
- *              - Supports BA, AF, and Soumission content types
+ *              - Supports BA, AF, Soumission, BT, and BL content types
  *              - Independent scrolling from the main content
  *              - Close button to dismiss the panel
- * @version 1.0.0
- * @date 2026-02-14
+ * @version 1.2.0
+ * @date 2026-03-24
  * @changelog
+ *   1.2.0 - Ajout panneau soumissions-list (liste avec statut inline)
+ *   1.1.0 - Ajout panneaux BT (work-order) et BL (delivery-note) (Phase E)
  *   1.0.0 - Version initiale - Panneau latéral split view
  */
 
@@ -19,6 +21,9 @@ import { useSplitView } from './SplitViewContext';
 import PanelPurchaseOrder from './PanelPurchaseOrder';
 import PanelSupplierPurchase from './PanelSupplierPurchase';
 import PanelSoumission from './PanelSoumission';
+import PanelWorkOrder from './PanelWorkOrder';
+import PanelDeliveryNote from './PanelDeliveryNote';
+import PanelSoumissionsList from './PanelSoumissionsList';
 
 export default function SplitViewPanel() {
   const { panelOpen, panelContent, closePanel } = useSplitView();
@@ -48,6 +53,27 @@ export default function SplitViewPanel() {
             {...panelContent.props}
           />
         );
+      case 'work-order':
+        return (
+          <PanelWorkOrder
+            data={panelContent.data}
+            {...panelContent.props}
+          />
+        );
+      case 'delivery-note':
+        return (
+          <PanelDeliveryNote
+            data={panelContent.data}
+            {...panelContent.props}
+          />
+        );
+      case 'soumissions-list':
+        return (
+          <PanelSoumissionsList
+            data={panelContent.data}
+            {...panelContent.props}
+          />
+        );
       default:
         return (
           <div className="p-6 text-center text-gray-500">
@@ -65,6 +91,9 @@ export default function SplitViewPanel() {
           {panelContent.type === 'purchase-order' && 'Bon d\'Achat Client'}
           {panelContent.type === 'supplier-purchase' && 'Achat Fournisseur'}
           {panelContent.type === 'soumission' && 'Soumission'}
+          {panelContent.type === 'work-order' && 'Bon de Travail'}
+          {panelContent.type === 'delivery-note' && 'Bon de Livraison'}
+          {panelContent.type === 'soumissions-list' && 'Soumissions'}
         </span>
         <button
           onClick={closePanel}

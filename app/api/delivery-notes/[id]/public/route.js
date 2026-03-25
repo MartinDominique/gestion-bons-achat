@@ -2,9 +2,10 @@
  * @file app/api/delivery-notes/[id]/public/route.js
  * @description Route publique pour accès client au BL (page signature)
  *              Bypass auth - accessible sans connexion
- * @version 1.1.0
- * @date 2026-02-18
+ * @version 1.2.0
+ * @date 2026-03-04
  * @changelog
+ *   1.2.0 - Ajout chargement parent_bl_number/child_bl_number pour affichage BO
  *   1.1.0 - Fix: ajout force-dynamic + revalidate=0 pour éviter le cache
  *           Next.js qui retournait des données périmées (quantités, emails)
  *   1.0.0 - Version initiale
@@ -102,6 +103,24 @@ export async function GET(request, { params }) {
           };
         }
       }
+    }
+
+    // Charger les bl_number parent/child pour navigation BO
+    if (data.parent_bl_id) {
+      const { data: parentBL } = await supabaseAdmin
+        .from('delivery_notes')
+        .select('bl_number')
+        .eq('id', data.parent_bl_id)
+        .single();
+      data.parent_bl_number = parentBL?.bl_number || null;
+    }
+    if (data.child_bl_id) {
+      const { data: childBL } = await supabaseAdmin
+        .from('delivery_notes')
+        .select('bl_number')
+        .eq('id', data.child_bl_id)
+        .single();
+      data.child_bl_number = childBL?.bl_number || null;
     }
 
     return NextResponse.json({

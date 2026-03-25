@@ -5,9 +5,13 @@
  *              - Ajout rapide de produits non-inventaire
  *              - Clavier numérique pour saisie quantités (optimisé tablette)
  *              - Affichage/masquage prix par article
- * @version 1.1.0
- * @date 2026-02-22
+ * @version 1.4.0
+ * @date 2026-03-07
  * @changelog
+ *   1.4.0 - Forcer majuscules sur description produit non-inventaire (onBlur toUpperCase + CSS textTransform + uppercase au save)
+ *   1.3.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
+ *   1.3.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
+ *   1.2.0 - Permettre quantité 0 à l'édition pour items backorder (ordered_quantity)
  *   1.1.0 - Ajout support dark mode
  *   1.0.0 - Version initiale
  */
@@ -378,10 +382,13 @@ export default function MaterialSelector({
 
 const saveEditMaterial = () => {
   if (!editingMaterial) return;
-  
+
   const quantity = parseFloat(editForm.quantity);
-  if (isNaN(quantity) || quantity === 0) {
-    alert('Veuillez entrer une quantité valide (ne peut pas être zéro)');
+  // Permettre quantité 0 pour les items backorder (ordered_quantity présent)
+  const editedMaterial = (materials || []).find(m => m.id === editingMaterial);
+  const isBackorderItem = editedMaterial?.ordered_quantity != null;
+  if (isNaN(quantity) || (!isBackorderItem && quantity === 0)) {
+    alert('Veuillez entrer une quantité valide');
     return;
   }
   
@@ -435,7 +442,7 @@ const deleteMaterialFromModal = () => {
         try {
           const nonInventoryData = {
             product_id: quickAddForm.product_id.trim().toUpperCase(),
-            description: quickAddForm.description.trim(),
+            description: quickAddForm.description.trim().toUpperCase(),
             unit: quickAddForm.unit || 'UN',
             product_group: 'Non-Inventaire',
             selling_price: 0,
@@ -680,6 +687,9 @@ const deleteMaterialFromModal = () => {
                   placeholder="Rechercher par code, description ou groupe..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
               </div>
@@ -825,6 +835,9 @@ const deleteMaterialFromModal = () => {
                         inputMode="none"
                         value={editForm.quantity}
                         onChange={(e) => setEditForm({...editForm, quantity: e.target.value})}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         className="w-full text-center text-4xl font-bold border-2 border-blue-500 rounded-lg py-4 px-4 focus:ring-4 focus:ring-blue-300 bg-white dark:bg-gray-800 dark:text-gray-100"
                         readOnly
                       />
@@ -851,6 +864,9 @@ const deleteMaterialFromModal = () => {
                         value={editForm.notes}
                         onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
                         placeholder="Ex: Installé dans le corridor, remplacer en mars..."
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        spellCheck={true}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 text-sm"
                       />
                     </div>
@@ -984,6 +1000,9 @@ const deleteMaterialFromModal = () => {
                   inputMode="none"
                   value={pendingQuantity}
                   onChange={(e) => setPendingQuantity(e.target.value)}
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className={`w-full text-center text-5xl font-bold border-4 rounded-lg py-6 px-4 focus:ring-4 ${
                     isNegativeQuantity
                       ? 'border-red-500 focus:ring-red-300 focus:border-red-600 text-red-600 bg-red-50 dark:bg-red-900/30'
@@ -1085,10 +1104,15 @@ const deleteMaterialFromModal = () => {
                   type="text"
                   value={quickAddForm.product_id}
                   onChange={(e) => setQuickAddForm({
-                    ...quickAddForm, 
-                    product_id: e.target.value.toUpperCase()
+                    ...quickAddForm,
+                    product_id: e.target.value
                   })}
+                  onBlur={(e) => setQuickAddForm(prev => ({...prev, product_id: prev.product_id.toUpperCase()}))}
                   placeholder="Ex: TEMP-001, SERVICE-XYZ"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  style={{ textTransform: 'uppercase' }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100 uppercase"
                   maxLength={50}
                   autoFocus
@@ -1107,10 +1131,15 @@ const deleteMaterialFromModal = () => {
                   rows={3}
                   value={quickAddForm.description}
                   onChange={(e) => setQuickAddForm({
-                    ...quickAddForm, 
+                    ...quickAddForm,
                     description: e.target.value
                   })}
+                  onBlur={(e) => setQuickAddForm(prev => ({...prev, description: prev.description.toUpperCase()}))}
+                  style={{ textTransform: 'uppercase' }}
                   placeholder="Description détaillée du produit ou service..."
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100"
                   maxLength={200}
                 />

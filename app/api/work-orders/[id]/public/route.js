@@ -1,5 +1,25 @@
+/**
+ * @file app/api/work-orders/[id]/public/route.js
+ * @description Route publique pour accéder à un BT (vue client signature)
+ *              - Bypass authentification via supabaseAdmin
+ *              - Auto-correction statut draft → ready_for_signature
+ *              - Enrichissement matériaux avec infos produit
+ * @version 1.1.0
+ * @date 2026-03-06
+ * @changelog
+ *   1.1.0 - Fix cache: ajout dynamic=force-dynamic, revalidate=0, Cache-Control no-store
+ *           Corrige le bug où la vue client affichait des données obsolètes (sessions/matériaux manquants)
+ *   1.0.0 - Version initiale
+ */
+
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
+
+// ⚠️ CRITIQUE: Désactiver tout cache Next.js pour cette route
+// Sans ces directives, Vercel/Next.js peut servir des données obsolètes
+// ce qui cause l'affichage incomplet des sessions et matériaux
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(request, { params }) {
   try {
@@ -104,10 +124,23 @@ export async function GET(request, { params }) {
       }
     }
 
-    return NextResponse.json({
+    console.log('📋 PUBLIC API - BT', workOrderId, ':', {
+      time_entries: data.time_entries?.length || 0,
+      materials: data.materials?.length || 0,
+      status: data.status
+    });
+
+    const response = NextResponse.json({
       success: true,
       data: data
     });
+
+    // ⚠️ CRITIQUE: Headers anti-cache pour empêcher toute mise en cache
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    return response;
 
   } catch (error) {
     console.error('Erreur GET public work order:', error);
