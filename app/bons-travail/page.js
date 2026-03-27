@@ -6,9 +6,10 @@
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
  *              - Badge BO et indicateur BL de suivi
- * @version 2.3.2
- * @date 2026-03-07
+ * @version 2.4.0
+ * @date 2026-03-27
  * @changelog
+ *   2.4.0 - Ajout recherche par Description + persistance état recherche/filtres/scroll (sessionStorage)
  *   2.3.2 - Retrait notification redondante après suppression BT/BL (confirm suffit)
  *   2.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur champ recherche
  *   2.3.0 - Ajout badge BO orange pour BL avec child_bl_id (backorder en cours)
@@ -21,7 +22,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye, Search, Truck, Package, DollarSign } from 'lucide-react';
@@ -32,9 +33,30 @@ export default function BonsTravailPage() {
   const [deliveryNotes, setDeliveryNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState('client');
-  const [typeFilter, setTypeFilter] = useState([]); // [] = tous, ['bt'], ['bl'], ['bt','bl'] = tous
+  const [searchTerm, setSearchTerm] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('bt-search-term') || '';
+    }
+    return '';
+  });
+  const [searchType, setSearchType] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('bt-search-type') || 'client';
+    }
+    return 'client';
+  });
+  const [typeFilter, setTypeFilter] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('bt-type-filter');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) { /* ignore */ }
+    }
+    return [];
+  });
   const [statusFilter, setStatusFilter] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -48,6 +70,7 @@ export default function BonsTravailPage() {
     return [];
   });
   const router = useRouter();
+  const scrollRestoredRef = useRef(false);
 
   // Formater heures
   const formatHoursToHM = (decimalHours) => {
@@ -99,11 +122,61 @@ export default function BonsTravailPage() {
     }
   };
 
+  // Persister les filtres dans sessionStorage (survit à la navigation, pas au refresh de l'onglet)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('bt-status-filter', JSON.stringify(statusFilter));
     }
   }, [statusFilter]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('bt-search-term', searchTerm);
+    }
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('bt-search-type', searchType);
+    }
+  }, [searchType]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('bt-type-filter', JSON.stringify(typeFilter));
+    }
+  }, [typeFilter]);
+
+  // Sauvegarder la position de scroll avant navigation
+  useEffect(() => {
+    const saveScroll = () => {
+      sessionStorage.setItem('bt-scroll-y', String(window.scrollY));
+    };
+    window.addEventListener('beforeunload', saveScroll);
+    // Sauvegarder aussi lors du clic (navigation SPA)
+    const handleClick = () => {
+      sessionStorage.setItem('bt-scroll-y', String(window.scrollY));
+    };
+    document.addEventListener('click', handleClick, true);
+    return () => {
+      saveScroll();
+      window.removeEventListener('beforeunload', saveScroll);
+      document.removeEventListener('click', handleClick, true);
+    };
+  }, []);
+
+  // Restaurer la position de scroll après le chargement
+  useEffect(() => {
+    if (!loading && !scrollRestoredRef.current) {
+      scrollRestoredRef.current = true;
+      const savedScroll = sessionStorage.getItem('bt-scroll-y');
+      if (savedScroll) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, parseInt(savedScroll, 10));
+        });
+      }
+    }
+  }, [loading]);
 
   const toggleStatusFilter = (status) => {
     setStatusFilter(prev => {
@@ -183,6 +256,8 @@ export default function BonsTravailPage() {
             return item._number?.toLowerCase().includes(searchLower);
           case 'date':
             return item._date?.includes(searchLower);
+          case 'description':
+            return item._description?.toLowerCase().includes(searchLower);
           default:
             return true;
         }
@@ -281,6 +356,7 @@ export default function BonsTravailPage() {
       case 'client': return 'Rechercher par nom de client...';
       case 'bt_number': return 'Rechercher par numero de BT/BL...';
       case 'date': return 'Rechercher par date (YYYY-MM-DD)...';
+      case 'description': return 'Rechercher dans les descriptions...';
       default: return 'Rechercher...';
     }
   };
@@ -444,6 +520,7 @@ export default function BonsTravailPage() {
               >
                 <option value="client">Client</option>
                 <option value="bt_number"># BT/BL</option>
+                <option value="description">Description</option>
                 <option value="date">Date</option>
               </select>
             </div>
@@ -468,7 +545,7 @@ export default function BonsTravailPage() {
             {searchTerm && (
               <div className="sm:w-auto flex items-end">
                 <button
-                  onClick={() => setSearchTerm('')}
+                  onClick={() => { setSearchTerm(''); sessionStorage.removeItem('bt-scroll-y'); }}
                   className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Effacer
