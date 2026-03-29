@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 2.0.0
- * @date 2026-03-24
+ * @version 2.1.0
+ * @date 2026-03-29
  * @changelog
+ *   2.1.0 - Ajout quantités (en main, en commande, réservé) dans l'en-tête du modal Modifier l'article
  *   2.0.0 - Desktop: ligne cliquable ouvre soumission + dropdown statut inline sans ouvrir le formulaire
  *   1.9.0 - Forcer majuscules sur description au save + notification auto-dismiss (remplace alert OK)
  *   1.8.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
@@ -257,6 +258,7 @@ export default function SoumissionsManager() {
   // États pour le modal d'édition de ligne
   const [showEditItemModal, setShowEditItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [editItemQuantities, setEditItemQuantities] = useState({ stock: 0, onOrder: 0, reserved: 0 });
   const [editItemForm, setEditItemForm] = useState({
     quantity: '',
     selling_price: '',
@@ -744,7 +746,7 @@ export default function SoumissionsManager() {
   };
 
   // Fonctions pour le modal d'édition de ligne
-  const openEditItemModal = (item) => {
+  const openEditItemModal = async (item) => {
     setEditingItem(item);
     setEditItemForm({
       quantity: item.quantity.toString(),
@@ -752,7 +754,87 @@ export default function SoumissionsManager() {
       cost_price: item.cost_price.toString(),
       comment: item.comment || ''
     });
+    setEditItemQuantities({ stock: item.stock_qty || 0, onOrder: 0, reserved: 0 });
     setShowEditItemModal(true);
+
+    // Charger quantités en commande et réservées pour ce produit
+    try {
+      let onOrder = 0;
+      let reserved = 0;
+
+      // En commande: AF ordered/partial
+      const { data: afPurchases } = await supabase
+        .from('supplier_purchases')
+        .select('items')
+        .in('status', ['ordered', 'partial']);
+      if (afPurchases) {
+        afPurchases.forEach(p => {
+          (p.items || []).forEach(i => {
+            if (i.product_id === item.product_id) onOrder += (parseFloat(i.quantity) || 0);
+          });
+        });
+      }
+
+      // Réservé BT
+      const { data: workOrders } = await supabase
+        .from('work_orders')
+        .select('id')
+        .in('status', ['draft', 'signed', 'pending_send']);
+      if (workOrders && workOrders.length > 0) {
+        const { data: woMaterials } = await supabase
+          .from('work_order_materials')
+          .select('product_id, quantity')
+          .in('work_order_id', workOrders.map(w => w.id))
+          .eq('product_id', item.product_id);
+        if (woMaterials) {
+          woMaterials.forEach(m => { reserved += (parseFloat(m.quantity) || 0); });
+        }
+      }
+
+      // Réservé BL
+      const { data: deliveryNotes } = await supabase
+        .from('delivery_notes')
+        .select('id')
+        .in('status', ['draft', 'ready_for_signature', 'signed', 'pending_send']);
+      if (deliveryNotes && deliveryNotes.length > 0) {
+        const { data: blMaterials } = await supabase
+          .from('delivery_note_materials')
+          .select('product_id, quantity')
+          .in('delivery_note_id', deliveryNotes.map(bl => bl.id))
+          .eq('product_id', item.product_id);
+        if (blMaterials) {
+          blMaterials.forEach(m => { reserved += (parseFloat(m.quantity) || 0); });
+        }
+      }
+
+      // Réservé Soumissions acceptées
+      const { data: submissions } = await supabase
+        .from('submissions')
+        .select('items')
+        .eq('status', 'accepted');
+      if (submissions) {
+        submissions.forEach(sub => {
+          (sub.items || []).forEach(i => {
+            if (i.product_id === item.product_id) reserved += (parseFloat(i.quantity) || 0);
+          });
+        });
+      }
+
+      // Re-fetch stock actuel pour avoir la valeur la plus récente
+      const { data: productData } = await supabase
+        .from('products')
+        .select('stock_qty')
+        .eq('product_id', item.product_id)
+        .single();
+
+      setEditItemQuantities({
+        stock: productData?.stock_qty ?? item.stock_qty ?? 0,
+        onOrder,
+        reserved
+      });
+    } catch (err) {
+      console.error('Erreur chargement quantités:', err);
+    }
   };
 
   const closeEditItemModal = () => {
@@ -2626,6 +2708,17 @@ const cleanupFilesForSubmission = async (files) => {
                         <p className="text-purple-100 text-sm mt-1 truncate">
                           {editingItem.product_id} - {editingItem.description}
                         </p>
+                        <div className="flex gap-4 mt-2 text-xs">
+                          <span className="bg-white/20 px-2 py-0.5 rounded" title="Quantité en stock">
+                            📦 En main: {editItemQuantities.stock}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded ${editItemQuantities.onOrder > 0 ? 'bg-blue-500/40' : 'bg-white/20'}`} title="En commande (AF)">
+                            📥 En commande: {editItemQuantities.onOrder}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded ${editItemQuantities.reserved > 0 ? 'bg-orange-500/40' : 'bg-white/20'}`} title="Réservé (BT/BL/Soum.)">
+                            📋 Réservé: {editItemQuantities.reserved}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Formulaire */}
