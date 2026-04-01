@@ -5,9 +5,10 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.5.1
- * @date 2026-03-07
+ * @version 1.6.0
+ * @date 2026-04-01
  * @changelog
+ *   1.6.0 - Quantité éditable dans BCC: modifie aussi la quantité dans l'onglet Articles du BA
  *   1.5.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur textarea notes
  *   1.5.0 - Ajout support dark mode
  *   1.4.0 - Ajout comptabilisation des BL (delivery_note_materials) dans colonne "Livrée"
@@ -21,7 +22,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { X, Send, Loader2, Mail, Package, AlertCircle, FileText, Plus, Trash2, Clock, CheckCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 
-const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, supplierPurchases, onBCCSent }) => {
+const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, supplierPurchases, onBCCSent, onQuantityChange }) => {
   // États du formulaire BCC
   const [bccItems, setBccItems] = useState([]);
   const [recipientEmails, setRecipientEmails] = useState([]);
@@ -255,6 +256,10 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
         const qty = field === 'qty_ordered' ? parseFloat(value) || 0 : updated[index].qty_ordered;
         const price = field === 'unit_price' ? parseFloat(value) || 0 : updated[index].unit_price;
         updated[index].line_price = qty * price;
+      }
+      // Propager le changement de quantité vers l'onglet Articles
+      if (field === 'qty_ordered' && onQuantityChange) {
+        onQuantityChange(updated[index].code, parseFloat(value) || 0);
       }
       return updated;
     });
@@ -586,8 +591,20 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                           <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[200px] truncate" title={item.description}>
                             {item.description}
                           </td>
-                          <td className="px-2 py-2 text-center text-xs font-medium text-gray-900 dark:text-gray-100">
-                            {item.qty_ordered}
+                          <td className="px-2 py-2 text-center">
+                            <input
+                              type="number"
+                              value={item.qty_ordered}
+                              onChange={(e) => updateBccItem(index, 'qty_ordered', e.target.value)}
+                              onFocus={(e) => e.target.select()}
+                              className="w-16 px-1 py-1 text-xs font-medium text-center border border-gray-200 dark:border-gray-600 rounded focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                              min="0"
+                              step="1"
+                              inputMode="numeric"
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                            />
                           </td>
                           <td className="px-2 py-2 text-center text-xs text-gray-700 dark:text-gray-300">
                             {fmt(item.unit_price)}
@@ -658,8 +675,21 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                           <div className="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5">{item.description}</div>
 
                           <div className="flex flex-wrap gap-2 mt-2 text-xs">
-                            <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
-                              Cmd: {item.qty_ordered}
+                            <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                              Cmd:
+                              <input
+                                type="number"
+                                value={item.qty_ordered}
+                                onChange={(e) => updateBccItem(index, 'qty_ordered', e.target.value)}
+                                onFocus={(e) => e.target.select()}
+                                className="w-12 px-1 py-0 text-xs font-medium text-center border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 focus:ring-1 focus:ring-emerald-500"
+                                min="0"
+                                step="1"
+                                inputMode="numeric"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
+                              />
                             </span>
                             <span className="bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
                               {fmt(item.unit_price)}/u
