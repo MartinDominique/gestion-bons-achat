@@ -5,9 +5,10 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.1.3
- * @date 2026-03-07
+ * @version 1.2.0
+ * @date 2026-04-01
  * @changelog
+ *   1.2.0 - Propagation changement quantité depuis BCC vers onglet Articles (onQuantityChange)
  *   1.1.3 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.1.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.1 - Fix boutons Fermer: texte invisible au survol en dark mode (hover:bg-gray-100 → dark:hover:bg-gray-700 + dark:text-gray-100)
@@ -3129,6 +3130,13 @@ setTimeout(() => {
           onBCCSent={() => {
             // Rafraîchir les données du BA pour mettre à jour le compteur BCC et les fichiers
             loadPOData(effectiveEditingPO.id);
+          }}
+          onQuantityChange={(productCode, newQty) => {
+            setItems(prev => prev.map(item =>
+              item.product_id === productCode
+                ? { ...item, quantity: newQty }
+                : item
+            ));
           }}
         />
       )}
