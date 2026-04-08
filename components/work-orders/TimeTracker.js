@@ -5,9 +5,10 @@
  *              - Sessions manuelles (ajout, édition, suppression)
  *              - Détection automatique surcharges (soir, samedi, dimanche, jours fériés QC)
  *              - Application des minimums (2h soir, 3h weekend/férié)
- * @version 2.1.1
- * @date 2026-02-27
+ * @version 2.2.0
+ * @date 2026-04-08
  * @changelog
+ *   2.2.0 - Ajout champ session_description (20 car. max, optionnel) par session
  *   2.1.1 - Ajout onFocus select sur champs pause (auto-sélection)
  *   2.1.0 - Ajout support dark mode
  *   2.0.0 - Intégration surcharges: détection auto, minimums, badges, recalcul toggle
@@ -60,6 +61,7 @@ export default function TimeTracker({
   const [manualStart, setManualStart] = useState('');
   const [manualEnd, setManualEnd] = useState('');
   const [manualPause, setManualPause] = useState(0);
+  const [manualDescription, setManualDescription] = useState('');
 
   // ========================================
 // MISE À JOUR TEMPS COURANT
@@ -278,6 +280,7 @@ useEffect(() => {
         start_time: sessionInProgress.start_time,
         end_time: null,
         pause_minutes: sessionInProgress.pause_minutes || 0,
+        session_description: sessionInProgress.session_description || '',
         total_hours: 0
       });
       setIsWorking(true);
@@ -359,6 +362,7 @@ const formatDuration = (hours) => {
       start_time: now.toTimeString().substring(0, 5),
       end_time: null,
       pause_minutes: 0,
+      session_description: '',
       total_hours: 0
     };
     setCurrentSession(newSession);
@@ -396,6 +400,7 @@ const formatDuration = (hours) => {
         start_time: currentSession.start_time,
         end_time: endTime,
         pause_minutes: currentSession.pause_minutes,
+        session_description: currentSession.session_description || '',
         actual_hours: baseHours,
         total_hours: surchargeInfo.total_hours,
         surcharge_type: surchargeInfo.surcharge_type || null,
@@ -428,6 +433,7 @@ const formatDuration = (hours) => {
     setManualStart(session.start_time);
     setManualEnd(session.end_time || '');
     setManualPause(session.pause_minutes || 0);
+    setManualDescription(session.session_description || '');
     setShowManualEdit(true);
   };
 
@@ -442,6 +448,7 @@ const formatDuration = (hours) => {
     setManualStart('');
     setManualEnd('');
     setManualPause(0);
+    setManualDescription('');
     setShowManualEdit(true);
   };
 
@@ -469,6 +476,7 @@ const formatDuration = (hours) => {
       start_time: manualStart,
       end_time: manualEnd || null,
       pause_minutes: parseInt(manualPause) || 0,
+      session_description: manualDescription.trim() || '',
       actual_hours: baseHours,
       total_hours: surchargeInfo.total_hours,
       surcharge_type: surchargeInfo.surcharge_type || null,
@@ -574,7 +582,34 @@ const formatDuration = (hours) => {
             </div>
           </div>
 
-          <div className="mt-3 text-center text-lg font-bold text-green-700 dark:text-green-400">
+          {/* Description courte optionnelle */}
+          <div className="mt-3">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1 text-center">Description (optionnel)</div>
+            <input
+              type="text"
+              maxLength={20}
+              value={currentSession.session_description || ''}
+              onChange={(e) => setCurrentSession({
+                ...currentSession,
+                session_description: e.target.value.slice(0, 20)
+              })}
+              placeholder="ex: Panneau #3"
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck={true}
+              disabled={status === 'sent' || status === 'signed'}
+              className={`w-full text-center text-sm border-2 rounded px-2 py-1 dark:bg-gray-800 dark:text-gray-100 ${
+                status === 'sent' || status === 'signed'
+                  ? 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 cursor-not-allowed'
+                  : 'border-green-300 dark:border-green-600 focus:ring-2 focus:ring-green-500'
+              }`}
+            />
+            <div className="text-xs text-gray-400 dark:text-gray-500 text-right mt-0.5">
+              {(currentSession.session_description || '').length}/20
+            </div>
+          </div>
+
+          <div className="mt-2 text-center text-lg font-bold text-green-700 dark:text-green-400">
             Temps écoulé: {formatDuration(
               toQuarterHourUp(
                 currentSession.start_time,
@@ -621,6 +656,13 @@ const formatDuration = (hours) => {
                 </div>
               </div>
               
+              {/* Description courte si présente */}
+              {entry.session_description && (
+                <div className="text-xs text-gray-600 dark:text-gray-400 italic truncate">
+                  {entry.session_description}
+                </div>
+              )}
+
               {/* Ligne 2: Début - Fin - Pause */}
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-3">
@@ -722,6 +764,11 @@ const formatDuration = (hours) => {
                   <div className="font-semibold flex items-center flex-wrap gap-1">
                     <Calendar size={12} className="mr-1 text-blue-600" />
                     {entry.date}
+                    {entry.session_description && (
+                      <span className="text-xs font-normal text-gray-500 dark:text-gray-400 italic ml-1" title={entry.session_description}>
+                        ({entry.session_description})
+                      </span>
+                    )}
                     {entry.surcharge_type && SURCHARGE_BADGES[entry.surcharge_type] && (
                       <span className={`text-xs px-2 py-0.5 rounded-full ${SURCHARGE_BADGES[entry.surcharge_type].color}`}>
                         {SURCHARGE_BADGES[entry.surcharge_type].label}
@@ -943,6 +990,26 @@ const formatDuration = (hours) => {
                   onFocus={(e) => e.target.select()}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description courte (optionnel, 20 car. max)
+                </label>
+                <input
+                  type="text"
+                  maxLength={20}
+                  value={manualDescription}
+                  onChange={(e) => setManualDescription(e.target.value.slice(0, 20))}
+                  placeholder="ex: Panneau #3"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck={true}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                />
+                <div className="text-xs text-gray-400 dark:text-gray-500 text-right mt-0.5">
+                  {manualDescription.length}/20
+                </div>
               </div>
 
               {manualStart && manualEnd && (() => {
