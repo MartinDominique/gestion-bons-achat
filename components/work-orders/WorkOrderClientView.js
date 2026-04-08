@@ -4,9 +4,10 @@
  *              - Protection signature si offline + indicateur wifi visible + timeout
  *              - IMPORTANT: Bloque la signature si pas de connexion
  *              - Mobile-first: 95% usage tablette/mobile
- * @version 2.0.0
- * @date 2026-02-27
+ * @version 2.1.0
+ * @date 2026-04-08
  * @changelog
+ *   2.1.0 - Affichage session_description (optionnel) après les heures de chaque session
  *   2.0.0 - Ajout support complet dark mode (Tailwind dark: variants)
  *           Canvas signature toujours blanc pour compatibilité PDF
  *   1.0.0 - Version initiale
@@ -441,6 +442,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                         return m > 0 ? `${h}h ${m}min` : `${h}h`;
                       })()}
                     </span>
+                    {entry.session_description && (
+                      <span className="text-gray-600 dark:text-gray-400 ml-2 italic text-xs">— {entry.session_description}</span>
+                    )}
                     {entry.end_time && entry.include_travel && workOrder.client?.travel_minutes > 0 && (
                       <span className="text-orange-600 dark:text-orange-400 ml-2">(Retour: {workOrder.client.travel_minutes}min)</span>
                     )}
