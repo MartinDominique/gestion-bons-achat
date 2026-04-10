@@ -7,9 +7,11 @@
  *              - Affiche coûtant unitaire et quantité en main pour les matériaux
  *              - Code produit cliquable ouvrant le vrai modal d'inventaire (éditable)
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 2.3.0
- * @date 2026-03-16
+ * @version 2.4.0
+ * @date 2026-04-10
  * @changelog
+ *   2.4.0 - Fix prix matériaux BL: ajout fallback product.selling_price dans generateBLLines()
+ *           Alignement fallbacks description/code produit BL avec BT
  *   2.3.0 - Ajout bouton "Imprimer" (génère PDF + marque envoyée, sans email)
  *           Affichage description BT/BL dans l'éditeur de facture
  *           Description BT/BL incluse dans le PDF facture
@@ -149,13 +151,13 @@ function generateBLLines(bl) {
   if (bl.materials && bl.materials.length > 0) {
     bl.materials.forEach((mat) => {
       const qty = mat.quantity || 0;
-      const price = mat.unit_price || 0;
-      const pid = mat.product_id || null;
+      const price = mat.unit_price || mat.product?.selling_price || 0;
+      const pid = mat.product_id || mat.code || null;
       lines.push({
         id: `mat-${pid || mat.id || Math.random()}`,
         type: 'material',
-        description: mat.description || 'Article',
-        detail: mat.product_code || mat.product_id || '',
+        description: mat.description || mat.product?.description || 'Article',
+        detail: mat.product_code || mat.code || mat.product_id || '',
         quantity: qty,
         unit_price: price,
         total: Math.round(qty * price * 100) / 100,
