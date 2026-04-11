@@ -2,14 +2,16 @@
  * @file components/SplitView/PanelDeliveryNote.js
  * @description Read-only panel to display Bon de Livraison (BL) details
  *              inside the split view panel.
- *              - Fetches BL by ID or bl_number
+ *              - Fetches BL via API (supabaseAdmin, bypass RLS)
  *              - Shows delivery date, client, address, linked BA, description
  *              - Materials: code, description, qty, unit, price, notes
  *              - Backorder: ordered, shipped, B/O columns
  *              - Totals summary + signature info
- * @version 2.0.0
+ * @version 2.1.0
  * @date 2026-04-11
  * @changelog
+ *   2.1.0 - Fix matériaux invisibles: utilise API route au lieu de Supabase client
+ *           (bypass RLS, enrichissement produit garanti)
  *   2.0.0 - Refonte complète: ajout adresse client, BA lié, codes produits,
  *           colonnes backorder, notes matériaux, totaux, signature, lien parent/child
  *   1.0.0 - Version initiale (Phase E — Numéros cliquables)
@@ -20,7 +22,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSplitView } from './SplitViewContext';
-import { Calendar, DollarSign, Truck, Package, MapPin, Hash, PenTool, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Calendar, DollarSign, Truck, Package, MapPin, Hash, PenTool, ArrowRight } from 'lucide-react';
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('fr-CA', {
@@ -57,7 +59,7 @@ export default function PanelDeliveryNote({ data }) {
 
   useEffect(() => {
     if (data?.deliveryNoteId) {
-      loadDeliveryNote(data.deliveryNoteId);
+      loadDeliveryNoteById(data.deliveryNoteId);
     } else if (data?.blNumber) {
       loadDeliveryNoteByNumber(data.blNumber);
     } else if (data?.deliveryNote) {
@@ -66,28 +68,23 @@ export default function PanelDeliveryNote({ data }) {
     }
   }, [data]);
 
-  const loadDeliveryNote = async (id) => {
+  // Charger via API route (supabaseAdmin, bypass RLS, matériaux enrichis)
+  const loadDeliveryNoteById = async (id) => {
     try {
       setLoading(true);
-      const { data: blData, error } = await supabase
-        .from('delivery_notes')
-        .select('*, client:clients(*), linked_po:purchase_orders(id, po_number)')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-
-      const { data: materials } = await supabase
-        .from('delivery_note_materials')
-        .select('*')
-        .eq('delivery_note_id', id);
-
-      // Charger les numéros BL parent/child
-      const enriched = { ...blData, materials: materials || [] };
-      await loadBOLinks(enriched);
-      setDeliveryNote(enriched);
+      const res = await fetch(`/api/delivery-notes/${id}`);
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setDeliveryNote(result.data);
+          return;
+        }
+      }
+      // Fallback
+      await loadDeliveryNoteFallback('id', id);
     } catch (err) {
       console.error('Erreur chargement BL:', err);
+      await loadDeliveryNoteFallback('id', id);
     } finally {
       setLoading(false);
     }
@@ -96,10 +93,44 @@ export default function PanelDeliveryNote({ data }) {
   const loadDeliveryNoteByNumber = async (blNumber) => {
     try {
       setLoading(true);
+      // Trouver l'ID via Supabase client
+      const { data: blData, error } = await supabase
+        .from('delivery_notes')
+        .select('id')
+        .eq('bl_number', blNumber)
+        .single();
+
+      if (error || !blData) {
+        console.error('BL non trouvé par numéro:', blNumber);
+        setLoading(false);
+        return;
+      }
+
+      // Charger les détails complets via API
+      const res = await fetch(`/api/delivery-notes/${blData.id}`);
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setDeliveryNote(result.data);
+          return;
+        }
+      }
+      // Fallback
+      await loadDeliveryNoteFallback('id', blData.id);
+    } catch (err) {
+      console.error('Erreur chargement BL:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fallback: chargement direct via Supabase client
+  const loadDeliveryNoteFallback = async (field, value) => {
+    try {
       const { data: blData, error } = await supabase
         .from('delivery_notes')
         .select('*, client:clients(*), linked_po:purchase_orders(id, po_number)')
-        .eq('bl_number', blNumber)
+        .eq(field, value)
         .single();
 
       if (error) throw error;
@@ -109,32 +140,9 @@ export default function PanelDeliveryNote({ data }) {
         .select('*')
         .eq('delivery_note_id', blData.id);
 
-      const enriched = { ...blData, materials: materials || [] };
-      await loadBOLinks(enriched);
-      setDeliveryNote(enriched);
+      setDeliveryNote({ ...blData, materials: materials || [] });
     } catch (err) {
-      console.error('Erreur chargement BL:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadBOLinks = async (bl) => {
-    if (bl.parent_bl_id) {
-      const { data: parentBL } = await supabase
-        .from('delivery_notes')
-        .select('bl_number')
-        .eq('id', bl.parent_bl_id)
-        .single();
-      bl.parent_bl_number = parentBL?.bl_number || null;
-    }
-    if (bl.child_bl_id) {
-      const { data: childBL } = await supabase
-        .from('delivery_notes')
-        .select('bl_number')
-        .eq('id', bl.child_bl_id)
-        .single();
-      bl.child_bl_number = childBL?.bl_number || null;
+      console.error('Erreur fallback BL:', err);
     }
   };
 
@@ -284,7 +292,7 @@ export default function PanelDeliveryNote({ data }) {
                         </span>
                       )}
                       <span className="font-medium text-gray-900 dark:text-gray-100">
-                        {mat.description || 'Article'}
+                        {mat.description || mat.product?.description || 'Article'}
                       </span>
                     </div>
                     {hasBackorder && mat.ordered_quantity ? (

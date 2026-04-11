@@ -2,14 +2,16 @@
  * @file components/SplitView/PanelWorkOrder.js
  * @description Read-only panel to display Bon de Travail (BT) details
  *              inside the split view panel.
- *              - Fetches BT by ID or bt_number
+ *              - Fetches BT via API (supabaseAdmin, bypass RLS)
  *              - Shows work date, client, address, linked BA, description
  *              - Time entries: start/end, pause, surcharge, transport, travel
  *              - Materials: code, description, qty, unit, price, notes
  *              - Totals summary + signature info
- * @version 2.0.0
+ * @version 2.1.0
  * @date 2026-04-11
  * @changelog
+ *   2.1.0 - Fix matériaux invisibles: utilise API route au lieu de Supabase client
+ *           (bypass RLS, enrichissement produit garanti)
  *   2.0.0 - Refonte complète: ajout adresse client, BA lié, transport/déplacement,
  *           pauses, surcharges, codes produits, notes matériaux, totaux, signature
  *   1.0.0 - Version initiale (Phase E — Numéros cliquables)
@@ -71,7 +73,7 @@ export default function PanelWorkOrder({ data }) {
 
   useEffect(() => {
     if (data?.workOrderId) {
-      loadWorkOrder(data.workOrderId);
+      loadWorkOrderById(data.workOrderId);
     } else if (data?.btNumber) {
       loadWorkOrderByNumber(data.btNumber);
     } else if (data?.workOrder) {
@@ -80,25 +82,23 @@ export default function PanelWorkOrder({ data }) {
     }
   }, [data]);
 
-  const loadWorkOrder = async (id) => {
+  // Charger via API route (supabaseAdmin, bypass RLS, matériaux enrichis)
+  const loadWorkOrderById = async (id) => {
     try {
       setLoading(true);
-      const { data: woData, error } = await supabase
-        .from('work_orders')
-        .select('*, client:clients(*), linked_po:purchase_orders(id, po_number)')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-
-      const { data: materials } = await supabase
-        .from('work_order_materials')
-        .select('*')
-        .eq('work_order_id', id);
-
-      setWorkOrder({ ...woData, materials: materials || [] });
+      const res = await fetch(`/api/work-orders/${id}`);
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success !== false && (result.data || result)) {
+          setWorkOrder(result.data || result);
+          return;
+        }
+      }
+      // Fallback Supabase client si API échoue
+      await loadWorkOrderFallback('id', id);
     } catch (err) {
       console.error('Erreur chargement BT:', err);
+      await loadWorkOrderFallback('id', id);
     } finally {
       setLoading(false);
     }
@@ -107,10 +107,44 @@ export default function PanelWorkOrder({ data }) {
   const loadWorkOrderByNumber = async (btNumber) => {
     try {
       setLoading(true);
+      // Trouver l'ID via Supabase client
+      const { data: woData, error } = await supabase
+        .from('work_orders')
+        .select('id')
+        .eq('bt_number', btNumber)
+        .single();
+
+      if (error || !woData) {
+        console.error('BT non trouvé par numéro:', btNumber);
+        setLoading(false);
+        return;
+      }
+
+      // Charger les détails complets via API
+      const res = await fetch(`/api/work-orders/${woData.id}`);
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success !== false && (result.data || result)) {
+          setWorkOrder(result.data || result);
+          return;
+        }
+      }
+      // Fallback
+      await loadWorkOrderFallback('id', woData.id);
+    } catch (err) {
+      console.error('Erreur chargement BT:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fallback: chargement direct via Supabase client
+  const loadWorkOrderFallback = async (field, value) => {
+    try {
       const { data: woData, error } = await supabase
         .from('work_orders')
         .select('*, client:clients(*), linked_po:purchase_orders(id, po_number)')
-        .eq('bt_number', btNumber)
+        .eq(field, value)
         .single();
 
       if (error) throw error;
@@ -122,9 +156,7 @@ export default function PanelWorkOrder({ data }) {
 
       setWorkOrder({ ...woData, materials: materials || [] });
     } catch (err) {
-      console.error('Erreur chargement BT:', err);
-    } finally {
-      setLoading(false);
+      console.error('Erreur fallback BT:', err);
     }
   };
 
@@ -320,7 +352,7 @@ export default function PanelWorkOrder({ data }) {
                       </span>
                     )}
                     <span className="font-medium text-gray-900 dark:text-gray-100">
-                      {mat.description || 'Article'}
+                      {mat.description || mat.product?.description || 'Article'}
                     </span>
                   </div>
                   {mat.show_price && mat.unit_price > 0 && (
