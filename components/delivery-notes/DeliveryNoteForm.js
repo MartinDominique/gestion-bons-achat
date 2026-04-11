@@ -9,9 +9,11 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 3.1.1
- * @date 2026-03-07
+ * @version 3.2.0
+ * @date 2026-04-10
  * @changelog
+ *   3.2.0 - Fix unit_price dans buildPayload: fallback product.selling_price pour que le prix
+ *           soit sauvegardé correctement dans delivery_note_materials
  *   3.1.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   3.1.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   3.0.0 - Refonte affichage BO: suppression section dupliquée "SUIVI COMMANDE / BACKORDER",
@@ -484,7 +486,7 @@ export default function DeliveryNoteForm({
           description: m.description || '',
           quantity: isNaN(parseFloat(m.quantity)) ? 1 : parseFloat(m.quantity),
           unit: m.unit || 'UN',
-          unit_price: parseFloat(m.unit_price) || 0,
+          unit_price: parseFloat(m.unit_price) || parseFloat(m.product?.selling_price) || 0,
           showPrice: m.showPrice || m.show_price || false,
           show_price: m.showPrice || m.show_price || false,
           notes: m.notes || '',

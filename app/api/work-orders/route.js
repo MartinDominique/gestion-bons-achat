@@ -288,7 +288,8 @@ export async function GET(request) {
         time_entries,
         invoice_id,
         client:clients(id, name),
-        linked_po:purchase_orders(id, po_number)
+        linked_po:purchase_orders(id, po_number),
+        materials:work_order_materials(id)
       `, { count: 'exact' })
       .order('bt_number', { ascending: false });
 

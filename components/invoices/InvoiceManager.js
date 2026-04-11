@@ -6,9 +6,10 @@
  *              - Actions: créer, voir, renvoyer, marquer payée
  *              - Rapport Acomba: export PDF + CSV mensuel ventilé
  *              - Numéros de référence cliquables (SplitView)
- * @version 1.6.0
- * @date 2026-03-16
+ * @version 1.7.0
+ * @date 2026-04-10
  * @changelog
+ *   1.7.0 - Enrichissement aperçu "À facturer": description, heures, transport, nb matériaux
  *   1.6.0 - Ajout bouton "Imprimer" sur factures (génère PDF + marque envoyée, sans email)
  *   1.5.0 - Fix: handleCreateInvoice utilise endpoint individuel pour récupérer matériaux + client complet (transport_fee, hourly_rate)
  *   1.4.0 - Ajout ReferenceLink sur N° BT/BL (Phase E — Numéros cliquables)
@@ -21,7 +22,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer } from 'lucide-react';
+import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer, Package } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
 import { generateAcombaReportPDF, generateAcombaReportCSV } from './AcombaReportExport';
 import { ReferenceLink } from '../SplitView';
@@ -455,6 +456,10 @@ export default function InvoiceManager() {
       _number: bt.bt_number,
       _date: bt.work_date,
       _clientName: bt.client?.name || 'Client inconnu',
+      _description: bt.work_description || '',
+      _totalHours: bt.total_hours || 0,
+      _hasTransport: bt.time_entries?.some(e => e.include_transport_fee) || false,
+      _materialCount: bt.materials?.length || 0,
     })),
     ...uninvoicedBL.map(bl => ({
       ...bl,
@@ -462,6 +467,10 @@ export default function InvoiceManager() {
       _number: bl.bl_number,
       _date: bl.delivery_date,
       _clientName: bl.client?.name || bl.client_name || 'Client inconnu',
+      _description: bl.delivery_description || '',
+      _totalHours: 0,
+      _hasTransport: false,
+      _materialCount: bl.materials?.length || 0,
     })),
   ].sort((a, b) => (b._date || '').localeCompare(a._date || ''));
 
@@ -625,6 +634,29 @@ export default function InvoiceManager() {
                       </div>
                       <div className="text-sm text-gray-700 dark:text-gray-300 font-medium">{item._clientName}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatDate(item._date)}</div>
+                      {item._description && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate max-w-[280px]">{item._description}</div>
+                      )}
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {item._type === 'bt' && item._totalHours > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {item._totalHours}h
+                          </span>
+                        )}
+                        {item._hasTransport && (
+                          <span className="flex items-center gap-1">
+                            <Truck className="w-3 h-3" />
+                            Transport
+                          </span>
+                        )}
+                        {item._materialCount > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Package className="w-3 h-3" />
+                            {item._materialCount} article{item._materialCount > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -634,11 +666,12 @@ export default function InvoiceManager() {
                   <table className="w-full">
                     <thead className="bg-gradient-to-r from-gray-50 to-emerald-50 dark:from-gray-800 dark:to-gray-800">
                       <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Type</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">N°</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Date</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Client</th>
-                        <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                        <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Type</th>
+                        <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">N°</th>
+                        <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Date</th>
+                        <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Client</th>
+                        <th className="px-4 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Détails</th>
+                        <th className="px-4 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -648,7 +681,7 @@ export default function InvoiceManager() {
                             index % 2 === 0 ? 'bg-white/50 dark:bg-gray-800/50' : 'bg-gray-50/50 dark:bg-gray-900/30'
                           }`}
                         >
-                          <td className="px-6 py-3">
+                          <td className="px-4 py-3">
                             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${
                               item._type === 'bt'
                                 ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300'
@@ -658,7 +691,7 @@ export default function InvoiceManager() {
                               {item._type.toUpperCase()}
                             </span>
                           </td>
-                          <td className="px-6 py-3">
+                          <td className="px-4 py-3">
                             <ReferenceLink
                               type={item._type === 'bt' ? 'work-order' : 'delivery-note'}
                               label={item._number}
@@ -666,13 +699,38 @@ export default function InvoiceManager() {
                               variant={item._type === 'bt' ? 'green' : 'orange'}
                             />
                           </td>
-                          <td className="px-6 py-3 text-sm text-gray-600 dark:text-gray-400">
+                          <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                             {formatDate(item._date)}
                           </td>
-                          <td className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100 font-medium">
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 font-medium">
                             {item._clientName}
                           </td>
-                          <td className="px-6 py-3 text-right">
+                          <td className="px-4 py-3">
+                            {item._description && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[250px]" title={item._description}>{item._description}</div>
+                            )}
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                              {item._type === 'bt' && item._totalHours > 0 && (
+                                <span className="flex items-center gap-0.5">
+                                  <Clock className="w-3 h-3" />
+                                  {item._totalHours}h
+                                </span>
+                              )}
+                              {item._hasTransport && (
+                                <span className="flex items-center gap-0.5">
+                                  <Truck className="w-3 h-3" />
+                                  Transp.
+                                </span>
+                              )}
+                              {item._materialCount > 0 && (
+                                <span className="flex items-center gap-0.5">
+                                  <Package className="w-3 h-3" />
+                                  {item._materialCount}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={() => handleMarkExternal(item)}
