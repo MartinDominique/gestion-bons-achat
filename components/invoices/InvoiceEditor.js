@@ -10,7 +10,7 @@
  * @version 2.4.0
  * @date 2026-04-10
  * @changelog
- *   2.4.0 - Fix prix matériaux BL: ajout fallback product.selling_price dans generateBLLines()
+ *   2.4.0 - Fix prix matériaux BL: priorisation prix BA (client_po_items) > BL > inventaire
  *           Alignement fallbacks description/code produit BL avec BT
  *   2.3.0 - Ajout bouton "Imprimer" (génère PDF + marque envoyée, sans email)
  *           Affichage description BT/BL dans l'éditeur de facture
@@ -144,15 +144,28 @@ function generateBTLines(bt, settings) {
 
 /**
  * Génère les lignes de facture depuis un BL source
+ * Priorité prix: BA (client_po_items) > BL material > produit inventaire
  */
 function generateBLLines(bl) {
   const lines = [];
 
+  // Construire un map des prix BA par product_id
+  const baPriceMap = {};
+  if (bl.linked_po?.items) {
+    bl.linked_po.items.forEach(item => {
+      if (item.product_id && item.selling_price) {
+        baPriceMap[item.product_id] = parseFloat(item.selling_price);
+      }
+    });
+  }
+
   if (bl.materials && bl.materials.length > 0) {
     bl.materials.forEach((mat) => {
       const qty = mat.quantity || 0;
-      const price = mat.unit_price || mat.product?.selling_price || 0;
       const pid = mat.product_id || mat.code || null;
+      // Priorité: prix BA > prix BL material > prix produit inventaire
+      const baPrice = pid ? baPriceMap[pid] : undefined;
+      const price = baPrice || mat.unit_price || mat.product?.selling_price || 0;
       lines.push({
         id: `mat-${pid || mat.id || Math.random()}`,
         type: 'material',

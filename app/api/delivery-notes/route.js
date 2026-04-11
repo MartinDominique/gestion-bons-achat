@@ -245,7 +245,8 @@ export async function GET(request) {
         parent_bl_id,
         child_bl_id,
         client:clients(id, name),
-        linked_po:purchase_orders(id, po_number)
+        linked_po:purchase_orders(id, po_number),
+        materials:delivery_note_materials(id)
       `, { count: 'exact' })
       .order('bl_number', { ascending: false });
 

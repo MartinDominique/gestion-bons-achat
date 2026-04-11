@@ -3,9 +3,10 @@
  * @description API pour un Bon de Livraison spécifique
  *              - GET: Récupérer un BL avec toutes ses relations + refs parent/child BO
  *              - PUT: Mettre à jour un BL (avec support backorder)
- * @version 1.2.0
- * @date 2026-03-04
+ * @version 1.3.0
+ * @date 2026-04-10
  * @changelog
+ *   1.3.0 - GET: charge client_po_items du BA lié pour accès aux prix BA dans facturation
  *   1.2.0 - Fix: INSERT matériaux résilient — retry sans colonnes BO si INSERT échoue
  *   1.1.1 - Fix: permettre quantité 0 dans matériaux (|| 1 convertissait 0 en 1)
  *   1.1.0 - Ajout support backorder (BO): ordered_quantity, previously_delivered
@@ -84,6 +85,21 @@ export async function GET(request, { params }) {
             selling_price: material.unit_price || 0
           };
         }
+      }
+    }
+
+    // Charger les items du BA lié (prix pour facturation)
+    if (data.linked_po_id && data.linked_po) {
+      try {
+        const { data: poItems } = await supabase
+          .from('client_po_items')
+          .select('product_id, description, quantity, unit, selling_price, cost_price')
+          .eq('purchase_order_id', data.linked_po_id);
+        if (poItems && poItems.length > 0) {
+          data.linked_po.items = poItems;
+        }
+      } catch (err) {
+        console.log('client_po_items non chargés:', err.message);
       }
     }
 
