@@ -7,9 +7,10 @@
  *              - Affiche coûtant unitaire et quantité en main pour les matériaux
  *              - Code produit cliquable ouvrant le vrai modal d'inventaire (éditable)
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 2.4.0
- * @date 2026-04-10
+ * @version 2.4.1
+ * @date 2026-04-13
  * @changelog
+ *   2.4.1 - Ajout traduction reference_type 'manual_edit' → 'Modification manuelle' dans historique mouvements
  *   2.4.0 - Fix prix matériaux BL: priorisation prix BA (client_po_items) > BL > inventaire
  *           Alignement fallbacks description/code produit BL avec BT
  *   2.3.0 - Ajout bouton "Imprimer" (génère PDF + marque envoyée, sans email)
@@ -1415,7 +1416,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                                       {movement.reference_type === 'delivery_slip' && 'Bon de livraison'}
                                       {movement.reference_type === 'direct_receipt' && 'Réception directe'}
                                       {movement.reference_type === 'adjustment' && 'Ajustement'}
-                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment'].includes(movement.reference_type) && movement.reference_type}
+                                      {movement.reference_type === 'manual_edit' && 'Modification manuelle'}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit'].includes(movement.reference_type) && movement.reference_type}
                                     </span>
                                   )}
                                 </div>
