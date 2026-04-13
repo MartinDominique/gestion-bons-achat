@@ -258,7 +258,7 @@ export async function POST(request, { params }) {
                 reference_type: 'work_order',
                 reference_id: workOrder.id.toString(),
                 reference_number: workOrder.bt_number,
-                notes: `BT ${workOrder.bt_number}${isCredit ? ' (CRÉDIT)' : ''} - ${workOrder.client?.company_name || workOrder.client?.name || 'Client'}`,
+                notes: `BT ${workOrder.bt_number}${isCredit ? ' (CRÉDIT)' : ''} - ${workOrder.client?.company || workOrder.client?.name || 'Client'}`,
                 created_at: new Date().toISOString()
               });
 
