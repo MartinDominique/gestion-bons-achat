@@ -131,7 +131,7 @@ export async function POST(request, { params }) {
         .from('inventory_movements')
         .select('id')
         .eq('reference_type', 'delivery_note')
-        .eq('reference_id', deliveryNote.id.toString())
+        .eq('reference_number', deliveryNote.bl_number)
         .limit(1);
 
       if (existingMovements && existingMovements.length > 0) {
@@ -187,7 +187,7 @@ export async function POST(request, { params }) {
                 unit_cost: unitCost,
                 total_cost: totalCost,
                 reference_type: 'delivery_note',
-                reference_id: deliveryNote.id.toString(),
+                reference_id: null,
                 reference_number: deliveryNote.bl_number,
                 notes: `BL ${deliveryNote.bl_number}${isCredit ? ' (CRÉDIT)' : ''} - ${deliveryNote.client?.name || deliveryNote.client_name || 'Client'}`,
                 created_at: new Date().toISOString()
