@@ -55,12 +55,12 @@ export async function GET(request) {
       results.workOrders.found = workOrders.length;
 
       for (const wo of workOrders) {
-        // Vérifier si des mouvements existent déjà
+        // Vérifier si des mouvements existent déjà (par reference_number car reference_id est UUID)
         const { data: existing } = await supabaseAdmin
           .from('inventory_movements')
           .select('id')
           .eq('reference_type', 'work_order')
-          .eq('reference_id', wo.id.toString())
+          .eq('reference_number', wo.bt_number)
           .limit(1);
 
         if (existing && existing.length > 0) {
@@ -93,7 +93,7 @@ export async function GET(request) {
             unit_cost: unitCost,
             total_cost: totalCost,
             reference_type: 'work_order',
-            reference_id: wo.id.toString(),
+            reference_id: null,
             reference_number: wo.bt_number,
             notes: `BT ${wo.bt_number}${isCredit ? ' (CRÉDIT)' : ''} - ${clientName} [rattrapage]`,
             created_at: new Date().toISOString()
@@ -155,12 +155,12 @@ export async function GET(request) {
       results.deliveryNotes.found = deliveryNotes.length;
 
       for (const dn of deliveryNotes) {
-        // Vérifier si des mouvements existent déjà
+        // Vérifier si des mouvements existent déjà (par reference_number car reference_id est UUID)
         const { data: existing } = await supabaseAdmin
           .from('inventory_movements')
           .select('id')
           .eq('reference_type', 'delivery_note')
-          .eq('reference_id', dn.id.toString())
+          .eq('reference_number', dn.bl_number)
           .limit(1);
 
         if (existing && existing.length > 0) {
@@ -193,7 +193,7 @@ export async function GET(request) {
             unit_cost: unitCost,
             total_cost: totalCost,
             reference_type: 'delivery_note',
-            reference_id: dn.id.toString(),
+            reference_id: null,
             reference_number: dn.bl_number,
             notes: `BL ${dn.bl_number}${isCredit ? ' (CRÉDIT)' : ''} - ${clientName} [rattrapage]`,
             created_at: new Date().toISOString()

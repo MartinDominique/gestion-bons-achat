@@ -180,7 +180,7 @@ export async function POST(request, { params }) {
         .from('inventory_movements')
         .select('id')
         .eq('reference_type', 'work_order')
-        .eq('reference_id', workOrder.id.toString())
+        .eq('reference_number', workOrder.bt_number)
         .limit(1);
 
       if (existingBTMovements && existingBTMovements.length > 0) {
@@ -244,7 +244,7 @@ export async function POST(request, { params }) {
                 unit_cost: unitCost,
                 total_cost: totalCost,
                 reference_type: 'work_order',
-                reference_id: workOrder.id.toString(),
+                reference_id: null,
                 reference_number: workOrder.bt_number,
                 notes: `BT ${workOrder.bt_number}${isCredit ? ' (CRÉDIT)' : ''} - ${workOrder.client?.company || workOrder.client?.name || 'Client'}`,
                 created_at: new Date().toISOString()
