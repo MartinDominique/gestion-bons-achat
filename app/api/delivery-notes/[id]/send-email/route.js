@@ -1,9 +1,11 @@
 /**
  * @file app/api/delivery-notes/[id]/send-email/route.js
  * @description API pour envoyer un BL par email (envoi manuel)
- * @version 1.1.0
- * @date 2026-02-17
+ * @version 1.2.0
+ * @date 2026-04-13
  * @changelog
+ *   1.2.0 - Fix mouvement inventaire: colonne 'name' → 'reference_number' (BL number)
+ *           + vérification erreur INSERT inventory_movements
  *   1.1.0 - Mise à jour delivered_quantity dans client_po_items quand BL lié à un BA
  *   1.0.0 - Version initiale
  */
@@ -187,7 +189,7 @@ export async function POST(request, { params }) {
           const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
           const totalCost = Math.round(absQty * unitCost * 100) / 100;
 
-          await supabaseAdmin
+          const { error: mvtError } = await supabaseAdmin
             .from('inventory_movements')
             .insert({
               product_id: material.product_id,
@@ -200,10 +202,14 @@ export async function POST(request, { params }) {
               total_cost: totalCost,
               reference_type: 'delivery_note',
               reference_id: deliveryNote.id.toString(),
-              name: `${deliveryNote.bl_number}.pdf`,
+              reference_number: deliveryNote.bl_number,
               notes: `BL ${deliveryNote.bl_number}${isCredit ? ' (CRÉDIT)' : ''} - ${deliveryNote.client?.name || deliveryNote.client_name || 'Client'}`,
               created_at: new Date().toISOString()
             });
+
+          if (mvtError) {
+            console.error(`⚠️ Erreur mouvement inventaire pour ${material.product_id}:`, mvtError);
+          }
         } catch (invError) {
           console.error(`Erreur inventaire pour ${material.product_id}:`, invError);
         }

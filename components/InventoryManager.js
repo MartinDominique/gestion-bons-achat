@@ -8,9 +8,11 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.4.0
- * @date 2026-03-07
+ * @version 3.5.0
+ * @date 2026-04-13
  * @changelog
+ *   3.5.0 - Traçabilité modification manuelle stock: insertion mouvement inventaire (reference_type 'manual_edit')
+ *           avec code produit, description, quantité +/-, et nom utilisateur authentifié
  *   3.4.0 - Forcer majuscules sur description au save (toUpperCase au trim)
  *   3.3.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   3.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -85,16 +87,23 @@ export default function InventoryManager() {
   const [historyMovements, setHistoryMovements] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // Utilisateur authentifié (pour traçabilité mouvements manuels)
+  const [currentUser, setCurrentUser] = useState(null);
+
   // ===== TOAST NOTIFICATION =====
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 2000);
   }, []);
 
-  // ===== CHARGEMENT INITIAL (groupes + quantités seulement) =====
+  // ===== CHARGEMENT INITIAL (groupes + quantités + user) =====
   useEffect(() => {
     loadProductGroups();
     loadQuantities();
+    // Récupérer l'utilisateur authentifié
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUser(user);
+    });
   }, []);
 
   // ===== DEBOUNCE RECHERCHE =====
@@ -493,6 +502,35 @@ export default function InventoryManager() {
         .select();
 
       if (error) throw error;
+
+      // Créer un mouvement d'inventaire si la quantité a changé
+      const qtyDiff = updates.stock_qty - oldQty;
+      if (qtyDiff !== 0) {
+        const userLabel = currentUser?.email
+          ? currentUser.email.split('@')[0]
+          : 'utilisateur';
+        try {
+          await supabase
+            .from('inventory_movements')
+            .insert({
+              product_id: editingItem.product_id,
+              product_description: updates.description,
+              product_group: editingItem.product_group || '',
+              unit: editingItem.unit || 'UN',
+              movement_type: qtyDiff > 0 ? 'IN' : 'OUT',
+              quantity: Math.abs(qtyDiff),
+              unit_cost: updates.cost_price,
+              total_cost: Math.abs(qtyDiff) * updates.cost_price,
+              reference_type: 'manual_edit',
+              reference_id: null,
+              reference_number: null,
+              notes: `Modification manuelle (${oldQty} → ${updates.stock_qty}) par ${userLabel}`,
+              created_at: new Date().toISOString()
+            });
+        } catch (movementErr) {
+          console.error('Erreur création mouvement inventaire:', movementErr);
+        }
+      }
 
       // Envoyer email si des changements ont été faits
       if (changes.length > 0) {
@@ -1122,7 +1160,8 @@ export default function InventoryManager() {
                                       {movement.reference_type === 'delivery_slip' && 'Bon de livraison'}
                                       {movement.reference_type === 'direct_receipt' && 'Réception directe'}
                                       {movement.reference_type === 'adjustment' && 'Ajustement'}
-                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment'].includes(movement.reference_type) && movement.reference_type}
+                                      {movement.reference_type === 'manual_edit' && 'Modification manuelle'}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit'].includes(movement.reference_type) && movement.reference_type}
                                     </span>
                                   )}
                                 </div>

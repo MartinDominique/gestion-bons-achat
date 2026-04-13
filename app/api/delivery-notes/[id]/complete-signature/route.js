@@ -1,9 +1,11 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL + création BL suivi backorder
- * @version 1.4.0
- * @date 2026-03-04
+ * @version 1.5.0
+ * @date 2026-04-13
  * @changelog
+ *   1.5.0 - Fix mouvement inventaire: colonne 'name' → 'reference_number' (BL number)
+ *           + vérification erreur INSERT inventory_movements
  *   1.4.0 - Fix BO: inclure TOUS les items dans le BL de suivi (pas seulement les BO),
  *           items complétés avec quantity=0 pour vue complète commande côté client
  *   1.3.0 - Ajout gestion backorder (BO): après signature, si des items ont ordered_quantity
@@ -173,7 +175,7 @@ export async function POST(request, { params }) {
             const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
             const totalCost = Math.round(absQty * unitCost * 100) / 100;
 
-            await supabaseAdmin
+            const { error: mvtError } = await supabaseAdmin
               .from('inventory_movements')
               .insert({
                 product_id: material.product_id,
@@ -186,10 +188,14 @@ export async function POST(request, { params }) {
                 total_cost: totalCost,
                 reference_type: 'delivery_note',
                 reference_id: deliveryNote.id.toString(),
-                name: `${deliveryNote.bl_number}.pdf`,
+                reference_number: deliveryNote.bl_number,
                 notes: `BL ${deliveryNote.bl_number}${isCredit ? ' (CRÉDIT)' : ''} - ${deliveryNote.client?.name || deliveryNote.client_name || 'Client'}`,
                 created_at: new Date().toISOString()
               });
+
+            if (mvtError) {
+              console.error(`⚠️ Erreur mouvement inventaire pour ${material.product_id}:`, mvtError);
+            }
 
           } catch (invError) {
             console.error(`⚠️ Erreur inventaire pour ${material.product_id}:`, invError);
