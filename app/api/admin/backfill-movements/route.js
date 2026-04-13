@@ -44,7 +44,7 @@ export async function GET(request) {
       .from('work_orders')
       .select(`
         id, bt_number, client_id, status,
-        client:clients(name, company_name),
+        client:clients(name, company),
         materials:work_order_materials(product_id, product_code, description, quantity, unit, unit_price)
       `)
       .in('status', ['signed', 'pending_send', 'sent', 'completed']);
@@ -71,7 +71,7 @@ export async function GET(request) {
         const materials = (wo.materials || []).filter(m => m.product_id && m.quantity);
         if (materials.length === 0) continue;
 
-        const clientName = wo.client?.company_name || wo.client?.name || 'Client';
+        const clientName = wo.client?.company || wo.client?.name || 'Client';
 
         for (const material of materials) {
           const qty = parseFloat(material.quantity) || 0;
@@ -144,7 +144,7 @@ export async function GET(request) {
       .from('delivery_notes')
       .select(`
         id, bl_number, client_id, client_name, status,
-        client:clients(name, company_name),
+        client:clients(name, company),
         materials:delivery_note_materials(product_id, description, quantity, unit, unit_price)
       `)
       .in('status', ['signed', 'pending_send', 'sent']);
@@ -171,7 +171,7 @@ export async function GET(request) {
         const materials = (dn.materials || []).filter(m => m.product_id && m.quantity);
         if (materials.length === 0) continue;
 
-        const clientName = dn.client?.company_name || dn.client?.name || dn.client_name || 'Client';
+        const clientName = dn.client?.company || dn.client?.name || dn.client_name || 'Client';
 
         for (const material of materials) {
           const qty = parseFloat(material.quantity) || 0;
