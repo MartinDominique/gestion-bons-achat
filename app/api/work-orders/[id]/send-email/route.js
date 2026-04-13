@@ -2,6 +2,8 @@
 // API ROUTE CORRIGÉE - ENVOI EMAIL BONS DE TRAVAIL
 // Fichier: app/api/work-orders/[id]/send-email/route.js
 // Structure: id=integer, client_id=integer, user_id=uuid
+// v1.1.0 - 2026-04-13 - Fix mouvement inventaire: colonne 'name' → 'reference_number' (BT number)
+//                        + vérification erreur INSERT inventory_movements
 // ============================================
 
 import { NextResponse } from 'next/server';
@@ -230,7 +232,7 @@ export async function POST(request, { params }) {
             const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
             const totalCost = Math.round(absQty * unitCost * 100) / 100;
             
-            await supabaseAdmin
+            const { error: mvtError } = await supabaseAdmin
               .from('inventory_movements')
               .insert({
                 product_id: material.product_id,
@@ -243,11 +245,15 @@ export async function POST(request, { params }) {
                 total_cost: totalCost,
                 reference_type: 'work_order',
                 reference_id: workOrder.id.toString(),
-                name: `${workOrder.bt_number}.pdf`,
+                reference_number: workOrder.bt_number,
                 notes: `BT ${workOrder.bt_number}${isCredit ? ' (CRÉDIT)' : ''} - ${workOrder.client?.company_name || workOrder.client?.name || 'Client'}`,
                 created_at: new Date().toISOString()
               });
-            
+
+            if (mvtError) {
+              console.error(`⚠️ Erreur mouvement inventaire pour ${material.product_id}:`, mvtError);
+            }
+
           } catch (invError) {
             console.error(`⚠️ Erreur inventaire pour ${material.product_id}:`, invError);
           }
