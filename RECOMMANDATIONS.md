@@ -1280,7 +1280,7 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
   - `components/delivery-notes/DeliveryNoteClientView.js` v2.6.0 — Masquage colonne A suivre
   - `lib/services/email-service.js` v3.2.0 — Colonnes PDF BO corrigees
 
-### 2026-04-21 - Correction double-compte "Réservé" dans l'inventaire
+### 2026-04-21 - Correction double-compte "Réservé" dans l'inventaire + outils de diagnostic
 - **Probleme:** Items de BT/BL signés (stock deja décrémenté) comptaient encore dans "Réservé (BT/BL/Soum.)"
   → Double-compte: stock sorti + reserve = `Disponible réel` trop bas
 - **Raison:** Depuis complete-signature v1.2.0 (2026-04-13), l'inventaire est deduit a la signature.
@@ -1291,8 +1291,15 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
   - Soumissions: retirees du calcul (items souvent pas en stock, non pertinent pour l'inventaire physique)
 - **Modele mental:** "Réservé" = items promis mais pas encore signés (stock encore en main).
   Une fois signé → stock parti → ne compte plus en reserve.
+- **Outils de diagnostic ajoutes (v3.7.0):**
+  - Bouton "Voir détail" a cote de la ligne "Réservé" dans le modal edition → popup listant
+    chaque BT/BL qui réserve des unites (N°, statut, client, qte). Permet d'identifier la
+    source des reservations fantomes.
+  - Bouton "Avec réservé" dans la barre d'outils → charge uniquement les items avec au moins
+    une reservation active. Permet de faire un audit rapide de toutes les reservations.
 - **Fichiers modifies:**
-  - `components/InventoryManager.js` v3.6.0 — Filtres statuts BT/BL, retrait soumissions, labels UI mis a jour
+  - `components/InventoryManager.js` v3.7.0 — Filtres statuts BT/BL, retrait soumissions,
+    labels UI mis a jour, outils de diagnostic (modal + filtre)
   - `CLAUDE.md` — Ajout bug corrige dans section "Bugs connus"
 
 ---

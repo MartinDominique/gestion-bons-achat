@@ -8,9 +8,17 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.6.0
+ * @version 3.7.0
  * @date 2026-04-21
  * @changelog
+ *   3.7.0 - Outils de diagnostic des réservations:
+ *           - Bouton "Voir détail" à côté de "Réservé (BT/BL non signés)" dans le modal
+ *             édition → popup listant chaque BT/BL qui réserve des unités (N°, statut,
+ *             client, qté)
+ *           - Bouton "Avec réservé" dans la barre d'outils → charge uniquement les items
+ *             qui ont au moins une réservation active
+ *           - loadQuantities() enrichi: garde aussi le détail par document pour ces
+ *             outils (reservationDetails)
  *   3.6.0 - Fix double-comptage "Réservé (BT/BL/Soum.)":
  *           - BT réservé: uniquement statut 'draft' (avant: draft/signed/pending_send)
  *           - BL réservé: uniquement statuts 'draft' et 'ready_for_signature'
@@ -66,6 +74,13 @@ export default function InventoryManager() {
 
   // Quantités en commande et réservé par product_id
   const [quantityMap, setQuantityMap] = useState({});
+  // Détail des documents qui réservent chaque product_id (BT/BL non signés)
+  // Format: { product_id: [{ type: 'BT'|'BL', number, status, client, quantity }] }
+  const [reservationDetails, setReservationDetails] = useState({});
+
+  // Modal de diagnostic "Voir détail" sur la ligne Réservé
+  const [showReservationModal, setShowReservationModal] = useState(false);
+  const [reservationModalProduct, setReservationModalProduct] = useState(null);
 
   // Debounce timer
   const searchTimerRef = useRef(null);
@@ -243,10 +258,15 @@ export default function InventoryManager() {
     setItemCount({ products: 0, nonInventory: 0 });
   };
 
-  // ===== CHARGER QUANTITÉS (en commande + réservé) =====
+  // ===== CHARGER QUANTITÉS (en commande + réservé + détail par doc) =====
   const loadQuantities = async () => {
     try {
       const map = {};
+      const details = {}; // product_id -> [{ type, number, status, client, quantity }]
+      const addDetail = (pid, entry) => {
+        if (!details[pid]) details[pid] = [];
+        details[pid].push(entry);
+      };
 
       // 1. En commande: AF avec statut ordered ou partial (items en JSONB)
       const { data: afPurchases, error: afError } = await supabase
@@ -269,21 +289,33 @@ export default function InventoryManager() {
       //    (BT signé = stock déjà décrémenté via complete-signature, ne plus compter)
       const { data: workOrders, error: woError } = await supabase
         .from('work_orders')
-        .select('id, status')
+        .select('id, bt_number, status, client:clients(name, company)')
         .eq('status', 'draft');
 
       if (!woError && workOrders && workOrders.length > 0) {
+        const woMap = Object.fromEntries(workOrders.map(wo => [wo.id, wo]));
         const woIds = workOrders.map(wo => wo.id);
         const { data: woMaterials, error: womError } = await supabase
           .from('work_order_materials')
-          .select('product_id, quantity')
+          .select('work_order_id, product_id, quantity')
           .in('work_order_id', woIds);
 
         if (!womError && woMaterials) {
           woMaterials.forEach(m => {
             if (!m.product_id) return;
+            const qty = parseFloat(m.quantity) || 0;
             if (!map[m.product_id]) map[m.product_id] = { onOrder: 0, reserved: 0 };
-            map[m.product_id].reserved += (parseFloat(m.quantity) || 0);
+            map[m.product_id].reserved += qty;
+
+            const wo = woMap[m.work_order_id];
+            addDetail(m.product_id, {
+              type: 'BT',
+              id: m.work_order_id,
+              number: wo?.bt_number || '?',
+              status: wo?.status || '?',
+              client: wo?.client?.company || wo?.client?.name || '—',
+              quantity: qty,
+            });
           });
         }
       }
@@ -292,28 +324,75 @@ export default function InventoryManager() {
       //    (BL signé = stock déjà décrémenté via complete-signature, ne plus compter)
       const { data: deliveryNotes, error: blError } = await supabase
         .from('delivery_notes')
-        .select('id, status')
+        .select('id, bl_number, status, client_name, client:clients(name, company)')
         .in('status', ['draft', 'ready_for_signature']);
 
       if (!blError && deliveryNotes && deliveryNotes.length > 0) {
+        const blMap = Object.fromEntries(deliveryNotes.map(bl => [bl.id, bl]));
         const blIds = deliveryNotes.map(bl => bl.id);
         const { data: blMaterials, error: blmError } = await supabase
           .from('delivery_note_materials')
-          .select('product_id, quantity')
+          .select('delivery_note_id, product_id, quantity')
           .in('delivery_note_id', blIds);
 
         if (!blmError && blMaterials) {
           blMaterials.forEach(m => {
             if (!m.product_id) return;
+            const qty = parseFloat(m.quantity) || 0;
             if (!map[m.product_id]) map[m.product_id] = { onOrder: 0, reserved: 0 };
-            map[m.product_id].reserved += (parseFloat(m.quantity) || 0);
+            map[m.product_id].reserved += qty;
+
+            const bl = blMap[m.delivery_note_id];
+            addDetail(m.product_id, {
+              type: 'BL',
+              id: m.delivery_note_id,
+              number: bl?.bl_number || '?',
+              status: bl?.status || '?',
+              client: bl?.client?.company || bl?.client?.name || bl?.client_name || '—',
+              quantity: qty,
+            });
           });
         }
       }
 
       setQuantityMap(map);
+      setReservationDetails(details);
     } catch (error) {
       console.error('Erreur chargement quantités:', error);
+    }
+  };
+
+  // ===== CHARGER ITEMS AVEC RÉSERVATIONS (filtre diagnostic) =====
+  const loadReservedOnly = async () => {
+    const reservedIds = Object.keys(reservationDetails).filter(
+      pid => (quantityMap[pid]?.reserved || 0) > 0
+    );
+    if (reservedIds.length === 0) {
+      showToast('Aucun item réservé', 'success');
+      return;
+    }
+    try {
+      setLoading(true);
+      setSearchTerm('');
+      const [{ data: products }, { data: nonInv }] = await Promise.all([
+        supabase.from('products').select('*').in('product_id', reservedIds),
+        supabase.from('non_inventory_items').select('*').in('product_id', reservedIds),
+      ]);
+      const merged = [
+        ...(products || []).map(p => ({ ...p, _source: 'products' })),
+        ...(nonInv || []).map(p => ({ ...p, _source: 'non_inventory' })),
+      ];
+      setDisplayItems(merged);
+      setLoadMode('reserved');
+      setItemCount({
+        products: (products || []).length,
+        nonInventory: (nonInv || []).length,
+      });
+    } catch (err) {
+      console.error('Erreur chargement items réservés:', err);
+      showToast('Erreur lors du chargement des items réservés', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -576,9 +655,25 @@ export default function InventoryManager() {
         return 'Tous les produits';
       case 'group':
         return `Groupe: ${selectedLoadGroup}`;
+      case 'reserved':
+        return 'Items avec réservations (BT/BL non signés)';
       default:
         return null;
     }
+  };
+
+  // ===== LABEL STATUT BT/BL (pour modal diagnostic) =====
+  const getDocStatusLabel = (status) => {
+    const labels = {
+      draft: 'Brouillon',
+      ready_for_signature: 'À signer',
+      signed: 'Signé',
+      pending_send: 'En attente',
+      sent: 'Envoyé',
+      completed: 'Terminé',
+      in_progress: 'En cours',
+    };
+    return labels[status] || status;
   };
 
   // ===== RENDU =====
@@ -674,6 +769,17 @@ export default function InventoryManager() {
               <List className="w-4 h-4" />
             )}
             Charger tout
+          </button>
+
+          {/* Bouton afficher items réservés */}
+          <button
+            onClick={loadReservedOnly}
+            disabled={loading}
+            className="px-4 py-3 bg-orange-50 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-lg text-sm font-medium text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/50 disabled:opacity-50 flex items-center justify-center gap-2 min-w-[140px]"
+            title="Afficher seulement les items avec des BT/BL non signés"
+          >
+            <AlertCircle className="w-4 h-4" />
+            Avec réservé
           </button>
         </div>
 
@@ -1053,9 +1159,27 @@ export default function InventoryManager() {
                           <span className={qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}>En commande (AF)</span>
                           <span className={`font-medium ${qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}`}>+{qty.onOrder}</span>
                         </div>
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between items-center text-sm">
                           <span className={qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}>Réservé (BT/BL non signés)</span>
-                          <span className={`font-medium ${qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}`}>-{qty.reserved}</span>
+                          <div className="flex items-center gap-2">
+                            {qty.reserved > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReservationModalProduct({
+                                    product_id: editingItem.product_id,
+                                    description: editingItem.description,
+                                  });
+                                  setShowReservationModal(true);
+                                }}
+                                className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:hover:bg-orange-900/60"
+                                title="Voir les BT/BL qui réservent cet item"
+                              >
+                                Voir détail
+                              </button>
+                            )}
+                            <span className={`font-medium ${qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}`}>-{qty.reserved}</span>
+                          </div>
                         </div>
                         <div className="border-t pt-1.5 flex justify-between text-sm">
                           <span className={`font-medium ${dispo < 0 ? 'text-red-700' : 'text-green-700'}`}>Disponible réel</span>
@@ -1355,6 +1479,86 @@ export default function InventoryManager() {
           </div>
         </div>
       )}
+
+      {/* Modal diagnostic "Voir détail" - liste des BT/BL qui réservent un item */}
+      {showReservationModal && reservationModalProduct && (() => {
+        const entries = reservationDetails[reservationModalProduct.product_id] || [];
+        const total = entries.reduce((sum, e) => sum + (parseFloat(e.quantity) || 0), 0);
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-lg max-h-[85vh] flex flex-col">
+              <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-5 py-3 rounded-t-lg flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="font-semibold truncate">{reservationModalProduct.product_id}</div>
+                  <div className="text-xs opacity-90 truncate">{reservationModalProduct.description}</div>
+                </div>
+                <button
+                  onClick={() => { setShowReservationModal(false); setReservationModalProduct(null); }}
+                  className="ml-3 p-1 rounded hover:bg-white/20"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto">
+                <div className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+                  Total réservé : <span className="font-semibold text-orange-700 dark:text-orange-400">{total}</span> unité(s)
+                  {' '}sur {entries.length} document{entries.length > 1 ? 's' : ''}
+                </div>
+                {entries.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+                    Aucune réservation active pour cet item.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {entries.map((e, i) => (
+                      <div
+                        key={`${e.type}-${e.id}-${i}`}
+                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 flex items-start justify-between gap-3 bg-white dark:bg-gray-800"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                              e.type === 'BT'
+                                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                                : 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300'
+                            }`}>
+                              {e.type}
+                            </span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                              {e.number}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              e.status === 'draft'
+                                ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                            }`}>
+                              {getDocStatusLabel(e.status)}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400 truncate mt-0.5">
+                            {e.client}
+                          </div>
+                        </div>
+                        <div className="font-bold text-orange-700 dark:text-orange-400 whitespace-nowrap">
+                          -{e.quantity}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="border-t dark:border-gray-700 px-4 py-3 flex justify-end bg-gray-50 dark:bg-gray-800 rounded-b-lg">
+                <button
+                  onClick={() => { setShowReservationModal(false); setReservationModalProduct(null); }}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toast notification */}
       {toast && (
