@@ -1286,8 +1286,8 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 - **Raison:** Depuis complete-signature v1.2.0 (2026-04-13), l'inventaire est deduit a la signature.
   Le calcul "Réservé" incluait encore les statuts `signed`/`pending_send` qui ont deja leur stock sorti.
 - **Decision (Martin):** Approche simple par statut:
-  - BT réservé: `draft` uniquement
-  - BL réservé: `draft` + `ready_for_signature` uniquement
+  - BT réservé: `draft` + `ready_for_signature` (un BT ouvert via URL publique passe en `ready_for_signature` via auto-correction dans `api/work-orders/[id]/public/route.js`)
+  - BL réservé: `draft` + `ready_for_signature`
   - Soumissions: retirees du calcul (items souvent pas en stock, non pertinent pour l'inventaire physique)
 - **Modele mental:** "Réservé" = items promis mais pas encore signés (stock encore en main).
   Une fois signé → stock parti → ne compte plus en reserve.
