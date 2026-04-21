@@ -644,6 +644,13 @@ CRON_SECRET                   # Auth pour cron jobs
 - ~~Code mort dans work-orders GET (double return)~~ → Supprimé (2026-02-07)
 - ~~Statut BL reste 'signed' au lieu de 'sent' après envoi email~~ → Corrigé (2026-02-17, PR #51)
 - ~~Caractères Unicode échappés dans DirectReceiptModal~~ → Corrigé (2026-02-18)
+- ~~Double-compte "Réservé (BT/BL/Soum.)" dans l'inventaire après signature~~ → Corrigé (2026-04-21, branche `claude/fix-inventory-shipment-sync-cI0hb`)
+  - `InventoryManager.js` v3.6.0 — BT réservé: `draft` uniquement; BL réservé: `draft` + `ready_for_signature`; soumissions retirées du calcul
+  - Raison: inventaire décrémenté à la signature (`complete-signature` v1.2.0+), donc les statuts `signed`/`pending_send` ne doivent plus compter en "Réservé"
+  - Labels UI mis à jour: "Réservé (BT/BL non signés)" au lieu de "Réservé (BT/BL/Soum.)"
+  - v3.7.0 (2026-04-21) — Outils de diagnostic ajoutés:
+    - Bouton "Voir détail" dans modal édition → popup listant les BT/BL qui réservent l'item (N°, statut, client, qté)
+    - Bouton "Avec réservé" dans barre d'outils → charge uniquement les items avec réservations actives
 
 ### Backup/Restauration
 - `/api/admin/restore` existe mais jamais testé
