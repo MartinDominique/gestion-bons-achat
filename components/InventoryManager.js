@@ -8,9 +8,14 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.7.1
+ * @version 3.7.2
  * @date 2026-04-21
  * @changelog
+ *   3.7.2 - Fix "Réservé" ignorait les BT/BL dont product_id est NULL mais product_code présent.
+ *           WorkOrderForm normalise product_id à NULL si ce n'est ni UUID ni number
+ *           (voir WorkOrderForm.js:1135-1159, findExistingProduct fallback). Pour ces cas,
+ *           le SKU est conservé dans product_code. Fallback ajouté: pid = product_id || product_code
+ *           pour BT et BL dans loadQuantities().
  *   3.7.1 - Fix BT réservé: inclure aussi le statut 'ready_for_signature' (pas seulement 'draft').
  *           Un BT ouvert via l'URL publique pour signature passe de draft → ready_for_signature
  *           (voir api/work-orders/[id]/public/route.js). Sans cet ajout, les BT en attente de
@@ -301,18 +306,22 @@ export default function InventoryManager() {
         const woIds = workOrders.map(wo => wo.id);
         const { data: woMaterials, error: womError } = await supabase
           .from('work_order_materials')
-          .select('work_order_id, product_id, quantity')
+          .select('work_order_id, product_id, product_code, quantity')
           .in('work_order_id', woIds);
 
         if (!womError && woMaterials) {
           woMaterials.forEach(m => {
-            if (!m.product_id) return;
+            // Fallback sur product_code: WorkOrderForm met parfois product_id à NULL
+            // (codes non-UUID/non-number qui ne passent pas findExistingProduct)
+            // mais garde product_code avec le SKU texte (ex: "CI71")
+            const pid = m.product_id || m.product_code;
+            if (!pid) return;
             const qty = parseFloat(m.quantity) || 0;
-            if (!map[m.product_id]) map[m.product_id] = { onOrder: 0, reserved: 0 };
-            map[m.product_id].reserved += qty;
+            if (!map[pid]) map[pid] = { onOrder: 0, reserved: 0 };
+            map[pid].reserved += qty;
 
             const wo = woMap[m.work_order_id];
-            addDetail(m.product_id, {
+            addDetail(pid, {
               type: 'BT',
               id: m.work_order_id,
               number: wo?.bt_number || '?',
@@ -336,18 +345,20 @@ export default function InventoryManager() {
         const blIds = deliveryNotes.map(bl => bl.id);
         const { data: blMaterials, error: blmError } = await supabase
           .from('delivery_note_materials')
-          .select('delivery_note_id, product_id, quantity')
+          .select('delivery_note_id, product_id, product_code, quantity')
           .in('delivery_note_id', blIds);
 
         if (!blmError && blMaterials) {
           blMaterials.forEach(m => {
-            if (!m.product_id) return;
+            // Fallback sur product_code (voir commentaire BT plus haut)
+            const pid = m.product_id || m.product_code;
+            if (!pid) return;
             const qty = parseFloat(m.quantity) || 0;
-            if (!map[m.product_id]) map[m.product_id] = { onOrder: 0, reserved: 0 };
-            map[m.product_id].reserved += qty;
+            if (!map[pid]) map[pid] = { onOrder: 0, reserved: 0 };
+            map[pid].reserved += qty;
 
             const bl = blMap[m.delivery_note_id];
-            addDetail(m.product_id, {
+            addDetail(pid, {
               type: 'BL',
               id: m.delivery_note_id,
               number: bl?.bl_number || '?',
