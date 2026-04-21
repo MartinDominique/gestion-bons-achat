@@ -8,9 +8,15 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.7.2
+ * @version 3.8.0
  * @date 2026-04-21
  * @changelog
+ *   3.8.0 - Calcul "En commande" + "Réservé" déplacé côté serveur via
+ *           /api/inventory/reservations (supabaseAdmin) car la table
+ *           work_order_materials a une RLS SELECT qui bloque les lectures
+ *           client-side (observé: 0 matériaux retournés côté client alors que
+ *           12 BTs draft existaient). Fix le bug "items BT draft n'apparaissent
+ *           pas en Réservé". Suppression des logs de diagnostic temporaires.
  *   3.7.2 - Fix "Réservé" ignorait les BT/BL dont product_id est NULL mais product_code présent.
  *           WorkOrderForm normalise product_id à NULL si ce n'est ni UUID ni number
  *           (voir WorkOrderForm.js:1135-1159, findExistingProduct fallback). Pour ces cas,
@@ -268,125 +274,22 @@ export default function InventoryManager() {
   };
 
   // ===== CHARGER QUANTITÉS (en commande + réservé + détail par doc) =====
+  // Via API serveur (supabaseAdmin) car work_order_materials a une RLS SELECT
+  // qui bloque les lectures client-side.
   const loadQuantities = async () => {
     try {
-      const map = {};
-      const details = {}; // product_id -> [{ type, number, status, client, quantity }]
-      const addDetail = (pid, entry) => {
-        if (!details[pid]) details[pid] = [];
-        details[pid].push(entry);
-      };
-
-      // 1. En commande: AF avec statut ordered ou partial (items en JSONB)
-      const { data: afPurchases, error: afError } = await supabase
-        .from('supplier_purchases')
-        .select('items, status')
-        .in('status', ['ordered', 'partial']);
-
-      if (!afError && afPurchases) {
-        afPurchases.forEach(purchase => {
-          const items = purchase.items || [];
-          items.forEach(item => {
-            if (!item.product_id) return;
-            if (!map[item.product_id]) map[item.product_id] = { onOrder: 0, reserved: 0 };
-            map[item.product_id].onOrder += (parseFloat(item.quantity) || 0);
-          });
-        });
+      const response = await fetch('/api/inventory/reservations');
+      if (!response.ok) {
+        console.error('Erreur chargement réservations:', response.status);
+        return;
       }
-
-      // 2. Réservé BT: matériaux dans BT en brouillon ou à signer
-      //    (BT signé = stock déjà décrémenté via complete-signature, ne plus compter)
-      const { data: workOrders, error: woError } = await supabase
-        .from('work_orders')
-        .select('id, bt_number, status, client:clients(name, company)')
-        .in('status', ['draft', 'ready_for_signature']);
-
-      console.log('[InventoryManager] 🔎 BT réservés - workOrders query:', {
-        error: woError,
-        count: workOrders?.length || 0,
-        sample: workOrders?.slice(0, 3),
-      });
-
-      if (!woError && workOrders && workOrders.length > 0) {
-        const woMap = Object.fromEntries(workOrders.map(wo => [wo.id, wo]));
-        const woIds = workOrders.map(wo => wo.id);
-        const { data: woMaterials, error: womError } = await supabase
-          .from('work_order_materials')
-          .select('work_order_id, product_id, product_code, quantity')
-          .in('work_order_id', woIds);
-
-        console.log('[InventoryManager] 🔎 BT réservés - matériaux query:', {
-          error: womError,
-          count: woMaterials?.length || 0,
-          sample: woMaterials?.slice(0, 5),
-        });
-
-        if (!womError && woMaterials) {
-          let counted = 0, skipped = 0;
-          woMaterials.forEach(m => {
-            // Fallback sur product_code: WorkOrderForm met parfois product_id à NULL
-            // (codes non-UUID/non-number qui ne passent pas findExistingProduct)
-            // mais garde product_code avec le SKU texte (ex: "CI71")
-            const pid = m.product_id || m.product_code;
-            if (!pid) { skipped++; return; }
-            counted++;
-            const qty = parseFloat(m.quantity) || 0;
-            if (!map[pid]) map[pid] = { onOrder: 0, reserved: 0 };
-            map[pid].reserved += qty;
-
-            const wo = woMap[m.work_order_id];
-            addDetail(pid, {
-              type: 'BT',
-              id: m.work_order_id,
-              number: wo?.bt_number || '?',
-              status: wo?.status || '?',
-              client: wo?.client?.company || wo?.client?.name || '—',
-              quantity: qty,
-            });
-          });
-          console.log('[InventoryManager] 🔎 BT réservés - résultat:', { counted, skipped });
-        }
+      const result = await response.json();
+      if (result.success) {
+        setQuantityMap(result.quantities || {});
+        setReservationDetails(result.details || {});
+      } else {
+        console.error('Erreur API réservations:', result.error);
       }
-
-      // 3. Réservé BL: matériaux dans BL pas encore signés
-      //    (BL signé = stock déjà décrémenté via complete-signature, ne plus compter)
-      const { data: deliveryNotes, error: blError } = await supabase
-        .from('delivery_notes')
-        .select('id, bl_number, status, client_name, client:clients(name, company)')
-        .in('status', ['draft', 'ready_for_signature']);
-
-      if (!blError && deliveryNotes && deliveryNotes.length > 0) {
-        const blMap = Object.fromEntries(deliveryNotes.map(bl => [bl.id, bl]));
-        const blIds = deliveryNotes.map(bl => bl.id);
-        const { data: blMaterials, error: blmError } = await supabase
-          .from('delivery_note_materials')
-          .select('delivery_note_id, product_id, product_code, quantity')
-          .in('delivery_note_id', blIds);
-
-        if (!blmError && blMaterials) {
-          blMaterials.forEach(m => {
-            // Fallback sur product_code (voir commentaire BT plus haut)
-            const pid = m.product_id || m.product_code;
-            if (!pid) return;
-            const qty = parseFloat(m.quantity) || 0;
-            if (!map[pid]) map[pid] = { onOrder: 0, reserved: 0 };
-            map[pid].reserved += qty;
-
-            const bl = blMap[m.delivery_note_id];
-            addDetail(pid, {
-              type: 'BL',
-              id: m.delivery_note_id,
-              number: bl?.bl_number || '?',
-              status: bl?.status || '?',
-              client: bl?.client?.company || bl?.client?.name || bl?.client_name || '—',
-              quantity: qty,
-            });
-          });
-        }
-      }
-
-      setQuantityMap(map);
-      setReservationDetails(details);
     } catch (error) {
       console.error('Erreur chargement quantités:', error);
     }

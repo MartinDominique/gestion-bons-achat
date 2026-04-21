@@ -340,6 +340,7 @@ const total = subtotal + tps + tvq;
 /api/products                          → CRUD produits
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
+/api/inventory/reservations            → En commande (AF) + Réservé (BT/BL non signés) + détail par doc
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
 /api/statistics/financial              → Statistiques financières (GET: par mois, par client, en attente)
 /api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
@@ -653,6 +654,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - Bouton "Avec réservé" dans barre d'outils → charge uniquement les items avec réservations actives
   - v3.7.1 (2026-04-21) — Fix: ajout statut `ready_for_signature` pour BT (un BT ouvert via URL publique passe de draft → ready_for_signature, doit rester compté en réservé jusqu'à signature)
   - v3.7.2 (2026-04-21) — Fix: fallback sur `product_code` quand `product_id` est NULL. WorkOrderForm normalise product_id à NULL si ce n'est ni UUID ni number (voir WorkOrderForm.js:1135-1159). Les SKU texte ("CI71") sont alors stockés uniquement dans product_code. Le calcul "Réservé" utilise maintenant `product_id || product_code` pour BT et BL
+  - v3.8.0 (2026-04-21) — Calcul déplacé côté serveur: nouveau endpoint `GET /api/inventory/reservations` (supabaseAdmin bypass RLS). Raison: la table `work_order_materials` a une RLS SELECT qui bloque les lectures client-side (confirmé via logs: 0 matériaux retournés pour 12 BTs draft existants)
 
 ### Backup/Restauration
 - `/api/admin/restore` existe mais jamais testé
