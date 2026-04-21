@@ -8,9 +8,16 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.5.0
- * @date 2026-04-13
+ * @version 3.6.0
+ * @date 2026-04-21
  * @changelog
+ *   3.6.0 - Fix double-comptage "Réservé (BT/BL/Soum.)":
+ *           - BT réservé: uniquement statut 'draft' (avant: draft/signed/pending_send)
+ *           - BL réservé: uniquement statuts 'draft' et 'ready_for_signature'
+ *             (avant: draft/ready_for_signature/signed/pending_send)
+ *           - Soumissions: retirées du calcul (items souvent pas en stock, non pertinent)
+ *           Raison: dès la signature, l'inventaire est déjà décrémenté (complete-signature
+ *           v1.2.0+). Les documents signés ne doivent plus apparaître comme réservés.
  *   3.5.0 - Traçabilité modification manuelle stock: insertion mouvement inventaire (reference_type 'manual_edit')
  *           avec code produit, description, quantité +/-, et nom utilisateur authentifié
  *   3.4.0 - Forcer majuscules sur description au save (toUpperCase au trim)
@@ -258,11 +265,12 @@ export default function InventoryManager() {
         });
       }
 
-      // 2. Réservé BT: matériaux dans BT non complétés
+      // 2. Réservé BT: matériaux dans BT en brouillon uniquement
+      //    (BT signé = stock déjà décrémenté via complete-signature, ne plus compter)
       const { data: workOrders, error: woError } = await supabase
         .from('work_orders')
         .select('id, status')
-        .in('status', ['draft', 'signed', 'pending_send']);
+        .eq('status', 'draft');
 
       if (!woError && workOrders && workOrders.length > 0) {
         const woIds = workOrders.map(wo => wo.id);
@@ -280,11 +288,12 @@ export default function InventoryManager() {
         }
       }
 
-      // 3. Réservé BL: matériaux dans BL non envoyés
+      // 3. Réservé BL: matériaux dans BL pas encore signés
+      //    (BL signé = stock déjà décrémenté via complete-signature, ne plus compter)
       const { data: deliveryNotes, error: blError } = await supabase
         .from('delivery_notes')
         .select('id, status')
-        .in('status', ['draft', 'ready_for_signature', 'signed', 'pending_send']);
+        .in('status', ['draft', 'ready_for_signature']);
 
       if (!blError && deliveryNotes && deliveryNotes.length > 0) {
         const blIds = deliveryNotes.map(bl => bl.id);
@@ -300,23 +309,6 @@ export default function InventoryManager() {
             map[m.product_id].reserved += (parseFloat(m.quantity) || 0);
           });
         }
-      }
-
-      // 4. Réservé Soumissions: items dans soumissions acceptées
-      const { data: submissions, error: subError } = await supabase
-        .from('submissions')
-        .select('items, status')
-        .eq('status', 'accepted');
-
-      if (!subError && submissions) {
-        submissions.forEach(sub => {
-          const items = sub.items || [];
-          items.forEach(item => {
-            if (!item.product_id) return;
-            if (!map[item.product_id]) map[item.product_id] = { onOrder: 0, reserved: 0 };
-            map[item.product_id].reserved += (parseFloat(item.quantity) || 0);
-          });
-        });
       }
 
       setQuantityMap(map);
@@ -809,7 +801,7 @@ export default function InventoryManager() {
                           +{qty.onOrder}
                           <span className={`text-[10px] ml-0.5 ${qty.onOrder > 0 ? 'text-blue-400' : 'text-gray-300'}`}>cmd</span>
                         </div>
-                        <div className={`font-medium ${qty.reserved > 0 ? 'text-orange-600' : 'text-gray-400'}`} title="Réservé (BT/BL/Soumissions)">
+                        <div className={`font-medium ${qty.reserved > 0 ? 'text-orange-600' : 'text-gray-400'}`} title="Réservé (BT/BL non signés)">
                           -{qty.reserved}
                           <span className={`text-[10px] ml-0.5 ${qty.reserved > 0 ? 'text-orange-400' : 'text-gray-300'}`}>rés</span>
                         </div>
@@ -1062,7 +1054,7 @@ export default function InventoryManager() {
                           <span className={`font-medium ${qty.onOrder > 0 ? 'text-blue-700' : 'text-gray-400'}`}>+{qty.onOrder}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className={qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}>Réservé (BT/BL/Soum.)</span>
+                          <span className={qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}>Réservé (BT/BL non signés)</span>
                           <span className={`font-medium ${qty.reserved > 0 ? 'text-orange-700' : 'text-gray-400'}`}>-{qty.reserved}</span>
                         </div>
                         <div className="border-t pt-1.5 flex justify-between text-sm">

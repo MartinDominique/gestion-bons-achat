@@ -1280,6 +1280,21 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
   - `components/delivery-notes/DeliveryNoteClientView.js` v2.6.0 — Masquage colonne A suivre
   - `lib/services/email-service.js` v3.2.0 — Colonnes PDF BO corrigees
 
+### 2026-04-21 - Correction double-compte "Réservé" dans l'inventaire
+- **Probleme:** Items de BT/BL signés (stock deja décrémenté) comptaient encore dans "Réservé (BT/BL/Soum.)"
+  → Double-compte: stock sorti + reserve = `Disponible réel` trop bas
+- **Raison:** Depuis complete-signature v1.2.0 (2026-04-13), l'inventaire est deduit a la signature.
+  Le calcul "Réservé" incluait encore les statuts `signed`/`pending_send` qui ont deja leur stock sorti.
+- **Decision (Martin):** Approche simple par statut:
+  - BT réservé: `draft` uniquement
+  - BL réservé: `draft` + `ready_for_signature` uniquement
+  - Soumissions: retirees du calcul (items souvent pas en stock, non pertinent pour l'inventaire physique)
+- **Modele mental:** "Réservé" = items promis mais pas encore signés (stock encore en main).
+  Une fois signé → stock parti → ne compte plus en reserve.
+- **Fichiers modifies:**
+  - `components/InventoryManager.js` v3.6.0 — Filtres statuts BT/BL, retrait soumissions, labels UI mis a jour
+  - `CLAUDE.md` — Ajout bug corrige dans section "Bugs connus"
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-03-06 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-04-21 par Claude AI*
