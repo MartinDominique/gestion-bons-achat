@@ -301,6 +301,12 @@ export default function InventoryManager() {
         .select('id, bt_number, status, client:clients(name, company)')
         .in('status', ['draft', 'ready_for_signature']);
 
+      console.log('[InventoryManager] 🔎 BT réservés - workOrders query:', {
+        error: woError,
+        count: workOrders?.length || 0,
+        sample: workOrders?.slice(0, 3),
+      });
+
       if (!woError && workOrders && workOrders.length > 0) {
         const woMap = Object.fromEntries(workOrders.map(wo => [wo.id, wo]));
         const woIds = workOrders.map(wo => wo.id);
@@ -309,13 +315,21 @@ export default function InventoryManager() {
           .select('work_order_id, product_id, product_code, quantity')
           .in('work_order_id', woIds);
 
+        console.log('[InventoryManager] 🔎 BT réservés - matériaux query:', {
+          error: womError,
+          count: woMaterials?.length || 0,
+          sample: woMaterials?.slice(0, 5),
+        });
+
         if (!womError && woMaterials) {
+          let counted = 0, skipped = 0;
           woMaterials.forEach(m => {
             // Fallback sur product_code: WorkOrderForm met parfois product_id à NULL
             // (codes non-UUID/non-number qui ne passent pas findExistingProduct)
             // mais garde product_code avec le SKU texte (ex: "CI71")
             const pid = m.product_id || m.product_code;
-            if (!pid) return;
+            if (!pid) { skipped++; return; }
+            counted++;
             const qty = parseFloat(m.quantity) || 0;
             if (!map[pid]) map[pid] = { onOrder: 0, reserved: 0 };
             map[pid].reserved += qty;
@@ -330,6 +344,7 @@ export default function InventoryManager() {
               quantity: qty,
             });
           });
+          console.log('[InventoryManager] 🔎 BT réservés - résultat:', { counted, skipped });
         }
       }
 
