@@ -8,9 +8,13 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.7.0
+ * @version 3.7.1
  * @date 2026-04-21
  * @changelog
+ *   3.7.1 - Fix BT réservé: inclure aussi le statut 'ready_for_signature' (pas seulement 'draft').
+ *           Un BT ouvert via l'URL publique pour signature passe de draft → ready_for_signature
+ *           (voir api/work-orders/[id]/public/route.js). Sans cet ajout, les BT en attente de
+ *           signature disparaissaient du calcul "Réservé".
  *   3.7.0 - Outils de diagnostic des réservations:
  *           - Bouton "Voir détail" à côté de "Réservé (BT/BL non signés)" dans le modal
  *             édition → popup listant chaque BT/BL qui réserve des unités (N°, statut,
@@ -285,12 +289,12 @@ export default function InventoryManager() {
         });
       }
 
-      // 2. Réservé BT: matériaux dans BT en brouillon uniquement
+      // 2. Réservé BT: matériaux dans BT en brouillon ou à signer
       //    (BT signé = stock déjà décrémenté via complete-signature, ne plus compter)
       const { data: workOrders, error: woError } = await supabase
         .from('work_orders')
         .select('id, bt_number, status, client:clients(name, company)')
-        .eq('status', 'draft');
+        .in('status', ['draft', 'ready_for_signature']);
 
       if (!woError && workOrders && workOrders.length > 0) {
         const woMap = Object.fromEntries(workOrders.map(wo => [wo.id, wo]));
