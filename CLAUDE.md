@@ -661,6 +661,41 @@ CRON_SECRET                   # Auth pour cron jobs
   - Fix: fallback `pid = material.product_id || material.product_code` dans les 4 routes + script de rattrapage
   - Fichiers: `app/api/work-orders/[id]/complete-signature/route.js` v1.4.0, `app/api/work-orders/[id]/send-email/route.js` v1.2.0, `app/api/delivery-notes/[id]/complete-signature/route.js` v1.6.0, `app/api/delivery-notes/[id]/send-email/route.js` v1.3.0, `app/api/admin/backfill-movements/route.js` v1.1.0 (+ décrémente aussi stock_qty)
 
+### Session 22 avril 2026 — Refonte complète des mouvements d'inventaire BT/BL
+**Branche** : `claude/fix-inventory-shipment-sync-cI0hb`
+
+**Contexte** : Martin a constaté que des items signés dans des BT apparaissaient encore en "Réservé" et que le stock ne se décrémentait pas après signature de BT (les BL fonctionnaient). Investigation a révélé une cascade de 4 bugs liés.
+
+**Bugs identifiés et corrigés (par ordre de découverte)** :
+
+1. **Double-compte "Réservé"** — Statuts `signed`/`pending_send` étaient comptés en réservé alors que le stock était déjà sorti depuis `complete-signature` v1.2.0 (13 avril). Fix : filtrer par statut `draft` + `ready_for_signature` uniquement, et retirer les soumissions du calcul.
+
+2. **BT en `ready_for_signature` non comptés** — Quand un BT est ouvert via URL publique, son statut passe automatiquement de `draft` à `ready_for_signature` (voir `app/api/work-orders/[id]/public/route.js:64`). Le filtre initial ne prenait que `draft`. Ajouté.
+
+3. **RLS bloquait `work_order_materials` côté client** — La table avait RLS activée sans policy SELECT, contrairement à `delivery_note_materials` qui en a une (migration `20260212_create_delivery_notes.sql:121`). Confirmé via logs : 12 BTs draft retournés, 0 matériaux. Fix : déplacé tout le calcul vers `/api/inventory/reservations` qui utilise `supabaseAdmin` (bypass RLS).
+
+4. **BT signés ne décrémentaient pas le stock** (LE plus impactant) — `WorkOrderForm.js:1135-1159` normalise `material.product_id` à NULL pour les SKU texte (ex: "CI71") qui ne sont ni UUID ni number et que `findExistingProduct` ne trouve pas dans le cache. Le SKU est alors stocké uniquement dans `product_code`. Les 4 endpoints de déduction faisaient `if (!material.product_id) continue` → matériau skippé. Fix : fallback `pid = material.product_id || material.product_code` partout.
+
+**Outils de diagnostic ajoutés** (InventoryManager v3.7.0+) :
+- Bouton **"Voir détail"** à côté de "Réservé" dans le modal édition → popup listant les BT/BL qui réservent (N°, statut, client, qté)
+- Bouton **"Avec réservé"** dans la barre d'outils → charge uniquement les items avec réservations actives
+
+**Rattrapage des données historiques** (exécuté le 22 avril 2026) :
+- Endpoint `/api/admin/backfill-movements?dryrun=false` (auth `Bearer $CRON_SECRET`)
+- 50 BT rattrapés → 166 mouvements créés
+- 5 BL rattrapés → 7 mouvements créés
+- `products.stock_qty` décrémenté en conséquence
+- Anti-doublon vérifié post-exécution (86 BT + 20 BL protégés via `inventory_movements.reference_number`)
+
+**Cas limites résiduels (rares mais possibles)** :
+- Matériau créé sans `product_id` ET sans `product_code` (les deux NULL) → skippé silencieusement, pas de décrément
+- Produit supprimé après création du BT → mouvement créé mais `stock_qty` non mis à jour (la ligne n'existe plus dans `products`)
+- **Root cause non résolue** : `WorkOrderForm.js:1135-1159` continue de mettre `product_id` à NULL pour les SKU texte non résolus. À nettoyer un jour pour éliminer la dépendance au fallback `product_code`.
+
+**Architecture cible long terme (optionnel)** :
+- Corriger `WorkOrderForm.js` pour qu'il garde le SKU dans `product_id` directement (comme le fait `DeliveryNoteForm`)
+- Ajouter une RLS SELECT policy sur `work_order_materials` (rendrait l'API serveur optionnelle)
+
 ### Backup/Restauration
 - `/api/admin/restore` existe mais jamais testé
 - Backup quotidien par email fonctionne
