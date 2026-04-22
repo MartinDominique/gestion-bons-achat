@@ -6,9 +6,13 @@
  *              - Envoi email automatique
  *              - Déduction inventaire + mouvement d'inventaire
  *              - Ajout PDF au BA lié
- * @version 1.3.0
- * @date 2026-04-13
+ * @version 1.4.0
+ * @date 2026-04-21
  * @changelog
+ *   1.4.0 - Fix: fallback sur product_code si product_id est NULL. WorkOrderForm normalise
+ *           parfois product_id à NULL pour les SKU texte (ex: "CI71") qui ne passent pas
+ *           le test UUID/number dans findExistingProduct. Sans ce fallback, ces matériaux
+ *           étaient skippés silencieusement → pas de décrément de stock, pas de mouvement.
  *   1.3.0 - Fix mouvement inventaire: colonne 'name' → 'reference_number' (BT number)
  *           + vérification erreur INSERT inventory_movements
  *   1.2.0 - Inventaire déduit à la signature (avant envoi email), pas seulement si email réussit
@@ -209,7 +213,10 @@ export async function POST(request, { params }) {
         console.log('📦 Traitement inventaire pour', workOrder.materials.length, 'matériaux');
 
         for (const material of workOrder.materials) {
-          if (!material.product_id || !material.quantity) continue;
+          // Fallback product_code: WorkOrderForm normalise product_id à NULL
+          // pour les codes non-UUID/non-number (voir WorkOrderForm.js:1135-1159)
+          const pid = material.product_id || material.product_code;
+          if (!pid || !material.quantity) continue;
 
           const qty = parseFloat(material.quantity) || 0;
           if (qty === 0) continue;
@@ -225,7 +232,7 @@ export async function POST(request, { params }) {
             const { data: product, error: productError } = await supabaseAdmin
               .from(tableName)
               .select('stock_qty')
-              .eq('product_id', material.product_id)
+              .eq('product_id', pid)
               .single();
 
             if (!productError && product) {
@@ -236,9 +243,9 @@ export async function POST(request, { params }) {
               await supabaseAdmin
                 .from(tableName)
                 .update({ stock_qty: roundedStock.toString() })
-                .eq('product_id', material.product_id);
+                .eq('product_id', pid);
 
-              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${material.product_id}: ${currentStock} → ${roundedStock}`);
+              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${pid}: ${currentStock} → ${roundedStock}`);
             }
 
             const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
@@ -247,7 +254,7 @@ export async function POST(request, { params }) {
             const { error: mvtError } = await supabaseAdmin
               .from('inventory_movements')
               .insert({
-                product_id: material.product_id,
+                product_id: pid,
                 product_description: material.description || material.product?.description || '',
                 product_group: material.product?.product_group || '',
                 unit: material.unit || 'UN',
@@ -263,11 +270,11 @@ export async function POST(request, { params }) {
               });
 
             if (mvtError) {
-              console.error(`⚠️ Erreur mouvement inventaire pour ${material.product_id}:`, mvtError);
+              console.error(`⚠️ Erreur mouvement inventaire pour ${pid}:`, mvtError);
             }
 
           } catch (invError) {
-            console.error(`⚠️ Erreur inventaire pour ${material.product_id}:`, invError);
+            console.error(`⚠️ Erreur inventaire pour ${pid}:`, invError);
           }
         }
       }

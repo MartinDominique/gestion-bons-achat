@@ -2,6 +2,7 @@
 // API ROUTE CORRIGÉE - ENVOI EMAIL BONS DE TRAVAIL
 // Fichier: app/api/work-orders/[id]/send-email/route.js
 // Structure: id=integer, client_id=integer, user_id=uuid
+// v1.2.0 - 2026-04-21 - Fix fallback product_code si product_id NULL (WorkOrderForm.js:1135-1159)
 // v1.1.0 - 2026-04-13 - Fix mouvement inventaire: colonne 'name' → 'reference_number' (BT number)
 //                        + vérification erreur INSERT inventory_movements
 // ============================================
@@ -189,53 +190,47 @@ export async function POST(request, { params }) {
         console.log('📦 Traitement inventaire pour', workOrder.materials.length, 'matériaux');
 
         for (const material of workOrder.materials) {
-          if (!material.product_id || !material.quantity) continue;
-          
+          // Fallback product_code: voir WorkOrderForm.js:1135-1159 (product_id parfois NULL)
+          const pid = material.product_id || material.product_code;
+          if (!pid || !material.quantity) continue;
+
           const qty = parseFloat(material.quantity) || 0;
           if (qty === 0) continue;
-          
-          // Déterminer le type de mouvement
+
           const isCredit = qty < 0;
           const absQty = Math.abs(qty);
-          const movementType = isCredit ? 'IN' : 'OUT'; // Crédit = retour = IN
-          
-          // Déterminer si c'est un produit inventaire ou non-inventaire
+          const movementType = isCredit ? 'IN' : 'OUT';
+
           const isNonInventory = material.product?.is_non_inventory || false;
           const tableName = isNonInventory ? 'non_inventory_items' : 'products';
-          
+
           try {
-            // Récupérer le stock actuel
             const { data: product, error: productError } = await supabaseAdmin
               .from(tableName)
               .select('stock_qty')
-              .eq('product_id', material.product_id)
+              .eq('product_id', pid)
               .single();
-            
+
             if (!productError && product) {
               const currentStock = parseFloat(product.stock_qty) || 0;
-              // Crédit (qty < 0): on ajoute | Vente (qty > 0): on soustrait
               const newStock = isCredit ? currentStock + absQty : currentStock - absQty;
-              
-              // Arrondir à 4 décimales
               const roundedStock = Math.round(newStock * 10000) / 10000;
-              
-              // Mettre à jour le stock
+
               await supabaseAdmin
                 .from(tableName)
                 .update({ stock_qty: roundedStock.toString() })
-                .eq('product_id', material.product_id);
-              
-              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${material.product_id}: ${currentStock} → ${roundedStock}`);
+                .eq('product_id', pid);
+
+              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${pid}: ${currentStock} → ${roundedStock}`);
             }
-            
-            // Créer le mouvement d'inventaire
+
             const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
             const totalCost = Math.round(absQty * unitCost * 100) / 100;
-            
+
             const { error: mvtError } = await supabaseAdmin
               .from('inventory_movements')
               .insert({
-                product_id: material.product_id,
+                product_id: pid,
                 product_description: material.description || material.product?.description || '',
                 product_group: material.product?.product_group || '',
                 unit: material.unit || 'UN',
@@ -251,11 +246,11 @@ export async function POST(request, { params }) {
               });
 
             if (mvtError) {
-              console.error(`⚠️ Erreur mouvement inventaire pour ${material.product_id}:`, mvtError);
+              console.error(`⚠️ Erreur mouvement inventaire pour ${pid}:`, mvtError);
             }
 
           } catch (invError) {
-            console.error(`⚠️ Erreur inventaire pour ${material.product_id}:`, invError);
+            console.error(`⚠️ Erreur inventaire pour ${pid}:`, invError);
           }
         }
       }

@@ -5,9 +5,13 @@
  *              Protégé par CRON_SECRET. À exécuter une seule fois.
  *              GET ?dryrun=true  → simulation (affiche ce qui serait créé)
  *              GET ?dryrun=false → exécution réelle
- * @version 1.0.0
- * @date 2026-04-13
+ * @version 1.1.0
+ * @date 2026-04-21
  * @changelog
+ *   1.1.0 - Fallback product_code quand product_id NULL (WorkOrderForm.js:1135-1159).
+ *           Décrémentation aussi du stock_qty en plus du mouvement (cohérence avec le code live).
+ *           Permet de rattraper les BT signés/envoyés qui n'ont pas décrémenté l'inventaire
+ *           à cause du bug NULL product_id.
  *   1.0.0 - Version initiale
  */
 
@@ -68,12 +72,17 @@ export async function GET(request) {
           continue;
         }
 
-        const materials = (wo.materials || []).filter(m => m.product_id && m.quantity);
+        // Fallback product_code: WorkOrderForm normalise product_id à NULL pour les SKU texte
+        // (voir WorkOrderForm.js:1135-1159). Utiliser product_code en second choix.
+        const materials = (wo.materials || [])
+          .map(m => ({ ...m, _pid: m.product_id || m.product_code }))
+          .filter(m => m._pid && m.quantity);
         if (materials.length === 0) continue;
 
         const clientName = wo.client?.company || wo.client?.name || 'Client';
 
         for (const material of materials) {
+          const pid = material._pid;
           const qty = parseFloat(material.quantity) || 0;
           if (qty === 0) continue;
 
@@ -84,7 +93,7 @@ export async function GET(request) {
           const totalCost = Math.round(absQty * unitCost * 100) / 100;
 
           const movement = {
-            product_id: material.product_id,
+            product_id: pid,
             product_description: material.description || '',
             product_group: '',
             unit: material.unit || 'UN',
@@ -99,15 +108,28 @@ export async function GET(request) {
             created_at: new Date().toISOString()
           };
 
-          // Enrichir product_group depuis la table products
+          // Enrichir product_group + décrémenter stock depuis la table products
           const { data: product } = await supabaseAdmin
             .from('products')
-            .select('product_group')
-            .eq('product_id', material.product_id)
+            .select('product_group, stock_qty')
+            .eq('product_id', pid)
             .single();
 
           if (product) {
             movement.product_group = product.product_group || '';
+
+            // Décrémenter/créditer aussi le stock_qty (le code courant le fait en live,
+            // donc le rattrapage doit aussi pour rester cohérent)
+            if (!dryRun) {
+              const currentStock = parseFloat(product.stock_qty) || 0;
+              const newStock = isCredit ? currentStock + absQty : currentStock - absQty;
+              const roundedStock = Math.round(newStock * 10000) / 10000;
+
+              await supabaseAdmin
+                .from('products')
+                .update({ stock_qty: roundedStock.toString() })
+                .eq('product_id', pid);
+            }
           }
 
           if (!dryRun) {
@@ -116,7 +138,7 @@ export async function GET(request) {
               .insert(movement);
 
             if (insertError) {
-              results.workOrders.errors.push(`BT ${wo.bt_number} / ${material.product_id}: ${insertError.message}`);
+              results.workOrders.errors.push(`BT ${wo.bt_number} / ${pid}: ${insertError.message}`);
               continue;
             }
           }
@@ -125,7 +147,7 @@ export async function GET(request) {
           results.details.push({
             type: 'BT',
             ref: wo.bt_number,
-            product: material.product_id,
+            product: pid,
             description: material.description,
             movement: movementType,
             qty: absQty,
@@ -145,7 +167,7 @@ export async function GET(request) {
       .select(`
         id, bl_number, client_id, client_name, status,
         client:clients(name, company),
-        materials:delivery_note_materials(product_id, description, quantity, unit, unit_price)
+        materials:delivery_note_materials(product_id, product_code, description, quantity, unit, unit_price)
       `)
       .in('status', ['signed', 'pending_send', 'sent']);
 
@@ -168,12 +190,15 @@ export async function GET(request) {
           continue;
         }
 
-        const materials = (dn.materials || []).filter(m => m.product_id && m.quantity);
+        const materials = (dn.materials || [])
+          .map(m => ({ ...m, _pid: m.product_id || m.product_code }))
+          .filter(m => m._pid && m.quantity);
         if (materials.length === 0) continue;
 
         const clientName = dn.client?.company || dn.client?.name || dn.client_name || 'Client';
 
         for (const material of materials) {
+          const pid = material._pid;
           const qty = parseFloat(material.quantity) || 0;
           if (qty === 0) continue;
 
@@ -184,7 +209,7 @@ export async function GET(request) {
           const totalCost = Math.round(absQty * unitCost * 100) / 100;
 
           const movement = {
-            product_id: material.product_id,
+            product_id: pid,
             product_description: material.description || '',
             product_group: '',
             unit: material.unit || 'UN',
@@ -199,15 +224,26 @@ export async function GET(request) {
             created_at: new Date().toISOString()
           };
 
-          // Enrichir product_group
+          // Enrichir product_group + décrémenter stock
           const { data: product } = await supabaseAdmin
             .from('products')
-            .select('product_group')
-            .eq('product_id', material.product_id)
+            .select('product_group, stock_qty')
+            .eq('product_id', pid)
             .single();
 
           if (product) {
             movement.product_group = product.product_group || '';
+
+            if (!dryRun) {
+              const currentStock = parseFloat(product.stock_qty) || 0;
+              const newStock = isCredit ? currentStock + absQty : currentStock - absQty;
+              const roundedStock = Math.round(newStock * 10000) / 10000;
+
+              await supabaseAdmin
+                .from('products')
+                .update({ stock_qty: roundedStock.toString() })
+                .eq('product_id', pid);
+            }
           }
 
           if (!dryRun) {
@@ -216,7 +252,7 @@ export async function GET(request) {
               .insert(movement);
 
             if (insertError) {
-              results.deliveryNotes.errors.push(`BL ${dn.bl_number} / ${material.product_id}: ${insertError.message}`);
+              results.deliveryNotes.errors.push(`BL ${dn.bl_number} / ${pid}: ${insertError.message}`);
               continue;
             }
           }
@@ -225,7 +261,7 @@ export async function GET(request) {
           results.details.push({
             type: 'BL',
             ref: dn.bl_number,
-            product: material.product_id,
+            product: pid,
             description: material.description,
             movement: movementType,
             qty: absQty,
