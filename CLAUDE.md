@@ -655,6 +655,11 @@ CRON_SECRET                   # Auth pour cron jobs
   - v3.7.1 (2026-04-21) — Fix: ajout statut `ready_for_signature` pour BT (un BT ouvert via URL publique passe de draft → ready_for_signature, doit rester compté en réservé jusqu'à signature)
   - v3.7.2 (2026-04-21) — Fix: fallback sur `product_code` quand `product_id` est NULL. WorkOrderForm normalise product_id à NULL si ce n'est ni UUID ni number (voir WorkOrderForm.js:1135-1159). Les SKU texte ("CI71") sont alors stockés uniquement dans product_code. Le calcul "Réservé" utilise maintenant `product_id || product_code` pour BT et BL
   - v3.8.0 (2026-04-21) — Calcul déplacé côté serveur: nouveau endpoint `GET /api/inventory/reservations` (supabaseAdmin bypass RLS). Raison: la table `work_order_materials` a une RLS SELECT qui bloque les lectures client-side (confirmé via logs: 0 matériaux retournés pour 12 BTs draft existants)
+- ~~Décrément d'inventaire manquant sur BT signés (product_id NULL)~~ → Corrigé (2026-04-21)
+  - Les BT signés avec des SKU texte (ex: "CI71") ne décrémentaient PAS le stock ni ne créaient de mouvement `inventory_movements`
+  - Cause: `WorkOrderForm.js:1135-1159` normalise `product_id` à NULL pour les codes non-UUID/non-number si `findExistingProduct` échoue. Les routes `complete-signature` et `send-email` faisaient `if (!material.product_id) continue` → matériau skippé silencieusement
+  - Fix: fallback `pid = material.product_id || material.product_code` dans les 4 routes + script de rattrapage
+  - Fichiers: `app/api/work-orders/[id]/complete-signature/route.js` v1.4.0, `app/api/work-orders/[id]/send-email/route.js` v1.2.0, `app/api/delivery-notes/[id]/complete-signature/route.js` v1.6.0, `app/api/delivery-notes/[id]/send-email/route.js` v1.3.0, `app/api/admin/backfill-movements/route.js` v1.1.0 (+ décrémente aussi stock_qty)
 
 ### Backup/Restauration
 - `/api/admin/restore` existe mais jamais testé

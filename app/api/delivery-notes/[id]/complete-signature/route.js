@@ -1,9 +1,12 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL + création BL suivi backorder
- * @version 1.5.0
- * @date 2026-04-13
+ * @version 1.6.0
+ * @date 2026-04-21
  * @changelog
+ *   1.6.0 - Fix: fallback sur product_code si product_id est NULL (même pattern que BT).
+ *           Sans ce fallback, les matériaux avec SKU texte non résolu étaient skippés
+ *           → pas de décrément de stock, pas de mouvement d'inventaire.
  *   1.5.0 - Fix mouvement inventaire: colonne 'name' → 'reference_number' (BL number)
  *           + vérification erreur INSERT inventory_movements
  *   1.4.0 - Fix BO: inclure TOUS les items dans le BL de suivi (pas seulement les BO),
@@ -140,7 +143,9 @@ export async function POST(request, { params }) {
         console.log('📦 Traitement inventaire pour', deliveryNote.materials.length, 'matériaux');
 
         for (const material of deliveryNote.materials) {
-          if (!material.product_id || !material.quantity) continue;
+          // Fallback product_code: voir WorkOrderForm.js:1135-1159 (même pattern côté BL)
+          const pid = material.product_id || material.product_code;
+          if (!pid || !material.quantity) continue;
 
           const qty = parseFloat(material.quantity) || 0;
           if (qty === 0) continue;
@@ -156,7 +161,7 @@ export async function POST(request, { params }) {
             const { data: product } = await supabaseAdmin
               .from(tableName)
               .select('stock_qty')
-              .eq('product_id', material.product_id)
+              .eq('product_id', pid)
               .single();
 
             if (product) {
@@ -167,9 +172,9 @@ export async function POST(request, { params }) {
               await supabaseAdmin
                 .from(tableName)
                 .update({ stock_qty: roundedStock.toString() })
-                .eq('product_id', material.product_id);
+                .eq('product_id', pid);
 
-              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${material.product_id}: ${currentStock} → ${roundedStock}`);
+              console.log(`✅ Stock ${isCredit ? 'ajouté' : 'déduit'}: ${pid}: ${currentStock} → ${roundedStock}`);
             }
 
             const unitCost = Math.abs(parseFloat(material.unit_price) || 0);
@@ -178,7 +183,7 @@ export async function POST(request, { params }) {
             const { error: mvtError } = await supabaseAdmin
               .from('inventory_movements')
               .insert({
-                product_id: material.product_id,
+                product_id: pid,
                 product_description: material.description || material.product?.description || '',
                 product_group: material.product?.product_group || '',
                 unit: material.unit || 'UN',
@@ -194,11 +199,11 @@ export async function POST(request, { params }) {
               });
 
             if (mvtError) {
-              console.error(`⚠️ Erreur mouvement inventaire pour ${material.product_id}:`, mvtError);
+              console.error(`⚠️ Erreur mouvement inventaire pour ${pid}:`, mvtError);
             }
 
           } catch (invError) {
-            console.error(`⚠️ Erreur inventaire pour ${material.product_id}:`, invError);
+            console.error(`⚠️ Erreur inventaire pour ${pid}:`, invError);
           }
         }
       }
