@@ -1287,8 +1287,8 @@ const getFilteredSupplierPurchases = () => {
             
             <div className="flex gap-2">
               <select
-                className={`flex-1 min-w-0 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                  errors.client_id ? 'border-red-500' : 'border-gray-300'
+                className={`flex-1 min-w-0 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100 ${
+                  errors.client_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 } ${workOrder ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}`}
                 style={{ maxWidth: 'calc(100vw - 240px)' }}
                 value={formData.client_id}

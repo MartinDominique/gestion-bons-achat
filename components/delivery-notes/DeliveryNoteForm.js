@@ -1778,7 +1778,7 @@ export default function DeliveryNoteForm({
                           className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition ${
                             selectedItemsForImport.includes(index)
                               ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20'
-                              : 'border-gray-200 hover:border-gray-300'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500'
                           }`}
                         >
                           <input

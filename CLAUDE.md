@@ -553,7 +553,12 @@ CRON_SECRET                   # Auth pour cron jobs
      DirectReceiptModal, SupplierReceiptModal, BCCConfirmationModal, ClientModal, PurchaseOrderModal,
      SoumissionsManager, DeliverySlipModal, ClientPOManager, SplitViewPanel, bons-travail page, login
    - Pattern: `bg-white dark:bg-gray-900` / `text-gray-900 dark:text-gray-100` / inputs: `dark:bg-gray-800 dark:border-gray-600`
-   - **Reste à faire:** Tester visuellement sur tablette + ajuster si couleurs incorrectes
+   - **Correctifs ciblés 2026-04-23** (branche `claude/fix-dark-mode-visibility-VMOpt`): audit suite à feedback utilisateur sur ImportSubmissionModal trop pâle
+     - `components/SupplierPurchaseManager.js` v1.0.3 — ImportSubmissionModal (cartes, table, boutons), AddressModal, filtres date, statuts AF
+     - `components/SupplierPurchaseForms.js` v1.2.1 — SupplierFormModal (labels/inputs/checkboxes), NonInventoryModal, QuantityModal, SelectedItemsTable, PriceUpdateModal
+     - `components/SoumissionsManager.js` v2.1.1 — Modaux QuantityInput / QuickAddProduct / Commentaire / EditItem + badges statut
+     - `components/PurchaseOrderModal.js` v1.2.1 — Dropdowns recherche produits, bouton Fermer, boutons Annuler, textes secondaires
+     - `components/invoices/InvoiceEditor.js`, `components/DeliverySlipModal.js`, `components/work-orders/WorkOrderForm.js`, `components/delivery-notes/DeliveryNoteForm.js` — détails mineurs
 
 9. ~~**Rapports & Statistiques de Ventes - Phase 1 MVP**~~ - ✅ COMPLÉTÉ 2026-02-24
    - `app/api/statistics/route.js` — API GET avec filtres, tri, pagination, agrégation BT/BL/Soumissions

@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 2.1.0
- * @date 2026-03-29
+ * @version 2.1.1
+ * @date 2026-04-23
  * @changelog
+ *   2.1.1 - Fix dark mode manquant (boutons Annuler modaux QuantityInput/QuickAddProduct/Comment, modal édition item, badges statut)
  *   2.1.0 - Ajout quantités (en main, en commande, réservé) dans l'en-tête du modal Modifier l'article
  *   2.0.0 - Desktop: ligne cliquable ouvre soumission + dropdown statut inline sans ouvrir le formulaire
  *   1.9.0 - Forcer majuscules sur description au save + notification auto-dismiss (remplace alert OK)
@@ -2410,7 +2411,7 @@ const cleanupFilesForSubmission = async (files) => {
                                 setSelectedProductForQuantity(null);
                                 setTempQuantity('1');
                               }}
-                              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                              className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
                             >
                               Annuler
                             </button>
@@ -2503,7 +2504,7 @@ const cleanupFilesForSubmission = async (files) => {
                                 min="0"
                                 value={quickProductForm.cost_price}
                                 onChange={(e) => setQuickProductForm({...quickProductForm, cost_price: e.target.value})}
-                                className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
+                                className="flex-1 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
                                 placeholder="0.00"
                                 required
                                 autoCorrect="off"
@@ -2673,7 +2674,7 @@ const cleanupFilesForSubmission = async (files) => {
                               setShowUsdCalculator(false);
                               setUsdAmount('');
                             }}
-                            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                            className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
                           >
                             Annuler
                           </button>
@@ -2852,7 +2853,7 @@ const cleanupFilesForSubmission = async (files) => {
                           <button
                             type="button"
                             onClick={closeEditItemModal}
-                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                           >
                             Annuler (Esc)
                           </button>
@@ -2900,7 +2901,7 @@ const cleanupFilesForSubmission = async (files) => {
                             <button
                               type="button"
                               onClick={closeCommentModal}
-                              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                              className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
                             >
                               Annuler
                             </button>
@@ -3456,9 +3457,9 @@ const cleanupFilesForSubmission = async (files) => {
                     <button
                       onClick={() => setStatusDropdownId(statusDropdownId === submission.id ? null : submission.id)}
                       className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:ring-2 hover:ring-purple-300 transition-all ${
-                        submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                        submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                        'bg-green-100 text-green-800'
+                        submission.status === 'sent' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300' :
+                        submission.status === 'draft' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200' :
+                        'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300'
                       }`}
                       title="Cliquer pour changer le statut"
                     >
@@ -3582,9 +3583,9 @@ const cleanupFilesForSubmission = async (files) => {
 
                   {/* Statut */}
                   <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${
-                    submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                    submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                    'bg-green-100 text-green-800'
+                    submission.status === 'sent' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300' :
+                    submission.status === 'draft' ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200' :
+                    'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300'
                   }`}>
                     {submission.status === 'sent' ? '📤' :
                      submission.status === 'draft' ? '📝' : '✅'}

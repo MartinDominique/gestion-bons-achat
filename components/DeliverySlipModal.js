@@ -741,7 +741,7 @@ const DeliverySlipModal = ({ isOpen, onClose, purchaseOrder, onRefresh }) => {
                                 checked={item.selected}
                                 onChange={() => handleItemSelect(item.id)}
                                 disabled={item.remaining_quantity === 0}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-800 rounded"
                               />
                             </td>
                             <td className="px-4 py-3">

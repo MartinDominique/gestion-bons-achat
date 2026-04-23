@@ -1123,6 +1123,19 @@ bg-yellow-50  → dark:bg-yellow-900/20 (avertissements)
 - [ ] `WorkOrderList.js` et `WorkOrderClientView.js` non migres (pages peu utilisees)
 - [ ] Ajuster si des couleurs semblent incorrectes apres test terrain
 
+**Correctifs post-merge (2026-04-23) - branche `claude/fix-dark-mode-visibility-VMOpt`:**
+Rapport utilisateur: couleurs "plutot blanches" et peu visibles dans la modal d'importation de soumission du module Achats Fournisseurs. Audit complet des modaux effectue.
+- `components/SupplierPurchaseManager.js` (v1.0.3) - ImportSubmissionModal: cartes soumissions (bordures, texte, badges), etape 2 (titre, banniere info, boutons Tout selectionner/deselectionner, tableau items, inputs quantite, pied actions), AddressModal (empty state), filtres date, statuts AF desktop et mobile
+- `components/SupplierPurchaseForms.js` (v1.2.1) - SupplierFormModal (labels, inputs, checkboxes, titre), NonInventoryModal (prix input, bouton Annuler), QuantityModal (bouton Annuler), SelectedItemsTable (inputs Qte/Prix/Notes), PriceUpdateModal (input marge)
+- `components/SoumissionsManager.js` (v2.1.1) - Modal QuantityInput, QuickAddProduct (input prix cout), Modal Commentaire (bouton Annuler), Modal EditItem (bouton Annuler), badges statut soumissions
+- `components/PurchaseOrderModal.js` (v1.2.1) - Dropdowns recherche produits (desktop+mobile), bouton Fermer modal AF, bouton Annuler import, bouton Annuler edit mobile, textes info modifiable/selectionnes
+- `components/invoices/InvoiceEditor.js` - Icone X du bouton Fermer
+- `components/DeliverySlipModal.js` - Checkbox selection items
+- `components/work-orders/WorkOrderForm.js` - Select client (border + background)
+- `components/delivery-notes/DeliveryNoteForm.js` - Cartes importation materiaux (bordures)
+
+Pattern applique: `text-gray-700` -> ajouter `dark:text-gray-300`, `border-gray-300` -> ajouter `dark:border-gray-600`, `hover:bg-gray-50/100` -> ajouter `dark:hover:bg-gray-800/700`, inputs -> ajouter `dark:bg-gray-800 dark:text-gray-100`, badges statut -> ajouter `dark:bg-<color>-900 dark:text-<color>-300`.
+
 ### ~~Phase 14 - Navigation mobile + SplitView tablette~~ ✅ COMPLETE (2026-03-01)
 - [x] #1: Navigation mobile Option A - Menu "Plus" pour modules bureau (bottom sheet)
 - [x] #2: Fix SplitView tablette - panneau overlay glissant depuis la droite
@@ -1304,4 +1317,4 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-04-21 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-04-23 par Claude AI*

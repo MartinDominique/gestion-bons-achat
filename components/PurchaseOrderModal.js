@@ -5,9 +5,10 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.2.0
- * @date 2026-04-01
+ * @version 1.2.1
+ * @date 2026-04-23
  * @changelog
+ *   1.2.1 - Fix dark mode manquant (dropdowns recherche produits, bouton Fermer modal visualisation AF, boutons Annuler import/mobile edit)
  *   1.2.0 - Propagation changement quantité depuis BCC vers onglet Articles (onQuantityChange)
  *   1.1.3 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.1.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -855,7 +856,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
                   <div
                     key={product.id}
                     onClick={() => selectProduct(product)}
-                    className="px-2 py-1 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
+                    className="px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer border-b border-gray-100 dark:border-gray-700"
                   >
                     <div className="font-medium text-xs">{product.product_id}</div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 truncate">{product.description || product.name}</div>
@@ -1867,7 +1868,7 @@ setTimeout(() => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Montant <span className="text-xs text-gray-500">(modifiable manuellement)</span>
+                      Montant <span className="text-xs text-gray-500 dark:text-gray-400">(modifiable manuellement)</span>
                     </label>
                     <input
                       type="number"
@@ -2657,7 +2658,7 @@ setTimeout(() => {
                           />
                           Tout sélectionner
                         </label>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
                           {selectedItemsForImport.length}/{selectedPurchaseForImport.items?.length || 0} sélectionnés
                         </span>
                       </div>
@@ -2739,7 +2740,7 @@ setTimeout(() => {
                     setSelectedPurchaseForImport(null);
                     setSelectedItemsForImport([]);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm"
                 >
                   Annuler
                 </button>
@@ -2765,7 +2766,7 @@ setTimeout(() => {
               <h3 className="text-lg sm:text-xl font-semibold dark:text-gray-100">Achat Fournisseur {selectedSupplierPurchase.purchase_number}</h3>
               <button
                 onClick={() => setShowSupplierPurchaseModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-2xl"
               >
                 ✕
               </button>
@@ -2993,7 +2994,7 @@ setTimeout(() => {
                           }));
                           setMobileSearchResults([]);
                         }}
-                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
+                        className="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer border-b border-gray-100 dark:border-gray-700"
                       >
                         <div className="font-medium text-sm dark:text-gray-100">{product.product_id}</div>
                         <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
@@ -3103,7 +3104,7 @@ setTimeout(() => {
             <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 flex justify-between items-center border-t dark:border-gray-700">
               <button
                 onClick={cancelMobileItemEdit}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-sm"
               >
                 Annuler
               </button>
