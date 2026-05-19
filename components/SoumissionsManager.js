@@ -4,9 +4,10 @@
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
  *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 2.1.0
- * @date 2026-03-29
+ * @version 2.2.0
+ * @date 2026-05-19
  * @changelog
+ *   2.2.0 - Retrait édition inline (Qté/Vente/Coût) dans tableau items: modification uniquement via clic sur la ligne. Ajout calculateur de prix de vente par % de marge (input personnalisé + boutons 10%/15%/27%) dans le modal Modifier l'article
  *   2.1.0 - Ajout quantités (en main, en commande, réservé) dans l'en-tête du modal Modifier l'article
  *   2.0.0 - Desktop: ligne cliquable ouvre soumission + dropdown statut inline sans ouvrir le formulaire
  *   1.9.0 - Forcer majuscules sur description au save + notification auto-dismiss (remplace alert OK)
@@ -265,6 +266,7 @@ export default function SoumissionsManager() {
     cost_price: '',
     comment: ''
   });
+  const [editItemMarginPercent, setEditItemMarginPercent] = useState('');
 
   // États pour le calculateur USD
   const [showUsdCalculator, setShowUsdCalculator] = useState(false);
@@ -754,6 +756,7 @@ export default function SoumissionsManager() {
       cost_price: item.cost_price.toString(),
       comment: item.comment || ''
     });
+    setEditItemMarginPercent('');
     setEditItemQuantities({ stock: item.stock_qty || 0, onOrder: 0, reserved: 0 });
     setShowEditItemModal(true);
 
@@ -846,6 +849,17 @@ export default function SoumissionsManager() {
       cost_price: '',
       comment: ''
     });
+    setEditItemMarginPercent('');
+  };
+
+  // Applique une marge % sur le coût pour obtenir le prix de vente
+  const applyEditItemMargin = (percentage) => {
+    const cost = parseFloat(editItemForm.cost_price) || 0;
+    const pct = parseFloat(percentage);
+    if (cost > 0 && !isNaN(pct) && pct >= 0) {
+      const newSelling = cost * (1 + pct / 100);
+      setEditItemForm(prev => ({ ...prev, selling_price: newSelling.toFixed(2) }));
+    }
   };
 
   const saveEditItemModal = () => {
@@ -1015,24 +1029,6 @@ export default function SoumissionsManager() {
         comment: ''
       }]);
     }
-  };
-
-  const updateItemQuantity = (productId, quantity) => {
-    const floatQuantity = parseFloat(quantity);
-    // Permettre quantité zéro, supprimer seulement si vide ou négatif
-    if (quantity === '' || floatQuantity < 0 || isNaN(floatQuantity)) {
-      setSelectedItems(selectedItems.filter(item => item.product_id !== productId));
-    } else {
-      setSelectedItems(selectedItems.map(item =>
-        item.product_id === productId ? { ...item, quantity: floatQuantity } : item
-      ));
-    }
-  };
-
-  const updateItemPrice = (productId, field, price) => {
-    setSelectedItems(selectedItems.map(item =>
-      item.product_id === productId ? { ...item, [field]: parseFloat(price) || 0 } : item
-    ));
   };
 
   const removeItemFromSubmission = (productId) => {
@@ -2734,6 +2730,7 @@ const cleanupFilesForSubmission = async (files) => {
                             min="0"
                             value={editItemForm.quantity}
                             onChange={(e) => setEditItemForm({...editItemForm, quantity: e.target.value})}
+                            onFocus={(e) => e.target.select()}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
@@ -2759,6 +2756,7 @@ const cleanupFilesForSubmission = async (files) => {
                             min="0"
                             value={editItemForm.selling_price}
                             onChange={(e) => setEditItemForm({...editItemForm, selling_price: e.target.value})}
+                            onFocus={(e) => e.target.select()}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
@@ -2783,6 +2781,7 @@ const cleanupFilesForSubmission = async (files) => {
                             min="0"
                             value={editItemForm.cost_price}
                             onChange={(e) => setEditItemForm({...editItemForm, cost_price: e.target.value})}
+                            onFocus={(e) => e.target.select()}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
@@ -2794,6 +2793,68 @@ const cleanupFilesForSubmission = async (files) => {
                             autoCapitalize="off"
                             spellCheck={false}
                           />
+                        </div>
+
+                        {/* Calculateur prix de vente par % de marge sur coût */}
+                        <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
+                          <label className="block text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+                            🧮 Calculateur Vente = Coût + %
+                          </label>
+                          <div className="flex gap-2 mb-2">
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              placeholder="% personnalisé"
+                              value={editItemMarginPercent}
+                              onChange={(e) => setEditItemMarginPercent(e.target.value)}
+                              onFocus={(e) => e.target.select()}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  applyEditItemMargin(editItemMarginPercent);
+                                }
+                              }}
+                              className="flex-1 rounded-lg border-purple-300 dark:border-purple-700 p-2 text-sm dark:bg-gray-800 dark:text-gray-100"
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => applyEditItemMargin(editItemMarginPercent)}
+                              disabled={!editItemMarginPercent || !parseFloat(editItemForm.cost_price)}
+                              className="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              Appliquer
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => applyEditItemMargin(10)}
+                              disabled={!parseFloat(editItemForm.cost_price)}
+                              className="px-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/60 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              +10%
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyEditItemMargin(15)}
+                              disabled={!parseFloat(editItemForm.cost_price)}
+                              className="px-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/60 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              +15%
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyEditItemMargin(27)}
+                              disabled={!parseFloat(editItemForm.cost_price)}
+                              className="px-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/60 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              +27%
+                            </button>
+                          </div>
                         </div>
 
                         {/* Commentaire */}
@@ -2962,49 +3023,14 @@ const cleanupFilesForSubmission = async (files) => {
                                     )}
                                   </div>
                                 </td>
-                                <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="number"
-                                    step="0.001"
-                                    min="0"
-                                    value={item.quantity}
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      if (value === '' || parseFloat(value) >= 0) {
-                                        updateItemQuantity(item.product_id, value);
-                                      }
-                                    }}
-                                    className="w-16 text-center rounded border-gray-300 dark:border-gray-600 text-sm dark:bg-gray-800 dark:text-gray-100"
-                                    autoCorrect="off"
-                                    autoCapitalize="off"
-                                    spellCheck={false}
-                                  />
+                                <td className="p-2 text-center font-bold dark:text-gray-100">
+                                  {item.quantity}
                                 </td>
-                                <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={item.selling_price}
-                                    onChange={(e) => updateItemPrice(item.product_id, 'selling_price', e.target.value)}
-                                    className="w-20 text-right rounded border-green-300 dark:border-green-700 text-sm focus:border-green-500 focus:ring-green-500 dark:bg-gray-800 dark:text-gray-100"
-                                    autoCorrect="off"
-                                    autoCapitalize="off"
-                                    spellCheck={false}
-                                  />
+                                <td className="p-2 text-right font-mono text-green-700 dark:text-green-400">
+                                  {formatCurrency(item.selling_price)}
                                 </td>
-                                <td className="p-2 text-right" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="number"
-                                    step="any"
-                                    min="0"
-                                    value={item.cost_price}
-                                    onChange={(e) => updateItemPrice(item.product_id, 'cost_price', e.target.value)}
-                                    className="w-20 text-right rounded border-orange-300 dark:border-orange-700 text-sm focus:border-orange-500 focus:ring-orange-500 dark:bg-gray-800 dark:text-gray-100"
-                                    autoCorrect="off"
-                                    autoCapitalize="off"
-                                    spellCheck={false}
-                                  />
+                                <td className="p-2 text-right font-mono text-orange-700 dark:text-orange-400">
+                                  {formatCurrency(item.cost_price)}
                                 </td>
                                 <td className="p-2 text-right font-medium text-green-700">
                                   {formatCurrency(item.selling_price * item.quantity)}
