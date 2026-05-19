@@ -686,5 +686,76 @@ Bouton "Télécharger PDF" visible dans la liste des factures (mobile + desktop)
 
 ---
 
-*Document créé le 2026-02-26 — Révision 7 avec Phases A, B, C, D et E complétées.*
-*Toutes les phases du plan sont complétées. Reste: Navigation mobile (Option A).*
+---
+
+## 14. Améliorations post-implémentation (2026-03 à 2026-05)
+
+Le module Facturation MVP a été enrichi après sa mise en service. Synthèse des correctifs et améliorations :
+
+### 14.1 Navigation mobile Option A ✅ COMPLÉTÉE (2026-03-01)
+
+- `components/Navigation.js` v2.0.0 — Mobile : BA + BT + Clients + bouton "Plus" (bottom sheet)
+- `components/SplitView/ClientSplitViewWrapper.js` v2.0.0 — Mode overlay sur tablette/mobile
+- `tailwind.config.js` — Animations slide-up + slide-in-right
+- Fix : panneau SplitView invisible sur tablette (<1024px) → mode overlay avec backdrop
+
+### 14.2 Rapport Acomba PDF — colonnes coupées ✅ CORRIGÉ (2026-03-11)
+
+- `b1692d0` PR #88 — Ajustement marges/largeurs des colonnes pour éviter coupure à droite
+
+### 14.3 Verrouillage des factures envoyées ✅ COMPLÉTÉ (2026-03-12)
+
+- `71cf966` PR #90 — Une facture au statut `sent` ou `paid` ne peut plus être modifiée (lecture seule)
+- Ajustements PDF facture (libellés, alignement)
+
+### 14.4 Éditeur de facture — Améliorations majeures (2026-03-12 à 2026-03-16)
+
+- `bbecbc5` Affichage du coûtant unitaire + qté en main dans l'éditeur + **code produit cliquable** (ouvre modal)
+- `54970ad` Remplacement du modal produit simplifié par le **vrai modal Inventaire éditable** (3 onglets)
+- `95efc76` Actualisation automatique du prix vendant sur les lignes facture après modification d'un produit
+- `74aeb91` **Impression facture sans envoi email** (workflow Acomba) + description BT/BL affichée sur la facture
+
+### 14.5 Prix matériaux factures BL — Corrections (2026-04-10 à 2026-04-11)
+
+- `41ecfcf` PR #98 — Fix : prix matériaux manquants sur factures créées depuis un BL
+- `4f3798c` PR #99 — Fix prix facture BL + **priorisation des prix venant du BA** lié + aperçu enrichi onglet "À facturer"
+
+### 14.6 Refonte SplitView BT/BL ✅ COMPLÉTÉ (2026-04-11)
+
+- `896dffd` PR #100 — Refonte des panneaux SplitView BT et BL pour refléter fidèlement les documents originaux
+- `b916d2b` PR #101 — Fix : matériaux invisibles dans les panneaux SplitView BT/BL
+
+### 14.7 Bug critique Acomba — mark-external (FK invoice_id) ✅ CORRIGÉ (2026-05-19)
+
+**Problème :** Le bouton "Acomba" (mark-external) sur les BT/BL n'avait aucun effet. La contrainte FK `invoice_id` sur `work_orders` et `delivery_notes` bloquait silencieusement l'UPDATE avec la valeur sentinelle `-1` (facturé externement dans Acomba).
+
+**Correction :**
+- `7b04df5` PR #109 — Retrait de la contrainte FK
+- `supabase/migrations/20260519_drop_invoice_id_fk.sql` — Migration SQL (à exécuter manuellement dans Supabase Dashboard)
+- `app/api/invoices/mark-external/route.js` v1.1.0 — Remonte les erreurs DB au client (`success: false` au lieu de masquer)
+
+---
+
+## 15. Statut final — Plan d'implantation
+
+| Phase | Description | Statut |
+|-------|-------------|--------|
+| A | Fondations (settings + tarification clients) | ✅ 2026-02-27 |
+| B | Facturation MVP | ✅ 2026-02-27 |
+| C | Rapport Acomba mensuel | ✅ 2026-02-27 |
+| D | Statistiques Phase 2 (Financier) | ✅ 2026-02-27 |
+| E | Numéros cliquables SplitView | ✅ 2026-02-27 |
+| 14.1 | Navigation mobile Option A | ✅ 2026-03-01 |
+| 14.2-14.7 | Améliorations & correctifs post-MVP | ✅ 2026-03 à 2026-05 |
+
+**Toutes les phases du plan sont complétées et le module Facturation est en production avec ses correctifs.**
+
+Reste à faire (hors plan initial) :
+- Standardisation PDF AF + Soumission (Phase 7 de RECOMMANDATIONS.md) — HTML+print à migrer vers jsPDF/pdf-common.js
+- Import partiel de soumission dans BA + auto-changement statut (Phase 5 de RECOMMANDATIONS.md)
+- Bandeau alertes BA orphelins / AF reçus sans livraison
+
+---
+
+*Document créé le 2026-02-26 — Révision 8 (2026-05-19) avec Phases A-E + 14 améliorations post-MVP.*
+*Plan complet et en production. Voir RECOMMANDATIONS.md pour le suivi global.*

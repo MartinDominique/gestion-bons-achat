@@ -958,11 +958,18 @@ Pas de tests automatises detectes.
 - [x] #5: Afficher badges dans TimeTracker (Samedi, Dimanche, Soir, Jour ferie)
 - [x] #6: Mettre a jour le PDF BT pour afficher les mentions de surcharge
 
-### Phase 5 - Statut soumissions + import partiel (Section 5)
+### Phase 5 - Statut soumissions + import partiel (Section 5) — ⏳ PARTIEL (2026-05-19)
 - [ ] #1: Modal import soumission avec selection partielle (checkboxes par item)
-- [ ] #2: Changement auto statut soumission → "Acceptee" apres import
+  - Note: La selection partielle existe deja dans le BL via le bouton "Ajout de soumission" (PR #47, 2026-02-14)
+  - Reste a faire dans le module BA (PurchaseOrderModal)
+- [ ] #2: Changement auto statut soumission → "Acceptee" apres import dans un BA
 - [ ] #3: Ajouter champ `linked_po_numbers` dans table `submissions`
 - [ ] #4: Afficher BA associe(s) dans le formulaire soumission
+- [x] #5: Gestion statut soumissions amelioree (PR #91, #92, #109 - 2026-03-24 a 2026-05-19)
+  - `0782a4b` Desktop: ligne cliquable + dropdown statut inline (PR #91)
+  - `2cfb0f1` Bouton "Gestion des Soumissions" en SplitView depuis formulaire AF (PR #92)
+  - `11282ad` SplitView soumissions: clic ligne ouvre le detail + bouton retour
+  - `3e833e1` Soumissions: clic ligne ouvre modal (retrait edition inline) + **calculateur % de marge** (PR #109, 2026-05-19)
 
 ### Phase 6 - BCC Confirmation de commande client (Section 3) ✅ COMPLETE (2026-02-09, mis a jour 2026-02-16)
 - [x] #1: Bouton "Confirmation commande" dans PurchaseOrderModal
@@ -1188,22 +1195,31 @@ Priorite a l'optimisation responsive pour:
 
 ## Prochaines Actions Prioritaires
 
-Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
+Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-05-19:
 
 1. ~~**Bon de Livraison (BL) integre dans BT**~~ - ✅ Phase 3 QUASI-COMPLETE (2026-02-17, PR #42-#51) - reste bandeau alertes
 2. ~~**TimeTracker surcharges soir/weekend/ferie**~~ - ✅ Phase 4 COMPLETE (2026-02-10)
-3. **Statut soumissions + import partiel** - Phase 5 (demande 2026-02-07) - EN ATTENTE
+3. **Statut soumissions + import partiel** - ⏳ Phase 5 PARTIEL (2026-05-19) - reste import partiel BA, auto-statut, ref croisee
 4. ~~**BCC Confirmation de commande client**~~ - ✅ Phase 6 COMPLETE (2026-02-09, mis a jour 2026-02-16)
-5. **Standardisation PDF** - Phase 7 (demande 2026-02-07) - EN ATTENTE
-6. ~~**Panneau lateral Split View**~~ - ✅ Phase 8 COMPLETE (2026-02-16, PR #48)
+5. **Standardisation PDF** - Phase 7 — ⏳ PARTIEL (`lib/services/pdf-common.js` existe, utilise par Facture/Rapport Acomba/Statistiques. Reste: migration AF et Soumission HTML→jsPDF)
+6. ~~**Panneau lateral Split View**~~ - ✅ Phase 8 COMPLETE (2026-02-16, PR #48) + refonte BT/BL (PR #100-#101, 2026-04-11)
 7. ~~**Reception directe + Ajustement inventaire**~~ - ✅ Phase 9 COMPLETE (2026-02-18, PR #52)
 8. ~~**Historique des prix produits**~~ - ✅ Phase 10 COMPLETE (2026-02-11, PR #36-#39)
 9. ~~**Mode Sombre (Dark Mode)**~~ - ✅ Phase 11 COMPLETE (2026-02-22, PR #60)
 10. **Ajustements visuels Dark Mode** - Tester sur tablette apres merge, ajuster si besoin
-11. **Optimisation mobile BT/BL** - Continue (95% mobile)
+11. **Optimisation mobile BT/BL** - Continue (95% mobile) — ameliorations 2026-05-19 (UX une main)
 12. ~~**Rapports & Statistiques de Ventes - Phase 1 MVP**~~ - ✅ Phase 12 COMPLETE (2026-02-24)
-13. **Systeme permissions** - Futur (multi-utilisateurs)
-14. **Revoir rapport hebdomadaire** - Futur
+13. ~~**Facturation MVP + Rapport Acomba + Stats Phase 2**~~ - ✅ Phases A/B/C/D/E COMPLETE (2026-02-27)
+14. ~~**Navigation mobile Option A + SplitView tablette**~~ - ✅ Phase 14 COMPLETE (2026-03-01)
+15. ~~**Gestion Backorder (BO) dans les BL**~~ - ✅ COMPLETE (2026-03-03, corrige 2026-03-06)
+16. ~~**Ameliorations Facturation post-MVP**~~ - ✅ Phase 15 COMPLETE (2026-03 a 2026-05)
+17. ~~**Tracabilite mouvements inventaire + correction double-compte**~~ - ✅ COMPLETE (2026-04-13 + 2026-04-21)
+18. ~~**Bug Acomba mark-external (FK invoice_id)**~~ - ✅ CORRIGE (2026-05-19)
+19. **Bandeau alertes BA orphelins / AF recus sans livraison** - EN ATTENTE (reste de Phase 3)
+20. **Multi-utilisateurs / Systeme permissions** - Futur
+21. **Revoir rapport hebdomadaire** - Futur
+22. **TypeScript migration progressive** - Long terme
+23. **Tests automatises** - Long terme
 
 ---
 
@@ -1280,6 +1296,61 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
   - `components/delivery-notes/DeliveryNoteClientView.js` v2.6.0 — Masquage colonne A suivre
   - `lib/services/email-service.js` v3.2.0 — Colonnes PDF BO corrigees
 
+### Phase 15 - Ameliorations Facturation post-MVP ✅ COMPLETE (2026-03 a 2026-05)
+
+Le module Facturation MVP (Phase B, complete 2026-02-27) a recu plusieurs ameliorations:
+
+**PDF & Rapport Acomba (2026-03-11 a 2026-03-12):**
+- [x] `b1692d0` Fix rapport Acomba PDF — colonnes coupees a droite (PR #88)
+- [x] `71cf966` Ajustements PDF facture + **verrouillage des factures envoyees** (PR #90)
+  - Une facture envoyee ne peut plus etre modifiee (lecture seule)
+
+**Editeur de facture (2026-03-12 a 2026-03-16):**
+- [x] `bbecbc5` Affichage coutant unitaire + qte en main dans l'editeur + **code produit cliquable**
+- [x] `54970ad` Modal produit remplace par le vrai modal Inventaire editable (3 onglets)
+- [x] `95efc76` Actualisation automatique du prix vendant sur lignes facture apres modification produit
+- [x] `74aeb91` **Impression facture sans email** + description BT/BL ajoutee sur la facture
+
+**Fix prix matieres factures BL (2026-04-10 a 2026-04-11):**
+- [x] `41ecfcf` Fix prix materiaux manquants sur factures creees depuis BL (PR #98)
+- [x] `4f3798c` Fix prix facture BL + **priorisation prix BA** + apercu enrichi onglet "A facturer" (PR #99)
+
+**Refonte SplitView BT/BL (2026-04-10 a 2026-04-11):**
+- [x] `896dffd` Refonte panneaux SplitView BT et BL pour refleter les documents originaux (PR #100)
+- [x] `b916d2b` Fix materiaux invisibles dans panneaux SplitView BT/BL (PR #101)
+
+**Bug critique Acomba — mark-external (2026-05-19):**
+- [x] `7b04df5` Fix bouton Acomba sans effet — retrait FK `invoice_id` (PR #109)
+  - Migration: `supabase/migrations/20260519_drop_invoice_id_fk.sql`
+  - L'API `mark-external` v1.1.0 remonte maintenant les erreurs DB
+  - Voir CLAUDE.md > "Bugs connus (corriges)"
+
+### Phase 16 - Ameliorations diverses ✅ COMPLETE (2026-03 a 2026-04)
+
+**BT (Bons de Travail):**
+- [x] `3881800` Description courte (20 car.) optionnelle par session de travail (PR #97, 2026-04-08)
+- [x] `27f2632` **UX mobile une main** — bouton session deplace, sessions inversees, Prix Jobe sous TimeTracker (2026-05-19)
+- [x] `7948cad` Recherche par Description + persistance etat recherche/filtres/scroll (PR #94, 2026-03-27)
+
+**BCC:**
+- [x] `c17e2bf` Quantite editable dans l'onglet BCC avec sync vers Articles (PR #96, 2026-04-01)
+
+**AF (Achats Fournisseurs):**
+- [x] `4a90de1` Ajout info transport + correction date N/A sur PDF bon de commande AF (PR #93, 2026-03-25)
+- [x] `d99b75f` Sauvegarder AF avant impression/envoi pour corriger la date N/A sur le PDF
+
+**Inventaire — Tracabilite & UX:**
+- [x] `103810d` Tracabilite modifications manuelles stock dans `inventory_movements` (PR #102, 2026-04-13)
+- [x] `2dc9a36` Script rattrapage mouvements inventaire BT/BL manquants
+- [x] `1ad02d4` / `c2b1268` / `54bb000` Fix colonnes mouvements (`reference_number`, `company`, UUID vs integer)
+- [x] `6174d82` Ajout quantites (en main, en commande, reserve) dans le modal "Modifier l'article" (PR #95, 2026-03-29)
+
+**UI globale:**
+- [x] `ac02ba9` Forcer majuscules sur descriptions/codes produits + notification auto-dismiss (PR #87, 2026-03-07)
+- [x] `a5a6eea` Fix cursor jumping to end of line en mode uppercase (PR #86)
+- [x] `38697c8` Filtre multi-selection avec memoire + fix mobile pour Bons d'Achat Client (2026-03-20)
+- [x] `3f6ca89` Ligne dediee au nom du client sur mobile (3 lignes) — liste BT/BL
+
 ### 2026-04-21 - Correction double-compte "Réservé" dans l'inventaire + outils de diagnostic
 - **Probleme:** Items de BT/BL signés (stock deja décrémenté) comptaient encore dans "Réservé (BT/BL/Soum.)"
   → Double-compte: stock sorti + reserve = `Disponible réel` trop bas
@@ -1304,4 +1375,4 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-02-22:
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-04-21 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-05-19 par Claude AI*
