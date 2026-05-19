@@ -639,6 +639,10 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Bouton "Acomba" (mark-external) sans effet — FK invoice_id bloquait l'UPDATE silencieusement~~ → Corrigé (2026-05-19)
+  - `supabase/migrations/20260519_drop_invoice_id_fk.sql` — Retire la contrainte FK sur `work_orders.invoice_id` et `delivery_notes.invoice_id` pour autoriser la valeur sentinelle `-1` (facturé externement Acomba). Aucun CASCADE défini, retrait sans impact en cascade.
+  - `app/api/invoices/mark-external/route.js` v1.1.0 — Remonte les erreurs DB au client (retourne `success: false` au lieu de masquer l'échec)
+  - **Migration SQL à exécuter manuellement dans Supabase Dashboard**
 - ~~Code dupliqué dans `email-service.js` (formatQuebecDateTime)~~ → Corrigé (2026-02-07)
 - ~~Champs redondants non synchronisés (client_name + client_id)~~ → Sync automatique ajoutée (2026-02-07)
 - ~~Bug `COMPANY_EMAIL` dans send-inventory-report~~ → Corrigé (2026-02-07)

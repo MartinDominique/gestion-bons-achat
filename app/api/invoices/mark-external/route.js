@@ -3,9 +3,10 @@
  * @description Marquer des BT/BL comme facturés externement (Acomba)
  *              - POST: Met invoice_id = -1 sur les BT/BL spécifiés
  *              - Permet de retirer les anciens documents de la liste "À facturer"
- * @version 1.0.0
- * @date 2026-02-27
+ * @version 1.1.0
+ * @date 2026-05-19
  * @changelog
+ *   1.1.0 - Remonter les erreurs DB au client au lieu de retourner success silencieusement (corrige bouton Acomba sans effet quand la FK invoice_id bloquait l'UPDATE)
  *   1.0.0 - Version initiale
  */
 
@@ -34,6 +35,7 @@ export async function POST(request) {
     const EXTERNAL_INVOICE_ID = -1;
     let btCount = 0;
     let blCount = 0;
+    const errors = [];
 
     // Séparer BT et BL
     const btIds = items.filter(i => i.type === 'bt').map(i => parseInt(i.id));
@@ -49,6 +51,7 @@ export async function POST(request) {
 
       if (btError) {
         console.error('Erreur marquage BT:', btError);
+        errors.push(`BT: ${btError.message}`);
       } else {
         btCount = btIds.length;
       }
@@ -64,9 +67,21 @@ export async function POST(request) {
 
       if (blError) {
         console.error('Erreur marquage BL:', blError);
+        errors.push(`BL: ${blError.message}`);
       } else {
         blCount = blIds.length;
       }
+    }
+
+    if (errors.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Échec du marquage Acomba: ${errors.join(' | ')}`,
+          details: { bt: btCount, bl: blCount },
+        },
+        { status: 500 }
+      );
     }
 
     const totalMarked = btCount + blCount;
