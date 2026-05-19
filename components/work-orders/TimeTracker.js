@@ -5,9 +5,10 @@
  *              - Sessions manuelles (ajout, édition, suppression)
  *              - Détection automatique surcharges (soir, samedi, dimanche, jours fériés QC)
  *              - Application des minimums (2h soir, 3h weekend/férié)
- * @version 2.2.0
- * @date 2026-04-08
+ * @version 2.3.0
+ * @date 2026-05-19
  * @changelog
+ *   2.3.0 - Affichage des sessions en ordre inversé (dernière en haut). Support forwardRef pour déclenchement externe de punch-in + prop hidePunchInButton + callback onWorkingStateChange
  *   2.2.0 - Ajout champ session_description (20 car. max, optionnel) par session
  *   2.1.1 - Ajout onFocus select sur champs pause (auto-sélection)
  *   2.1.0 - Ajout support dark mode
@@ -16,7 +17,7 @@
  *   1.0.0 - Version initiale multi-sessions
  */
 
-import React, { useState, useEffect,useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Play, Square, Clock, Edit, Save, Plus, Trash2, Calendar } from 'lucide-react';
 import { getSurchargeType } from '../../lib/utils/holidays';
 
@@ -36,14 +37,16 @@ const SURCHARGE_BADGES = {
   holiday:   { label: 'Jour férié', color: 'bg-purple-600 text-white' },
 };
 
-export default function TimeTracker({
+function TimeTracker({
   onTimeChange,
   initialTimeEntries = [],
   workDate = null,
   status = 'draft',
   selectedClient = null,
-  applySurcharge = true
-}) {
+  applySurcharge = true,
+  hidePunchInButton = false,
+  onWorkingStateChange = null
+}, ref) {
   // État pour gérer PLUSIEURS sessions
   const [timeEntries, setTimeEntries] = useState(initialTimeEntries || []);
   const [currentSession, setCurrentSession] = useState(null); // Session en cours
@@ -369,6 +372,18 @@ const formatDuration = (hours) => {
     setIsWorking(true);
   };
 
+  // Expose le déclenchement de punch-in au parent (bouton externe)
+  useImperativeHandle(ref, () => ({
+    startSession: () => handlePunchIn()
+  }));
+
+  // Notifier le parent des changements d'état isWorking
+  useEffect(() => {
+    if (typeof onWorkingStateChange === 'function') {
+      onWorkingStateChange(isWorking);
+    }
+  }, [isWorking, onWorkingStateChange]);
+
   // Terminer la session courante
     const handlePunchOut = () => {
       if (!currentSession) return;
@@ -624,10 +639,10 @@ const formatDuration = (hours) => {
       {/* Liste des sessions terminées */}
       {timeEntries.length > 0 && (
         <div className="space-y-2">
-          <h4 className="font-medium text-gray-700 dark:text-gray-300">Sessions enregistrées:</h4>
-          {timeEntries.map((entry, index) => (
-          <div 
-            key={index} 
+          <h4 className="font-medium text-gray-700 dark:text-gray-300">Sessions enregistrées (plus récente en premier):</h4>
+          {timeEntries.map((entry, index) => ({ entry, index })).reverse().map(({ entry, index }) => (
+          <div
+            key={index}
             className={`border rounded-lg p-3 ${
               entry.in_progress 
                 ? 'bg-green-50 border-green-500 border-2' 
@@ -901,8 +916,8 @@ const formatDuration = (hours) => {
         </div>
       )}
 
-      {/* Bouton Punch-in si aucune session active */}
-        {!isWorking && (
+      {/* Bouton Punch-in si aucune session active (caché si bouton externe utilisé) */}
+        {!isWorking && !hidePunchInButton && (
           <div className="text-center">
             {/* ⭐ NOUVEAU - Message si verrouillé */}
             {(status === 'sent' || status === 'signed') && (
@@ -915,7 +930,7 @@ const formatDuration = (hours) => {
                 </p>
               </div>
             )}
-            
+
             <button
               type="button"
               onClick={handlePunchIn}
@@ -929,6 +944,18 @@ const formatDuration = (hours) => {
               <Play className="mr-2" size={18} />
               Commencer nouvelle session
             </button>
+          </div>
+        )}
+
+      {/* Message verrouillé seul (quand bouton externe utilisé) */}
+        {!isWorking && hidePunchInButton && (status === 'sent' || status === 'signed') && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              🔒 <strong>Bon de travail verrouillé</strong>
+            </p>
+            <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
+              Ce BT a été envoyé au client. Vous ne pouvez plus ajouter de sessions.
+            </p>
           </div>
         )}
 
@@ -1060,3 +1087,5 @@ const formatDuration = (hours) => {
     </div>
   );
 }
+
+export default forwardRef(TimeTracker);

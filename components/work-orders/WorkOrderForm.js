@@ -5,9 +5,10 @@
  *              - Intégration TimeTracker (suivi temps) et MaterialSelector (matériaux)
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion emails et workflow signature client
- * @version 1.2.1
- * @date 2026-03-07
+ * @version 1.3.0
+ * @date 2026-05-19
  * @changelog
+ *   1.3.0 - UX mobile: bouton "Commencer nouvelle session" déplacé entre la section BA et la Date de travail. Checkbox Prix Jobé déplacée sous le TimeTracker. Sessions affichées en ordre inversé dans le formulaire (dernière en haut, via TimeTracker v2.3.0)
  *   1.2.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.2.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.0 - Ajout support dark mode
@@ -17,7 +18,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check, PenTool, Search } from 'lucide-react';
+import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check, PenTool, Search, Play } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
 import ClientModal from '../ClientModal';
@@ -110,6 +111,8 @@ export default function WorkOrderForm({
   const [isInitializing, setIsInitializing] = useState(true);
   const initializedWorkOrderId = useRef(null);
   const latestTimeDataRef = useRef({ time_entries: [], total_hours: 0 });
+  const timeTrackerRef = useRef(null);
+  const [trackerIsWorking, setTrackerIsWorking] = useState(false);
 
   const [cachedProducts, setCachedProducts] = useState([]);
   const [cachedNonInventoryItems, setCachedNonInventoryItems] = useState([]);
@@ -1415,34 +1418,6 @@ const getFilteredSupplierPurchases = () => {
             </div>
           )}
 
-            {/* ✅ NOUVEAU - Checkbox Prix Jobé */}
-            {selectedClient && (
-              <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-4">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_prix_jobe || false}
-                    onChange={(e) => {
-                      setFormData({ ...formData, is_prix_jobe: e.target.checked });
-                      if (onFormChange) onFormChange();
-                    }}
-                    className="mt-1 w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-2">
-                      💰 Prix Jobé
-                    </div>
-                    <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                      Le client recevra un BT simplifié (sans heures ni matériels).
-                    </p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
-                      Le bureau recevra les 2 versions: simplifiée + complète
-                    </p>
-                  </div>
-                </label>
-              </div>
-            )}
-
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               📋 Bon d'achat client (optionnel)
@@ -1565,13 +1540,32 @@ const getFilteredSupplierPurchases = () => {
             </div>
             
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {useManualPO 
+              {useManualPO
                 ? 'Saisissez une référence manuelle (pour les BAs externes)'
                 : 'Sélectionnez un BA existant ou créez-en un nouveau'
               }
             </p>
           </div>
         </div>
+
+        {/* Bouton externe "Commencer nouvelle session" (placé entre BA et Date pour usage mobile à une main) */}
+        {!trackerIsWorking && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => timeTrackerRef.current?.startSession()}
+              disabled={formData.status === 'sent' || formData.status === 'signed'}
+              className={`w-full sm:w-auto px-8 py-4 rounded-lg flex items-center justify-center mx-auto font-semibold text-lg shadow-lg ${
+                formData.status === 'sent' || formData.status === 'signed'
+                  ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-gray-700 dark:text-gray-400'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+            >
+              <Play className="mr-2" size={22} />
+              Commencer nouvelle session
+            </button>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1613,13 +1607,44 @@ const getFilteredSupplierPurchases = () => {
         </div>
 
         <TimeTracker
+          ref={timeTrackerRef}
           onTimeChange={handleTimeChange}
           initialTimeEntries={workOrder?.time_entries || []}
           workDate={formData.work_date}
           status={formData.status}
           selectedClient={selectedClient}
           applySurcharge={formData.apply_surcharge}
+          hidePunchInButton={true}
+          onWorkingStateChange={setTrackerIsWorking}
         />
+
+        {/* ✅ Checkbox Prix Jobé (placée sous le TimeTracker) */}
+        {selectedClient && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_prix_jobe || false}
+                onChange={(e) => {
+                  setFormData({ ...formData, is_prix_jobe: e.target.checked });
+                  if (onFormChange) onFormChange();
+                }}
+                className="mt-1 w-5 h-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
+              />
+              <div className="flex-1">
+                <div className="font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-2">
+                  💰 Prix Jobé
+                </div>
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                  Le client recevra un BT simplifié (sans heures ni matériels).
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                  Le bureau recevra les 2 versions: simplifiée + complète
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
 
         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
           <div className="flex items-center justify-between mb-3">
