@@ -1,8 +1,8 @@
 # Facturation, Taux Horaires & Statistiques Avancées - Plan d'implantation
 
-**Date:** 2026-02-26
-**Statut:** Plan initial - En attente d'approbation Martin
-**Modules concernés:** Nouveau module "Facturation" + Paramètres + Statistiques (Phase 2)
+**Date:** 2026-02-26 (mis à jour 2026-05-19)
+**Statut:** ✅ TOUTES LES PHASES A à E COMPLÉTÉES (2026-02-27). Plusieurs corrections et améliorations post-implémentation entre mars et mai 2026 (voir Section 14).
+**Modules concernés:** Module "Facturation" + Paramètres + Statistiques (sous-onglet Financier)
 
 ---
 
@@ -682,9 +682,84 @@ Bouton "Télécharger PDF" visible dans la liste des factures (mobile + desktop)
 **Fonctionnement:** Clic sur un numéro BT/BL/Soumission ouvre le document en lecture dans le panneau latéral SplitView.
 **Types supportés:** work-order (BT, vert), delivery-note (BL, orange), purchase-order (BA, bleu), supplier-purchase (AF, orange), soumission (violet)
 
-**Note:** La navigation mobile (Option A — menu "Plus") reste à faire séparément.
+**Note:** ~~La navigation mobile (Option A — menu "Plus") reste à faire séparément.~~ ✅ COMPLÉTÉE (2026-03-01) — voir RECOMMANDATIONS.md Phase 14.
 
 ---
 
-*Document créé le 2026-02-26 — Révision 7 avec Phases A, B, C, D et E complétées.*
-*Toutes les phases du plan sont complétées. Reste: Navigation mobile (Option A).*
+## 14. Corrections et améliorations post-implémentation (mars-mai 2026)
+
+Toutes les phases A-E du plan initial sont complétées. Cette section liste les corrections et améliorations apportées après le lancement initial.
+
+### 14.1 Module Facturation — Corrections et améliorations
+
+**Éditeur de facture** (mars 2026)
+- ✅ Affichage du coûtant unitaire et de la qté en main dans l'éditeur (commit bbecbc5)
+- ✅ Code produit cliquable depuis l'éditeur de facture (commit bbecbc5)
+- ✅ Modal produit remplacé par le vrai modal inventaire éditable (3 onglets) (commit 54970ad)
+- ✅ Actualisation auto des prix vendant sur lignes facture après modification produit (commit 95efc76)
+- ✅ Impression facture sans email + description BT/BL ajoutée sur facture (commit 74aeb91)
+- ✅ Verrouillage des factures envoyées (lecture seule) (commit 71cf966)
+
+**Prix matériaux sur factures depuis BL** (avril 2026)
+- ✅ Fix prix matériaux manquants sur factures créées depuis BL (commit 41ecfcf, PR #98)
+- ✅ Fix prix facture BL + priorisation prix BA + aperçu enrichi "À facturer" (commit 4f3798c, PR #99)
+
+**PDF facture** (mars 2026)
+- ✅ Ajustements visuels PDF facture (commit 71cf966)
+
+### 14.2 Rapport Acomba — Corrections
+
+- ✅ Fix colonnes coupées à droite dans le PDF (commit b1692d0, PR #88)
+
+### 14.3 Bouton "Marquer facturé externement" (Acomba) — Bug critique corrigé
+
+**Problème (mai 2026):** Le bouton "Acomba" (mark-external) ne faisait rien silencieusement.
+**Cause:** La contrainte FK `invoice_id` sur work_orders/delivery_notes bloquait l'UPDATE avec la valeur sentinelle `-1`.
+**Fix (2026-05-19, commit 7b04df5):**
+- `supabase/migrations/20260519_drop_invoice_id_fk.sql` — Retrait des contraintes FK
+- `app/api/invoices/mark-external/route.js` v1.1.0 — Remontée des erreurs DB au client
+- ⚠️ **Migration SQL à exécuter manuellement dans Supabase Dashboard**
+
+### 14.4 SplitView BT/BL — Refonte des panneaux de lecture
+
+**Avril 2026** (commits 896dffd, b916d2b, PRs #100-#101)
+- ✅ Refonte des panneaux SplitView BT et BL pour refléter fidèlement les documents originaux
+- ✅ Fix matériaux invisibles dans les panneaux SplitView BT/BL
+
+### 14.5 Inventaire — Traçabilité et corrections
+
+**Traçabilité modifications manuelles stock** (avril 2026, PRs #102-#104)
+- ✅ `inventory_movements` enregistre maintenant aussi les modifications manuelles de `stock_qty` (commit 103810d)
+- ✅ Fix colonne 'name' → 'reference_number' dans mouvements BT/BL (commit 1ad02d4)
+- ✅ Fix `company_name` → `company` dans notes mouvements (commit 54bb000)
+- ✅ Fix `reference_id` UUID vs integer: utiliser `reference_number` pour BT/BL (commit c2b1268)
+- ✅ Script de rattrapage des mouvements manquants (commit 2dc9a36)
+
+**Voir RECOMMANDATIONS.md "Session 22 avril 2026"** pour le détail des corrections inventaire (double-compte Réservé, BT non décrémenté, RLS, etc.)
+
+### 14.6 Améliorations diverses BT/BL/BA
+
+- ✅ Description courte optionnelle (20 car.) par session de travail BT (commit 3881800, PR #97)
+- ✅ Recherche par Description + persistance état recherche/filtres/scroll dans liste BT/BL (commit 7948cad, PR #94)
+- ✅ Quantités (en main, en commande, réservé) dans modal Modifier article (commit 6174d82, PR #95)
+- ✅ BCC: quantité éditable avec sync vers Articles (commit c17e2bf, PR #96)
+- ✅ AF: info transport ajoutée + fix date N/A sur PDF bon de commande (commit 4a90de1, d99b75f, PR #93)
+- ✅ Filtre multi-sélection avec mémoire + fix mobile pour Bons d'Achat Client (commit 38697c8)
+- ✅ Forcer majuscules sur descriptions/codes produits + notification auto-dismiss (commit ac02ba9, PR #87)
+- ✅ Fix curseur qui saute à la fin lors de l'édition (commit a5a6eea, PR #86)
+- ✅ BT: UX mobile une main (bouton session déplacé, sessions inversées, Prix Jobé sous TimeTracker) (commit 27f2632)
+
+### 14.7 Soumissions — Améliorations UX
+
+- ✅ Desktop: ligne cliquable + dropdown statut inline (commit 0782a4b)
+- ✅ Bouton "Gestion des Soumissions" en SplitView depuis formulaire AF (commit 2cfb0f1)
+- ✅ SplitView soumissions: clic sur ligne ouvre le détail + bouton retour (commit 11282ad)
+- ✅ Soumissions: clic ligne ouvre modal (retrait édition inline) + calculateur % de marge (commit 3e833e1)
+- ✅ Fix édition soumissions (PR #109)
+
+**Note:** L'item Phase 5 de RECOMMANDATIONS.md (import partiel soumission → BA + changement auto statut "Acceptée" + reference croisée `linked_po_numbers`) reste à faire.
+
+---
+
+*Document créé le 2026-02-26 — Mis à jour le 2026-05-19.*
+*Toutes les phases A-E du plan sont complétées. Nombreuses améliorations et corrections post-implémentation documentées en Section 14.*
