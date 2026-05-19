@@ -1,8 +1,8 @@
 # Rapports & Statistiques de Ventes - Plan d'implantation
 
-**Date:** 2026-02-19 (mis à jour 2026-02-24)
-**Statut:** Phase 1 MVP COMPLÉTÉE (2026-02-24) - Phases 2 et 3 en attente
-**Module:** Nouvel onglet "Statistiques" dans la navigation principale
+**Date:** 2026-02-19 (mis à jour 2026-05-19)
+**Statut:** Phase 1 MVP COMPLÉTÉE (2026-02-24) + Sous-onglet Financier COMPLÉTÉ (2026-02-27 via Phase D du plan Facturation) - Reste Phase 2 (cost_price + drill-down + graphiques) et Phase 3 (produits/heures/dashboard)
+**Module:** Onglet "Statistiques" dans la navigation principale (2 sous-onglets: Opérationnel + Financier)
 
 ---
 
@@ -318,17 +318,21 @@ CREATE INDEX idx_delivery_note_materials_delivery_note_id ON delivery_note_mater
 
 ### Phase 2 - Améliorations
 
-8. Ajouter `cost_price` aux tables matériaux (migration SQL)
-9. Modifier les formulaires BT/BL pour capturer le cost_price
-10. Implémenter le drill-down (détail par document)
-11. Ajouter les filtres avancés (BA lié, statut, Prix Jobe)
-12. Ajouter les graphiques (Recharts ou Chart.js)
+8. [ ] Ajouter `cost_price` aux tables matériaux (migration SQL)
+9. [ ] Modifier les formulaires BT/BL pour capturer le cost_price
+10. [ ] Implémenter le drill-down (détail par document)
+   - **Note:** Drill-down BT/BL partiellement complété via SplitView (clic sur N° ouvre panneau lecture). Voir `PanelWorkOrder.js`/`PanelDeliveryNote.js`.
+11. [ ] Ajouter les filtres avancés (BA lié, statut, Prix Jobe)
+12. [ ] Ajouter les graphiques (Recharts ou Chart.js)
+13. [x] ~~Sous-onglet "Financier" (factures)~~ ✅ COMPLÉTÉ (2026-02-27) via Phase D du plan Facturation
+   - `app/api/statistics/financial/route.js` + `components/statistics/Financial*.js`
+   - 3 vues: Par mois, Par client, En attente
 
 ### Phase 3 - Rapports avancés
 
-13. Sous-onglet "Produits" (rapport par produit/groupe)
-14. Sous-onglet "Heures" (rapport heures travaillées)
-15. Tableau de bord (Dashboard) avec widgets résumé
+14. [ ] Sous-onglet "Produits" (rapport par produit/groupe)
+15. [ ] Sous-onglet "Heures" (rapport heures travaillées)
+16. [ ] Tableau de bord (Dashboard) avec widgets résumé
 
 ---
 
@@ -346,4 +350,4 @@ CREATE INDEX idx_delivery_note_materials_delivery_note_id ON delivery_note_mater
 
 ---
 
-*Document créé le 2026-02-19 - À réviser par Martin/Dominique avant implantation.*
+*Document créé le 2026-02-19 - Mis à jour le 2026-05-19 (Phase 1 MVP + sous-onglet Financier complétés).*
