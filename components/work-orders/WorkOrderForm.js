@@ -5,9 +5,10 @@
  *              - Intégration TimeTracker (suivi temps) et MaterialSelector (matériaux)
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion emails et workflow signature client
- * @version 1.3.0
- * @date 2026-05-19
+ * @version 1.3.1
+ * @date 2026-05-20
  * @changelog
+ *   1.3.1 - Saisie manuelle du BA Client forcée en MAJUSCULES (CSS textTransform + onBlur, autoCapitalize="characters" pour clavier mobile)
  *   1.3.0 - UX mobile: bouton "Commencer nouvelle session" déplacé entre la section BA et la Date de travail. Checkbox Prix Jobé déplacée sous le TimeTracker. Sessions affichées en ordre inversé dans le formulaire (dernière en haut, via TimeTracker v2.3.0)
  *   1.2.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.2.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -1525,15 +1526,21 @@ const getFilteredSupplierPurchases = () => {
                 // Mode saisie manuelle
                 <input
                   type="text"
-                  placeholder="Ex: BA-2025-001, Job#12345, PO-ABC-789..."
+                  placeholder="Ex: BA-2025-001, JOB#12345, PO-ABC-789..."
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
+                  style={{ textTransform: 'uppercase' }}
                   value={manualPOValue}
                   onChange={(e) => {
                     setManualPOValue(e.target.value);
                     handleChange('linked_po_id', e.target.value);
                   }}
+                  onBlur={(e) => {
+                    const upper = e.target.value.toUpperCase();
+                    setManualPOValue(upper);
+                    handleChange('linked_po_id', upper);
+                  }}
                   autoCorrect="off"
-                  autoCapitalize="off"
+                  autoCapitalize="characters"
                   spellCheck={false}
                 />
               )}
