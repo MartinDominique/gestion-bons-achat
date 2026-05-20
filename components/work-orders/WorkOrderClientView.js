@@ -4,9 +4,12 @@
  *              - Protection signature si offline + indicateur wifi visible + timeout
  *              - IMPORTANT: Bloque la signature si pas de connexion
  *              - Mobile-first: 95% usage tablette/mobile
- * @version 2.1.0
- * @date 2026-04-08
+ * @version 2.2.0
+ * @date 2026-05-20
  * @changelog
+ *   2.2.0 - Barre du bas: "Accepter et Signer" élargi (ratio 3:1 vs "Fermer")
+ *           Modal signature: boutons Effacer/Annuler/Confirmer placés au-dessus
+ *           du canvas pour éviter les appuis accidentels pendant la signature
  *   2.1.0 - Affichage session_description (optionnel) après les heures de chaque session
  *   2.0.0 - Ajout support complet dark mode (Tailwind dark: variants)
  *           Canvas signature toujours blanc pour compatibilité PDF
@@ -672,12 +675,12 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                             window.location.href = `/bons-travail`;
                           }, 100);
                         }}
-                        className="flex-1 bg-gray-500 dark:bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition-all font-bold text-base flex items-center justify-center shadow-lg"
+                        className="sm:flex-1 bg-gray-500 dark:bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition-all font-bold text-base flex items-center justify-center shadow-lg"
                       >
                         <X className="mr-2" size={20} />
                         Fermer
                       </button>
-                      
+
                       {/* ✅ NOUVEAU: Bouton désactivé si offline */}
                       <button
                         onClick={() => {
@@ -688,7 +691,7 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                           setIsSigning(true);
                         }}
                         disabled={!isOnline}
-                        className={`flex-1 px-8 py-3 rounded-lg transition-all font-bold text-base flex items-center justify-center shadow-xl border-2 ${
+                        className={`sm:flex-[3] px-8 py-3 rounded-lg transition-all font-bold text-base flex items-center justify-center shadow-xl border-2 ${
                           isOnline
                             ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 border-green-500'
                             : 'bg-gray-400 dark:bg-gray-600 text-gray-200 cursor-not-allowed border-gray-400 dark:border-gray-600'
@@ -862,29 +865,9 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                       )}
                     </div>
                     
-                    {/* Zone de signature - toujours blanc pour compatibilité PDF */}
-                    <div>
-                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Signature avec votre doigt ou stylet:
-                      </p>
-                      <div className="border-4 border-gray-400 dark:border-gray-500 rounded-xl bg-white overflow-hidden shadow-inner">
-                        <canvas
-                          ref={canvasRef}
-                          width={800}
-                          height={250}
-                          className="w-full h-64 cursor-crosshair touch-none"
-                          onMouseDown={startDrawing}
-                          onMouseMove={draw}
-                          onMouseUp={stopDrawing}
-                          onTouchStart={startDrawing}
-                          onTouchMove={draw}
-                          onTouchEnd={stopDrawing}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Boutons */}
-                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
+                    {/* Boutons - placés AVANT la zone de signature pour éviter
+                        que les clients appuient dessus par erreur en signant */}
+                    <div className="flex flex-col sm:flex-row gap-3 pb-4 border-b-2 border-gray-200 dark:border-gray-700">
                       <button
                         onClick={clearSignature}
                         className="flex-1 bg-gray-500 dark:bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-600 dark:hover:bg-gray-700 transition-colors font-semibold text-base flex items-center justify-center"
@@ -892,14 +875,14 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                         <X className="mr-2" size={20} />
                         Effacer
                       </button>
-                      
+
                       <button
                         onClick={() => setIsSigning(false)}
                         className="flex-1 bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors font-semibold text-base"
                       >
                         Annuler
                       </button>
-                      
+
                       {/* ✅ NOUVEAU: Bouton désactivé si offline */}
                       <button
                         onClick={handleAcceptWork}
@@ -927,6 +910,27 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
                           </>
                         )}
                       </button>
+                    </div>
+
+                    {/* Zone de signature - toujours blanc pour compatibilité PDF */}
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Signature avec votre doigt ou stylet:
+                      </p>
+                      <div className="border-4 border-gray-400 dark:border-gray-500 rounded-xl bg-white overflow-hidden shadow-inner">
+                        <canvas
+                          ref={canvasRef}
+                          width={800}
+                          height={250}
+                          className="w-full h-64 cursor-crosshair touch-none"
+                          onMouseDown={startDrawing}
+                          onMouseMove={draw}
+                          onMouseUp={stopDrawing}
+                          onTouchStart={startDrawing}
+                          onTouchMove={draw}
+                          onTouchEnd={stopDrawing}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
