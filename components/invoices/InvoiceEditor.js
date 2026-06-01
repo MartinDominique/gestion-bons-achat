@@ -7,9 +7,14 @@
  *              - Affiche coûtant unitaire et quantité en main pour les matériaux
  *              - Code produit cliquable ouvrant le vrai modal d'inventaire (éditable)
  *              - Actions: sauvegarder, envoyer, annuler
- * @version 2.4.1
- * @date 2026-04-13
+ *              - Voyant marge faible: carré du prix vendant en rouge si marge < seuil
+ *                (seuil configurable dans Paramètres, défaut 10%) + bandeau récapitulatif.
+ *                Alerte interne seulement — n'apparaît JAMAIS sur la facture client (PDF).
+ * @version 2.5.0
+ * @date 2026-06-01
  * @changelog
+ *   2.5.0 - Voyant marge faible: carré prix vendant rouge + icône avertissement + bandeau
+ *           récapitulatif quand marge < seuil min_margin_percent (Paramètres). Interne seulement.
  *   2.4.1 - Ajout traduction reference_type 'manual_edit' → 'Modification manuelle' dans historique mouvements
  *   2.4.0 - Fix prix matériaux BL: priorisation prix BA (client_po_items) > BL > inventaire
  *           Alignement fallbacks description/code produit BL avec BT
@@ -30,7 +35,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer } from 'lucide-react';
+import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTriangle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
 
@@ -216,6 +221,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   // Tax rates from settings
   const tpsRate = settings?.tps_rate || 5.0;
   const tvqRate = settings?.tvq_rate || 9.975;
+
+  // Seuil de marge minimale (alerte interne, jamais sur la facture client)
+  const minMarginPercent = settings?.min_margin_percent ?? 10;
 
   // Facture envoyée = verrouillée en lecture seule
   const isLocked = invoice?.status === 'sent' || invoice?.status === 'paid';
@@ -721,11 +729,31 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     return `${(((selling - cost) / cost) * 100).toFixed(1)}%`;
   };
 
+  // True si la marge est sous le seuil minimal (coûtant connu et > 0 requis)
+  const isLowMargin = (costPrice, sellingPrice) => {
+    const cost = parseFloat(costPrice) || 0;
+    const selling = parseFloat(sellingPrice) || 0;
+    if (cost <= 0) return false;
+    const margin = ((selling - cost) / cost) * 100;
+    return margin < minMarginPercent;
+  };
+
   // Helper: get product info for a material line
   const getProductInfo = (line) => {
     const pid = line.product_id || line.detail;
     return pid ? productDataMap[pid] : null;
   };
+
+  // Nombre de lignes matériaux dont la marge est sous le seuil
+  const lowMarginCount = useMemo(() => {
+    return lineItems.reduce((count, line) => {
+      if (line.type !== 'material') return count;
+      const pid = line.product_id || line.detail;
+      const info = pid ? productDataMap[pid] : null;
+      if (info && isLowMargin(info.cost_price, line.unit_price)) return count + 1;
+      return count;
+    }, 0);
+  }, [lineItems, productDataMap, minMarginPercent]);
 
   const sourceNumber = invoice?.source_number || (sourceData && (source.type === 'bt' ? sourceData.bt_number : sourceData.bl_number)) || '';
   const clientName = invoice?.client_name || sourceData?.client?.name || sourceData?.client_name || '';
@@ -771,6 +799,17 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           {success && (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 text-sm text-green-700 dark:text-green-400">
               {success}
+            </div>
+          )}
+
+          {/* Bandeau alerte marge faible (interne — jamais sur la facture client) */}
+          {lowMarginCount > 0 && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>
+                <strong>{lowMarginCount} article{lowMarginCount > 1 ? 's' : ''}</strong> sous la marge minimale de {minMarginPercent}&nbsp;% (carré du prix vendant en rouge).
+                Vérifiez le prix vendant ou laissez tel quel si c&apos;est voulu. Cette alerte reste interne et n&apos;apparaît pas sur la facture client.
+              </span>
             </div>
           )}
 
@@ -833,6 +872,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               lineItems.map((line, index) => {
                 const productInfo = line.type === 'material' ? getProductInfo(line) : null;
                 const productCode = line.product_id || line.detail;
+                const lowMargin = !!(productInfo && isLowMargin(productInfo.cost_price, line.unit_price));
 
                 return (
                 <div
@@ -896,14 +936,22 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 dark:text-gray-400">Prix</label>
+                        <label className={`text-xs flex items-center gap-1 ${lowMargin ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                          {lowMargin && <AlertTriangle className="w-3 h-3" />}
+                          Prix
+                        </label>
                         <input
                           type="number"
                           value={line.unit_price}
                           onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
                           onFocus={(e) => e.target.select()}
                           readOnly={isLocked}
-                          className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right ${isLocked ? 'opacity-60' : ''}`}
+                          title={lowMargin ? `Marge sous le seuil de ${minMarginPercent}%` : undefined}
+                          className={`w-full px-2 py-1.5 border rounded text-sm text-right ${isLocked ? 'opacity-60' : ''} ${
+                            lowMargin
+                              ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 font-semibold'
+                              : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-gray-200'
+                          }`}
                           inputMode="decimal"
                           step="0.01"
                           autoCorrect="off"
@@ -923,7 +971,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                       <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded px-2 py-1.5">
                         <span>Coûtant: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(productInfo.cost_price)}</span></span>
                         <span>En main: <span className="font-medium text-gray-700 dark:text-gray-300">{parseFloat(productInfo.stock_qty) || 0}</span></span>
-                        <span className={`font-medium ${getMarginColor(productInfo.cost_price, line.unit_price)}`}>
+                        <span className={`font-medium flex items-center gap-1 ${lowMargin ? 'text-red-600 dark:text-red-400' : getMarginColor(productInfo.cost_price, line.unit_price)}`}>
+                          {lowMargin && <AlertTriangle className="w-3 h-3" />}
                           {getMarginPercentage(productInfo.cost_price, line.unit_price)}
                         </span>
                       </div>
@@ -986,19 +1035,29 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         />
                       </div>
                       <div className="col-span-2 text-right">
-                        <input
-                          type="number"
-                          value={line.unit_price}
-                          onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
-                          onFocus={(e) => e.target.select()}
-                          readOnly={isLocked}
-                          className={`w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm text-right ${isLocked ? 'opacity-60' : ''}`}
-                          inputMode="decimal"
-                          step="0.01"
-                          autoCorrect="off"
-                          autoCapitalize="off"
-                          spellCheck={false}
-                        />
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={line.unit_price}
+                            onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            readOnly={isLocked}
+                            title={lowMargin ? `Marge sous le seuil de ${minMarginPercent}%` : undefined}
+                            className={`w-full px-2 py-1.5 border rounded text-sm text-right ${isLocked ? 'opacity-60' : ''} ${
+                              lowMargin
+                                ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 font-semibold pr-7'
+                                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-gray-200'
+                            }`}
+                            inputMode="decimal"
+                            step="0.01"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
+                          />
+                          {lowMargin && (
+                            <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          )}
+                        </div>
                       </div>
                       <div className="col-span-1 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
                         {formatCurrency(line.total)}
@@ -1022,8 +1081,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         <div className="col-span-8 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 pl-1">
                           <span>Coûtant: <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(productInfo.cost_price)}</span></span>
                           <span>En main: <span className="font-medium text-gray-700 dark:text-gray-300">{parseFloat(productInfo.stock_qty) || 0}</span></span>
-                          <span className={`font-medium ${getMarginColor(productInfo.cost_price, line.unit_price)}`}>
+                          <span className={`font-medium flex items-center gap-1 ${lowMargin ? 'text-red-600 dark:text-red-400' : getMarginColor(productInfo.cost_price, line.unit_price)}`}>
+                            {lowMargin && <AlertTriangle className="w-3 h-3" />}
                             Marge: {getMarginPercentage(productInfo.cost_price, line.unit_price)}
+                            {lowMargin && ` (< ${minMarginPercent}%)`}
                           </span>
                           {productInfo.supplier && (
                             <span>Fourn.: <span className="font-medium text-gray-700 dark:text-gray-300">{productInfo.supplier}</span></span>

@@ -1365,6 +1365,25 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-05-19:
     labels UI mis a jour, outils de diagnostic (modal + filtre)
   - `CLAUDE.md` — Ajout bug corrige dans section "Bugs connus"
 
+### 2026-06-01 - Voyant marge faible dans l'éditeur de facture
+- **Besoin (Martin):** Dans l'onglet Facturation, signaler quand le prix vendant d'un article
+  n'a pas une marge de profit suffisante. Si la marge est sous 10%, le carré du prix vendant
+  doit passer en rouge. Une marge laissée basse volontairement ne doit JAMAIS apparaître sur
+  la facture client.
+- **Decisions (Martin):**
+  - Seuil **configurable** dans Paramètres (`min_margin_percent`, défaut 10%)
+  - **Avertissement visuel** seulement (pas de bouton d'acquittement) — le rouge reste affiché
+  - **Bandeau récapitulatif** en haut de la facture comptant les articles sous le seuil
+- **Confidentialité:** Vérifié — le PDF facture (`email-service.js`) ne contient ni coûtant ni
+  marge. L'alerte est 100% interne à l'écran de saisie, jamais transmise au client.
+- **Calcul de marge:** `((vendant - coûtant) / coûtant) × 100`. Alerte seulement si coûtant > 0.
+- **Fichiers modifies/crees:**
+  - `supabase/migrations/20260601_add_min_margin_percent.sql` — Nouvelle colonne `min_margin_percent` (défaut 10)
+  - `app/api/settings/route.js` v1.2.0 — Champ `min_margin_percent` (défaut + validation 0-1000)
+  - `app/(protected)/parametres/page.js` v2.2.0 — Champ "Marge de profit minimale" (section Facturation)
+  - `components/invoices/InvoiceEditor.js` v2.5.0 — Carré prix vendant rouge + icône ⚠️ + bandeau
+- ⚠️ **Migration SQL à exécuter manuellement dans Supabase Dashboard**
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-05-19 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-06-01 par Claude AI*
