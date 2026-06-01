@@ -632,6 +632,14 @@ CRON_SECRET                   # Auth pour cron jobs
     - `lib/services/email-service.js` v3.2.0 — PDF BL avec colonnes Code/Desc/U/M/Commandé/Expédié/B/O conditionnelles
     - Note: Migration SQL à exécuter manuellement dans Supabase Dashboard
 
+17. ~~**Voyant marge faible (Facturation)**~~ - ✅ COMPLÉTÉ 2026-06-01
+    - `supabase/migrations/20260601_add_min_margin_percent.sql` — Colonne `min_margin_percent` (défaut 10)
+    - `app/api/settings/route.js` v1.2.0 — Champ `min_margin_percent` (défaut + validation)
+    - `app/(protected)/parametres/page.js` v2.2.0 — Champ "Marge de profit minimale" (section Facturation)
+    - `components/invoices/InvoiceEditor.js` v2.5.0 — Carré du prix vendant en rouge + icône ⚠️ + bandeau récapitulatif quand marge < seuil
+    - Alerte 100% interne (écran de saisie), jamais sur la facture client (PDF sans coûtant/marge)
+    - Note: Migration SQL à exécuter manuellement dans Supabase Dashboard
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)

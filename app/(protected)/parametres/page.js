@@ -4,9 +4,10 @@
  *              - Section Apparence (thème clair/sombre)
  *              - Section Taux & Tarifs horaires (taux régulier, 1.5x, 2x, augmentation)
  *              - Section Facturation (numéros taxes, taux TPS/TVQ, conditions, N° facture)
- * @version 2.1.0
- * @date 2026-03-12
+ * @version 2.2.0
+ * @date 2026-06-01
  * @changelog
+ *   2.2.0 - Ajout champ Marge de profit minimale (min_margin_percent) - alerte facturation
  *   2.1.0 - Ajout champ Message de propriété (invoice_ownership_note)
  *   2.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur les champs texte
  *   2.0.0 - Ajout sections Taux & Tarifs et Facturation (Phase A Fondations)
@@ -419,6 +420,37 @@ export default function ParametresPage() {
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">%</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Marge de profit minimale */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="max-w-xs">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Marge de profit minimale
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="1000"
+                    className="w-full px-3 py-2 pr-8 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    value={settings?.min_margin_percent ?? ''}
+                    onChange={(e) => updateField('min_margin_percent', parseFloat(e.target.value) || 0)}
+                    onFocus={(e) => e.target.select()}
+                    inputMode="decimal"
+                    placeholder="10"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">%</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Sur une facture, le prix vendant d&apos;un article passe en rouge si sa marge
+                  est sous ce seuil. Alerte interne seulement &mdash; jamais affichée au client.
+                </p>
               </div>
             </div>
 
