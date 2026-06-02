@@ -1384,6 +1384,26 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-05-19:
   - `components/invoices/InvoiceEditor.js` v2.5.0 — Carré prix vendant rouge + icône ⚠️ + bandeau
 - ⚠️ **Migration SQL à exécuter manuellement dans Supabase Dashboard**
 
+### 2026-06-02 - Recherche dans l'onglet Facturation (factures)
+- **Besoin (Martin):** Dans l'onglet Facturation, pouvoir rechercher les factures par # BT,
+  # BL, client et par plage de dates (de telle date à telle date). Ajouter aussi des boutons
+  pour afficher uniquement les BT ou uniquement les BL — sans mémoire à la sortie de l'onglet.
+- **Implementation:**
+  - Recherche texte (debounce 400ms) couvrant `invoice_number`, `client_name`, `source_number`
+    (donc # facture, # BT, # BL, nom du client)
+  - Plage de dates `Du` / `au` sur `invoice_date`
+  - Boutons Type: Tous / BT / BL (filtre `source_type`)
+  - Bouton "Réinitialiser" quand au moins un filtre est actif
+  - **Pas de persistance:** filtres en state local du composant → réinitialisés au démontage
+    (en quittant l'onglet Facturation). Aucun localStorage.
+- **Note copie bureau:** Vérifié — l'envoi d'une facture par l'app met DÉJÀ le bureau
+  (`COMPANY_EMAIL`) en CC, avec le sujet `Facture {numéro} — Services TMT Inc.` et le PDF en
+  pièce jointe (`app/api/invoices/[id]/send-email/route.js` lignes 388-391). Comportement
+  identique aux BT/BL. Aucun changement requis.
+- **Fichiers modifies:**
+  - `app/api/invoices/route.js` v1.1.0 — GET: filtres `source_type`, `date_from`, `date_to`
+  - `components/invoices/InvoiceManager.js` v1.8.0 — UI recherche + filtres non persistés
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-06-01 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-06-02 par Claude AI*
