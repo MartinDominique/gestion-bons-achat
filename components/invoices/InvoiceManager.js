@@ -6,9 +6,10 @@
  *              - Actions: créer, voir, renvoyer, marquer payée
  *              - Rapport Acomba: export PDF + CSV mensuel ventilé
  *              - Numéros de référence cliquables (SplitView)
- * @version 1.8.0
+ * @version 1.9.0
  * @date 2026-06-02
  * @changelog
+ *   1.9.0 - Recherche onglet "À facturer": texte (# BT/BL/client), plage de dates, type BT/BL (filtrage client-side, non persisté)
  *   1.8.0 - Recherche onglet "Factures": texte (# facture/BT/BL/client), plage de dates, type BT/BL (non persistés)
  *   1.7.0 - Enrichissement aperçu "À facturer": description, heures, transport, nb matériaux
  *   1.6.0 - Ajout bouton "Imprimer" sur factures (génère PDF + marque envoyée, sans email)
@@ -49,6 +50,12 @@ export default function InvoiceManager() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [sourceTypeFilter, setSourceTypeFilter] = useState('all'); // all | work_order | delivery_note
+
+  // Recherche/filtres "À facturer" (filtrage client-side, NON persistés)
+  const [tiSearch, setTiSearch] = useState('');        // texte brut (# BT/BL, client)
+  const [tiDateFrom, setTiDateFrom] = useState('');
+  const [tiDateTo, setTiDateTo] = useState('');
+  const [tiTypeFilter, setTiTypeFilter] = useState('all'); // all | bt | bl
 
   // Debounce du champ de recherche (400ms) pour éviter une requête par frappe
   useEffect(() => {
@@ -259,14 +266,16 @@ export default function InvoiceManager() {
     }
   };
 
-  // Marquer TOUS les items comme facturés externement (Acomba)
+  // Marquer TOUS les items affichés comme facturés externement (Acomba)
   const handleMarkAllExternal = async () => {
-    const count = toInvoiceItems.length;
-    if (!confirm(`Marquer les ${count} documents comme déjà facturés (Acomba)?\n\nTous les BT/BL de la liste "À facturer" seront marqués comme facturés.`)) return;
+    const targetItems = filteredToInvoiceItems;
+    const count = targetItems.length;
+    if (count === 0) return;
+    if (!confirm(`Marquer les ${count} documents affichés comme déjà facturés (Acomba)?\n\nLes BT/BL actuellement affichés dans la liste "À facturer" seront marqués comme facturés.`)) return;
 
     setActionLoading(prev => ({ ...prev, 'bulk-external': true }));
     try {
-      const items = toInvoiceItems.map(item => ({ type: item._type, id: item.id }));
+      const items = targetItems.map(item => ({ type: item._type, id: item.id }));
       const res = await fetch('/api/invoices/mark-external', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -451,6 +460,17 @@ export default function InvoiceManager() {
   const hasActiveSearchFilters =
     !!searchInput || !!dateFrom || !!dateTo || sourceTypeFilter !== 'all' || invoiceFilter !== 'all';
 
+  // Réinitialiser les filtres de l'onglet "À facturer"
+  const resetToInvoiceFilters = () => {
+    setTiSearch('');
+    setTiDateFrom('');
+    setTiDateTo('');
+    setTiTypeFilter('all');
+  };
+
+  const hasActiveToInvoiceFilters =
+    !!tiSearch || !!tiDateFrom || !!tiDateTo || tiTypeFilter !== 'all';
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     const [year, month, day] = dateStr.split('-');
@@ -512,6 +532,19 @@ export default function InvoiceManager() {
       _materialCount: bl.materials?.length || 0,
     })),
   ].sort((a, b) => (b._date || '').localeCompare(a._date || ''));
+
+  // Application des filtres de recherche "À facturer" (client-side)
+  const filteredToInvoiceItems = toInvoiceItems.filter(item => {
+    if (tiTypeFilter !== 'all' && item._type !== tiTypeFilter) return false;
+    if (tiDateFrom && (item._date || '') < tiDateFrom) return false;
+    if (tiDateTo && (item._date || '') > tiDateTo) return false;
+    if (tiSearch) {
+      const q = tiSearch.trim().toLowerCase();
+      const haystack = `${item._number || ''} ${item._clientName || ''}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
@@ -615,6 +648,90 @@ export default function InvoiceManager() {
               </div>
             ) : (
               <>
+                {/* Recherche / filtres "À facturer" */}
+                <div className="p-4 border-b dark:border-gray-700 space-y-3">
+                  {/* Ligne 0: Recherche (texte + dates) */}
+                  <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:items-center">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={tiSearch}
+                        onChange={(e) => setTiSearch(e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="Rechercher: # BT/BL, client..."
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        className="w-full pl-9 pr-9 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      />
+                      {tiSearch && (
+                        <button
+                          onClick={() => setTiSearch('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          title="Effacer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Du</span>
+                      <input
+                        type="date"
+                        value={tiDateFrom}
+                        onChange={(e) => setTiDateFrom(e.target.value)}
+                        className="px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">au</span>
+                      <input
+                        type="date"
+                        value={tiDateTo}
+                        onChange={(e) => setTiDateTo(e.target.value)}
+                        className="px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      />
+                    </div>
+
+                    {hasActiveToInvoiceFilters && (
+                      <button
+                        onClick={resetToInvoiceFilters}
+                        className="px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+                        title="Réinitialiser les filtres"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Réinitialiser
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Ligne 1: Type (BT / BL) */}
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Type:</span>
+                    {[
+                      { value: 'all', label: 'Tous', Icon: Receipt },
+                      { value: 'bt', label: 'BT', Icon: FileText },
+                      { value: 'bl', label: 'BL', Icon: Truck },
+                    ].map(f => (
+                      <button
+                        key={f.value}
+                        onClick={() => setTiTypeFilter(f.value)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all inline-flex items-center gap-1.5 ${
+                          tiTypeFilter === f.value
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        <f.Icon className="w-3.5 h-3.5" />
+                        {f.label}
+                      </button>
+                    ))}
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
+                      {filteredToInvoiceItems.length} / {toInvoiceItems.length}
+                    </span>
+                  </div>
+                </div>
+
                 {/* Barre d'action bulk */}
                 <div className="p-3 border-b dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <p className="text-sm text-amber-800 dark:text-amber-300">
@@ -635,9 +752,23 @@ export default function InvoiceManager() {
                   </button>
                 </div>
 
+                {filteredToInvoiceItems.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Search className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-600 dark:text-gray-400">Aucun BT/BL ne correspond à votre recherche</p>
+                    <button
+                      onClick={resetToInvoiceFilters}
+                      className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Réinitialiser les filtres
+                    </button>
+                  </div>
+                ) : (
+                <>
                 {/* Mobile */}
                 <div className="lg:hidden">
-                  {toInvoiceItems.map(item => (
+                  {filteredToInvoiceItems.map(item => (
                     <div
                       key={`${item._type}-${item.id}`}
                       className="p-3 border-b dark:border-b-gray-700 last:border-b-0"
@@ -714,7 +845,7 @@ export default function InvoiceManager() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {toInvoiceItems.map((item, index) => (
+                      {filteredToInvoiceItems.map((item, index) => (
                         <tr key={`${item._type}-${item.id}`}
                           className={`hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors ${
                             index % 2 === 0 ? 'bg-white/50 dark:bg-gray-800/50' : 'bg-gray-50/50 dark:bg-gray-900/30'
@@ -794,6 +925,8 @@ export default function InvoiceManager() {
                     </tbody>
                   </table>
                 </div>
+                </>
+                )}
               </>
             )
           ) : (

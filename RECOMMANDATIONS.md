@@ -1400,9 +1400,15 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-05-19:
   (`COMPANY_EMAIL`) en CC, avec le sujet `Facture {numéro} — Services TMT Inc.` et le PDF en
   pièce jointe (`app/api/invoices/[id]/send-email/route.js` lignes 388-391). Comportement
   identique aux BT/BL. Aucun changement requis.
+- **Mise à jour (même jour):** Recherche ajoutée AUSSI dans l'onglet **« À facturer »** (à la
+  demande de Martin), en plus de « Factures ». Filtrage client-side (la liste BT/BL y est déjà
+  chargée): texte (# BT/BL, client), plage de dates, boutons Type Tous/BT/BL, compteur
+  « affichés / total », bouton Réinitialiser. Non persisté. Le bouton « Tout marquer facturé
+  (Acomba) » agit désormais sur les items affichés (filtrés).
 - **Fichiers modifies:**
   - `app/api/invoices/route.js` v1.1.0 — GET: filtres `source_type`, `date_from`, `date_to`
-  - `components/invoices/InvoiceManager.js` v1.8.0 — UI recherche + filtres non persistés
+  - `components/invoices/InvoiceManager.js` v1.9.0 — UI recherche dans les 2 onglets
+    (« Factures » côté serveur, « À facturer » côté client), filtres non persistés
 
 ---
 
