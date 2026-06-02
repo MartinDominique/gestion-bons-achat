@@ -3,9 +3,10 @@
  * @description API CRUD pour les Factures (Phase B — Facturation MVP)
  *              - POST: Créer une nouvelle facture à partir d'un BT ou BL
  *              - GET: Lister les factures avec filtres, tri et pagination
- * @version 1.0.0
- * @date 2026-02-27
+ * @version 1.1.0
+ * @date 2026-06-02
  * @changelog
+ *   1.1.0 - GET: ajout filtres source_type (BT/BL) + date_from/date_to (plage de dates)
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
 
@@ -177,7 +178,7 @@ export async function POST(request) {
 /**
  * GET /api/invoices
  * Liste les factures avec filtres et pagination
- * Params: status, client_id, search, month (YYYY-MM), page, limit
+ * Params: status, client_id, search, source_type, date_from, date_to, month (YYYY-MM), page, limit
  */
 export async function GET(request) {
   try {
@@ -187,6 +188,9 @@ export async function GET(request) {
     const status = searchParams.get('status');
     const client_id = searchParams.get('client_id');
     const search = searchParams.get('search');
+    const source_type = searchParams.get('source_type'); // work_order | delivery_note
+    const date_from = searchParams.get('date_from'); // Format: YYYY-MM-DD
+    const date_to = searchParams.get('date_to');     // Format: YYYY-MM-DD
     const month = searchParams.get('month'); // Format: YYYY-MM
 
     let query = supabaseAdmin
@@ -231,6 +235,18 @@ export async function GET(request) {
       query = query.or(
         `invoice_number.ilike.%${search}%,client_name.ilike.%${search}%,source_number.ilike.%${search}%`
       );
+    }
+
+    if (source_type && source_type !== 'all') {
+      query = query.eq('source_type', source_type);
+    }
+
+    if (date_from) {
+      query = query.gte('invoice_date', date_from);
+    }
+
+    if (date_to) {
+      query = query.lte('invoice_date', date_to);
     }
 
     if (month) {

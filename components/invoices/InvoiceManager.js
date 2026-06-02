@@ -6,9 +6,10 @@
  *              - Actions: créer, voir, renvoyer, marquer payée
  *              - Rapport Acomba: export PDF + CSV mensuel ventilé
  *              - Numéros de référence cliquables (SplitView)
- * @version 1.7.0
- * @date 2026-04-10
+ * @version 1.8.0
+ * @date 2026-06-02
  * @changelog
+ *   1.8.0 - Recherche onglet "Factures": texte (# facture/BT/BL/client), plage de dates, type BT/BL (non persistés)
  *   1.7.0 - Enrichissement aperçu "À facturer": description, heures, transport, nb matériaux
  *   1.6.0 - Ajout bouton "Imprimer" sur factures (génère PDF + marque envoyée, sans email)
  *   1.5.0 - Fix: handleCreateInvoice utilise endpoint individuel pour récupérer matériaux + client complet (transport_fee, hourly_rate)
@@ -22,7 +23,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer, Package } from 'lucide-react';
+import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer, Package, Search, X } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
 import { generateAcombaReportPDF, generateAcombaReportCSV } from './AcombaReportExport';
 import { ReferenceLink } from '../SplitView';
@@ -41,6 +42,19 @@ export default function InvoiceManager() {
   const [invoices, setInvoices] = useState([]);
   const [invoiceFilter, setInvoiceFilter] = useState('all');
   const [invoicePagination, setInvoicePagination] = useState(null);
+
+  // Recherche/filtres "Factures" (NON persistés: réinitialisés au démontage de l'onglet)
+  const [searchInput, setSearchInput] = useState(''); // texte brut (# facture, # BT/BL, client)
+  const [searchTerm, setSearchTerm] = useState('');    // texte appliqué (debounce)
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [sourceTypeFilter, setSourceTypeFilter] = useState('all'); // all | work_order | delivery_note
+
+  // Debounce du champ de recherche (400ms) pour éviter une requête par frappe
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchInput.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   // Invoice editor
   const [showEditor, setShowEditor] = useState(false);
@@ -123,6 +137,18 @@ export default function InvoiceManager() {
         if (invoiceFilter !== 'all') {
           params.set('status', invoiceFilter);
         }
+        if (searchTerm) {
+          params.set('search', searchTerm);
+        }
+        if (sourceTypeFilter !== 'all') {
+          params.set('source_type', sourceTypeFilter);
+        }
+        if (dateFrom) {
+          params.set('date_from', dateFrom);
+        }
+        if (dateTo) {
+          params.set('date_to', dateTo);
+        }
 
         const res = await fetch(`/api/invoices?${params.toString()}`);
         if (res.ok) {
@@ -139,7 +165,7 @@ export default function InvoiceManager() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, invoiceFilter]);
+  }, [activeTab, invoiceFilter, searchTerm, sourceTypeFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchData();
@@ -411,6 +437,19 @@ export default function InvoiceManager() {
       setReportLoading(false);
     }
   };
+
+  // Réinitialiser tous les filtres de recherche des factures
+  const resetInvoiceFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setDateFrom('');
+    setDateTo('');
+    setSourceTypeFilter('all');
+    setInvoiceFilter('all');
+  };
+
+  const hasActiveSearchFilters =
+    !!searchInput || !!dateFrom || !!dateTo || sourceTypeFilter !== 'all' || invoiceFilter !== 'all';
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -762,6 +801,86 @@ export default function InvoiceManager() {
             <>
               {/* Filtres + Rapport Acomba */}
               <div className="p-4 border-b dark:border-gray-700 space-y-3">
+                {/* Ligne 0: Recherche (texte + dates + type) */}
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:items-center">
+                  {/* Recherche texte: # facture, # BT/BL, client */}
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      placeholder="Rechercher: # facture, # BT/BL, client..."
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      className="w-full pl-9 pr-9 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                    {searchInput && (
+                      <button
+                        onClick={() => setSearchInput('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        title="Effacer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Plage de dates */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Du</span>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">au</span>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+
+                  {hasActiveSearchFilters && (
+                    <button
+                      onClick={resetInvoiceFilters}
+                      className="px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+                      title="Réinitialiser les filtres"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Réinitialiser
+                    </button>
+                  )}
+                </div>
+
+                {/* Ligne 0b: Type de source (BT / BL) */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Type:</span>
+                  {[
+                    { value: 'all', label: 'Tous', Icon: Receipt },
+                    { value: 'work_order', label: 'BT', Icon: FileText },
+                    { value: 'delivery_note', label: 'BL', Icon: Truck },
+                  ].map(f => (
+                    <button
+                      key={f.value}
+                      onClick={() => setSourceTypeFilter(f.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all inline-flex items-center gap-1.5 ${
+                        sourceTypeFilter === f.value
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <f.Icon className="w-3.5 h-3.5" />
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Ligne 1: Filtres statut */}
                 <div className="flex flex-wrap gap-2 items-center">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-2">Statut:</span>
@@ -824,7 +943,18 @@ export default function InvoiceManager() {
               {invoices.length === 0 ? (
                 <div className="p-8 text-center">
                   <Receipt className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-600 dark:text-gray-400">Aucune facture trouvée</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {hasActiveSearchFilters ? 'Aucune facture ne correspond à votre recherche' : 'Aucune facture trouvée'}
+                  </p>
+                  {hasActiveSearchFilters && (
+                    <button
+                      onClick={resetInvoiceFilters}
+                      className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Réinitialiser les filtres
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
