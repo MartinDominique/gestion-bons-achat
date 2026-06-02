@@ -10,9 +10,13 @@
  *              - Voyant marge faible: carré du prix vendant en rouge si marge < seuil
  *                (seuil configurable dans Paramètres, défaut 10%) + bandeau récapitulatif.
  *                Alerte interne seulement — n'apparaît JAMAIS sur la facture client (PDF).
- * @version 2.5.0
- * @date 2026-06-01
+ *              - Sélection des destinataires d'envoi: liste des emails du client (cases
+ *                à cocher) + ajout d'une adresse personnalisée, au-dessus des boutons d'action.
+ * @version 2.6.0
+ * @date 2026-06-02
  * @changelog
+ *   2.6.0 - Sélection des destinataires email avant envoi (cases à cocher emails client
+ *           + ajout adresse personnalisée). Emails sélectionnés transmis à send-email.
  *   2.5.0 - Voyant marge faible: carré prix vendant rouge + icône avertissement + bandeau
  *           récapitulatif quand marge < seuil min_margin_percent (Paramètres). Interne seulement.
  *   2.4.1 - Ajout traduction reference_type 'manual_edit' → 'Modification manuelle' dans historique mouvements
@@ -35,7 +39,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTriangle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer } from 'lucide-react';
+import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTriangle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
 
@@ -206,6 +210,11 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [success, setSuccess] = useState(null);
   const [sourceDescription, setSourceDescription] = useState('');
 
+  // Destinataires email pour l'envoi de la facture
+  // [{ email, label, checked }]
+  const [emailRecipients, setEmailRecipients] = useState([]);
+  const [newEmail, setNewEmail] = useState('');
+
   // Product data map: product_id → { cost_price, stock_qty, ... }
   const [productDataMap, setProductDataMap] = useState({});
 
@@ -282,6 +291,35 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       setNotes(settings?.invoice_footer_note || '');
     }
   }, [invoice, sourceData, source?.type, settings]);
+
+  // Construire la liste des destinataires email à partir des emails du client
+  // Ordre de priorité (cascade): Facturation > Administration > Principal > Secondaire
+  // Le premier disponible est coché par défaut (= comportement d'envoi actuel)
+  useEffect(() => {
+    const client = invoice?.client || sourceData?.client;
+    if (!client) {
+      setEmailRecipients([]);
+      return;
+    }
+
+    const candidates = [
+      { email: client.email_billing, label: 'Facturation' },
+      { email: client.email_admin, label: 'Administration' },
+      { email: client.email, label: 'Principal' },
+      { email: client.email_2, label: 'Secondaire' },
+    ].filter(c => c.email && c.email.trim());
+
+    const seen = new Set();
+    const unique = [];
+    candidates.forEach(c => {
+      const key = c.email.trim().toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      unique.push({ email: c.email.trim(), label: c.label });
+    });
+
+    setEmailRecipients(unique.map((c, i) => ({ ...c, checked: i === 0 })));
+  }, [invoice, sourceData]);
 
   // Fetch product data (cost_price, stock_qty) for material lines
   useEffect(() => {
@@ -497,8 +535,46 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     }]);
   }, []);
 
+  // Cocher/décocher un destinataire email
+  const toggleRecipient = useCallback((index) => {
+    setEmailRecipients(prev => prev.map((r, i) => i === index ? { ...r, checked: !r.checked } : r));
+  }, []);
+
+  // Ajouter une adresse email personnalisée à la liste des destinataires
+  const addEmailRecipient = useCallback(() => {
+    const email = newEmail.trim();
+    if (!email) return;
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!valid) {
+      setError('Adresse email invalide');
+      return;
+    }
+    const key = email.toLowerCase();
+    setEmailRecipients(prev => {
+      const existing = prev.findIndex(r => r.email.toLowerCase() === key);
+      if (existing >= 0) {
+        // Déjà présente: simplement la cocher
+        return prev.map((r, i) => i === existing ? { ...r, checked: true } : r);
+      }
+      return [...prev, { email, label: 'Ajoutée', checked: true }];
+    });
+    setNewEmail('');
+  }, [newEmail]);
+
+  // Adresses cochées (transmises à send-email)
+  const selectedEmails = useMemo(
+    () => emailRecipients.filter(r => r.checked).map(r => r.email),
+    [emailRecipients]
+  );
+
   // Sauvegarder facture (retirer product_id des line_items avant sauvegarde)
   const handleSave = async (andSend = false) => {
+    // Si on envoie et qu'il y a des destinataires possibles mais aucun coché → bloquer
+    if (andSend && emailRecipients.length > 0 && selectedEmails.length === 0) {
+      setError('Sélectionnez au moins une adresse email, ou utilisez « Imprimer » pour générer le PDF sans envoi.');
+      return;
+    }
+
     if (andSend) { setSending(true); } else { setSaving(true); }
     setError(null);
 
@@ -575,7 +651,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         const sendRes = await fetch(`/api/invoices/${invoiceId}/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
+          body: JSON.stringify(selectedEmails.length > 0 ? { emails: selectedEmails } : {}),
         });
         const sendData = await sendRes.json();
         if (!sendData.success) {
@@ -1165,6 +1241,73 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               spellCheck={true}
             />
           </div>
+
+          {/* Destinataires de l'envoi par email */}
+          {!isLocked && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1.5">
+                <Mail className="w-4 h-4 text-emerald-600" />
+                Envoyer la facture à
+              </label>
+              <div className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 p-3 space-y-2">
+                {emailRecipients.length === 0 ? (
+                  <p className="text-sm text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    Aucune adresse email enregistrée pour ce client. Ajoutez-en une ci-dessous,
+                    ou utilisez « Imprimer » pour générer le PDF sans envoi.
+                  </p>
+                ) : (
+                  emailRecipients.map((r, idx) => (
+                    <label
+                      key={`${r.email}-${idx}`}
+                      className="flex items-center gap-2 cursor-pointer py-1"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={r.checked}
+                        onChange={() => toggleRecipient(idx)}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-800 dark:text-gray-200 break-all">{r.email}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {r.label}
+                      </span>
+                    </label>
+                  ))
+                )}
+
+                {/* Ajouter une adresse personnalisée */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t dark:border-gray-700">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addEmailRecipient();
+                      }
+                    }}
+                    placeholder="Ajouter une adresse email..."
+                    inputMode="email"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={addEmailRecipient}
+                    disabled={!newEmail.trim()}
+                    className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer avec actions */}

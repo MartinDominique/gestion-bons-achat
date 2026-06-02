@@ -4,9 +4,10 @@
  *              - GET: Récupérer une facture complète par ID
  *              - PUT: Mettre à jour une facture (lignes, totaux, statut)
  *              - DELETE: Supprimer une facture (brouillon seulement)
- * @version 1.0.0
- * @date 2026-02-27
+ * @version 1.1.0
+ * @date 2026-06-02
  * @changelog
+ *   1.1.0 - Ajout email_2 au SELECT client (sélection des destinataires d'envoi facture)
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
 
@@ -25,7 +26,7 @@ export async function GET(request, { params }) {
       .from('invoices')
       .select(`
         *,
-        client:clients(id, name, company, address, email, email_admin, email_billing, phone, payment_terms, hourly_rate_regular, transport_fee)
+        client:clients(id, name, company, address, email, email_admin, email_billing, email_2, phone, payment_terms, hourly_rate_regular, transport_fee)
       `)
       .eq('id', parseInt(id))
       .single();
