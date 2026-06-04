@@ -4,9 +4,10 @@
  *              - Protection signature si offline + indicateur wifi visible + timeout
  *              - IMPORTANT: Bloque la signature si pas de connexion
  *              - Mobile-first: 95% usage tablette/mobile
- * @version 2.2.0
- * @date 2026-05-20
+ * @version 2.3.0
+ * @date 2026-06-04
  * @changelog
+ *   2.3.0 - Fermeture quasi-instantanée après signature: délai réduit 500ms→100ms
  *   2.2.0 - Barre du bas: "Accepter et Signer" élargi (ratio 3:1 vs "Fermer")
  *           Modal signature: boutons Effacer/Annuler/Confirmer placés au-dessus
  *           du canvas pour éviter les appuis accidentels pendant la signature
@@ -213,10 +214,10 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
           console.log('✅ Email envoyé et statut confirmé à "sent" - Fermeture');
           
           onStatusUpdate?.('sent');
-          
+
           setTimeout(() => {
             window.close();
-          }, 500);
+          }, 100);
           
         } else if (result.autoSendResult.needsManualSend) {
           onStatusUpdate?.(result.workOrderStatus || 'pending_send');
