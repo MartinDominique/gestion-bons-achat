@@ -386,7 +386,8 @@ components/statistics/FinancialFilters.js     → Filtres financiers (période, 
 components/statistics/FinancialReport.js      → Rapport financier (par mois, par client, en attente)
 components/statistics/FinancialPDFExport.js   → Export PDF rapport financier
 components/invoices/InvoiceManager.js         → Module Facturation (2 onglets: À facturer + Factures + Rapport Acomba)
-components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ)
+components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ + badges BA/Soumission cliquables)
+components/invoices/InvoiceReferencePanel.js  → Panneau lecture seule BA/Soumission liés (consultation prix de vente client)
 components/invoices/AcombaReportExport.js     → Export PDF + CSV rapport mensuel Acomba
 ```
 
@@ -639,6 +640,14 @@ CRON_SECRET                   # Auth pour cron jobs
     - `components/invoices/InvoiceEditor.js` v2.5.0 — Carré du prix vendant en rouge + icône ⚠️ + bandeau récapitulatif quand marge < seuil
     - Alerte 100% interne (écran de saisie), jamais sur la facture client (PDF sans coûtant/marge)
     - Note: Migration SQL à exécuter manuellement dans Supabase Dashboard
+
+18. ~~**Consultation BA / Soumission depuis l'éditeur de facture**~~ - ✅ COMPLÉTÉ (2026-06-04)
+    - `components/invoices/InvoiceReferencePanel.js` v1.0.0 — Panneau lecture seule (BA via
+      purchase_orders + client_po_items, Soumission via submissions), met l'accent sur les prix de vente
+    - `components/invoices/InvoiceEditor.js` v2.7.0 — Badges cliquables `BA {po_number}` / `Soumission
+      {submission_no}` dans l'entête → panneau côte-à-côte (desktop) ou superposition (mobile/tablette)
+    - But: vérifier les prix de vente déjà donnés au client pendant la révision de facture
+    - Note: l'éditeur étant une modale plein écran, panneau dédié (le SplitView global serait masqué)
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

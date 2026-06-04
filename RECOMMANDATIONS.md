@@ -1412,4 +1412,30 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-05-19:
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-06-02 par Claude AI*
+### Consultation BA / Soumission depuis l'éditeur de facture ✅ COMPLETE (2026-06-04)
+
+**Demande utilisateur:** Dans la Facturation (onglet « À facturer »), pendant la révision d'une
+facture avant envoi, pouvoir consulter la soumission ou le BA client lié au BT/BL afin de vérifier
+les prix de vente déjà donnés au client, sans quitter l'écran de facture.
+
+**Implémentation (2026-06-04):**
+- Badges cliquables dans l'entête de l'éditeur de facture: `BA {po_number}` (bleu) et/ou
+  `Soumission {submission_no}` (mauve), affichés uniquement si le BT/BL source est lié à un BA
+  (et que le BA référence une soumission).
+- Au clic, ouverture d'un panneau latéral en **lecture seule** montrant les articles avec
+  **prix de vente unitaire + total** (la donnée recherchée).
+  - Desktop (≥1024px): panneau **côte-à-côte** à droite du formulaire (la modale s'élargit).
+  - Tablette/mobile (<1024px): **superposition glissante** depuis la droite.
+- Le formulaire de facture reste éditable pendant la consultation (re-clic du badge ou X = fermer).
+- Note technique: l'éditeur de facture étant une modale plein écran (z-50), le SplitView global de
+  l'app serait masqué derrière — d'où un panneau dédié intégré à la modale.
+
+**Fichiers créés/modifiés:**
+- `components/invoices/InvoiceReferencePanel.js` v1.0.0 — Panneau lecture seule BA (purchase_orders
+  + client_po_items) / Soumission (submissions), met l'accent sur les prix de vente
+- `components/invoices/InvoiceEditor.js` v2.7.0 — Badges cliquables entête + état `linkedRef`
+  (baId/baNumber/submissionNumber depuis `linked_po`) + panneaux desktop/mobile
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-06-04 par Claude AI*

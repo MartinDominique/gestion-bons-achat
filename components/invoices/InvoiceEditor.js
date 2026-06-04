@@ -12,9 +12,14 @@
  *                Alerte interne seulement — n'apparaît JAMAIS sur la facture client (PDF).
  *              - Sélection des destinataires d'envoi: liste des emails du client (cases
  *                à cocher) + ajout d'une adresse personnalisée, au-dessus des boutons d'action.
- * @version 2.6.0
- * @date 2026-06-02
+ *              - Consultation BA/Soumission liés: badges cliquables (N° BA et N° soumission)
+ *                dans l'entête ouvrant un panneau latéral en lecture seule (prix de vente
+ *                déjà donnés au client), côte-à-côte sur desktop / superposition sur mobile.
+ * @version 2.7.0
+ * @date 2026-06-04
  * @changelog
+ *   2.7.0 - Badges cliquables BA / Soumission dans l'entête → panneau de consultation
+ *           latéral (InvoiceReferencePanel) pour vérifier les prix de vente client.
  *   2.6.0 - Sélection des destinataires email avant envoi (cases à cocher emails client
  *           + ajout adresse personnalisée). Emails sélectionnés transmis à send-email.
  *   2.5.0 - Voyant marge faible: carré prix vendant rouge + icône avertissement + bandeau
@@ -39,9 +44,10 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTriangle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer, Mail } from 'lucide-react';
+import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTriangle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer, Mail, ShoppingCart } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
+import InvoiceReferencePanel from './InvoiceReferencePanel';
 
 /**
  * Calcule le taux horaire selon le type de surcharge
@@ -210,6 +216,12 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [success, setSuccess] = useState(null);
   const [sourceDescription, setSourceDescription] = useState('');
 
+  // Références BA / Soumission liées au BT/BL source (consultation des prix client)
+  // { baId, baNumber, submissionNumber }
+  const [linkedRef, setLinkedRef] = useState({ baId: null, baNumber: null, submissionNumber: null });
+  // Panneau de consultation ouvert: null | 'ba' | 'soumission'
+  const [referenceView, setReferenceView] = useState(null);
+
   // Destinataires email pour l'envoi de la facture
   // [{ email, label, checked }]
   const [emailRecipients, setEmailRecipients] = useState([]);
@@ -256,6 +268,12 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             if (result.success && result.data) {
               const desc = result.data.work_description || result.data.delivery_description || '';
               setSourceDescription(desc);
+              const lp = result.data.linked_po;
+              setLinkedRef({
+                baId: result.data.linked_po_id || lp?.id || null,
+                baNumber: lp?.po_number || null,
+                submissionNumber: lp?.submission_no || null,
+              });
             }
           })
           .catch(() => {});
@@ -268,6 +286,14 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       // Récupérer la description du BT/BL
       const desc = btOrBl.work_description || btOrBl.delivery_description || '';
       setSourceDescription(desc);
+
+      // Références BA / Soumission liées (consultation prix client)
+      const lp = btOrBl.linked_po;
+      setLinkedRef({
+        baId: btOrBl.linked_po_id || lp?.id || null,
+        baNumber: lp?.po_number || null,
+        submissionNumber: lp?.submission_no || null,
+      });
 
       if (isPJ) {
         setLineItems([{
@@ -834,13 +860,16 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const sourceNumber = invoice?.source_number || (sourceData && (source.type === 'bt' ? sourceData.bt_number : sourceData.bl_number)) || '';
   const clientName = invoice?.client_name || sourceData?.client?.name || sourceData?.client_name || '';
 
+  const hasReferences = !!(linkedRef.baNumber || linkedRef.submissionNumber);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-4xl my-4 shadow-2xl">
+      <div className={`flex gap-3 w-full my-4 justify-center ${referenceView ? 'max-w-[1500px]' : 'max-w-4xl'}`}>
+      <div className="bg-white dark:bg-gray-900 rounded-xl w-full flex-1 min-w-0 max-w-4xl shadow-2xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700 bg-emerald-50 dark:bg-emerald-900/20 rounded-t-xl">
-          <div>
+        <div className="flex items-start justify-between gap-2 p-4 border-b dark:border-gray-700 bg-emerald-50 dark:bg-emerald-900/20 rounded-t-xl">
+          <div className="min-w-0">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-emerald-600" />
               {isEditing ? `Facture ${invoice.invoice_number}` : 'Nouvelle facture'}
@@ -848,10 +877,46 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
               {sourceNumber} — {clientName}
             </p>
+
+            {/* Badges cliquables BA / Soumission (consultation des prix client) */}
+            {hasReferences && (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {linkedRef.baNumber && (
+                  <button
+                    type="button"
+                    onClick={() => setReferenceView(referenceView === 'ba' ? null : 'ba')}
+                    title="Consulter le bon d'achat client (prix de vente)"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                      referenceView === 'ba'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+                    }`}
+                  >
+                    <ShoppingCart className="w-3.5 h-3.5" />
+                    BA {linkedRef.baNumber}
+                  </button>
+                )}
+                {linkedRef.submissionNumber && (
+                  <button
+                    type="button"
+                    onClick={() => setReferenceView(referenceView === 'soumission' ? null : 'soumission')}
+                    title="Consulter la soumission (prix de vente)"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                      referenceView === 'soumission'
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Soumission {linkedRef.submissionNumber}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <button
             onClick={() => onClose(false)}
-            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -1349,6 +1414,36 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           )}
         </div>
       </div>
+
+      {/* Panneau de consultation BA / Soumission — côte-à-côte (desktop ≥1024px) */}
+      {referenceView && (
+        <div className="hidden lg:flex flex-col w-[460px] flex-shrink-0 bg-white dark:bg-gray-900 rounded-xl shadow-2xl self-start sticky top-0 max-h-[calc(100vh-3rem)]">
+          <InvoiceReferencePanel
+            type={referenceView}
+            baId={linkedRef.baId}
+            baNumber={linkedRef.baNumber}
+            submissionNumber={linkedRef.submissionNumber}
+            onClose={() => setReferenceView(null)}
+          />
+        </div>
+      )}
+      </div>
+
+      {/* Panneau de consultation — superposition glissante (tablette / mobile <1024px) */}
+      {referenceView && (
+        <div className="lg:hidden fixed inset-0 z-[55] flex">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setReferenceView(null)} />
+          <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[85%] sm:max-w-md bg-white dark:bg-gray-900 shadow-2xl animate-slide-in-right flex flex-col">
+            <InvoiceReferencePanel
+              type={referenceView}
+              baId={linkedRef.baId}
+              baNumber={linkedRef.baNumber}
+              submissionNumber={linkedRef.submissionNumber}
+              onClose={() => setReferenceView(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ====== Modal produit — Vrai modal inventaire (éditable, 3 onglets) ====== */}
       {editingProduct && (
