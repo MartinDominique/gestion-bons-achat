@@ -289,6 +289,37 @@ return NextResponse.json(
 );
 ```
 
+### Courriels (Resend / no-reply) — OBLIGATOIRE
+
+Tous les courriels sont envoyés depuis une adresse **no-reply** de Resend
+(`noreply@servicestmt.ca`). Le client ne peut donc PAS répondre directement.
+
+**Règle 1 — Avis no-reply obligatoire:** Chaque courriel envoyé au client
+(BT, BL, Factures) DOIT contenir l'avis suivant, juste avant le pied de page :
+
+```html
+<p style="color: #999; font-size: 13px; font-style: italic;">
+  Ne pas répondre à ce courriel.<br>
+  Pour nous contacter, utilisez le lien ci-dessous.
+</p>
+```
+
+Dans le courriel de **facture**, cet avis se place sous la ligne
+« N'hésitez pas à nous contacter pour toute question. »
+
+**Règle 2 — Lien de contact cliquable:** Le « lien ci-dessous » est l'adresse
+courriel de l'entreprise dans le pied de page, rendue cliquable via `mailto:` :
+
+```html
+<a href="mailto:info.servicestmt@gmail.com">info.servicestmt@gmail.com</a>
+```
+
+**Règle 3 — Format visuel unifié:** Les courriels BT, BL et Factures partagent
+le même gabarit visuel (carte blanche centrée, max 600px, en-tête + corps +
+avis no-reply + pied de page). Pour BT/BL, utiliser le helper
+`buildStandardEmailHTML()` dans `lib/services/email-service.js`. Le courriel de
+facture (`app/api/invoices/[id]/send-email/route.js`) suit le même format.
+
 ### Taxes Québec
 
 ```javascript

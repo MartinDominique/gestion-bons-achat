@@ -6,9 +6,11 @@
  *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.3.0
- * @date 2026-03-16
+ * @version 1.4.0
+ * @date 2026-06-04
  * @changelog
+ *   1.4.0 - Ajout avis no-reply Resend (sous "N'hésitez pas à nous contacter")
+ *           + lien de contact cliquable (mailto) dans le pied de page du courriel
  *   1.3.0 - Ajout mode print_only: génère PDF + upload Storage + marque envoyée
  *           sans envoyer d'email (pour clients sans adresse email / envoi postal)
  *           Ajout source_description (work_description/delivery_description) sur PDF
@@ -361,12 +363,16 @@ export async function POST(request, { params }) {
             ${invoice.payment_terms ? `<p><strong>Conditions:</strong> ${invoice.payment_terms}</p>` : ''}
             ${invoice.due_date ? `<p><strong>Échéance:</strong> ${invoice.due_date}</p>` : ''}
             <p>N'hésitez pas à nous contacter pour toute question.</p>
+            <p style="color: #999; font-size: 13px; font-style: italic; margin: 20px 0 0;">
+              Ne pas répondre à ce courriel.<br>
+              Pour nous contacter, utilisez le lien ci-dessous.
+            </p>
             <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
             <p style="color: #666; font-size: 13px;">
               ${companyName}<br>
               ${pdfCommon.COMPANY.address}, ${pdfCommon.COMPANY.city}<br>
               Tél: ${pdfCommon.COMPANY.phone}<br>
-              ${pdfCommon.COMPANY.email}
+              <a href="mailto:${pdfCommon.COMPANY.email}" style="color: #2563eb;">${pdfCommon.COMPANY.email}</a>
             </p>
           </div>
         </body>
