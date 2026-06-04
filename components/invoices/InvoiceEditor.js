@@ -15,9 +15,12 @@
  *              - Consultation BA/Soumission liés: badges cliquables (N° BA et N° soumission)
  *                dans l'entête ouvrant un panneau latéral en lecture seule (prix de vente
  *                déjà donnés au client), côte-à-côte sur desktop / superposition sur mobile.
- * @version 2.7.0
+ * @version 2.7.1
  * @date 2026-06-04
  * @changelog
+ *   2.7.1 - Détection des soumissions importées au niveau des matériaux (note
+ *           « Importé de soumission #... » / champ from_submission), en plus de la
+ *           soumission du BA lié. Support de plusieurs badges de soumission.
  *   2.7.0 - Badges cliquables BA / Soumission dans l'entête → panneau de consultation
  *           latéral (InvoiceReferencePanel) pour vérifier les prix de vente client.
  *   2.6.0 - Sélection des destinataires email avant envoi (cases à cocher emails client
@@ -76,6 +79,38 @@ function getSurchargeLabel(surchargeType) {
     holiday: 'Jour férié (2\u00d7)',
   };
   return labels[surchargeType] || 'Régulier';
+}
+
+/**
+ * Extrait les numéros de soumission liés à un BT/BL.
+ * Sources:
+ *   - Soumission du BA lié (linked_po.submission_no)
+ *   - Soumissions importées au niveau des matériaux:
+ *       • champ direct from_submission/submission_number (en mémoire)
+ *       • note persistée « Importé de soumission #2605-001 (...) »
+ * Retourne un tableau de numéros distincts (ordre d'apparition conservé).
+ */
+function extractSubmissionNumbers(btOrBl) {
+  const found = [];
+  const add = (raw) => {
+    if (!raw) return;
+    const n = String(raw).trim().replace(/^#/, '');
+    if (n && !found.includes(n)) found.push(n);
+  };
+
+  // Soumission du BA lié
+  add(btOrBl?.linked_po?.submission_no);
+
+  // Soumissions importées dans les matériaux
+  const materials = btOrBl?.materials || [];
+  materials.forEach((m) => {
+    if (m?.from_submission && m?.submission_number) add(m.submission_number);
+    const note = m?.notes || '';
+    const match = note.match(/Importé de soumission\s+#?\s*([^\s(]+)/i);
+    if (match) add(match[1]);
+  });
+
+  return found;
 }
 
 /**
@@ -217,9 +252,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [sourceDescription, setSourceDescription] = useState('');
 
   // Références BA / Soumission liées au BT/BL source (consultation des prix client)
-  // { baId, baNumber, submissionNumber }
-  const [linkedRef, setLinkedRef] = useState({ baId: null, baNumber: null, submissionNumber: null });
-  // Panneau de consultation ouvert: null | 'ba' | 'soumission'
+  // { baId, baNumber, submissionNumbers: string[] }
+  // submissionNumbers = soumission du BA lié + soumissions importées au niveau des matériaux
+  const [linkedRef, setLinkedRef] = useState({ baId: null, baNumber: null, submissionNumbers: [] });
+  // Panneau de consultation ouvert: null | { type:'ba' } | { type:'soumission', number }
   const [referenceView, setReferenceView] = useState(null);
 
   // Destinataires email pour l'envoi de la facture
@@ -272,7 +308,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               setLinkedRef({
                 baId: result.data.linked_po_id || lp?.id || null,
                 baNumber: lp?.po_number || null,
-                submissionNumber: lp?.submission_no || null,
+                submissionNumbers: extractSubmissionNumbers(result.data),
               });
             }
           })
@@ -292,7 +328,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       setLinkedRef({
         baId: btOrBl.linked_po_id || lp?.id || null,
         baNumber: lp?.po_number || null,
-        submissionNumber: lp?.submission_no || null,
+        submissionNumbers: extractSubmissionNumbers(btOrBl),
       });
 
       if (isPJ) {
@@ -860,7 +896,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const sourceNumber = invoice?.source_number || (sourceData && (source.type === 'bt' ? sourceData.bt_number : sourceData.bl_number)) || '';
   const clientName = invoice?.client_name || sourceData?.client?.name || sourceData?.client_name || '';
 
-  const hasReferences = !!(linkedRef.baNumber || linkedRef.submissionNumber);
+  const hasReferences = !!(linkedRef.baNumber || (linkedRef.submissionNumbers && linkedRef.submissionNumbers.length > 0));
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-2 sm:p-4 overflow-y-auto">
@@ -884,10 +920,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 {linkedRef.baNumber && (
                   <button
                     type="button"
-                    onClick={() => setReferenceView(referenceView === 'ba' ? null : 'ba')}
+                    onClick={() => setReferenceView(referenceView?.type === 'ba' ? null : { type: 'ba' })}
                     title="Consulter le bon d'achat client (prix de vente)"
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                      referenceView === 'ba'
+                      referenceView?.type === 'ba'
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50'
                     }`}
@@ -896,21 +932,25 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                     BA {linkedRef.baNumber}
                   </button>
                 )}
-                {linkedRef.submissionNumber && (
-                  <button
-                    type="button"
-                    onClick={() => setReferenceView(referenceView === 'soumission' ? null : 'soumission')}
-                    title="Consulter la soumission (prix de vente)"
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                      referenceView === 'soumission'
-                        ? 'bg-purple-600 text-white border-purple-600'
-                        : 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50'
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    Soumission {linkedRef.submissionNumber}
-                  </button>
-                )}
+                {(linkedRef.submissionNumbers || []).map((num) => {
+                  const active = referenceView?.type === 'soumission' && referenceView.number === num;
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setReferenceView(active ? null : { type: 'soumission', number: num })}
+                      title="Consulter la soumission (prix de vente)"
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                        active
+                          ? 'bg-purple-600 text-white border-purple-600'
+                          : 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Soumission {num}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1419,10 +1459,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       {referenceView && (
         <div className="hidden lg:flex flex-col w-[460px] flex-shrink-0 bg-white dark:bg-gray-900 rounded-xl shadow-2xl self-start sticky top-0 max-h-[calc(100vh-3rem)]">
           <InvoiceReferencePanel
-            type={referenceView}
+            type={referenceView.type}
             baId={linkedRef.baId}
             baNumber={linkedRef.baNumber}
-            submissionNumber={linkedRef.submissionNumber}
+            submissionNumber={referenceView.type === 'soumission' ? referenceView.number : null}
             onClose={() => setReferenceView(null)}
           />
         </div>
@@ -1435,10 +1475,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           <div className="absolute inset-0 bg-black/50" onClick={() => setReferenceView(null)} />
           <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[85%] sm:max-w-md bg-white dark:bg-gray-900 shadow-2xl animate-slide-in-right flex flex-col">
             <InvoiceReferencePanel
-              type={referenceView}
+              type={referenceView.type}
               baId={linkedRef.baId}
               baNumber={linkedRef.baNumber}
-              submissionNumber={linkedRef.submissionNumber}
+              submissionNumber={referenceView.type === 'soumission' ? referenceView.number : null}
               onClose={() => setReferenceView(null)}
             />
           </div>
