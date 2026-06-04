@@ -15,9 +15,12 @@
  *              - Consultation BA/Soumission liés: badges cliquables (N° BA et N° soumission)
  *                dans l'entête ouvrant un panneau latéral en lecture seule (prix de vente
  *                déjà donnés au client), côte-à-côte sur desktop / superposition sur mobile.
- * @version 2.7.1
+ * @version 2.7.2
  * @date 2026-06-04
  * @changelog
+ *   2.7.2 - Fix prix matériaux importés d'un AF: le unit_price stocké est le coûtant
+ *           fournisseur. La facture utilise désormais le prix vendant de l'inventaire
+ *           pour ces lignes (BT et BL), au lieu d'afficher le coûtant comme prix de vente.
  *   2.7.1 - Détection des soumissions importées au niveau des matériaux (note
  *           « Importé de soumission #... » / champ from_submission), en plus de la
  *           soumission du BA lié. Support de plusieurs badges de soumission.
@@ -114,6 +117,19 @@ function extractSubmissionNumbers(btOrBl) {
 }
 
 /**
+ * Détecte un matériau importé depuis un Achat Fournisseur (AF).
+ * À l'import AF (WorkOrderForm/DeliveryNoteForm), le unit_price stocké est le COÛTANT
+ * fournisseur, pas le prix de vente. On le repère via le flag from_supplier_purchase
+ * (en mémoire) ou la note persistée « Importé de #... » / « Importé de AF #... ».
+ * (À ne pas confondre avec « Importé de soumission #... » qui porte le bon prix de vente.)
+ */
+function isImportedFromSupplier(mat) {
+  if (!mat) return false;
+  if (mat.from_supplier_purchase) return true;
+  return /Importé de (AF )?#/i.test(mat.notes || '');
+}
+
+/**
  * Génère les lignes de facture depuis un BT source
  */
 function generateBTLines(bt, settings) {
@@ -175,7 +191,11 @@ function generateBTLines(bt, settings) {
   if (bt.materials && bt.materials.length > 0) {
     bt.materials.forEach((mat) => {
       const qty = mat.quantity || 0;
-      const price = mat.unit_price || mat.product?.selling_price || 0;
+      // Items importés d'un AF: unit_price stocké = coûtant fournisseur → on utilise
+      // plutôt le prix vendant de l'inventaire (mat.product enrichi par le GET).
+      const price = isImportedFromSupplier(mat)
+        ? (mat.product?.selling_price || mat.unit_price || 0)
+        : (mat.unit_price || mat.product?.selling_price || 0);
       const pid = mat.product_id || mat.code || null;
       lines.push({
         id: `mat-${pid || mat.id || Math.random()}`,
@@ -214,9 +234,13 @@ function generateBLLines(bl) {
     bl.materials.forEach((mat) => {
       const qty = mat.quantity || 0;
       const pid = mat.product_id || mat.code || null;
-      // Priorité: prix BA > prix BL material > prix produit inventaire
+      // Priorité: prix BA > (prix BL material OU vendant inventaire si importé d'un AF) > inventaire
+      // Items importés d'un AF: unit_price stocké = coûtant → on préfère le vendant inventaire.
       const baPrice = pid ? baPriceMap[pid] : undefined;
-      const price = baPrice || mat.unit_price || mat.product?.selling_price || 0;
+      const fallbackPrice = isImportedFromSupplier(mat)
+        ? (mat.product?.selling_price || mat.unit_price || 0)
+        : (mat.unit_price || mat.product?.selling_price || 0);
+      const price = baPrice || fallbackPrice;
       lines.push({
         id: `mat-${pid || mat.id || Math.random()}`,
         type: 'material',
