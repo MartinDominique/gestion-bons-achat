@@ -9,9 +9,12 @@
  *              - Auto-fermeture après signature + envoi email
  *              - Affichage colonnes backorder (BO) en lecture seule
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.10.0
+ * @version 2.11.0
  * @date 2026-06-04
  * @changelog
+ *   2.11.0 - Fermeture quasi-instantanée après signature: délais réduits de
+ *            800ms→100ms (succès) et 1500ms→100ms (envoi manuel), fallback
+ *            navigation 300ms→150ms
  *   2.10.0 - Barre du bas: "Accepter et Signer" élargi (ratio 3:1 vs "Fermer")
  *            Modal signature: boutons Effacer/Annuler/Confirmer placés au-dessus
  *            du canvas pour éviter les appuis accidentels pendant la signature
@@ -207,34 +210,34 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
         if (result.autoSendResult?.success && result.deliveryNoteStatus === 'sent') {
           onStatusUpdate?.('sent');
           setIsSubmitting(false);
-          // Fermer l'onglet après un bref délai (ouvert via window.open)
+          // Fermer l'onglet le plus vite possible (ouvert via window.open)
           setTimeout(() => {
             window.close();
             // Fallback si window.close() ne fonctionne pas
             setTimeout(() => {
               window.location.href = '/bons-travail';
-            }, 300);
-          }, 800);
+            }, 150);
+          }, 100);
         } else if (result.autoSendResult?.needsManualSend) {
           onStatusUpdate?.(result.deliveryNoteStatus || 'pending_send');
           setIsSubmitting(false);
-          // Fermer l'onglet après message
+          // Fermer l'onglet le plus vite possible
           setTimeout(() => {
             window.close();
             setTimeout(() => {
               window.location.href = '/bons-travail';
-            }, 300);
-          }, 1500);
+            }, 150);
+          }, 100);
         } else {
           onStatusUpdate?.(result.deliveryNoteStatus || 'pending_send');
           setIsSubmitting(false);
-          // Fermer l'onglet après message
+          // Fermer l'onglet le plus vite possible
           setTimeout(() => {
             window.close();
             setTimeout(() => {
               window.location.href = '/bons-travail';
-            }, 300);
-          }, 1500);
+            }, 150);
+          }, 100);
         }
       } else {
         throw new Error(result.error || 'Erreur lors de la signature');
