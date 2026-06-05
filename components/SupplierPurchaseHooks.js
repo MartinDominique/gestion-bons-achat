@@ -21,8 +21,6 @@ import {
   
   // Services
   generatePurchaseNumber,
-  sendEmailToDominique,
-  generatePurchasePDF,
   testEmailFunction,
   
   // Utils
@@ -851,79 +849,9 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         }
       }
 
-      // LOGIQUE EMAIL MODIFIÉE
-      const shouldSendEmailStatuses = ['in_order', 'ordered']; // EN COMMANDE et COMMANDÉ
-      const isEmailableStatus = shouldSendEmailStatuses.includes(savedPurchase.status);
+      // Email de confirmation à Dominique retiré (non nécessaire) — voir CLAUDE.md
+      // L'envoi manuel reste possible via le bouton "Imprimer et envoyer au fournisseur".
 
-      console.log('📧 DÉBOGAGE EMAIL:');
-      console.log('- Status:', savedPurchase.status);
-      console.log('- isEmailableStatus:', isEmailableStatus);
-      console.log('- editingPurchase:', !!editingPurchase);
-
-      if (isEmailableStatus) {
-        if (!editingPurchase) {
-          // CRÉATION - Email automatique
-          console.log('📧 Création avec statut email → Envoi automatique');
-          
-          const pdf = await generatePurchasePDF(savedPurchase);
-
-          setIsLoadingEmail(true);
-          setEmailStatus('Envoi automatique en cours...');
-
-          sendEmailToDominique(savedPurchase, pdf)
-            .then(() => {
-              console.log('📧 EMAIL AUTOMATIQUE ENVOYÉ');
-              setEmailStatus('✅ Email envoyé automatiquement à Dominique');
-            })
-            .catch((emailError) => {
-              console.error('📧 ERREUR EMAIL:', emailError);
-              setEmailStatus(`❌ Erreur email: ${emailError.message}`);
-            })
-            .finally(() => {
-              setIsLoadingEmail(false);
-            });
-        } else {
-          // MODIFICATION - Demander confirmation
-          console.log('📧 Modification avec statut email → Demander confirmation');
-          
-          const shouldSendEmail = confirm(
-            `Voulez-vous envoyer l'email de confirmation à Dominique ?\n\n` +
-            `Bon d'achat: ${savedPurchase.purchase_number}\n` +
-            `Statut: ${savedPurchase.status === 'in_order' ? 'En commande' : 'Commandé'}\n` +
-            `Fournisseur: ${savedPurchase.supplier_name}`
-          );
-          
-          if (shouldSendEmail) {
-            setIsLoadingEmail(true);
-            setEmailStatus('Envoi en cours...');
-
-            try {
-              const pdf = await generatePurchasePDF(savedPurchase);
-              sendEmailToDominique(savedPurchase, pdf)
-                .then(() => {
-                  console.log('📧 EMAIL MANUEL ENVOYÉ');
-                  setEmailStatus('✅ Email envoyé avec succès');
-                })
-                .catch((emailError) => {
-                  console.error('📧 ERREUR EMAIL:', emailError);
-                  setEmailStatus(`❌ Erreur email: ${emailError.message}`);
-                })
-                .finally(() => {
-                  setIsLoadingEmail(false);
-                });
-            } catch (pdfError) {
-              console.error('📧 ERREUR PDF:', pdfError);
-              setEmailStatus(`❌ Erreur génération PDF: ${pdfError.message}`);
-              setIsLoadingEmail(false);
-            }
-          } else {
-            setEmailStatus('📧 Email non envoyé (choix utilisateur)');
-          }
-        }
-      } else {
-        console.log('📧 Statut ne nécessite pas d\'email');
-      }
-      
       await loadSupplierPurchases();
       resetForm();
 
@@ -1018,45 +946,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       };
       
       const savedPurchase = await updateSupplierPurchase(purchaseId, updatedData);
-      
-      // Appliquer la même logique d'email que dans handlePurchaseSubmit
-      const shouldSendEmailStatuses = ['in_order', 'ordered'];
-      const isEmailableStatus = shouldSendEmailStatuses.includes(newStatus);
-      
-      if (isEmailableStatus) {
-        // Pour les mises à jour rapides, toujours demander confirmation
-        const shouldSendEmail = confirm(
-          `Voulez-vous envoyer l'email de confirmation à Dominique ?\n\n` +
-          `Bon d'achat: ${purchase.purchase_number}\n` +
-          `Nouveau statut: ${newStatus === 'in_order' ? 'En commande' : 'Commandé'}\n` +
-          `Fournisseur: ${purchase.supplier_name}`
-        );
-        
-        if (shouldSendEmail) {
-          setIsLoadingEmail(true);
-          setEmailStatus('Envoi en cours...');
 
-          try {
-            const pdf = await generatePurchasePDF(savedPurchase);
-            sendEmailToDominique(savedPurchase, pdf)
-              .then(() => {
-                setEmailStatus('✅ Email envoyé avec succès');
-              })
-              .catch((emailError) => {
-                setEmailStatus(`❌ Erreur email: ${emailError.message}`);
-              })
-              .finally(() => {
-                setIsLoadingEmail(false);
-              });
-          } catch (pdfError) {
-            console.error('📧 ERREUR PDF:', pdfError);
-            setEmailStatus(`❌ Erreur génération PDF: ${pdfError.message}`);
-            setIsLoadingEmail(false);
-          }
-        } else {
-          setEmailStatus('📧 Email non envoyé (choix utilisateur)');
-        }
-      }
+      // Email de confirmation à Dominique retiré (non nécessaire) — voir CLAUDE.md
 
       // Recharger la liste
       await loadSupplierPurchases();
