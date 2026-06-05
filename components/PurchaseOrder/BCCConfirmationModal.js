@@ -5,9 +5,11 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.6.0
- * @date 2026-04-01
+ * @version 1.6.1
+ * @date 2026-06-05
  * @changelog
+ *   1.6.1 - Fix B/O: plafonne la quantité B/O affichée au client à la quantité commandée par le client
+ *           (évite d'afficher les unités commandées en surplus au fournisseur pour l'inventaire)
  *   1.6.0 - Quantité éditable dans BCC: modifie aussi la quantité dans l'onglet Articles du BA
  *   1.5.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur textarea notes
  *   1.5.0 - Ajout support dark mode
@@ -209,7 +211,10 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
         const unitPrice = parseFloat(item.selling_price || 0);
         const qtyDelivered = deliveredQuantities[code] || 0;
         const afInfo = afQuantities[code] || { ordered: 0, received: 0 };
-        const qtyBackorder = Math.max(0, afInfo.ordered - afInfo.received);
+        // Le B/O affiché au client ne doit JAMAIS dépasser ce qu'il a commandé.
+        // (On peut commander plus d'unités au fournisseur pour l'inventaire, mais
+        //  ces unités supplémentaires ne concernent pas le client.)
+        const qtyBackorder = Math.min(qtyCmd, Math.max(0, afInfo.ordered - afInfo.received));
 
         return {
           code: code,

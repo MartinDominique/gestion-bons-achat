@@ -5,9 +5,11 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.2.0
- * @date 2026-04-01
+ * @version 1.2.1
+ * @date 2026-06-05
  * @changelog
+ *   1.2.1 - Import Fournisseurs: utilise le prix vendant (selling_price) au lieu du coûtant (cost_price)
+ *           pour afficher le vrai prix de vente au client (import + aperçu + total estimé)
  *   1.2.0 - Propagation changement quantité depuis BCC vers onglet Articles (onQuantityChange)
  *   1.1.3 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.1.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -199,7 +201,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
           description: supplierItem.description || supplierItem.name || supplierItem.product_name || 'Article importé',
           quantity: parseFloat(supplierItem.quantity || supplierItem.qty || 1),
           unit: supplierItem.unit || supplierItem.unity || 'unité',
-          selling_price: parseFloat(supplierItem.cost_price || supplierItem.price || supplierItem.unit_price || 0),
+          selling_price: parseFloat(supplierItem.selling_price || supplierItem.price || supplierItem.unit_price || supplierItem.cost_price || 0),
           delivered_quantity: 0,
           from_supplier_purchase: true,
           supplier_purchase_id: selectedPurchaseForImport.id,
@@ -2679,7 +2681,7 @@ setTimeout(() => {
                           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                             {(selectedPurchaseForImport.items || []).map((item, index) => {
                               const quantity = parseFloat(item.quantity || item.qty || 1);
-                              const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
+                              const unitPrice = parseFloat(item.selling_price || item.price || item.unit_price || item.cost_price || 0);
                               const lineTotal = quantity * unitPrice;
                               
                               return (
@@ -2718,7 +2720,7 @@ setTimeout(() => {
                           Total estimé: ${selectedItemsForImport.reduce((sum, itemIndex) => {
                             const item = selectedPurchaseForImport.items[itemIndex];
                             const quantity = parseFloat(item.quantity || item.qty || 1);
-                            const unitPrice = parseFloat(item.cost_price || item.price || item.unit_price || 0);
+                            const unitPrice = parseFloat(item.selling_price || item.price || item.unit_price || item.cost_price || 0);
                             return sum + (quantity * unitPrice);
                           }, 0).toFixed(2)}
                         </p>
