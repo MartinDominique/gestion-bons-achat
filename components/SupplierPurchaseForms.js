@@ -9,9 +9,10 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.2.0
- * @date 2026-03-25
+ * @version 1.3.0
+ * @date 2026-06-05
  * @changelog
+ *   1.3.0 - PriceUpdateModal: affichage du prix de vente actuel (comparaison) + bouton "Conserver"
  *   1.2.0 - Sauvegarde automatique avant impression/envoi PDF pour corriger date N/A
  *   1.1.0 - Ajout bouton "Gestion des Soumissions" à côté de Frais de livraison (ouvre SplitView)
  *   1.0.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
@@ -1372,6 +1373,15 @@ export const PriceUpdateModal = ({
     ? (((parseFloat(form.newSellingPrice) - parseFloat(form.newCostPrice)) / parseFloat(form.newSellingPrice)) * 100).toFixed(1)
     : null;
 
+  // Prix de vente actuel dans l'inventaire (pour comparaison)
+  const currentSellingPrice = parseFloat(
+    item.selling_price ?? item.original_selling_price ?? 0
+  ) || 0;
+  // Marge actuelle (ancien vendant vs nouveau coûtant) pour aider à décider
+  const currentSellingMargin = currentSellingPrice > 0
+    ? (((currentSellingPrice - item.newCostPrice) / currentSellingPrice) * 100).toFixed(1)
+    : null;
+
   const handleKeyDown = (e) => {
     // Toujours stopper la propagation pour empêcher le formulaire parent de réagir
     if (e.key === 'Escape') {
@@ -1415,6 +1425,17 @@ export const PriceUpdateModal = ({
                 <span className="ml-2 text-sm">
                   ({priceDiff > 0 ? '↑' : '↓'} {Math.abs(priceDiff).toFixed(2)}$ / {priceDiff > 0 ? '+' : ''}{priceDiffPercent}%)
                 </span>
+              </span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Prix de vente actuel:</span>
+              <span className="font-medium text-blue-700 dark:text-blue-300">
+                {currentSellingPrice > 0 ? `${currentSellingPrice.toFixed(2)} $` : '—'}
+                {currentSellingMargin !== null && (
+                  <span className={`ml-2 text-xs ${parseFloat(currentSellingMargin) < 0 ? 'text-red-600' : 'text-gray-500 dark:text-gray-400'}`}>
+                    (marge {currentSellingMargin}% au nouveau coûtant)
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -1466,9 +1487,20 @@ export const PriceUpdateModal = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Nouveau prix de vente *
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Nouveau prix de vente *
+              </label>
+              {currentSellingPrice > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setForm({...form, newSellingPrice: currentSellingPrice.toFixed(2), marginPercent: ''})}
+                  className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-900/50 font-medium"
+                >
+                  Conserver {currentSellingPrice.toFixed(2)} $
+                </button>
+              )}
+            </div>
             <input
               type="number"
               step="0.01"
