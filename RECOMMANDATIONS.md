@@ -1438,4 +1438,46 @@ les prix de vente déjà donnés au client, sans quitter l'écran de facture.
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-06-04 par Claude AI*
+## Système de Notes (page d'ouverture) ✅ COMPLETE (2026-06-09)
+
+**Demande utilisateur:** Un système de gestion de notes intégré, devenant la page d'ouverture
+de l'app. Notes globales (libres) ou liées à un document (BT/BL/BA/Soumission). Tri par échéance,
+coloration selon l'urgence, masquage des notes complétées.
+
+**Décisions confirmées avec l'utilisateur:**
+- Langage `.js` (pas de TypeScript) pour rester cohérent avec la codebase
+- Routes sous `app/(protected)/notes/` (auth héritée)
+- Notes = **page d'ouverture** (`app/page.js` redirige vers `/notes`)
+- Synchro **en ligne simple** (Supabase direct, pas de localStorage offline-first)
+- Date de création auto + **date d'échéance optionnelle**
+- Liens projets: BT, BL, BA **et Soumissions** (réutilise le SplitView existant)
+- **Exclus du MVP:** priorité, tags (ajoutables plus tard sans casse)
+
+**Comportement:**
+- Tri: échéances croissantes d'abord, puis notes sans date par création (ancienne d'abord)
+- Couleurs: 🔴 0-1 j (ou en retard) · 🟠 2-7 j · ⚪ 8+ j ou sans date
+- Complétion = masquage immédiat (optimiste, rollback si échec API)
+- Suppression avec confirmation explicite (règle action destructive)
+- Badge rouge « nb urgentes » sur l'onglet Notes (desktop + mobile) et en-tête du tableau
+- Badge projet cliquable → ouvre le document dans le panneau latéral SplitView
+
+**Fichiers créés:**
+- `supabase/migrations/20260609_create_notes.sql` — Table `notes` + RLS (authenticated) + index
+- `lib/utils/notes.js` v1.0.0 — Tri, urgence/couleurs, format dates fr-CA, lien SplitView
+- `app/api/notes/route.js` v1.0.0 — GET liste (filtres completed/type/recherche) + POST création
+- `app/api/notes/[id]/route.js` v1.0.0 — GET/PUT (édition + toggle complété)/DELETE
+- `app/api/notes/projects/route.js` v1.0.0 — Liste BT/BL/BA/Soumission pour le sélecteur du formulaire
+- `components/notes/NoteCard.js` v1.0.0 — Carte note (couleur, checkbox, badge projet, éditer/supprimer)
+- `components/notes/NoteForm.js` v1.0.0 — Modal créer/éditer + sélecteur de document
+- `components/notes/NotesManager.js` v1.0.0 — Orchestrateur (dashboard, recherche, filtre, CRUD)
+- `app/(protected)/notes/page.js` v1.0.0 — Page tableau de bord
+
+**Fichiers modifiés:**
+- `app/page.js` — Redirige vers `/notes` (au lieu de `/bons-achat`)
+- `components/Navigation.js` v2.1.0 — Onglet Notes (1er) + badge urgent + route protégée
+
+**Note:** La migration SQL doit être exécutée manuellement dans Supabase Dashboard.
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-06-09 par Claude AI*

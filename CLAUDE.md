@@ -352,10 +352,14 @@ const total = subtotal + tps + tvq;
 /(protected)/soumissions         → Soumissions/devis
 /(protected)/statistiques        → Rapports & Statistiques de Ventes
 /(protected)/facturation         → Module Facturation (À facturer + Factures)
+/(protected)/notes               → Tableau de bord Notes (PAGE D'OUVERTURE, racine → /notes)
 ```
 
 ### API Endpoints Critiques
 ```
+/api/notes                             → CRUD Notes (GET liste + POST création)
+/api/notes/[id]                        → GET/PUT (édition + toggle complété)/DELETE note
+/api/notes/projects                    → Liste BT/BL/BA/Soumission pour sélecteur de note
 /api/work-orders                       → CRUD BT
 /api/work-orders/[id]/send-email       → Envoi email BT
 /api/work-orders/[id]/signature        → Capture signature BT
@@ -420,6 +424,9 @@ components/invoices/InvoiceManager.js         → Module Facturation (2 onglets:
 components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ + badges BA/Soumission cliquables)
 components/invoices/InvoiceReferencePanel.js  → Panneau lecture seule BA/Soumission liés (consultation prix de vente client)
 components/invoices/AcombaReportExport.js     → Export PDF + CSV rapport mensuel Acomba
+components/notes/NotesManager.js              → Tableau de bord Notes (page d'ouverture, recherche, filtre, CRUD)
+components/notes/NoteCard.js                  → Carte note (couleur urgence, checkbox, badge projet cliquable)
+components/notes/NoteForm.js                  → Modal créer/éditer note + sélecteur document (BT/BL/BA/Soum.)
 ```
 
 ---
@@ -485,6 +492,19 @@ sent_at, paid_at, user_id, created_at, updated_at
 ```
 **Statuts:** draft, sent, paid
 **Line items types:** labor, transport, material, forfait, other
+
+### notes (Notes)
+```sql
+id (UUID), title, description,
+note_type ('global'|'project'),
+project_type ('work_order'|'delivery_note'|'purchase_order'|'submission'), project_id, project_number,
+due_date, completed, completed_at,
+user_id, created_at, updated_at
+```
+**Tri:** échéance croissante d'abord, puis notes sans date par création.
+**Urgence (couleur):** 🔴 0-1 j ou en retard · 🟠 2-7 j · ⚪ 8+ j ou sans date.
+**Complétées:** masquées du tableau de bord (jamais supprimées par la complétion).
+**Lien projet:** `project_id` polymorphe (pas de FK), badge cliquable → panneau SplitView.
 
 ### products / non_inventory_items
 ```sql
@@ -679,6 +699,20 @@ CRON_SECRET                   # Auth pour cron jobs
       {submission_no}` dans l'entête → panneau côte-à-côte (desktop) ou superposition (mobile/tablette)
     - But: vérifier les prix de vente déjà donnés au client pendant la révision de facture
     - Note: l'éditeur étant une modale plein écran, panneau dédié (le SplitView global serait masqué)
+
+19. ~~**Système de Notes (page d'ouverture)**~~ - ✅ COMPLÉTÉ (2026-06-09)
+    - `supabase/migrations/20260609_create_notes.sql` — Table `notes` + RLS (authenticated) + index
+    - `lib/utils/notes.js` — Tri par échéance, urgence/couleurs (🔴 0-1j / 🟠 2-7j / ⚪ 8+j ou sans date), format fr-CA, lien SplitView
+    - `app/api/notes/route.js` — GET liste (filtres) + POST création
+    - `app/api/notes/[id]/route.js` — GET/PUT (édition + toggle complété)/DELETE
+    - `app/api/notes/projects/route.js` — Liste BT/BL/BA/Soumission pour le sélecteur du formulaire
+    - `components/notes/NotesManager.js` + `NoteCard.js` + `NoteForm.js` — Dashboard + carte + modal
+    - `app/(protected)/notes/page.js` — Page tableau de bord
+    - `app/page.js` — Redirige vers `/notes` (nouvelle page d'ouverture)
+    - `components/Navigation.js` v2.1.0 — Onglet Notes (1er) + badge urgent
+    - Notes globales OU liées à un document; complétées masquées; lien projet ouvre le SplitView
+    - Décisions: `.js` (pas TS), en ligne simple (pas d'offline-first), échéance optionnelle, sans priorité/tags
+    - **Reste:** exécuter la migration SQL dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

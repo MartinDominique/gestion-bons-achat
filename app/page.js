@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function Home() {
-  redirect('/bons-achat');          // ou '/soumissions' si tu préfères
+  redirect('/notes');               // Page d'ouverture: tableau de bord des Notes
 }
