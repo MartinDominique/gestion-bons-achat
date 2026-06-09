@@ -9,9 +9,13 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 3.2.0
- * @date 2026-04-10
+ * @version 3.3.0
+ * @date 2026-06-09
  * @changelog
+ *   3.3.0 - Tableau BO: bouton supprimer par ligne (retrait d'un item importé d'une
+ *           soumission/AF) + colonne "Commandé" (ordered_quantity) maintenant éditable.
+ *           Filtres BO basés sur présence de ordered_quantity (!= null) au lieu de > 0
+ *           pour éviter qu'un item saute vers le sélecteur manuel pendant l'édition.
  *   3.2.0 - Fix unit_price dans buildPayload: fallback product.selling_price pour que le prix
  *           soit sauvegardé correctement dans delivery_note_materials
  *   3.1.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
@@ -61,7 +65,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Package, Calendar, FileText, User, Mail,
-  Save, Eye, X, Plus, Truck, PenTool, Check, AlertTriangle, Link2
+  Save, Eye, X, Plus, Truck, PenTool, Check, AlertTriangle, Link2, Trash2
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
@@ -811,6 +815,20 @@ export default function DeliveryNoteForm({
   };
 
   // =============================================
+  // RETRAIT D'UN MATÉRIAU IMPORTÉ (tableau BO)
+  // Confirmation explicite avant suppression (mobile-first)
+  // =============================================
+
+  const removeMaterialAtIndex = (matIndex) => {
+    const mat = materials[matIndex];
+    if (!mat) return;
+    const label = mat.description || mat.product?.description || 'cet article';
+    if (!window.confirm(`Retirer « ${label} » du bon de livraison ?`)) return;
+    setMaterials(materials.filter((_, i) => i !== matIndex));
+    onFormChange?.();
+  };
+
+  // =============================================
   // RENDER
   // =============================================
 
@@ -1239,7 +1257,7 @@ export default function DeliveryNoteForm({
 
         {/* Tableau compact BO — items importés avec ordered_quantity */}
         {(() => {
-          const boMaterials = materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+          const boMaterials = materials.filter(m => m.ordered_quantity != null);
           if (boMaterials.length === 0) return null;
 
           return (
@@ -1250,10 +1268,11 @@ export default function DeliveryNoteForm({
                   <thead>
                     <tr className="text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                       <th className="px-2 py-2 text-left">Article</th>
-                      <th className="px-1 py-2 text-center w-14">CMD</th>
+                      <th className="px-1 py-2 text-center w-16">CMD</th>
                       <th className="px-1 py-2 text-center w-14">Déjà</th>
                       <th className="px-1 py-2 text-center w-16">Expédié</th>
                       <th className="px-1 py-2 text-center w-14">B/O</th>
+                      <th className="px-1 py-2 text-center w-10"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1275,7 +1294,27 @@ export default function DeliveryNoteForm({
                               {m.description || m.product?.description || 'Article'}
                             </span>
                           </td>
-                          <td className="px-1 py-2 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">{ordered}</td>
+                          <td className="px-1 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.ordered_quantity ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], ordered_quantity: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                              className="w-14 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
                           <td className="px-1 py-2 text-center">
                             <input
                               type="number"
@@ -1321,6 +1360,17 @@ export default function DeliveryNoteForm({
                           <td className="px-1 py-2 text-center text-xs font-semibold text-gray-900 dark:text-gray-100">
                             {bo}
                           </td>
+                          <td className="px-1 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeMaterialAtIndex(matIndex)}
+                              className="inline-flex items-center justify-center w-10 h-10 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                              title="Retirer cet article"
+                              aria-label="Retirer cet article"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1340,6 +1390,7 @@ export default function DeliveryNoteForm({
                       <th className="px-3 py-2 text-center">Déjà livré</th>
                       <th className="px-3 py-2 text-center">Expédié</th>
                       <th className="px-3 py-2 text-center">B/O</th>
+                      <th className="px-3 py-2 text-center w-12"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -1361,7 +1412,27 @@ export default function DeliveryNoteForm({
                           <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">
                             {m.unit || m.product?.unit || 'UN'}
                           </td>
-                          <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">{ordered}</td>
+                          <td className="px-3 py-2 text-center">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              value={m.ordered_quantity ?? 0}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                const updated = [...materials];
+                                updated[matIndex] = { ...updated[matIndex], ordered_quantity: val };
+                                setMaterials(updated);
+                                onFormChange?.();
+                              }}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                              className="w-20 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                              style={{ minHeight: '44px' }}
+                              min="0"
+                            />
+                          </td>
                           <td className="px-3 py-2 text-center">
                             <input
                               type="number"
@@ -1407,6 +1478,17 @@ export default function DeliveryNoteForm({
                           <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">
                             {bo}
                           </td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeMaterialAtIndex(matIndex)}
+                              className="inline-flex items-center justify-center w-9 h-9 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                              title="Retirer cet article"
+                              aria-label="Retirer cet article"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1419,8 +1501,8 @@ export default function DeliveryNoteForm({
 
         {/* MaterialSelector — items manuels (sans ordered_quantity) */}
         {(() => {
-          const nonBoMaterials = materials.filter(m => !(m.ordered_quantity != null && m.ordered_quantity > 0));
-          const boMaterials = materials.filter(m => m.ordered_quantity != null && m.ordered_quantity > 0);
+          const nonBoMaterials = materials.filter(m => m.ordered_quantity == null);
+          const boMaterials = materials.filter(m => m.ordered_quantity != null);
           return (
             <MaterialSelector
               materials={nonBoMaterials}
