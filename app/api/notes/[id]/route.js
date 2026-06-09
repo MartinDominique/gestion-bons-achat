@@ -4,9 +4,10 @@
  *              - GET: Récupère une note
  *              - PUT: Met à jour une note (édition + toggle complété)
  *              - DELETE: Supprime définitivement une note
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-09
  * @changelog
+ *   1.1.0 - Support du client associé à une note (client_id, client_name)
  *   1.0.0 - Version initiale (Système de Notes MVP)
  */
 
@@ -98,6 +99,14 @@ export async function PUT(request, { params }) {
         updates.project_id = body.project_id;
         updates.project_number = body.project_number || null;
       }
+    }
+
+    // Client associé (optionnel, indépendant du lien projet)
+    if (body.client_id !== undefined) {
+      updates.client_id = body.client_id || null;
+    }
+    if (body.client_name !== undefined) {
+      updates.client_name = body.client_name ? String(body.client_name).trim() : null;
     }
 
     // Toggle complété

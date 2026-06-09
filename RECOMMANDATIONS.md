@@ -1478,6 +1478,25 @@ coloration selon l'urgence, masquage des notes complétées.
 
 **Note:** La migration SQL doit être exécutée manuellement dans Supabase Dashboard.
 
+### Amélioration — Client sur les notes + filtrage des documents ✅ COMPLETE (2026-06-09)
+
+**Demande utilisateur:** Pouvoir associer un client à une note (au besoin). Le client sert
+aussi à filtrer le sélecteur de document. De plus, ne montrer que les documents pertinents :
+BT/BL en **Brouillon** uniquement (pas les envoyés), BA **En cours** uniquement, Soumissions
+**Envoyée** et **Acceptée** uniquement.
+
+**Implémentation:**
+- `supabase/migrations/20260609b_add_client_to_notes.sql` — Colonnes `client_id` + `client_name` + index
+- `app/api/notes/projects/route.js` v2.0.0 — Filtres par statut (BT/BL `draft`, BA `in_progress`,
+  Soumissions `sent`/`accepted`) + filtre par client (`client_id` pour BT/BL, `client_name` pour BA/Soumission)
+- `app/api/notes/route.js` v1.1.0 — POST accepte `client_id` / `client_name`
+- `app/api/notes/[id]/route.js` v1.1.0 — PUT accepte `client_id` / `client_name`
+- `components/notes/NoteForm.js` v1.1.0 — Sélecteur de client (optionnel) qui filtre les documents liables
+- `components/notes/NoteCard.js` v1.1.0 — Badge client sur la carte
+- `components/notes/NotesManager.js` — Recherche inclut le nom du client
+
+**Note:** La migration SQL `20260609b_add_client_to_notes.sql` doit être exécutée manuellement dans Supabase Dashboard.
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-06-09 par Claude AI*

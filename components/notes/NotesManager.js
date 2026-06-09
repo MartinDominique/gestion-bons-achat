@@ -75,7 +75,8 @@ export default function NotesManager() {
       const inTitle = (n.title || '').toLowerCase().includes(q);
       const inDesc = (n.description || '').toLowerCase().includes(q);
       const inNumber = (n.project_number || '').toLowerCase().includes(q);
-      if (!inTitle && !inDesc && !inNumber) return false;
+      const inClient = (n.client_name || '').toLowerCase().includes(q);
+      if (!inTitle && !inDesc && !inNumber && !inClient) return false;
     }
     return true;
   });

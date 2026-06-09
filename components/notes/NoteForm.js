@@ -2,12 +2,15 @@
  * @file components/notes/NoteForm.js
  * @description Modal de création / édition d'une note.
  *              - Champs: Titre (requis), Description, Échéance (optionnelle),
- *                Type (Global / Lié à un projet), sélecteur de document si projet
+ *                Client (optionnel), Type (Global / Lié à un projet), sélecteur de document
+ *              - Le client (si choisi) filtre le sélecteur de document
  *              - Le sélecteur charge BT/BL/BA/Soumission via /api/notes/projects
+ *                (Brouillons BT/BL, BA En cours, Soumissions Envoyées/Acceptées)
  *              - Validation: titre min 3 caractères, document requis si type projet
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-09
  * @changelog
+ *   1.1.0 - Ajout du sélecteur de client (optionnel) qui filtre les documents liables
  *   1.0.0 - Version initiale (Système de Notes MVP)
  */
 
@@ -30,18 +33,37 @@ export default function NoteForm({ note, onSave, onClose }) {
   const [title, setTitle] = useState(note?.title || '');
   const [description, setDescription] = useState(note?.description || '');
   const [dueDate, setDueDate] = useState(note?.due_date || '');
+  const [clientId, setClientId] = useState(note?.client_id || '');
+  const [clientName, setClientName] = useState(note?.client_name || '');
   const [noteType, setNoteType] = useState(note?.note_type || 'global');
   const [projectType, setProjectType] = useState(note?.project_type || 'work_order');
   const [projectId, setProjectId] = useState(note?.project_id || null);
   const [projectNumber, setProjectNumber] = useState(note?.project_number || '');
 
+  const [clients, setClients] = useState([]);
   const [docs, setDocs] = useState([]);
   const [docSearch, setDocSearch] = useState('');
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Charger les documents quand on passe en mode projet ou qu'on change de type
+  // Charger la liste des clients (pour le sélecteur de client)
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/clients')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) setClients(data);
+      })
+      .catch(() => {
+        if (!cancelled) setClients([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Charger les documents quand on passe en mode projet ou qu'on change de type/client
   useEffect(() => {
     if (noteType !== 'project') return;
     let cancelled = false;
@@ -51,6 +73,9 @@ export default function NoteForm({ note, onSave, onClose }) {
       try {
         const params = new URLSearchParams({ type: projectType });
         if (docSearch.trim()) params.set('search', docSearch.trim());
+        // BT/BL filtrés par client_id, BA/Soumission par client_name
+        if (clientId) params.set('client_id', clientId);
+        if (clientName) params.set('client_name', clientName);
         const res = await fetch(`/api/notes/projects?${params.toString()}`);
         const json = await res.json();
         if (!cancelled && json.success) setDocs(json.data || []);
@@ -66,7 +91,17 @@ export default function NoteForm({ note, onSave, onClose }) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [noteType, projectType, docSearch]);
+  }, [noteType, projectType, docSearch, clientId, clientName]);
+
+  // Quand on change de client, réinitialiser le document sélectionné
+  const handleClientChange = (e) => {
+    const id = e.target.value;
+    setClientId(id);
+    const selected = clients.find((c) => String(c.id) === String(id));
+    setClientName(selected?.name || '');
+    setProjectId(null);
+    setProjectNumber('');
+  };
 
   const handleSelectDoc = (doc) => {
     setProjectId(doc.id);
@@ -89,6 +124,8 @@ export default function NoteForm({ note, onSave, onClose }) {
       title: title.trim(),
       description: description.trim() || null,
       due_date: dueDate || null,
+      client_id: clientId || null,
+      client_name: clientName || null,
       note_type: noteType,
       project_type: noteType === 'project' ? projectType : null,
       project_id: noteType === 'project' ? projectId : null,
@@ -170,6 +207,28 @@ export default function NoteForm({ note, onSave, onClose }) {
             />
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
               Sans date, la note reste en bas du tableau (fond gris).
+            </p>
+          </div>
+
+          {/* Client (optionnel) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Client <span className="text-gray-400 font-normal">(optionnel)</span>
+            </label>
+            <select
+              value={clientId || ''}
+              onChange={handleClientChange}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">— Aucun client —</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              Filtre les documents (BT/BL/BA/Soumission) liables à ce client.
             </p>
           </div>
 
