@@ -3,9 +3,10 @@
  * @description API CRUD pour le système de Notes.
  *              - GET: Liste les notes (filtres: completed, note_type, recherche)
  *              - POST: Crée une nouvelle note (globale ou liée à un projet)
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-09
  * @changelog
+ *   1.1.0 - Support du client associé à une note (client_id, client_name)
  *   1.0.0 - Version initiale (Système de Notes MVP)
  */
 
@@ -86,6 +87,8 @@ export async function POST(request) {
       project_id = null,
       project_number = null,
       due_date = null,
+      client_id = null,
+      client_name = null,
       user_id = null,
     } = body;
 
@@ -131,6 +134,8 @@ export async function POST(request) {
         project_id: cleanProjectId,
         project_number: cleanProjectNumber,
         due_date: due_date || null,
+        client_id: client_id || null,
+        client_name: client_name ? String(client_name).trim() : null,
         user_id: user_id || null,
       })
       .select()

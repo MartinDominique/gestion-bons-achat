@@ -359,7 +359,7 @@ const total = subtotal + tps + tvq;
 ```
 /api/notes                             → CRUD Notes (GET liste + POST création)
 /api/notes/[id]                        → GET/PUT (édition + toggle complété)/DELETE note
-/api/notes/projects                    → Liste BT/BL/BA/Soumission pour sélecteur de note
+/api/notes/projects                    → Liste BT/BL/BA/Soumission pour sélecteur de note (filtrée: brouillons BT/BL, BA en cours, soum. envoyées/acceptées + filtre client)
 /api/work-orders                       → CRUD BT
 /api/work-orders/[id]/send-email       → Envoi email BT
 /api/work-orders/[id]/signature        → Capture signature BT
@@ -498,6 +498,7 @@ sent_at, paid_at, user_id, created_at, updated_at
 id (UUID), title, description,
 note_type ('global'|'project'),
 project_type ('work_order'|'delivery_note'|'purchase_order'|'submission'), project_id, project_number,
+client_id, client_name,
 due_date, completed, completed_at,
 user_id, created_at, updated_at
 ```
@@ -712,7 +713,11 @@ CRON_SECRET                   # Auth pour cron jobs
     - `components/Navigation.js` v2.1.0 — Onglet Notes (1er) + badge urgent
     - Notes globales OU liées à un document; complétées masquées; lien projet ouvre le SplitView
     - Décisions: `.js` (pas TS), en ligne simple (pas d'offline-first), échéance optionnelle, sans priorité/tags
-    - **Reste:** exécuter la migration SQL dans Supabase Dashboard
+    - **Amélioration (2026-06-09):** Client associable à une note (optionnel) + filtrage du sélecteur de document
+      - `supabase/migrations/20260609b_add_client_to_notes.sql` — colonnes `client_id` + `client_name`
+      - `app/api/notes/projects/route.js` v2.0.0 — n'affiche que: BT/BL `draft` (Brouillons), BA `in_progress` (En cours), Soumissions `sent`/`accepted` (Envoyée/Acceptée); filtre par client (client_id BT/BL, client_name BA/Soum.)
+      - `NoteForm.js` v1.1.0 (sélecteur client) + `NoteCard.js` v1.1.0 (badge client) + API notes route/[id] v1.1.0
+    - **Reste:** exécuter les migrations SQL (`20260609_create_notes.sql` + `20260609b_add_client_to_notes.sql`) dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

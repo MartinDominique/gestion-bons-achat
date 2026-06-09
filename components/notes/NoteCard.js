@@ -4,17 +4,19 @@
  *              - Couleur de fond selon l'urgence (rouge/orange/gris)
  *              - Checkbox pour marquer complété (la note disparaît ensuite)
  *              - Badge projet cliquable (ouvre le SplitView: BT/BL/BA/Soumission)
+ *              - Badge client (si la note est associée à un client)
  *              - Boutons Éditer / Supprimer (suppression avec confirmation)
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-09
  * @changelog
+ *   1.1.0 - Affichage du client associé à la note (badge)
  *   1.0.0 - Version initiale (Système de Notes MVP)
  */
 
 'use client';
 
 import React, { useState } from 'react';
-import { Check, Pencil, Trash2, Calendar, Loader2, StickyNote } from 'lucide-react';
+import { Check, Pencil, Trash2, Calendar, Loader2, StickyNote, User } from 'lucide-react';
 import ReferenceLink from '../SplitView/ReferenceLink';
 import {
   getUrgency,
@@ -99,6 +101,14 @@ export default function NoteCard({ note, onToggleComplete, onEdit, onDelete }) {
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium text-gray-500 dark:text-gray-400">
                 <Calendar className="w-3 h-3" />
                 Sans échéance
+              </span>
+            )}
+
+            {/* Badge client */}
+            {note.client_name && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                <User className="w-3 h-3" />
+                {note.client_name}
               </span>
             )}
 
