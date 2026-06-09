@@ -4,16 +4,17 @@
  *              - Desktop: barre complète avec tous les modules
  *              - Tablette/Mobile: modules principaux (BA, BT, Clients) + menu "Plus"
  *              - Menu Plus (bottom sheet): Soumissions, Inventaire, Achat, Stats, Facturation, Paramètres
- * @version 2.0.0
- * @date 2026-03-01
+ * @version 2.1.0
+ * @date 2026-06-09
  * @changelog
+ *   2.1.0 - Ajout onglet Notes (1er) + badge notes urgentes + route /notes protégée
  *   2.0.0 - Navigation mobile Option A: menu "Plus" pour modules bureau
  *   1.0.0 - Version initiale
  */
 
 'use client';
 
-import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse, Settings, BarChart3, Receipt, MoreHorizontal } from 'lucide-react';
+import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse, Settings, BarChart3, Receipt, MoreHorizontal, StickyNote } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -21,8 +22,10 @@ import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 import InventoryManager from './InventoryManager.js';
 import ClientManager from './ClientManager';
+import { countUrgent } from '../lib/utils/notes';
 
 const pages = [
+  { id: 'notes', name: 'Notes', shortName: "Notes", icon: StickyNote },
   { id: 'bons-achat', name: "Clients", shortName: "BA", icon: Package },
   { id: 'soumissions', name: 'Soumissions', shortName: "Soum.", icon: FileText },
   { id: 'inventaire', name: 'Inventaire', shortName: "Inv.", icon: Warehouse },
@@ -33,7 +36,7 @@ const pages = [
 ];
 
 // Pages principales visibles dans la barre mobile
-const mobilePrimaryIds = ['bons-achat', 'bons-travail'];
+const mobilePrimaryIds = ['notes', 'bons-achat', 'bons-travail'];
 const mobilePages = pages.filter(p => mobilePrimaryIds.includes(p.id));
 const plusMenuPages = [
   ...pages.filter(p => !mobilePrimaryIds.includes(p.id)),
@@ -48,6 +51,23 @@ export default function Navigation() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showClientManager, setShowClientManager] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [urgentNotes, setUrgentNotes] = useState(0);
+
+  // Compteur de notes urgentes (échéance 0-1 jour) pour le badge.
+  // Rechargé à chaque changement de page pour refléter les complétions.
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
+    fetch('/api/notes?completed=false')
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelled && json.success) setUrgentNotes(countUrgent(json.data || []));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, pathname]);
 
   // Vérifier si la page active est dans le menu Plus (pour highlight du bouton)
   const isPlusPageActive = plusMenuPages.some(p => pathname.startsWith('/' + p.id));
@@ -78,7 +98,7 @@ const shouldHideNav = pathname.includes('/bons-travail/') &&
           setUser(user);
         }
 
-        const protectedRoutes = ['/bons-', '/soumissions', '/bons-travail', '/inventaire', '/achat-materiels', '/statistiques', '/facturation'];
+        const protectedRoutes = ['/notes', '/bons-', '/soumissions', '/bons-travail', '/inventaire', '/achat-materiels', '/statistiques', '/facturation'];
         const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
         
         if (isProtectedRoute && !user) {
@@ -179,7 +199,7 @@ return (
                   <Link
                     key={id}
                     href={`/${id}`}
-                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                    className={`relative flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
                       active
                         ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -187,6 +207,11 @@ return (
                   >
                     <Icon className="w-5 h-5 mr-2" />
                     {name}
+                    {id === 'notes' && urgentNotes > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-red-600 text-white">
+                        {urgentNotes}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -220,7 +245,7 @@ return (
                   <Link
                     key={id}
                     href={`/${id}`}
-                    className={`flex flex-col items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors min-w-[60px] sm:min-w-[72px] flex-shrink-0 ${
+                    className={`relative flex flex-col items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors min-w-[60px] sm:min-w-[72px] flex-shrink-0 ${
                       active
                         ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -229,6 +254,11 @@ return (
                   >
                     <Icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
                     <span className="text-[10px] sm:text-xs leading-tight text-center">{shortName}</span>
+                    {id === 'notes' && urgentNotes > 0 && (
+                      <span className="absolute top-0.5 right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-red-600 text-white">
+                        {urgentNotes}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
