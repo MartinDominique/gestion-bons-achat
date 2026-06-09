@@ -7,9 +7,10 @@
  *              - Le sélecteur charge BT/BL/BA/Soumission via /api/notes/projects
  *                (Brouillons BT/BL, BA En cours, Soumissions Envoyées/Acceptées)
  *              - Validation: titre min 3 caractères, document requis si type projet
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-06-09
  * @changelog
+ *   1.2.0 - Description du document affichée dans la liste + bouton Supprimer (retirer le document)
  *   1.1.0 - Ajout du sélecteur de client (optionnel) qui filtre les documents liables
  *   1.0.0 - Version initiale (Système de Notes MVP)
  */
@@ -17,7 +18,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Search } from 'lucide-react';
+import { X, Loader2, Search, Trash2 } from 'lucide-react';
 import { PROJECT_TYPE_LABELS } from '../../lib/utils/notes';
 
 const PROJECT_TYPE_OPTIONS = [
@@ -39,6 +40,7 @@ export default function NoteForm({ note, onSave, onClose }) {
   const [projectType, setProjectType] = useState(note?.project_type || 'work_order');
   const [projectId, setProjectId] = useState(note?.project_id || null);
   const [projectNumber, setProjectNumber] = useState(note?.project_number || '');
+  const [projectDescription, setProjectDescription] = useState('');
 
   const [clients, setClients] = useState([]);
   const [docs, setDocs] = useState([]);
@@ -101,11 +103,20 @@ export default function NoteForm({ note, onSave, onClose }) {
     setClientName(selected?.name || '');
     setProjectId(null);
     setProjectNumber('');
+    setProjectDescription('');
   };
 
   const handleSelectDoc = (doc) => {
     setProjectId(doc.id);
     setProjectNumber(doc.number);
+    setProjectDescription(doc.description || '');
+  };
+
+  // Retirer le document sélectionné (en cas d'erreur de sélection)
+  const handleClearDoc = () => {
+    setProjectId(null);
+    setProjectNumber('');
+    setProjectDescription('');
   };
 
   const handleSubmit = async () => {
@@ -276,6 +287,7 @@ export default function NoteForm({ note, onSave, onClose }) {
                     setProjectType(e.target.value);
                     setProjectId(null);
                     setProjectNumber('');
+                    setProjectDescription('');
                   }}
                   className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -304,8 +316,25 @@ export default function NoteForm({ note, onSave, onClose }) {
 
               {/* Document sélectionné */}
               {projectNumber && (
-                <div className="text-sm px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  Sélectionné : <span className="font-semibold">{projectNumber}</span>
+                <div className="flex items-start justify-between gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  <div className="min-w-0 text-sm">
+                    Sélectionné : <span className="font-semibold">{projectNumber}</span>
+                    {projectDescription && (
+                      <div className="text-xs text-blue-600/80 dark:text-blue-300/80 break-words mt-0.5">
+                        {projectDescription}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearDoc}
+                    aria-label="Retirer le document"
+                    title="Retirer le document"
+                    className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Supprimer
+                  </button>
                 </div>
               )}
 
@@ -335,6 +364,11 @@ export default function NoteForm({ note, onSave, onClose }) {
                       {doc.client_name && (
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {doc.client_name}
+                        </div>
+                      )}
+                      {doc.description && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 break-words">
+                          {doc.description}
                         </div>
                       )}
                     </button>

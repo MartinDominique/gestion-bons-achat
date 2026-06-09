@@ -359,7 +359,7 @@ const total = subtotal + tps + tvq;
 ```
 /api/notes                             → CRUD Notes (GET liste + POST création)
 /api/notes/[id]                        → GET/PUT (édition + toggle complété)/DELETE note
-/api/notes/projects                    → Liste BT/BL/BA/Soumission pour sélecteur de note (filtrée: brouillons BT/BL, BA en cours, soum. envoyées/acceptées + filtre client)
+/api/notes/projects                    → Liste BT/BL/BA/Soumission pour sélecteur de note (filtrée: brouillons BT/BL, BA en cours, soum. envoyées/acceptées + filtre client + description du doc)
 /api/work-orders                       → CRUD BT
 /api/work-orders/[id]/send-email       → Envoi email BT
 /api/work-orders/[id]/signature        → Capture signature BT
@@ -715,8 +715,8 @@ CRON_SECRET                   # Auth pour cron jobs
     - Décisions: `.js` (pas TS), en ligne simple (pas d'offline-first), échéance optionnelle, sans priorité/tags
     - **Amélioration (2026-06-09):** Client associable à une note (optionnel) + filtrage du sélecteur de document
       - `supabase/migrations/20260609b_add_client_to_notes.sql` — colonnes `client_id` + `client_name`
-      - `app/api/notes/projects/route.js` v2.0.0 — n'affiche que: BT/BL `draft` (Brouillons), BA `in_progress` (En cours), Soumissions `sent`/`accepted` (Envoyée/Acceptée); filtre par client (client_id BT/BL, client_name BA/Soum.)
-      - `NoteForm.js` v1.1.0 (sélecteur client) + `NoteCard.js` v1.1.0 (badge client) + API notes route/[id] v1.1.0
+      - `app/api/notes/projects/route.js` v2.1.0 — n'affiche que: BT/BL `draft` (Brouillons), BA `in_progress` (En cours), Soumissions `sent`/`accepted` (Envoyée/Acceptée); filtre par client (client_id BT/BL, client_name BA/Soum.); inclut la description du document
+      - `NoteForm.js` v1.2.0 (sélecteur client + description du doc dans la liste + bouton Supprimer) + `NoteCard.js` v1.1.0 (badge client) + API notes route/[id] v1.1.0
     - **Reste:** exécuter les migrations SQL (`20260609_create_notes.sql` + `20260609b_add_client_to_notes.sql`) dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)

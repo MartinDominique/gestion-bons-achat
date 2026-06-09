@@ -11,9 +11,10 @@
  *                - Soumission           : statut 'sent' ou 'accepted' (Envoyée / Acceptée)
  *
  *              Filtre client optionnel (client_id pour BT/BL, client_name pour BA/Soumission).
- * @version 2.0.0
+ * @version 2.1.0
  * @date 2026-06-09
  * @changelog
+ *   2.1.0 - Ajout de la description du document dans la liste (pour l'identifier)
  *   2.0.0 - Filtres par statut (BT/BL brouillons, BA en cours, Soumissions envoyées/acceptées)
  *           + filtre par client (client_id / client_name)
  *   1.0.0 - Version initiale (Système de Notes MVP)
@@ -48,7 +49,7 @@ export async function GET(request) {
     if (type === 'work_order') {
       let q = supabaseAdmin
         .from('work_orders')
-        .select('id, bt_number, work_date, client:clients(name)')
+        .select('id, bt_number, work_date, work_description, client:clients(name)')
         .eq('status', 'draft')
         .order('created_at', { ascending: false })
         .limit(LIMIT);
@@ -60,12 +61,13 @@ export async function GET(request) {
         id: r.id,
         number: r.bt_number,
         client_name: r.client?.name || '',
+        description: r.work_description || '',
         date: r.work_date || null,
       }));
     } else if (type === 'delivery_note') {
       let q = supabaseAdmin
         .from('delivery_notes')
-        .select('id, bl_number, client_name, delivery_date')
+        .select('id, bl_number, client_name, delivery_date, delivery_description')
         .eq('status', 'draft')
         .order('created_at', { ascending: false })
         .limit(LIMIT);
@@ -77,12 +79,13 @@ export async function GET(request) {
         id: r.id,
         number: r.bl_number,
         client_name: r.client_name || '',
+        description: r.delivery_description || '',
         date: r.delivery_date || null,
       }));
     } else if (type === 'purchase_order') {
       let q = supabaseAdmin
         .from('purchase_orders')
-        .select('id, po_number, client_name, created_at')
+        .select('id, po_number, client_name, created_at, description')
         .eq('status', 'in_progress')
         .order('created_at', { ascending: false })
         .limit(LIMIT);
@@ -94,12 +97,13 @@ export async function GET(request) {
         id: r.id,
         number: r.po_number,
         client_name: r.client_name || '',
+        description: r.description || '',
         date: r.created_at || null,
       }));
     } else if (type === 'submission') {
       let q = supabaseAdmin
         .from('submissions')
-        .select('id, submission_number, client_name, created_at')
+        .select('id, submission_number, client_name, created_at, description')
         .in('status', ['sent', 'accepted'])
         .order('created_at', { ascending: false })
         .limit(LIMIT);
@@ -111,6 +115,7 @@ export async function GET(request) {
         id: r.id,
         number: r.submission_number,
         client_name: r.client_name || '',
+        description: r.description || '',
         date: r.created_at || null,
       }));
     } else {
