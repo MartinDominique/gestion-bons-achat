@@ -9,9 +9,15 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 3.3.0
+ * @version 3.3.2
  * @date 2026-06-09
  * @changelog
+ *   3.3.2 - Fix bouton supprimer hors champ sur PC/desktop: tableau BO resserré
+ *           (inputs w-16, paddings px-2, description max-w-180) pour que la colonne
+ *           supprimer rentre dans le formulaire malgré les spinners des champs number.
+ *   3.3.1 - Fix bouton supprimer invisible sur tablette/mobile: la 6e colonne débordait
+ *           et était masquée par overflow-hidden. Bouton supprimer déplacé dans la cellule
+ *           Article (mobile) + conteneur en overflow-x-auto (desktop).
  *   3.3.0 - Tableau BO: bouton supprimer par ligne (retrait d'un item importé d'une
  *           soumission/AF) + colonne "Commandé" (ordered_quantity) maintenant éditable.
  *           Filtres BO basés sur présence de ordered_quantity (!= null) au lieu de > 0
@@ -1261,7 +1267,7 @@ export default function DeliveryNoteForm({
           if (boMaterials.length === 0) return null;
 
           return (
-            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-4">
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto mb-4">
               {/* Version mobile/tablette */}
               <div className="lg:hidden">
                 <table className="w-full text-sm">
@@ -1272,7 +1278,6 @@ export default function DeliveryNoteForm({
                       <th className="px-1 py-2 text-center w-14">Déjà</th>
                       <th className="px-1 py-2 text-center w-16">Expédié</th>
                       <th className="px-1 py-2 text-center w-14">B/O</th>
-                      <th className="px-1 py-2 text-center w-10"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1287,12 +1292,25 @@ export default function DeliveryNoteForm({
                       return (
                         <tr key={idx}>
                           <td className="px-2 py-2">
-                            {code && (
-                              <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
-                            )}
-                            <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
-                              {m.description || m.product?.description || 'Article'}
-                            </span>
+                            <div className="flex items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                {code && (
+                                  <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
+                                )}
+                                <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
+                                  {m.description || m.product?.description || 'Article'}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeMaterialAtIndex(matIndex)}
+                                className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                title="Retirer cet article"
+                                aria-label="Retirer cet article"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </td>
                           <td className="px-1 py-2 text-center">
                             <input
@@ -1360,17 +1378,6 @@ export default function DeliveryNoteForm({
                           <td className="px-1 py-2 text-center text-xs font-semibold text-gray-900 dark:text-gray-100">
                             {bo}
                           </td>
-                          <td className="px-1 py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeMaterialAtIndex(matIndex)}
-                              className="inline-flex items-center justify-center w-10 h-10 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                              title="Retirer cet article"
-                              aria-label="Retirer cet article"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
                         </tr>
                       );
                     })}
@@ -1383,14 +1390,14 @@ export default function DeliveryNoteForm({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                      <th className="px-3 py-2 text-left">Code</th>
-                      <th className="px-3 py-2 text-left">Description</th>
-                      <th className="px-3 py-2 text-center">U/M</th>
-                      <th className="px-3 py-2 text-center">Commandé</th>
-                      <th className="px-3 py-2 text-center">Déjà livré</th>
-                      <th className="px-3 py-2 text-center">Expédié</th>
-                      <th className="px-3 py-2 text-center">B/O</th>
-                      <th className="px-3 py-2 text-center w-12"></th>
+                      <th className="px-2 py-2 text-left">Code</th>
+                      <th className="px-2 py-2 text-left">Description</th>
+                      <th className="px-2 py-2 text-center">U/M</th>
+                      <th className="px-2 py-2 text-center">Commandé</th>
+                      <th className="px-2 py-2 text-center">Déjà livré</th>
+                      <th className="px-2 py-2 text-center">Expédié</th>
+                      <th className="px-2 py-2 text-center">B/O</th>
+                      <th className="px-2 py-2 text-center w-12"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -1403,16 +1410,16 @@ export default function DeliveryNoteForm({
 
                       return (
                         <tr key={idx}>
-                          <td className="px-3 py-2 font-mono text-xs font-bold text-gray-900 dark:text-gray-100">
+                          <td className="px-2 py-2 font-mono text-xs font-bold text-gray-900 dark:text-gray-100">
                             {m.code || m.product_code || m.product?.product_id || m.product_id || '—'}
                           </td>
-                          <td className="px-3 py-2 text-gray-900 dark:text-gray-100 truncate max-w-[280px]">
+                          <td className="px-2 py-2 text-gray-900 dark:text-gray-100 truncate max-w-[180px]">
                             {m.description || m.product?.description || 'Article'}
                           </td>
-                          <td className="px-3 py-2 text-center text-gray-600 dark:text-gray-400">
+                          <td className="px-2 py-2 text-center text-gray-600 dark:text-gray-400">
                             {m.unit || m.product?.unit || 'UN'}
                           </td>
-                          <td className="px-3 py-2 text-center">
+                          <td className="px-2 py-2 text-center">
                             <input
                               type="number"
                               inputMode="numeric"
@@ -1428,12 +1435,12 @@ export default function DeliveryNoteForm({
                               autoCorrect="off"
                               autoCapitalize="off"
                               spellCheck={false}
-                              className="w-20 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                              className="w-16 text-center text-sm font-semibold text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
                               style={{ minHeight: '44px' }}
                               min="0"
                             />
                           </td>
-                          <td className="px-3 py-2 text-center">
+                          <td className="px-2 py-2 text-center">
                             <input
                               type="number"
                               inputMode="numeric"
@@ -1449,12 +1456,12 @@ export default function DeliveryNoteForm({
                               autoCorrect="off"
                               autoCapitalize="off"
                               spellCheck={false}
-                              className="w-20 text-center text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                              className="w-16 text-center text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
                               style={{ minHeight: '44px' }}
                               min="0"
                             />
                           </td>
-                          <td className="px-3 py-2 text-center">
+                          <td className="px-2 py-2 text-center">
                             <input
                               type="number"
                               inputMode="numeric"
@@ -1470,15 +1477,15 @@ export default function DeliveryNoteForm({
                               autoCorrect="off"
                               autoCapitalize="off"
                               spellCheck={false}
-                              className="w-20 text-center text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
+                              className="w-16 text-center text-sm font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1 py-1"
                               style={{ minHeight: '44px' }}
                               min="0"
                             />
                           </td>
-                          <td className="px-3 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">
+                          <td className="px-2 py-2 text-center font-semibold text-gray-900 dark:text-gray-100">
                             {bo}
                           </td>
-                          <td className="px-3 py-2 text-center">
+                          <td className="px-2 py-2 text-center">
                             <button
                               type="button"
                               onClick={() => removeMaterialAtIndex(matIndex)}
