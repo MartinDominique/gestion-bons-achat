@@ -9,9 +9,12 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 3.3.0
+ * @version 3.3.1
  * @date 2026-06-09
  * @changelog
+ *   3.3.1 - Fix bouton supprimer invisible sur tablette/mobile: la 6e colonne débordait
+ *           et était masquée par overflow-hidden. Bouton supprimer déplacé dans la cellule
+ *           Article (mobile) + conteneur en overflow-x-auto (desktop).
  *   3.3.0 - Tableau BO: bouton supprimer par ligne (retrait d'un item importé d'une
  *           soumission/AF) + colonne "Commandé" (ordered_quantity) maintenant éditable.
  *           Filtres BO basés sur présence de ordered_quantity (!= null) au lieu de > 0
@@ -1261,7 +1264,7 @@ export default function DeliveryNoteForm({
           if (boMaterials.length === 0) return null;
 
           return (
-            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-4">
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto mb-4">
               {/* Version mobile/tablette */}
               <div className="lg:hidden">
                 <table className="w-full text-sm">
@@ -1272,7 +1275,6 @@ export default function DeliveryNoteForm({
                       <th className="px-1 py-2 text-center w-14">Déjà</th>
                       <th className="px-1 py-2 text-center w-16">Expédié</th>
                       <th className="px-1 py-2 text-center w-14">B/O</th>
-                      <th className="px-1 py-2 text-center w-10"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1287,12 +1289,25 @@ export default function DeliveryNoteForm({
                       return (
                         <tr key={idx}>
                           <td className="px-2 py-2">
-                            {code && (
-                              <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
-                            )}
-                            <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
-                              {m.description || m.product?.description || 'Article'}
-                            </span>
+                            <div className="flex items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                {code && (
+                                  <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
+                                )}
+                                <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
+                                  {m.description || m.product?.description || 'Article'}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeMaterialAtIndex(matIndex)}
+                                className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                title="Retirer cet article"
+                                aria-label="Retirer cet article"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </td>
                           <td className="px-1 py-2 text-center">
                             <input
@@ -1359,17 +1374,6 @@ export default function DeliveryNoteForm({
                           </td>
                           <td className="px-1 py-2 text-center text-xs font-semibold text-gray-900 dark:text-gray-100">
                             {bo}
-                          </td>
-                          <td className="px-1 py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeMaterialAtIndex(matIndex)}
-                              className="inline-flex items-center justify-center w-10 h-10 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                              title="Retirer cet article"
-                              aria-label="Retirer cet article"
-                            >
-                              <Trash2 size={16} />
-                            </button>
                           </td>
                         </tr>
                       );
