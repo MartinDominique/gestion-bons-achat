@@ -1487,11 +1487,13 @@ BT/BL en **Brouillon** uniquement (pas les envoyés), BA **En cours** uniquement
 
 **Implémentation:**
 - `supabase/migrations/20260609b_add_client_to_notes.sql` — Colonnes `client_id` + `client_name` + index
-- `app/api/notes/projects/route.js` v2.0.0 — Filtres par statut (BT/BL `draft`, BA `in_progress`,
+- `app/api/notes/projects/route.js` v2.1.0 — Filtres par statut (BT/BL `draft`, BA `in_progress`,
   Soumissions `sent`/`accepted`) + filtre par client (`client_id` pour BT/BL, `client_name` pour BA/Soumission)
+  + **description du document** dans la liste (work_description / delivery_description / description)
 - `app/api/notes/route.js` v1.1.0 — POST accepte `client_id` / `client_name`
 - `app/api/notes/[id]/route.js` v1.1.0 — PUT accepte `client_id` / `client_name`
-- `components/notes/NoteForm.js` v1.1.0 — Sélecteur de client (optionnel) qui filtre les documents liables
+- `components/notes/NoteForm.js` v1.2.0 — Sélecteur de client (optionnel) qui filtre les documents liables
+  + **description du document affichée** dans la liste + **bouton Supprimer** (retirer le document sélectionné)
 - `components/notes/NoteCard.js` v1.1.0 — Badge client sur la carte
 - `components/notes/NotesManager.js` — Recherche inclut le nom du client
 
