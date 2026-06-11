@@ -5,9 +5,12 @@
  *              - Ajout rapide de produits non-inventaire
  *              - Clavier numérique pour saisie quantités (optimisé tablette)
  *              - Affichage/masquage prix par article
- * @version 1.4.0
- * @date 2026-03-07
+ * @version 1.5.0
+ * @date 2026-06-11
  * @changelog
+ *   1.5.0 - Fix badge "Stock" périmé (BT+BL): rafraîchissement auto en arrière-plan à l'ouverture
+ *           de la recherche (stale-while-revalidate) + invalidation du cache de filtrage au rechargement.
+ *           Un item juste acheté affichait "Stock: 0" alors que l'inventaire montrait la bonne quantité.
  *   1.4.0 - Forcer majuscules sur description produit non-inventaire (onBlur toUpperCase + CSS textTransform + uppercase au save)
  *   1.3.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.3.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -176,20 +179,26 @@ export default function MaterialSelector({
     applyProductFilters();
   }, [searchTerm, products]);
 
-  const loadProducts = async (forceReload = false) => {
+  const loadProducts = async (forceReload = false, background = false) => {
     try {
       const now = Date.now();
       const fiveMinutesAgo = now - (5 * 60 * 1000);
-      
+
       // Cache intelligent
       if (!forceReload && cachedProducts && cachedProducts.length > 0 && lastFetchTime && lastFetchTime > fiveMinutesAgo) {
         console.log("✅ Cache produits utilisé - Chargement instantané");
         setProducts(cachedProducts);
         return;
       }
-      
+
       console.log("🔄 Chargement produits depuis Supabase");
-      setLoading(true);
+      // Stale-while-revalidate: en rafraîchissement arrière-plan, garder la liste
+      // déjà affichée visible (ne pas montrer le spinner) tant qu'on a des données
+      const hasExistingData =
+        (products && products.length > 0) || (cachedProducts && cachedProducts.length > 0);
+      if (!(background && hasExistingData)) {
+        setLoading(true);
+      }
       
       // ========================================
       // 1. CHARGER PRODUITS INVENTAIRE (paginé)
@@ -241,7 +250,10 @@ export default function MaterialSelector({
       setCachedProducts(allProducts);
       setLastFetchTime(now);
       setProducts(allProducts);
-      
+      // Invalider le cache de filtrage: sinon applyProductFilters renvoie d'anciens
+      // objets produits (stock périmé) malgré le rechargement
+      setFilteredCache({});
+
       console.log(`✅ ${allProducts.length} produits chargés et mis en cache`);
       
     } catch (error) {
@@ -554,6 +566,9 @@ const deleteMaterialFromModal = () => {
           type="button"
           onClick={() => {
             setShowProductSearch(true);
+            // Rafraîchir le stock en arrière-plan (stale-while-revalidate) pour
+            // refléter les achats/réceptions récents sans bloquer l'affichage
+            loadProducts(true, true);
             setTimeout(() => {
               if (searchRef.current) {
                 searchRef.current.focus();

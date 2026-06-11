@@ -1,3 +1,16 @@
+/**
+ * @file app/api/products/route.js
+ * @description API GET produits (inventaire + non-inventaire) pour la recherche de matériaux (BT/BL)
+ *              - Mode inventory_only: produits de la table products (paginé)
+ *              - Mode non_inventory_only: produits de la table non_inventory_items
+ * @version 1.1.0
+ * @date 2026-06-11
+ * @changelog
+ *   1.1.0 - Fix: lire le vrai stock_qty (et prix) des items non-inventaire au lieu de forcer 0.
+ *           Un item non-inventaire réceptionné affichait "Stock: 0" dans la recherche BT/BL
+ *           alors que la page Inventaire (select *) montrait la vraie quantité.
+ *   1.0.0 - Version initiale
+ */
 import { NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabaseAdmin';
 
@@ -16,7 +29,7 @@ export async function GET(request) {
     if (nonInventoryOnly) {
       let queryNonInventory = supabase
         .from('non_inventory_items')
-        .select(`product_id, description, unit`);
+        .select(`product_id, description, unit, stock_qty, cost_price, selling_price`);
 
       if (search) {
         queryNonInventory = queryNonInventory.or(`description.ilike.%${search}%,product_id.ilike.%${search}%`);
@@ -39,10 +52,10 @@ export async function GET(request) {
         category: 'Non-Inventaire',
         product_group: 'Non-Inventaire',
         unit: item.unit || 'unité',
-        price: 0,
-        cost_price: 0,
-        selling_price: 0,
-        stock_qty: 0,
+        price: item.selling_price || 0,
+        cost_price: item.cost_price || 0,
+        selling_price: item.selling_price || 0,
+        stock_qty: item.stock_qty || 0,
         is_inventory: false
       })) || [];
 
