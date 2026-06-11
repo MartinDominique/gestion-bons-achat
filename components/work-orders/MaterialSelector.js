@@ -5,9 +5,12 @@
  *              - Ajout rapide de produits non-inventaire
  *              - Clavier numérique pour saisie quantités (optimisé tablette)
  *              - Affichage/masquage prix par article
- * @version 1.5.0
+ *              - Affichage stock en main + quantité en commande (AF) dans la recherche
+ * @version 1.6.0
  * @date 2026-06-11
  * @changelog
+ *   1.6.0 - Affiche la quantité "En commande" (AF ordered/partial) à côté du stock
+ *           dans les résultats de recherche, via /api/inventory/reservations.
  *   1.5.0 - Fix badge "Stock" périmé (BT+BL): rafraîchissement auto en arrière-plan à l'ouverture
  *           de la recherche (stale-while-revalidate) + invalidation du cache de filtrage au rechargement.
  *           Un item juste acheté affichait "Stock: 0" alors que l'inventaire montrait la bonne quantité.
@@ -144,7 +147,10 @@ export default function MaterialSelector({
   const [cachedProducts, setCachedProducts] = useState([]);
   const [lastFetchTime, setLastFetchTime] = useState(null);
   const [filteredCache, setFilteredCache] = useState({});
-  
+
+  // Quantités "En commande" (AF) par product_id, pour affichage dans la recherche
+  const [onOrderMap, setOnOrderMap] = useState({});
+
   // Modal d'édition complet
   const [editingMaterial, setEditingMaterial] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -172,7 +178,26 @@ export default function MaterialSelector({
   // Chargement initial des produits avec cache
   useEffect(() => {
     loadProducts();
+    loadOnOrder();
   }, []);
+
+  // Charger les quantités "En commande" (AF ordered/partial) pour la recherche
+  const loadOnOrder = async () => {
+    try {
+      const response = await fetch('/api/inventory/reservations');
+      if (!response.ok) return;
+      const result = await response.json();
+      if (result.success && result.quantities) {
+        const map = {};
+        Object.entries(result.quantities).forEach(([pid, q]) => {
+          if (q && q.onOrder > 0) map[pid] = q.onOrder;
+        });
+        setOnOrderMap(map);
+      }
+    } catch (error) {
+      console.error('Erreur chargement quantités en commande:', error);
+    }
+  };
 
   // Filtrage produits (optimisé comme InventoryManager)
   useEffect(() => {
@@ -767,6 +792,11 @@ const deleteMaterialFromModal = () => {
                           <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
                             {product.unit && <span>Unité: {product.unit}</span>}
                             <span>Stock: {product.stock_qty || 0}</span>
+                            {(onOrderMap[product.product_id] > 0) && (
+                              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                En commande: +{onOrderMap[product.product_id]}
+                              </span>
+                            )}
                             {/* SUPPRIMÉ: Plus de coûts affichés dans la recherche */}
                           </div>
                         </div>

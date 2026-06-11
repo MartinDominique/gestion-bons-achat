@@ -8,9 +8,13 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.8.0
- * @date 2026-04-21
+ * @version 3.9.0
+ * @date 2026-06-11
  * @changelog
+ *   3.9.0 - Rafraîchit les quantités En commande/Réservé à chaque chargement
+ *           (recherche, charger tout, charger par groupe) et plus seulement au
+ *           montage. Corrige l'affichage "+0 en commande" pour un AF créé après
+ *           l'ouverture de l'inventaire (la donnée serveur était correcte).
  *   3.8.0 - Calcul "En commande" + "Réservé" déplacé côté serveur via
  *           /api/inventory/reservations (supabaseAdmin) car la table
  *           work_order_materials a une RLS SELECT qui bloque les lectures
@@ -190,6 +194,7 @@ export default function InventoryManager() {
   const performSearch = async (term) => {
     try {
       setSearchLoading(true);
+      loadQuantities(); // Rafraîchir en commande/réservé (peut avoir changé depuis le montage)
       const response = await fetch(`/api/products/search?mode=search&search=${encodeURIComponent(term)}`);
       const result = await response.json();
 
@@ -215,6 +220,7 @@ export default function InventoryManager() {
     try {
       setLoading(true);
       setSearchTerm('');
+      loadQuantities(); // Rafraîchir en commande/réservé (peut avoir changé depuis le montage)
       const response = await fetch('/api/products/search?mode=all');
       const result = await response.json();
 
@@ -243,6 +249,7 @@ export default function InventoryManager() {
       setLoading(true);
       setSelectedLoadGroup(group);
       setSearchTerm('');
+      loadQuantities(); // Rafraîchir en commande/réservé (peut avoir changé depuis le montage)
       const response = await fetch(`/api/products/search?mode=group&group=${encodeURIComponent(group)}`);
       const result = await response.json();
 
