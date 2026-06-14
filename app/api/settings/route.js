@@ -4,9 +4,10 @@
  *              - GET: Récupère les paramètres (taux horaires, taxes, facturation)
  *              - PUT: Met à jour les paramètres
  *              - Table singleton (id=1 toujours)
- * @version 1.2.0
- * @date 2026-06-01
+ * @version 1.3.0
+ * @date 2026-06-14
  * @changelog
+ *   1.3.0 - Ajout champs late_interest_annual_rate + statement_footer_note (état de compte)
  *   1.2.0 - Ajout champ min_margin_percent (seuil alerte marge faible facturation)
  *   1.1.0 - Ajout champ invoice_ownership_note (message propriété marchandises)
  *   1.0.0 - Version initiale (Phase A Fondations)
@@ -49,6 +50,8 @@ export async function GET() {
             invoice_ownership_note: '',
             invoice_next_number: 1,
             min_margin_percent: 10,
+            late_interest_annual_rate: 18,
+            statement_footer_note: '',
           }
         });
       }
@@ -87,6 +90,8 @@ export async function PUT(request) {
       'invoice_ownership_note',
       'invoice_next_number',
       'min_margin_percent',
+      'late_interest_annual_rate',
+      'statement_footer_note',
     ];
 
     const updates = { updated_at: new Date().toISOString() };
@@ -124,6 +129,12 @@ export async function PUT(request) {
     if (updates.min_margin_percent !== undefined && (updates.min_margin_percent < 0 || updates.min_margin_percent > 1000)) {
       return NextResponse.json(
         { success: false, error: 'La marge minimale doit être entre 0 et 1000 %' },
+        { status: 400 }
+      );
+    }
+    if (updates.late_interest_annual_rate !== undefined && (updates.late_interest_annual_rate < 0 || updates.late_interest_annual_rate > 100)) {
+      return NextResponse.json(
+        { success: false, error: 'Le taux d\'intérêt annuel doit être entre 0 et 100 %' },
         { status: 400 }
       );
     }

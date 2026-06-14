@@ -719,6 +719,18 @@ CRON_SECRET                   # Auth pour cron jobs
       - `NoteForm.js` v1.2.0 (sélecteur client + description du doc dans la liste + bouton Supprimer) + `NoteCard.js` v1.1.0 (badge client) + API notes route/[id] v1.1.0
     - **Reste:** exécuter les migrations SQL (`20260609_create_notes.sql` + `20260609b_add_client_to_notes.sql`) dans Supabase Dashboard
 
+20. ~~**État de compte client (Facturation)**~~ - ✅ COMPLÉTÉ (2026-06-14)
+    - `supabase/migrations/20260614_create_invoice_payments.sql` — Table `invoice_payments` + RLS,
+      `invoices.amount_paid`, statut `'partial'`, `settings.late_interest_annual_rate` + `statement_footer_note`
+    - `lib/services/invoice-payments.js` — Recalcul statut, intérêts, vieillissement (aging)
+    - `app/api/invoice-payments/route.js` + `[id]/route.js` — CRUD paiements (partiels/multi-factures)
+    - `app/api/statements/route.js` + `[clientId]/route.js` + `[clientId]/send-email/route.js` — Liste, détail, PDF/envoi
+    - `components/invoices/StatementManager.js` + `ClientStatementView.js` — Onglet + vue détaillée (saisie paiements, escompte 2 %, aperçu, envoi)
+    - `components/invoices/InvoiceManager.js` v2.0.0 — 3e onglet, badge Partielle, rond vert = indicateur cliquable → état de compte
+    - `app/api/settings/route.js` v1.3.0 + `parametres/page.js` v2.3.0 — Taux d'intérêt configurable + note pied de relevé
+    - Escompte 2 % sur sous-total (taxes complètes — Revenu Québec); intérêt = solde × taux × jours/365; relevé open-item; aging Courant/1-30/31-60/61-90/90+
+    - **Reste:** exécuter la migration SQL `20260614_create_invoice_payments.sql` dans Supabase Dashboard
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)

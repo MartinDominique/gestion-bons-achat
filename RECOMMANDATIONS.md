@@ -1499,6 +1499,40 @@ BT/BL en **Brouillon** uniquement (pas les envoyés), BA **En cours** uniquement
 
 **Note:** La migration SQL `20260609b_add_client_to_notes.sql` doit être exécutée manuellement dans Supabase Dashboard.
 
+### État de compte client (Facturation) ✅ COMPLETE (2026-06-14)
+
+**Demande utilisateur:** Nouvel onglet « État de compte » dans Facturation pour vérifier et
+envoyer un relevé aux clients ayant des factures impayées. Saisir les paiements reçus (montant,
+date, n° chèque/virement), payer plusieurs factures avec un même paiement, paiements partiels,
+escompte 2 % (souple sur le délai), intérêts sur factures en retard, et envoyer le relevé au
+courriel Facturation et/ou aux autres courriels du dossier client.
+
+**Décisions confirmées:** taux d'intérêt **configurable** dans Paramètres (défaut 18 %/an =
+1,5 %/mois) appliqué automatiquement · relevé **open-item** (factures impayées seulement) ·
+**vieillissement** Courant/1-30/31-60/61-90/90+ · escompte 2 % toujours disponible (souple sur
+le délai de 10 j) calculé sur le **sous-total** (taxes perçues sur le montant complet, exigence
+Revenu Québec) · le rond vert devient un **indicateur** (vert payée / ambre partielle / gris dû)
+qui ouvre l'état de compte du client.
+
+**Implémentation:**
+- `supabase/migrations/20260614_create_invoice_payments.sql` — Table `invoice_payments` (+ RLS),
+  colonne cache `invoices.amount_paid`, statut `'partial'`, `settings.late_interest_annual_rate`
+  + `settings.statement_footer_note`
+- `lib/services/invoice-payments.js` — Recalcul amount_paid/statut, intérêts, vieillissement (aging)
+- `app/api/invoice-payments/route.js` + `[id]/route.js` — CRUD paiements + recalcul du statut
+- `app/api/statements/route.js` — Liste des clients avec solde (recherche, bascule impayés/tous)
+- `app/api/statements/[clientId]/route.js` — Relevé détaillé (factures, paiements, intérêts, aging)
+- `app/api/statements/[clientId]/send-email/route.js` — PDF relevé + Storage + envoi Resend (+ aperçu)
+- `components/invoices/StatementManager.js` — Onglet liste + bandeau résumé
+- `components/invoices/ClientStatementView.js` — Saisie paiements (multi-factures, escompte 2 %),
+  historique, aperçu PDF, envoi multi-destinataires
+- `components/invoices/InvoiceManager.js` v2.0.0 — 3e onglet, badge « Partielle », rond vert repensé
+- `app/api/settings/route.js` v1.3.0 + `app/(protected)/parametres/page.js` v2.3.0 — Taux d'intérêt
+  + note de pied de relevé
+
+**Note:** La migration SQL `20260614_create_invoice_payments.sql` doit être exécutée manuellement
+dans Supabase Dashboard. Le PDF du relevé réutilise le bucket Storage `invoices` (préfixe `statements/`).
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-06-09 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-06-14 par Claude AI*

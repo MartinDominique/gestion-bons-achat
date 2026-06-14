@@ -6,9 +6,12 @@
  *              - Actions: créer, voir, renvoyer, marquer payée
  *              - Rapport Acomba: export PDF + CSV mensuel ventilé
  *              - Numéros de référence cliquables (SplitView)
- * @version 1.9.0
- * @date 2026-06-02
+ *              - Onglet "État de compte": soldes clients, paiements, relevés
+ * @version 2.0.0
+ * @date 2026-06-14
  * @changelog
+ *   2.0.0 - Ajout onglet "État de compte" (StatementManager), statut "partiel",
+ *           rond vert repensé (indicateur payé/partiel/dû → ouvre l'état de compte)
  *   1.9.0 - Recherche onglet "À facturer": texte (# BT/BL/client), plage de dates, type BT/BL (filtrage client-side, non persisté)
  *   1.8.0 - Recherche onglet "Factures": texte (# facture/BT/BL/client), plage de dates, type BT/BL (non persistés)
  *   1.7.0 - Enrichissement aperçu "À facturer": description, heures, transport, nb matériaux
@@ -24,8 +27,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer, Package, Search, X } from 'lucide-react';
+import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer, Package, Search, X, Wallet } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
+import StatementManager from './StatementManager';
 import { generateAcombaReportPDF, generateAcombaReportCSV } from './AcombaReportExport';
 import { ReferenceLink } from '../SplitView';
 
@@ -71,6 +75,16 @@ export default function InvoiceManager() {
   // Actions loading state
   const [actionLoading, setActionLoading] = useState({});
 
+  // État de compte: ouverture auto d'un client (depuis l'indicateur de facture)
+  const [autoOpenClientId, setAutoOpenClientId] = useState(null);
+
+  // Ouvrir l'état de compte d'un client (depuis le rond de statut d'une facture)
+  const openClientStatement = (clientId) => {
+    if (!clientId) return;
+    setAutoOpenClientId(clientId);
+    setActiveTab('statements');
+  };
+
   // Settings
   const [settings, setSettings] = useState(null);
 
@@ -108,6 +122,12 @@ export default function InvoiceManager() {
 
   // Load data
   const fetchData = useCallback(async () => {
+    // L'onglet "État de compte" gère son propre chargement (StatementManager)
+    if (activeTab === 'statements') {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -299,35 +319,6 @@ export default function InvoiceManager() {
     }
   };
 
-  // Marquer comme payée
-  const handleMarkPaid = async (invoice) => {
-    if (!confirm(`Marquer la facture ${invoice.invoice_number} comme payée?`)) return;
-
-    setActionLoading(prev => ({ ...prev, [`paid-${invoice.id}`]: true }));
-    try {
-      const res = await fetch(`/api/invoices/${invoice.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'paid' }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSuccess(`Facture ${invoice.invoice_number} marquée comme payée`);
-        fetchData();
-      } else {
-        setError(data.error || 'Erreur');
-      }
-    } catch (err) {
-      setError('Erreur connexion');
-    } finally {
-      setActionLoading(prev => {
-        const n = { ...prev };
-        delete n[`paid-${invoice.id}`];
-        return n;
-      });
-    }
-  };
-
   // Imprimer (générer PDF sans email, marquer envoyée)
   const handlePrintInvoice = async (invoice) => {
     setActionLoading(prev => ({ ...prev, [`print-${invoice.id}`]: true }));
@@ -486,6 +477,7 @@ export default function InvoiceManager() {
     const badges = {
       draft: { label: 'Brouillon', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' },
       sent: { label: 'Envoyée', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' },
+      partial: { label: 'Partielle', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
       paid: { label: 'Payée', color: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' },
     };
     const badge = badges[status] || badges.draft;
@@ -493,6 +485,27 @@ export default function InvoiceManager() {
       <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${badge.color}`}>
         {badge.label}
       </span>
+    );
+  };
+
+  // Indicateur de paiement cliquable: vert (payée) / ambre (partielle) / gris (due).
+  // Un clic ouvre l'état de compte du client (gestion des paiements).
+  const renderPaymentIndicator = (invoice, full = false) => {
+    const status = invoice.status;
+    const cfg = status === 'paid'
+      ? { cls: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50', title: 'Payée — voir l\'état de compte', label: 'Payée' }
+      : status === 'partial'
+        ? { cls: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50', title: 'Partiellement payée — voir l\'état de compte', label: 'Partielle' }
+        : { cls: 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600', title: 'Non payée — voir l\'état de compte', label: 'État de compte' };
+    return (
+      <button
+        onClick={() => openClientStatement(invoice.client_id)}
+        className={`${cfg.cls} transition-colors ${full ? 'flex-1 py-1.5 rounded text-xs font-medium flex items-center justify-center gap-1' : 'p-2 rounded-lg'}`}
+        title={cfg.title}
+      >
+        <CheckCircle className="w-4 h-4" />
+        {full && cfg.label}
+      </button>
     );
   };
 
@@ -573,7 +586,7 @@ export default function InvoiceManager() {
               {toInvoiceItems.length} à facturer
             </span>
             <span className="text-white/40">|</span>
-            <span>{invoices.filter(i => i.status === 'sent').length} en attente</span>
+            <span>{invoices.filter(i => i.status === 'sent' || i.status === 'partial').length} en attente</span>
             <span className="text-white/40">|</span>
             <span>{invoices.filter(i => i.status === 'paid').length} payées</span>
           </div>
@@ -626,12 +639,29 @@ export default function InvoiceManager() {
             <Receipt className="w-4 h-4" />
             Factures
           </button>
+          <button
+            onClick={() => setActiveTab('statements')}
+            className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+              activeTab === 'statements'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Wallet className="w-4 h-4" />
+            État de compte
+          </button>
         </div>
 
         {/* Contenu */}
         <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-lg dark:shadow-gray-950/50 border border-white/50 dark:border-gray-700/50 overflow-hidden">
 
-          {loading ? (
+          {activeTab === 'statements' ? (
+            /* ===== ONGLET "ÉTAT DE COMPTE" ===== */
+            <StatementManager
+              autoOpenClientId={autoOpenClientId}
+              onAutoOpenConsumed={() => setAutoOpenClientId(null)}
+            />
+          ) : loading ? (
             <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
               <p className="mt-3 text-gray-600 dark:text-gray-400">Chargement...</p>
@@ -1021,6 +1051,7 @@ export default function InvoiceManager() {
                     { value: 'all', label: 'Toutes' },
                     { value: 'draft', label: 'Brouillons' },
                     { value: 'sent', label: 'Envoyées' },
+                    { value: 'partial', label: 'Partielles' },
                     { value: 'paid', label: 'Payées' },
                   ].map(f => (
                     <button
@@ -1144,15 +1175,9 @@ export default function InvoiceManager() {
                                 <Send className="w-3.5 h-3.5" />
                                 {invoice.status === 'draft' ? 'Envoyer' : 'Renvoyer'}
                               </button>
-                              <button
-                                onClick={() => handleMarkPaid(invoice)}
-                                disabled={actionLoading[`paid-${invoice.id}`]}
-                                className="flex-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 py-1.5 rounded text-xs font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
-                              >
-                                <CheckCircle className="w-3.5 h-3.5" /> Payée
-                              </button>
                             </>
                           )}
+                          {renderPaymentIndicator(invoice, true)}
                         </div>
                       </div>
                     ))}
@@ -1247,16 +1272,9 @@ export default function InvoiceManager() {
                                     >
                                       <Send className="w-4 h-4" />
                                     </button>
-                                    <button
-                                      onClick={() => handleMarkPaid(invoice)}
-                                      disabled={actionLoading[`paid-${invoice.id}`]}
-                                      className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 p-2 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50"
-                                      title="Marquer payée"
-                                    >
-                                      <CheckCircle className="w-4 h-4" />
-                                    </button>
                                   </>
                                 )}
+                                {renderPaymentIndicator(invoice)}
                                 {invoice.status === 'draft' && (
                                   <button
                                     onClick={() => handleDelete(invoice)}
