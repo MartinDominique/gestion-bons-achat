@@ -4,9 +4,10 @@
  *              - Section Apparence (thème clair/sombre)
  *              - Section Taux & Tarifs horaires (taux régulier, 1.5x, 2x, augmentation)
  *              - Section Facturation (numéros taxes, taux TPS/TVQ, conditions, N° facture)
- * @version 2.2.0
- * @date 2026-06-01
+ * @version 2.3.0
+ * @date 2026-06-14
  * @changelog
+ *   2.3.0 - Ajout champs Taux d'intérêt de retard + Note de pied de relevé (état de compte)
  *   2.2.0 - Ajout champ Marge de profit minimale (min_margin_percent) - alerte facturation
  *   2.1.0 - Ajout champ Message de propriété (invoice_ownership_note)
  *   2.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur les champs texte
@@ -452,6 +453,57 @@ export default function ParametresPage() {
                   est sous ce seuil. Alerte interne seulement &mdash; jamais affichée au client.
                 </p>
               </div>
+            </div>
+
+            {/* Taux d'intérêt de retard (état de compte) */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="max-w-xs">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Taux d&apos;intérêt sur factures en retard
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="100"
+                    className="w-full px-3 py-2 pr-16 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    value={settings?.late_interest_annual_rate ?? ''}
+                    onChange={(e) => updateField('late_interest_annual_rate', parseFloat(e.target.value) || 0)}
+                    onFocus={(e) => e.target.select()}
+                    inputMode="decimal"
+                    placeholder="18"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">%/an</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Appliqué sur l&apos;état de compte aux factures dépassant leur échéance
+                  (intérêt = solde &times; taux &times; jours de retard / 365). 18 %/an = 1,5 %/mois.
+                </p>
+              </div>
+            </div>
+
+            {/* Note de pied de l'état de compte */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Note en pied d&apos;état de compte
+              </label>
+              <textarea
+                rows="2"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
+                value={settings?.statement_footer_note ?? ''}
+                onChange={(e) => updateField('statement_footer_note', e.target.value)}
+                placeholder="Merci de régler les factures en souffrance dans les meilleurs délais."
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Affichée au bas du relevé envoyé au client.
+              </p>
             </div>
 
             {/* Conditions de paiement */}
