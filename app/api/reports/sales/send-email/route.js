@@ -94,6 +94,7 @@ export async function POST(request) {
         ['Vente matériel', `${t.total_materials.toFixed(2)} $`],
         ['Vente main d’œuvre', `${t.total_labor.toFixed(2)} $`],
         ['Vente déplacement', `${t.total_transport.toFixed(2)} $`],
+        ['Forfait/Autre', `${(t.total_forfait_other || 0).toFixed(2)} $`],
         ['Sous-total', `${t.subtotal.toFixed(2)} $`],
         ['TPS', `${t.tps_amount.toFixed(2)} $`],
         ['TVQ', `${t.tvq_amount.toFixed(2)} $`],

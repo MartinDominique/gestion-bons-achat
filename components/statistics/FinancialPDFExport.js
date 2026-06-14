@@ -4,9 +4,10 @@
  *              - 3 modes: Par mois, Par client, En attente
  *              - Utilise pdf-common.js pour l'en-tête/footer standardisé
  *              - Bandeau résumé + tableau détaillé
- * @version 1.0.0
- * @date 2026-02-27
+ * @version 1.1.0
+ * @date 2026-06-14
  * @changelog
+ *   1.1.0 - Ajout colonne/ligne Forfait/Autre (ventilation depuis line_items)
  *   1.0.0 - Version initiale (Phase D — Statistiques Phase 2)
  */
 
@@ -79,7 +80,7 @@ export async function generateFinancialPDF({ data, filters, clients = [] }) {
 
     const lines = [
       `Total facturé: ${pdfFormatCurrency(summary.totalAmount)}    Payé: ${pdfFormatCurrency(summary.totalPaid)}    En attente: ${pdfFormatCurrency(summary.totalOutstanding)}`,
-      `Matériaux: ${pdfFormatCurrency(summary.totalMaterials)}    M.O.: ${pdfFormatCurrency(summary.totalLabor)}    Transport: ${pdfFormatCurrency(summary.totalTransport)}    Moy./fact.: ${pdfFormatCurrency(summary.avgInvoice)}`,
+      `Matériaux: ${pdfFormatCurrency(summary.totalMaterials)}    M.O.: ${pdfFormatCurrency(summary.totalLabor)}    Transport: ${pdfFormatCurrency(summary.totalTransport)}    Forfait/Autre: ${pdfFormatCurrency(summary.totalForfait)}    Moy./fact.: ${pdfFormatCurrency(summary.avgInvoice)}`,
     ];
     lines.forEach(line => {
       doc.text(line, PAGE.margin.left, yPos);
@@ -98,6 +99,7 @@ export async function generateFinancialPDF({ data, filters, clients = [] }) {
       { header: 'Matériaux', dataKey: 'materials' },
       { header: 'M.O.', dataKey: 'labor' },
       { header: 'Transp.', dataKey: 'transport' },
+      { header: 'Forf./A.', dataKey: 'forfait' },
       { header: 'Sous-total', dataKey: 'subtotal' },
       { header: 'TPS', dataKey: 'tps' },
       { header: 'TVQ', dataKey: 'tvq' },
@@ -112,6 +114,7 @@ export async function generateFinancialPDF({ data, filters, clients = [] }) {
       materials: pdfFormatCurrency(m.materials),
       labor: pdfFormatCurrency(m.labor),
       transport: pdfFormatCurrency(m.transport),
+      forfait: pdfFormatCurrency(m.forfait),
       subtotal: pdfFormatCurrency(m.subtotal),
       tps: pdfFormatCurrency(m.tps),
       tvq: pdfFormatCurrency(m.tvq),
@@ -145,13 +148,14 @@ export async function generateFinancialPDF({ data, filters, clients = [] }) {
       columnStyles: {
         label: { cellWidth: 22 },
         count: { cellWidth: 10, halign: 'center' },
-        materials: { cellWidth: 18, halign: 'right', font: 'courier' },
-        labor: { cellWidth: 18, halign: 'right', font: 'courier' },
+        materials: { cellWidth: 16, halign: 'right', font: 'courier' },
+        labor: { cellWidth: 16, halign: 'right', font: 'courier' },
         transport: { cellWidth: 16, halign: 'right', font: 'courier' },
-        subtotal: { cellWidth: 20, halign: 'right', font: 'courier' },
-        tps: { cellWidth: 16, halign: 'right', font: 'courier' },
-        tvq: { cellWidth: 16, halign: 'right', font: 'courier' },
-        total: { cellWidth: 20, halign: 'right', font: 'courier' },
+        forfait: { cellWidth: 16, halign: 'right', font: 'courier' },
+        subtotal: { cellWidth: 18, halign: 'right', font: 'courier' },
+        tps: { cellWidth: 14, halign: 'right', font: 'courier' },
+        tvq: { cellWidth: 14, halign: 'right', font: 'courier' },
+        total: { cellWidth: 18, halign: 'right', font: 'courier' },
         paid: { cellWidth: 10, halign: 'center' },
         outstanding: { cellWidth: 10, halign: 'center' },
       },
@@ -172,6 +176,7 @@ export async function generateFinancialPDF({ data, filters, clients = [] }) {
       { header: 'Matériaux', dataKey: 'materials' },
       { header: 'M.O.', dataKey: 'labor' },
       { header: 'Transp.', dataKey: 'transport' },
+      { header: 'Forf./A.', dataKey: 'forfait' },
       { header: 'Total', dataKey: 'total' },
       { header: 'Payé', dataKey: 'paid' },
       { header: 'En att.', dataKey: 'outstanding' },
@@ -184,6 +189,7 @@ export async function generateFinancialPDF({ data, filters, clients = [] }) {
       materials: pdfFormatCurrency(c.materials),
       labor: pdfFormatCurrency(c.labor),
       transport: pdfFormatCurrency(c.transport),
+      forfait: pdfFormatCurrency(c.forfait),
       total: pdfFormatCurrency(c.total),
       paid: pdfFormatCurrency(c.paidAmount),
       outstanding: c.outstandingAmount > 0 ? pdfFormatCurrency(c.outstandingAmount) : '-',
@@ -213,15 +219,16 @@ export async function generateFinancialPDF({ data, filters, clients = [] }) {
         fontSize: 7,
       },
       columnStyles: {
-        client: { cellWidth: 30 },
+        client: { cellWidth: 28 },
         count: { cellWidth: 12, halign: 'center' },
-        materials: { cellWidth: 20, halign: 'right', font: 'courier' },
-        labor: { cellWidth: 20, halign: 'right', font: 'courier' },
-        transport: { cellWidth: 18, halign: 'right', font: 'courier' },
-        total: { cellWidth: 22, halign: 'right', font: 'courier' },
-        paid: { cellWidth: 22, halign: 'right', font: 'courier' },
-        outstanding: { cellWidth: 22, halign: 'right', font: 'courier' },
-        percent: { cellWidth: 14, halign: 'right', font: 'courier' },
+        materials: { cellWidth: 17, halign: 'right', font: 'courier' },
+        labor: { cellWidth: 17, halign: 'right', font: 'courier' },
+        transport: { cellWidth: 16, halign: 'right', font: 'courier' },
+        forfait: { cellWidth: 16, halign: 'right', font: 'courier' },
+        total: { cellWidth: 20, halign: 'right', font: 'courier' },
+        paid: { cellWidth: 18, halign: 'right', font: 'courier' },
+        outstanding: { cellWidth: 18, halign: 'right', font: 'courier' },
+        percent: { cellWidth: 12, halign: 'right', font: 'courier' },
       },
       margin: { left: PAGE.margin.left, right: PAGE.margin.right },
       showHead: 'everyPage',

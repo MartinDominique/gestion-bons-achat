@@ -96,9 +96,9 @@ function SummaryBanner({ summary }) {
         </div>
       </div>
 
-      {/* Ventilation matériaux / temps / transport */}
+      {/* Ventilation matériaux / temps / transport / forfait */}
       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div>
             <div className="text-xs text-gray-500 dark:text-gray-400">Matériaux</div>
             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -115,6 +115,12 @@ function SummaryBanner({ summary }) {
             <div className="text-xs text-gray-500 dark:text-gray-400">Transport</div>
             <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {formatCurrency(summary.totalTransport)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Forfait/Autre</div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {formatCurrency(summary.totalForfait)}
             </div>
           </div>
         </div>
@@ -144,6 +150,7 @@ function ByMonthView({ byMonth }) {
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Matériaux</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">M.O.</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Transp.</th>
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Forfait/A.</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Sous-total</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">TPS</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 hidden lg:table-cell">TVQ</th>
@@ -160,6 +167,7 @@ function ByMonthView({ byMonth }) {
                 <td className="px-3 py-2 text-right font-mono text-gray-600 dark:text-gray-400">{formatCurrency(m.materials)}</td>
                 <td className="px-3 py-2 text-right font-mono text-gray-600 dark:text-gray-400">{formatCurrency(m.labor)}</td>
                 <td className="px-3 py-2 text-right font-mono text-gray-600 dark:text-gray-400">{formatCurrency(m.transport)}</td>
+                <td className="px-3 py-2 text-right font-mono text-gray-600 dark:text-gray-400">{formatCurrency(m.forfait)}</td>
                 <td className="px-3 py-2 text-right font-mono text-gray-900 dark:text-gray-100">{formatCurrency(m.subtotal)}</td>
                 <td className="px-3 py-2 text-right font-mono text-gray-500 dark:text-gray-400 hidden lg:table-cell">{formatCurrency(m.tps)}</td>
                 <td className="px-3 py-2 text-right font-mono text-gray-500 dark:text-gray-400 hidden lg:table-cell">{formatCurrency(m.tvq)}</td>
@@ -188,7 +196,7 @@ function ByMonthView({ byMonth }) {
               <span className="font-medium text-gray-900 dark:text-gray-100">{m.label}</span>
               <span className="text-sm text-gray-500 dark:text-gray-400">{m.count} fact.</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+            <div className="grid grid-cols-4 gap-2 text-xs mb-2">
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Matériaux</span>
                 <div className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(m.materials)}</div>
@@ -200,6 +208,10 @@ function ByMonthView({ byMonth }) {
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Transp.</span>
                 <div className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(m.transport)}</div>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Forf./A.</span>
+                <div className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(m.forfait)}</div>
               </div>
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -239,6 +251,7 @@ function ByClientView({ byClient }) {
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Matériaux</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">M.O.</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Transp.</th>
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Forfait/A.</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Total facturé</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Payé</th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">En attente</th>
@@ -253,6 +266,7 @@ function ByClientView({ byClient }) {
                 <td className="px-3 py-2 text-right font-mono text-gray-600 dark:text-gray-400">{formatCurrency(c.materials)}</td>
                 <td className="px-3 py-2 text-right font-mono text-gray-600 dark:text-gray-400">{formatCurrency(c.labor)}</td>
                 <td className="px-3 py-2 text-right font-mono text-gray-600 dark:text-gray-400">{formatCurrency(c.transport)}</td>
+                <td className="px-3 py-2 text-right font-mono text-gray-600 dark:text-gray-400">{formatCurrency(c.forfait)}</td>
                 <td className="px-3 py-2 text-right font-mono font-medium text-gray-900 dark:text-gray-100">{formatCurrency(c.total)}</td>
                 <td className="px-3 py-2 text-right font-mono text-green-600 dark:text-green-400">{formatCurrency(c.paidAmount)}</td>
                 <td className="px-3 py-2 text-right font-mono text-orange-600 dark:text-orange-400">
@@ -273,7 +287,7 @@ function ByClientView({ byClient }) {
               <span className="font-medium text-gray-900 dark:text-gray-100 truncate mr-2">{c.clientName}</span>
               <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">{c.count} fact. — {c.percentOfTotal.toFixed(1)}%</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+            <div className="grid grid-cols-4 gap-2 text-xs mb-2">
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Matériaux</span>
                 <div className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(c.materials)}</div>
@@ -285,6 +299,10 @@ function ByClientView({ byClient }) {
               <div>
                 <span className="text-gray-500 dark:text-gray-400">Transp.</span>
                 <div className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(c.transport)}</div>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400">Forf./A.</span>
+                <div className="font-mono text-gray-900 dark:text-gray-100">{formatCurrency(c.forfait)}</div>
               </div>
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
