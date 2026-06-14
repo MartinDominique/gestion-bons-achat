@@ -744,6 +744,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - Ventes: 1 ligne/facture (mat./M.O./dépl./**Forfait·Autre**/TPS/TVQ/Total) + TOTAUX. Paiements: 1 ligne/paiement (date, mode, facture, montant, escompte) + TOTAUX + sommaire par mode
     - Ventilation des ventes calculée depuis `line_items` (pas les colonnes stockées) → le prix forfaitaire (Jobe) + lignes « autre » tombent dans la colonne Forfait/Autre, et la ligne TOTAUX réconcilie toujours avec le sous-total (corrige les factures Jobe qui affichaient 0 partout)
     - Période: Mois / Année (année civile) / Personnalisé. Envoi au courriel comptable (Paramètres) + CC bureau
+    - **Statistiques financières** (`app/api/statistics/financial/route.js` v1.1.0 + `FinancialReport.js` + `FinancialPDFExport.js`): même ventilation depuis `line_items` + colonne/ligne **Forfait/Autre** (résumé, par mois, par client, PDF). Réutilise `salesBreakdown` exporté de `report-data.js`
     - **Reste:** exécuter la migration SQL `20260614b_add_accountant_email.sql` dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)

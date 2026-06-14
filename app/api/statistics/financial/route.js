@@ -4,14 +4,17 @@
  *              - GET: Données agrégées par mois, par client, factures en attente
  *              - Filtres: période, client, statut
  *              - Résumés: totaux facturés, payés, en attente, ventilation
- * @version 1.0.0
- * @date 2026-02-27
+ * @version 1.1.0
+ * @date 2026-06-14
  * @changelog
+ *   1.1.0 - Ventilation calculée depuis line_items + catégorie Forfait/Autre (réconcilie
+ *           avec le sous-total; corrige les factures prix forfaitaire (Jobe) à 0)
  *   1.0.0 - Version initiale (Phase D — Statistiques Phase 2)
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { salesBreakdown } from '../../../../lib/services/report-data';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -50,7 +53,7 @@ export async function GET(request) {
         invoice_date, due_date, payment_terms,
         subtotal, tps_amount, tvq_amount, total,
         total_materials, total_labor, total_transport,
-        status, is_prix_jobe, sent_at, paid_at
+        status, is_prix_jobe, sent_at, paid_at, line_items
       `)
       .gte('invoice_date', dateFrom)
       .lte('invoice_date', dateTo)
@@ -75,6 +78,10 @@ export async function GET(request) {
 
     const data = invoices || [];
 
+    // Ventilation par facture depuis line_items (réconcilie avec le sous-total;
+    // le forfait (Jobe) + lignes « autre » tombent dans le bucket forfait)
+    data.forEach(inv => { inv._bd = salesBreakdown(inv); });
+
     // ============================================
     // 1. RÉSUMÉ GLOBAL
     // ============================================
@@ -90,15 +97,17 @@ export async function GET(request) {
       totalMaterials: 0,
       totalLabor: 0,
       totalTransport: 0,
+      totalForfait: 0,
       avgInvoice: 0,
     };
 
     data.forEach(inv => {
       const total = parseFloat(inv.total) || 0;
       summary.totalAmount += total;
-      summary.totalMaterials += parseFloat(inv.total_materials) || 0;
-      summary.totalLabor += parseFloat(inv.total_labor) || 0;
-      summary.totalTransport += parseFloat(inv.total_transport) || 0;
+      summary.totalMaterials += inv._bd.mat;
+      summary.totalLabor += inv._bd.labor;
+      summary.totalTransport += inv._bd.transport;
+      summary.totalForfait += inv._bd.forfait;
 
       if (inv.status === 'paid') {
         summary.totalPaid += total;
@@ -120,6 +129,7 @@ export async function GET(request) {
     summary.totalMaterials = Math.round(summary.totalMaterials * 100) / 100;
     summary.totalLabor = Math.round(summary.totalLabor * 100) / 100;
     summary.totalTransport = Math.round(summary.totalTransport * 100) / 100;
+    summary.totalForfait = Math.round(summary.totalForfait * 100) / 100;
     summary.avgInvoice = data.length > 0
       ? Math.round((summary.totalAmount / data.length) * 100) / 100
       : 0;
@@ -140,6 +150,7 @@ export async function GET(request) {
           materials: 0,
           labor: 0,
           transport: 0,
+          forfait: 0,
           subtotal: 0,
           tps: 0,
           tvq: 0,
@@ -154,9 +165,10 @@ export async function GET(request) {
       const entry = monthMap[monthKey];
       const total = parseFloat(inv.total) || 0;
       entry.count++;
-      entry.materials += parseFloat(inv.total_materials) || 0;
-      entry.labor += parseFloat(inv.total_labor) || 0;
-      entry.transport += parseFloat(inv.total_transport) || 0;
+      entry.materials += inv._bd.mat;
+      entry.labor += inv._bd.labor;
+      entry.transport += inv._bd.transport;
+      entry.forfait += inv._bd.forfait;
       entry.subtotal += parseFloat(inv.subtotal) || 0;
       entry.tps += parseFloat(inv.tps_amount) || 0;
       entry.tvq += parseFloat(inv.tvq_amount) || 0;
@@ -201,6 +213,7 @@ export async function GET(request) {
           materials: 0,
           labor: 0,
           transport: 0,
+          forfait: 0,
         };
       }
 
@@ -208,9 +221,10 @@ export async function GET(request) {
       const total = parseFloat(inv.total) || 0;
       entry.count++;
       entry.total += total;
-      entry.materials += parseFloat(inv.total_materials) || 0;
-      entry.labor += parseFloat(inv.total_labor) || 0;
-      entry.transport += parseFloat(inv.total_transport) || 0;
+      entry.materials += inv._bd.mat;
+      entry.labor += inv._bd.labor;
+      entry.transport += inv._bd.transport;
+      entry.forfait += inv._bd.forfait;
 
       if (inv.status === 'paid') {
         entry.paidAmount += total;
