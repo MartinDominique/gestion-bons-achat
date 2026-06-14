@@ -382,7 +382,10 @@ const total = subtotal + tps + tvq;
 /api/invoices                          → CRUD Factures (GET liste + POST création)
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
-/api/invoices/report                   → Rapport Acomba mensuel (GET avec mois)
+/api/reports/sales                     → Rapport de ventes comptable (GET: mois/année/plage)
+/api/reports/sales/send-email          → Envoi rapport de ventes PDF au comptable (CC bureau)
+/api/reports/payments                  → Rapport de paiements comptable (GET: mois/année/plage)
+/api/reports/payments/send-email       → Envoi rapport de paiements PDF au comptable (CC bureau)
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -423,7 +426,7 @@ components/statistics/FinancialPDFExport.js   → Export PDF rapport financier
 components/invoices/InvoiceManager.js         → Module Facturation (2 onglets: À facturer + Factures + Rapport Acomba)
 components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ + badges BA/Soumission cliquables)
 components/invoices/InvoiceReferencePanel.js  → Panneau lecture seule BA/Soumission liés (consultation prix de vente client)
-components/invoices/AcombaReportExport.js     → Export PDF + CSV rapport mensuel Acomba
+components/invoices/AccountingReports.js      → Onglet Rapports compta (ventes + paiements, PDF + envoi comptable)
 components/notes/NotesManager.js              → Tableau de bord Notes (page d'ouverture, recherche, filtre, CRUD)
 components/notes/NoteCard.js                  → Carte note (couleur urgence, checkbox, badge projet cliquable)
 components/notes/NoteForm.js                  → Modal créer/éditer note + sélecteur document (BT/BL/BA/Soum.)
@@ -642,12 +645,11 @@ CRON_SECRET                   # Auth pour cron jobs
       et l'URL signée est sauvegardée dans `invoices.pdf_url` pour téléchargement ultérieur
     - Note: Les 2 migrations SQL doivent être exécutées manuellement dans Supabase Dashboard
 
-12. ~~**Rapport Acomba (Phase C)**~~ - ✅ COMPLÉTÉ 2026-02-27
-    - `app/api/invoices/report/route.js` — API GET rapport mensuel avec ventilation + totaux agrégés
-    - `components/invoices/AcombaReportExport.js` — Export PDF (jsPDF autoTable) + CSV (point-virgule, BOM UTF-8)
-    - `components/invoices/InvoiceManager.js` v1.3.0 — Sélecteur mois + boutons Rapport Acomba PDF + Export CSV
-    - Colonnes: N° Fact., Date, Client, Réf., Vente mat., Vente temps, Vente dépl., Sous-total, TPS, TVQ, Total
-    - Ligne TOTAUX en gras en bas du rapport
+12. ~~**Rapport Acomba (Phase C)**~~ - ✅ COMPLÉTÉ 2026-02-27 — ❌ RETIRÉ 2026-06-14
+    - Retiré à la demande de Martin (remplacé par l'onglet « Rapports compta » — item 21).
+    - Supprimés: `app/api/invoices/report/route.js`, `components/invoices/AcombaReportExport.js`,
+      et le bloc « Rapport Acomba » (sélecteur mois + boutons PDF/CSV) de `InvoiceManager.js`.
+    - Note: le bouton « Marquer facturé (Acomba) » de l'onglet « À facturer » (mark-external) reste, c'est une autre fonctionnalité.
 
 13. ~~**Statistiques Phase 2 (Phase D)**~~ - ✅ COMPLÉTÉ 2026-02-27
     - `app/api/statistics/financial/route.js` — API GET statistiques financières (résumé, par mois, par client, en attente)
