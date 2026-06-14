@@ -7,9 +7,10 @@
  *              - Rapport Acomba: export PDF + CSV mensuel ventilé
  *              - Numéros de référence cliquables (SplitView)
  *              - Onglet "État de compte": soldes clients, paiements, relevés
- * @version 2.0.0
+ * @version 2.1.0
  * @date 2026-06-14
  * @changelog
+ *   2.1.0 - Ajout onglet "Rapports compta" (ventes + paiements, PDF + envoi au comptable)
  *   2.0.0 - Ajout onglet "État de compte" (StatementManager), statut "partiel",
  *           rond vert repensé (indicateur payé/partiel/dû → ouvre l'état de compte)
  *   1.9.0 - Recherche onglet "À facturer": texte (# BT/BL/client), plage de dates, type BT/BL (filtrage client-side, non persisté)
@@ -27,9 +28,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer, Package, Search, X, Wallet } from 'lucide-react';
+import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Archive, FileSpreadsheet, Printer, Package, Search, X, Wallet, BarChart3 } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
 import StatementManager from './StatementManager';
+import AccountingReports from './AccountingReports';
 import { generateAcombaReportPDF, generateAcombaReportCSV } from './AcombaReportExport';
 import { ReferenceLink } from '../SplitView';
 
@@ -122,8 +124,8 @@ export default function InvoiceManager() {
 
   // Load data
   const fetchData = useCallback(async () => {
-    // L'onglet "État de compte" gère son propre chargement (StatementManager)
-    if (activeTab === 'statements') {
+    // Les onglets "État de compte" et "Rapports compta" gèrent leur propre chargement
+    if (activeTab === 'statements' || activeTab === 'reports') {
       setLoading(false);
       return;
     }
@@ -650,6 +652,17 @@ export default function InvoiceManager() {
             <Wallet className="w-4 h-4" />
             État de compte
           </button>
+          <button
+            onClick={() => setActiveTab('reports')}
+            className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+              activeTab === 'reports'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Rapports compta
+          </button>
         </div>
 
         {/* Contenu */}
@@ -661,6 +674,9 @@ export default function InvoiceManager() {
               autoOpenClientId={autoOpenClientId}
               onAutoOpenConsumed={() => setAutoOpenClientId(null)}
             />
+          ) : activeTab === 'reports' ? (
+            /* ===== ONGLET "RAPPORTS COMPTA" ===== */
+            <AccountingReports settings={settings} />
           ) : loading ? (
             <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>

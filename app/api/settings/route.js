@@ -4,9 +4,10 @@
  *              - GET: Récupère les paramètres (taux horaires, taxes, facturation)
  *              - PUT: Met à jour les paramètres
  *              - Table singleton (id=1 toujours)
- * @version 1.3.0
+ * @version 1.4.0
  * @date 2026-06-14
  * @changelog
+ *   1.4.0 - Ajout champ accountant_email (rapports comptables ventes/paiements)
  *   1.3.0 - Ajout champs late_interest_annual_rate + statement_footer_note (état de compte)
  *   1.2.0 - Ajout champ min_margin_percent (seuil alerte marge faible facturation)
  *   1.1.0 - Ajout champ invoice_ownership_note (message propriété marchandises)
@@ -52,6 +53,7 @@ export async function GET() {
             min_margin_percent: 10,
             late_interest_annual_rate: 18,
             statement_footer_note: '',
+            accountant_email: '',
           }
         });
       }
@@ -92,6 +94,7 @@ export async function PUT(request) {
       'min_margin_percent',
       'late_interest_annual_rate',
       'statement_footer_note',
+      'accountant_email',
     ];
 
     const updates = { updated_at: new Date().toISOString() };
@@ -135,6 +138,12 @@ export async function PUT(request) {
     if (updates.late_interest_annual_rate !== undefined && (updates.late_interest_annual_rate < 0 || updates.late_interest_annual_rate > 100)) {
       return NextResponse.json(
         { success: false, error: 'Le taux d\'intérêt annuel doit être entre 0 et 100 %' },
+        { status: 400 }
+      );
+    }
+    if (updates.accountant_email !== undefined && updates.accountant_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updates.accountant_email)) {
+      return NextResponse.json(
+        { success: false, error: 'Le courriel du comptable est invalide' },
         { status: 400 }
       );
     }

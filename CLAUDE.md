@@ -731,6 +731,20 @@ CRON_SECRET                   # Auth pour cron jobs
     - Escompte 2 % sur sous-total (taxes complètes — Revenu Québec); intérêt = solde × taux × jours/365; relevé open-item; aging Courant/1-30/31-60/61-90/90+
     - **Reste:** exécuter la migration SQL `20260614_create_invoice_payments.sql` dans Supabase Dashboard
 
+21. ~~**Rapports comptables (Ventes + Paiements)**~~ - ✅ COMPLÉTÉ (2026-06-14)
+    - `supabase/migrations/20260614b_add_accountant_email.sql` — colonne `settings.accountant_email`
+    - `app/api/settings/route.js` v1.4.0 + `parametres/page.js` v2.4.0 — champ Courriel du comptable
+    - `lib/utils/report-period.js` — résolution période mois/année/personnalisé + libellés fr-CA
+    - `lib/services/report-data.js` — agrégation ventes + paiements (réutilisé GET + send-email)
+    - `lib/services/report-pdf.js` — constructeurs PDF partagés client/serveur (jsPDF + pdf-common)
+    - `lib/services/report-email.js` — envoi Resend (comptable + CC bureau) + upload Storage `reports/`
+    - `app/api/reports/sales/route.js` + `sales/send-email/route.js` — rapport de ventes (factures émises)
+    - `app/api/reports/payments/route.js` + `payments/send-email/route.js` — rapport de paiements (encaissements)
+    - `components/invoices/AccountingReports.js` + `InvoiceManager.js` v2.1.0 — 4e onglet « Rapports compta »
+    - Ventes: 1 ligne/facture (mat./M.O./dépl./TPS/TVQ/Total) + TOTAUX. Paiements: 1 ligne/paiement (date, mode, facture, montant, escompte) + TOTAUX + sommaire par mode
+    - Période: Mois / Année (année civile) / Personnalisé. Envoi au courriel comptable (Paramètres) + CC bureau
+    - **Reste:** exécuter la migration SQL `20260614b_add_accountant_email.sql` dans Supabase Dashboard
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
