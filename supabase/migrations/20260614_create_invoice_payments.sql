@@ -49,6 +49,12 @@ CREATE POLICY "Authenticated users can delete invoice_payments" ON invoice_payme
 --    Permet d'afficher le solde (total - amount_paid) sans jointure.
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS amount_paid NUMERIC NOT NULL DEFAULT 0;
 
+-- 4b. Backfill de sécurité: les factures déjà marquées 'paid' (avant ce module)
+--     n'ont aucun paiement enregistré. On crédite leur total pour que leur solde
+--     soit 0 et qu'elles n'apparaissent PAS à tort comme dues dans l'état de compte.
+--     (Les factures 'sent' restent à amount_paid = 0 → solde complet dû, comportement voulu.)
+UPDATE invoices SET amount_paid = total WHERE status = 'paid' AND amount_paid = 0;
+
 -- 5. Nouveau statut 'partial' (facture partiellement payée)
 ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_status_check;
 ALTER TABLE invoices ADD CONSTRAINT invoices_status_check
