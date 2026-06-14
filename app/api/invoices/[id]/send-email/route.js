@@ -6,9 +6,10 @@
  *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.4.0
- * @date 2026-06-04
+ * @version 1.5.0
+ * @date 2026-06-14
  * @changelog
+ *   1.5.0 - Message de confirmation explicite incluant la copie au bureau (CC COMPANY_EMAIL)
  *   1.4.0 - Ajout avis no-reply Resend (sous "N'hésitez pas à nous contacter")
  *           + lien de contact cliquable (mailto) dans le pied de page du courriel
  *   1.3.0 - Ajout mode print_only: génère PDF + upload Storage + marque envoyée
@@ -431,10 +432,12 @@ export async function POST(request, { params }) {
       });
     }
 
+    const ccNote = process.env.COMPANY_EMAIL ? ` (copie au bureau: ${process.env.COMPANY_EMAIL})` : '';
     return NextResponse.json({
       success: true,
-      message: `Facture ${invoice.invoice_number} envoyée à ${emailAddresses.join(', ')}`,
+      message: `Facture ${invoice.invoice_number} envoyée à ${emailAddresses.join(', ')}${ccNote}`,
       sentTo: emailAddresses,
+      cc: process.env.COMPANY_EMAIL || null,
     });
 
   } catch (error) {
