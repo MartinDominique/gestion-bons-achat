@@ -7,15 +7,18 @@
  *              - Historique des paiements appliqués (suppression possible)
  *              - Aperçu PDF + envoi du relevé par courriel (destinataires du dossier client)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-14
  * @changelog
+ *   1.1.0 - Rendu via portail (document.body) pour échapper au conteneur
+ *           overflow-hidden + backdrop-blur de l'onglet (en-tête/boutons coupés)
  *   1.0.0 - Version initiale (module État de compte client)
  */
 
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X, RefreshCw, AlertCircle, CheckCircle, Trash2, Send, Eye,
   DollarSign, Clock, Mail, Plus,
@@ -61,6 +64,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Paiement en cours de saisie (partagé entre les factures cochées)
   const [pay, setPay] = useState({
@@ -297,7 +303,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
   const totals = data?.totals || { balance: 0, interest: 0, total_with_interest: 0 };
   const aging = data?.aging || {};
 
-  return (
+  if (!mounted) return null;
+
+  const modalContent = (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4 overflow-y-auto">
       <div className="bg-white dark:bg-gray-900 w-full sm:max-w-5xl sm:rounded-2xl shadow-2xl flex flex-col max-h-screen sm:max-h-[95vh]">
 
@@ -647,4 +655,6 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       )}
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
