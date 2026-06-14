@@ -1535,4 +1535,38 @@ dans Supabase Dashboard. Le PDF du relevé réutilise le bucket Storage `invoice
 
 ---
 
+### Rapports comptables (Ventes + Paiements) ✅ COMPLETE (2026-06-14)
+
+**Besoin (Martin):** Rapports mensuels et annuels pour le comptable, en PDF, envoyés
+directement par courriel (courriel du comptable configurable + CC bureau).
+
+**Décisions confirmées:**
+- **Rapport de paiements:** une ligne par paiement (journal des encaissements) avec la
+  facture appliquée + sous-totaux par mode de paiement (vue base caisse).
+- **Période:** boutons rapides Mois / Année + plage personnalisée (du-au).
+- **Rapport de ventes:** factures émises seulement (brouillons exclus).
+
+**Implémentation:**
+- `supabase/migrations/20260614b_add_accountant_email.sql` — colonne `settings.accountant_email`
+- `app/api/settings/route.js` v1.4.0 + `app/(protected)/parametres/page.js` v2.4.0 — champ courriel comptable
+- `lib/utils/report-period.js` — résolution de période (mois/année/personnalisé) + libellés fr-CA
+- `lib/services/report-data.js` — agrégation des données (ventes + paiements)
+- `lib/services/report-pdf.js` — constructeurs PDF partagés client/serveur (jsPDF + pdf-common)
+- `lib/services/report-email.js` — envoi Resend (comptable + CC bureau) + upload Storage `reports/`
+- `app/api/reports/sales/route.js` + `.../sales/send-email/route.js` — rapport de ventes
+- `app/api/reports/payments/route.js` + `.../payments/send-email/route.js` — rapport de paiements
+- `components/invoices/AccountingReports.js` — onglet UI (aperçu PDF + envoi au comptable)
+- `components/invoices/InvoiceManager.js` v2.1.0 — 4e onglet « Rapports compta »
+
+**Rapport de ventes (colonnes):** N° Fact., Date, Client, Réf., Vente mat., Vente M.O.,
+Vente dépl., Sous-total, TPS, TVQ, Total + ligne TOTAUX.
+**Rapport de paiements (colonnes):** Date, Mode, Référence, Client, Facture, Montant, Escompte
++ ligne TOTAUX + tableau « Sommaire par mode de paiement ».
+
+**Note:** Migration SQL `20260614b_add_accountant_email.sql` à exécuter manuellement dans
+Supabase Dashboard. Les PDF sont archivés dans le bucket Storage `invoices` (préfixe `reports/`).
+Le rapport annuel utilise l'année civile (1er janv. → 31 déc.).
+
+---
+
 *Document genere le 2026-02-05, mis a jour le 2026-06-14 par Claude AI*
