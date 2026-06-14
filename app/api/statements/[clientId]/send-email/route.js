@@ -6,9 +6,10 @@
  *              - Upload dans Supabase Storage (bucket 'invoices', préfixe statements/)
  *              - print_only: retourne l'URL du PDF sans envoyer de courriel (aperçu)
  *              - Sinon envoie via Resend aux adresses sélectionnées (cascade email_billing)
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-06-14
  * @changelog
+ *   1.1.0 - Message de confirmation explicite incluant la copie au bureau (CC COMPANY_EMAIL)
  *   1.0.0 - Version initiale (module État de compte client)
  */
 
@@ -463,10 +464,12 @@ export async function POST(request, { params }) {
       });
     }
 
+    const ccNote = process.env.COMPANY_EMAIL ? ` (copie au bureau: ${process.env.COMPANY_EMAIL})` : '';
     return NextResponse.json({
       success: true,
-      message: `État de compte envoyé à ${emailAddresses.join(', ')}`,
+      message: `État de compte envoyé à ${emailAddresses.join(', ')}${ccNote}`,
       sentTo: emailAddresses,
+      cc: process.env.COMPANY_EMAIL || null,
       pdf_url: pdfUrl,
     });
   } catch (error) {
