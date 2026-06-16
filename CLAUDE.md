@@ -756,6 +756,10 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~« numeric field overflow » en sauvegardant un BT avec beaucoup de sessions~~ → Corrigé (2026-06-15)
+  - `work_orders.total_hours` était en `numeric(4,2)` (max 99,99 h). Sur un BT à nombreuses sessions, le cumul des heures dépassait 100 h → erreur PostgreSQL au moment de sauvegarder (constaté sur BT-2026-084, ~16 sessions). Ce n'est PAS une limite du nombre de sessions, mais un plafond d'heures cumulées.
+  - `supabase/migrations/20260615_widen_work_order_total_hours.sql` — Élargit `total_hours` en `numeric(7,2)` (max 99 999,99 h). Expansion sûre, aucune perte de données.
+  - **Migration SQL à exécuter manuellement dans Supabase Dashboard** (sinon le BT-2026-084 reste bloqué)
 - ~~Bouton "Acomba" (mark-external) sans effet — FK invoice_id bloquait l'UPDATE silencieusement~~ → Corrigé (2026-05-19)
   - `supabase/migrations/20260519_drop_invoice_id_fk.sql` — Retire la contrainte FK sur `work_orders.invoice_id` et `delivery_notes.invoice_id` pour autoriser la valeur sentinelle `-1` (facturé externement Acomba). Aucun CASCADE défini, retrait sans impact en cascade.
   - `app/api/invoices/mark-external/route.js` v1.1.0 — Remonte les erreurs DB au client (retourne `success: false` au lieu de masquer l'échec)
