@@ -6,9 +6,10 @@
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
  *              - Badge BO et indicateur BL de suivi
- * @version 2.4.0
- * @date 2026-03-27
+ * @version 2.5.0
+ * @date 2026-06-16
  * @changelog
+ *   2.5.0 - Tri BT par date de session la plus récente (time_entries), pas seulement work_date
  *   2.4.0 - Ajout recherche par Description + persistance état recherche/filtres/scroll (sessionStorage)
  *   2.3.2 - Retrait notification redondante après suppression BT/BL (confirm suffit)
  *   2.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur champ recherche
@@ -198,15 +199,27 @@ export default function BonsTravailPage() {
 
   // Liste combinée BT + BL
   const combinedList = useMemo(() => {
-    const btItems = workOrders.map(wo => ({
-      ...wo,
-      _type: 'bt',
-      _number: wo.bt_number,
-      _date: wo.work_date,
-      _description: wo.work_description,
-      _clientName: wo.client?.name || 'Client inconnu',
-      _sortDate: wo.work_date || wo.created_at || '',
-    }));
+    const btItems = workOrders.map(wo => {
+      // Date d'activité la plus récente : on regarde la date de toutes les
+      // sessions de travail (time_entries), pas seulement work_date. Ainsi un
+      // BT ancien qui reçoit une nouvelle session remonte en haut de la liste.
+      const sessionDates = Array.isArray(wo.time_entries)
+        ? wo.time_entries.map(e => e?.date).filter(Boolean)
+        : [];
+      const activityDates = [wo.work_date, ...sessionDates].filter(Boolean);
+      const latestActivity = activityDates.length
+        ? activityDates.reduce((a, b) => (b > a ? b : a))
+        : '';
+      return {
+        ...wo,
+        _type: 'bt',
+        _number: wo.bt_number,
+        _date: wo.work_date,
+        _description: wo.work_description,
+        _clientName: wo.client?.name || 'Client inconnu',
+        _sortDate: latestActivity || wo.created_at || '',
+      };
+    });
 
     const blItems = deliveryNotes.map(bl => ({
       ...bl,
@@ -221,7 +234,8 @@ export default function BonsTravailPage() {
     }));
 
     const all = [...btItems, ...blItems];
-    // Trier par numéro décroissant (le plus récent en premier)
+    // Trier par date d'activité la plus récente en premier (BT: dernière
+    // session de travail; BL: date de livraison)
     all.sort((a, b) => {
       if (b._sortDate > a._sortDate) return 1;
       if (b._sortDate < a._sortDate) return -1;
