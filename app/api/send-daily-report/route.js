@@ -318,11 +318,11 @@ async function sendDailyReport() {
 
     // Envoyer l'email avec le domaine vérifié
     console.log('📧 Envoi email depuis: noreply@servicestmt.ca');
-    console.log('📧 Destinataires:', ['servicestmt@gmail.com', 'info.servicestmt@gmail.com']);
-    
+    console.log('📧 Destinataires:', ['servicestmt@gmail.com']);
+
     const { data, error: resendError } = await resend.emails.send({
       from: 'Système TMT <noreply@servicestmt.ca>',
-      to: ['servicestmt@gmail.com', 'info.servicestmt@gmail.com'],
+      to: ['servicestmt@gmail.com'],
       subject: `📋 Rapport quotidien - ${purchases?.length || 0} achat(s) en cours`,
       html: emailHtml,
       reply_to: 'info.servicestmt@gmail.com',
