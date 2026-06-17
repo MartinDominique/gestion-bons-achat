@@ -2,10 +2,11 @@
  * @file components/ClientManager.js
  * @description Gestionnaire de la liste des clients.
  *              - Affichage, recherche, création, modification et suppression de clients
- *              - Sections contacts (Principal, #2, Administration) avec badges colorés
- * @version 1.0.1
- * @date 2026-02-22
+ *              - Sections contacts (Principal, #2, Administration, Facturation) avec badges colorés
+ * @version 1.1.0
+ * @date 2026-06-17
  * @changelog
+ *   1.1.0 - Ajout du courriel de facturation (email_billing) dans l'aperçu de la carte client
  *   1.0.1 - Correction dark mode: fonds vert/mauve/bleu → gris neutre; en-tête bg-white
  *   1.0.0 - Version initiale
  */
@@ -262,6 +263,21 @@ export default function ClientManager({ onClose }) {
                             </div>
                           )}
                           
+                          {/* Facturation */}
+                          {client.email_billing && (
+                            <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded mb-2">
+                              <div className="flex items-center mb-1">
+                                <span className="text-xs bg-emerald-200 text-emerald-800 dark:bg-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded font-medium mr-2">Facturation</span>
+                              </div>
+                              <p className="flex items-center text-sm">
+                                <span className="mr-2">📧</span>
+                                <a href={`mailto:${client.email_billing}`} className="text-blue-600 hover:underline">
+                                  {client.email_billing}
+                                </a>
+                              </p>
+                            </div>
+                          )}
+
                           {/* Adresse */}
                           {client.address && (
                             <p className="flex items-start">
