@@ -15,9 +15,10 @@
  *              - Consultation BA/Soumission liés: badges cliquables (N° BA et N° soumission)
  *                dans l'entête ouvrant un panneau latéral en lecture seule (prix de vente
  *                déjà donnés au client), côte-à-côte sur desktop / superposition sur mobile.
- * @version 2.7.2
- * @date 2026-06-04
+ * @version 2.8.0
+ * @date 2026-06-22
  * @changelog
+ *   2.8.0 - Désactive le pull-to-refresh natif pendant l'édition (DisablePullToRefresh) pour éviter la perte de données sur mobile/tablette
  *   2.7.2 - Fix prix matériaux importés d'un AF: le unit_price stocké est le coûtant
  *           fournisseur. La facture utilise désormais le prix vendant de l'inventaire
  *           pour ces lignes (BT et BL), au lieu d'afficher le coûtant comme prix de vente.
@@ -54,6 +55,7 @@ import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTr
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
 import InvoiceReferencePanel from './InvoiceReferencePanel';
+import DisablePullToRefresh from '../DisablePullToRefresh';
 
 /**
  * Calcule le taux horaire selon le type de surcharge
@@ -924,6 +926,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+      {/* Désactive le pull-to-refresh natif pendant la saisie (évite la perte de données) */}
+      <DisablePullToRefresh />
       <div className={`flex gap-3 w-full my-4 justify-center ${referenceView ? 'max-w-[1500px]' : 'max-w-4xl'}`}>
       <div className="bg-white dark:bg-gray-900 rounded-xl w-full flex-1 min-w-0 max-w-4xl shadow-2xl">
 
