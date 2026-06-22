@@ -756,6 +756,8 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Pull-to-refresh natif perd les données en cours (BT/BL/Facture) sur mobile/tablette~~ → Corrigé (2026-06-22)
+  - `app/globals.css` — Ajout de `overscroll-behavior-y: contain` sur `html, body` (règle CLAUDE.md qui n'avait jamais été appliquée). Désactive le geste « tirer vers le bas » qui rechargeait la page et faisait perdre la saisie en cours d'un BT, d'un BL ou d'une nouvelle facture. Aucune migration requise.
 - ~~« numeric field overflow » en sauvegardant un BT avec beaucoup de sessions~~ → Corrigé (2026-06-15)
   - `work_orders.total_hours` était en `numeric(4,2)` (max 99,99 h). Sur un BT à nombreuses sessions, le cumul des heures dépassait 100 h → erreur PostgreSQL au moment de sauvegarder (constaté sur BT-2026-084, ~16 sessions). Ce n'est PAS une limite du nombre de sessions, mais un plafond d'heures cumulées.
   - `supabase/migrations/20260615_widen_work_order_total_hours.sql` — Élargit `total_hours` en `numeric(7,2)` (max 99 999,99 h). Expansion sûre, aucune perte de données.

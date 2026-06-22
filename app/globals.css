@@ -9,6 +9,16 @@
   }
 }
 
+/*
+ * Désactive le pull-to-refresh natif du navigateur (mobile/tablette).
+ * Évite la perte de données quand on tire la page vers le bas pendant la
+ * saisie d'un BT, d'un BL ou d'une facture. (Règle CLAUDE.md)
+ */
+html,
+body {
+  overscroll-behavior-y: contain;
+}
+
 /* Ajouter ces styles à la fin de globals.css */
 
 /* Styles d'impression professionnels */
