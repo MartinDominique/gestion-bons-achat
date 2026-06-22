@@ -5,9 +5,10 @@
  *              - Intégration TimeTracker (suivi temps) et MaterialSelector (matériaux)
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion emails et workflow signature client
- * @version 1.3.1
- * @date 2026-05-20
+ * @version 1.4.0
+ * @date 2026-06-22
  * @changelog
+ *   1.4.0 - Désactive le pull-to-refresh natif pendant la saisie (DisablePullToRefresh) pour éviter la perte de données sur mobile/tablette
  *   1.3.1 - Saisie manuelle du BA Client forcée en MAJUSCULES (CSS textTransform + onBlur, autoCapitalize="characters" pour clavier mobile)
  *   1.3.0 - UX mobile: bouton "Commencer nouvelle session" déplacé entre la section BA et la Date de travail. Checkbox Prix Jobé déplacée sous le TimeTracker. Sessions affichées en ordre inversé dans le formulaire (dernière en haut, via TimeTracker v2.3.0)
  *   1.2.1 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
@@ -22,6 +23,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check, PenTool, Search, Play } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
 import TimeTracker from './TimeTracker';
+import DisablePullToRefresh from '../DisablePullToRefresh';
 import ClientModal from '../ClientModal';
 import PurchaseOrderModal from '../PurchaseOrderModal';
 import { supabase } from '../../lib/supabase';
@@ -1228,7 +1230,9 @@ const getFilteredSupplierPurchases = () => {
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 max-w-4xl mx-auto">
-    
+      {/* Désactive le pull-to-refresh natif pendant la saisie (évite la perte de données) */}
+      <DisablePullToRefresh />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">

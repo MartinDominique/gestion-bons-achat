@@ -9,9 +9,10 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 3.3.2
- * @date 2026-06-09
+ * @version 3.4.0
+ * @date 2026-06-22
  * @changelog
+ *   3.4.0 - Désactive le pull-to-refresh natif pendant la saisie (DisablePullToRefresh) pour éviter la perte de données sur mobile/tablette
  *   3.3.2 - Fix bouton supprimer hors champ sur PC/desktop: tableau BO resserré
  *           (inputs w-16, paddings px-2, description max-w-180) pour que la colonne
  *           supprimer rentre dans le formulaire malgré les spinners des champs number.
@@ -75,6 +76,7 @@ import {
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
+import DisablePullToRefresh from '../DisablePullToRefresh';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -840,6 +842,8 @@ export default function DeliveryNoteForm({
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 max-w-4xl mx-auto">
+      {/* Désactive le pull-to-refresh natif pendant la saisie (évite la perte de données) */}
+      <DisablePullToRefresh />
 
       {/* Liens parent/child BO */}
       {deliveryNote?.parent_bl_id && (

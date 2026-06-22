@@ -757,7 +757,9 @@ CRON_SECRET                   # Auth pour cron jobs
 
 ### Bugs connus (corrigés)
 - ~~Pull-to-refresh natif perd les données en cours (BT/BL/Facture) sur mobile/tablette~~ → Corrigé (2026-06-22)
-  - `app/globals.css` — Ajout de `overscroll-behavior-y: contain` sur `html, body` (règle CLAUDE.md qui n'avait jamais été appliquée). Désactive le geste « tirer vers le bas » qui rechargeait la page et faisait perdre la saisie en cours d'un BT, d'un BL ou d'une nouvelle facture. Aucune migration requise.
+  - `components/DisablePullToRefresh.js` (nouveau) — Composant qui applique `overscroll-behavior-y: contain` sur `<html>`/`<body>` **uniquement** pendant qu'un formulaire de saisie est monté, puis restaure la valeur au démontage. Monté dans `WorkOrderForm.js` (v1.4.0), `DeliveryNoteForm.js` (v3.4.0) et `InvoiceEditor.js` (v2.8.0).
+  - **Ciblé volontairement** : le pull-to-refresh reste actif sur les pages de liste (BT/BL) où il sert à voir un document punché depuis un autre appareil. Une règle globale `html, body` casserait ce besoin.
+  - `app/bons-travail/page.js` (v2.6.0) — En complément, la liste se rafraîchit automatiquement au retour en avant-plan (`visibilitychange`/`focus`), donc un BT/BL créé sur un autre appareil apparaît sans pull-to-refresh manuel. Aucune migration requise.
 - ~~« numeric field overflow » en sauvegardant un BT avec beaucoup de sessions~~ → Corrigé (2026-06-15)
   - `work_orders.total_hours` était en `numeric(4,2)` (max 99,99 h). Sur un BT à nombreuses sessions, le cumul des heures dépassait 100 h → erreur PostgreSQL au moment de sauvegarder (constaté sur BT-2026-084, ~16 sessions). Ce n'est PAS une limite du nombre de sessions, mais un plafond d'heures cumulées.
   - `supabase/migrations/20260615_widen_work_order_total_hours.sql` — Élargit `total_hours` en `numeric(7,2)` (max 99 999,99 h). Expansion sûre, aucune perte de données.

@@ -6,9 +6,10 @@
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
  *              - Badge BO et indicateur BL de suivi
- * @version 2.5.0
- * @date 2026-06-16
+ * @version 2.6.0
+ * @date 2026-06-22
  * @changelog
+ *   2.6.0 - Rafraîchissement auto de la liste au retour en avant-plan (visibilitychange/focus): un BT punché d'un autre appareil apparaît sans pull-to-refresh manuel
  *   2.5.0 - Tri BT par date de session la plus récente (time_entries), pas seulement work_date
  *   2.4.0 - Ajout recherche par Description + persistance état recherche/filtres/scroll (sessionStorage)
  *   2.3.2 - Retrait notification redondante après suppression BT/BL (confirm suffit)
@@ -195,6 +196,23 @@ export default function BonsTravailPage() {
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  // Rafraîchit automatiquement la liste quand on revient sur l'app (changement
+  // d'onglet, retour en avant-plan sur tablette/cell). Ainsi un BT punché depuis
+  // un autre appareil apparaît sans avoir à tirer la page manuellement.
+  useEffect(() => {
+    const refreshOnReturn = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
+      }
+    };
+    document.addEventListener('visibilitychange', refreshOnReturn);
+    window.addEventListener('focus', refreshOnReturn);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshOnReturn);
+      window.removeEventListener('focus', refreshOnReturn);
+    };
   }, []);
 
   // Liste combinée BT + BL
