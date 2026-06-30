@@ -257,7 +257,7 @@ export async function POST(request, { params }) {
   try {
     const { id } = params;
     const body = await request.json();
-    const { emails: customEmails, print_only } = body;
+    const { emails: customEmails, print_only, show_signature } = body;
 
     // 1. Récupérer la facture
     const { data: invoice, error: invoiceError } = await supabaseAdmin
@@ -335,6 +335,12 @@ export async function POST(request, { params }) {
     }
 
     // 4. Générer le PDF
+    // show_signature: undefined = non fourni (ancien code) → on affiche si signataire présent
+    // show_signature: false → on masque même si signataire présent
+    if (show_signature === false) {
+      invoice.client_signature_name = null;
+      invoice.signature_timestamp = null;
+    }
     const pdfBuffer = generateInvoicePDF(invoice, settings);
     const pdfBufferNode = Buffer.from(pdfBuffer);
 

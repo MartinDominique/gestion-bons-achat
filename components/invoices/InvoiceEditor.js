@@ -15,9 +15,11 @@
  *              - Consultation BA/Soumission liés: badges cliquables (N° BA et N° soumission)
  *                dans l'entête ouvrant un panneau latéral en lecture seule (prix de vente
  *                déjà donnés au client), côte-à-côte sur desktop / superposition sur mobile.
- * @version 2.8.0
- * @date 2026-06-22
+ * @version 2.9.0
+ * @date 2026-06-30
  * @changelog
+ *   2.9.0 - Case à cocher "Inclure la signature sur la facture" (visible si BT/BL signé,
+ *           cochée par défaut, décochable pour les cas sans signature client réelle)
  *   2.8.0 - Désactive le pull-to-refresh natif pendant l'édition (DisablePullToRefresh) pour éviter la perte de données sur mobile/tablette
  *   2.7.2 - Fix prix matériaux importés d'un AF: le unit_price stocké est le coûtant
  *           fournisseur. La facture utilise désormais le prix vendant de l'inventaire
@@ -276,6 +278,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [sourceDescription, setSourceDescription] = useState('');
+  // Nom du signataire du BT/BL source (null si non signé)
+  const [sourceSignatureName, setSourceSignatureName] = useState(null);
+  // Inclure ou non la signature sur le PDF de la facture
+  const [showSignature, setShowSignature] = useState(true);
 
   // Références BA / Soumission liées au BT/BL source (consultation des prix client)
   // { baId, baNumber, submissionNumbers: string[] }
@@ -330,6 +336,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             if (result.success && result.data) {
               const desc = result.data.work_description || result.data.delivery_description || '';
               setSourceDescription(desc);
+              const sigName = result.data.client_signature_name || null;
+              setSourceSignatureName(sigName);
+              setShowSignature(!!sigName);
               const lp = result.data.linked_po;
               setLinkedRef({
                 baId: result.data.linked_po_id || lp?.id || null,
@@ -345,9 +354,12 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       const isPJ = btOrBl.is_prix_jobe || false;
       setIsPrixJobe(isPJ);
 
-      // Récupérer la description du BT/BL
+      // Récupérer la description et la signature du BT/BL
       const desc = btOrBl.work_description || btOrBl.delivery_description || '';
       setSourceDescription(desc);
+      const sigName = btOrBl.client_signature_name || null;
+      setSourceSignatureName(sigName);
+      setShowSignature(!!sigName);
 
       // Références BA / Soumission liées (consultation prix client)
       const lp = btOrBl.linked_po;
@@ -739,7 +751,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         const sendRes = await fetch(`/api/invoices/${invoiceId}/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(selectedEmails.length > 0 ? { emails: selectedEmails } : {}),
+          body: JSON.stringify({
+          ...(selectedEmails.length > 0 ? { emails: selectedEmails } : {}),
+          show_signature: showSignature,
+        }),
         });
         const sendData = await sendRes.json();
         if (!sendData.success) {
@@ -840,7 +855,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       const sendRes = await fetch(`/api/invoices/${invoiceId}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ print_only: true }),
+        body: JSON.stringify({ print_only: true, show_signature: showSignature }),
       });
       const sendData = await sendRes.json();
       if (!sendData.success) {
@@ -1440,6 +1455,23 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 </div>
               </div>
             </div>
+          )}
+          {/* Option signature sur la facture */}
+          {!isLocked && sourceSignatureName && (
+            <label className="flex items-center gap-2 cursor-pointer py-1">
+              <input
+                type="checkbox"
+                checked={showSignature}
+                onChange={(e) => setShowSignature(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Inclure la signature sur la facture
+                <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal">
+                  (signé par {sourceSignatureName})
+                </span>
+              </span>
+            </label>
           )}
         </div>
 
