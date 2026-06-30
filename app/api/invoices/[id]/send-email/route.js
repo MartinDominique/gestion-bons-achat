@@ -154,7 +154,7 @@ function generateInvoicePDF(invoice, settings) {
   // TPS — numéro TPS à gauche, montant à droite
   if (settings && settings.invoice_tps_number) {
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
     doc.text(`TPS: ${settings.invoice_tps_number}`, leftX, y);
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(pdfCommon.FONT.body);
@@ -166,7 +166,7 @@ function generateInvoicePDF(invoice, settings) {
   // TVQ — numéro TVQ à gauche, montant à droite
   if (settings && settings.invoice_tvq_number) {
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
     doc.text(`TVQ: ${settings.invoice_tvq_number}`, leftX, y);
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(pdfCommon.FONT.body);
@@ -192,7 +192,7 @@ function generateInvoicePDF(invoice, settings) {
     y = pdfCommon.checkPageBreak(doc, y, 10);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
     let signLine = `Signé par : ${invoice.client_signature_name}`;
     if (invoice.signature_timestamp) {
       const sigDate = new Date(invoice.signature_timestamp).toLocaleDateString('fr-CA', {
@@ -226,11 +226,10 @@ function generateInvoicePDF(invoice, settings) {
     y = pdfCommon.checkPageBreak(doc, y, 15);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
     const footerLines = doc.splitTextToSize(settings.invoice_footer_note, pdfCommon.CONTENT_WIDTH);
     doc.text(footerLines, pdfCommon.PAGE.margin.left, y);
     y += footerLines.length * 4 + 3;
-    doc.setTextColor(0, 0, 0);
   }
 
   // Message de propriété (settings)
