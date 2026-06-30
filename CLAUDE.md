@@ -141,6 +141,12 @@ CREATE POLICY "Users can delete own data" ON nom_table
 
 ### Génération PDF (jsPDF)
 
+**RÈGLE ABSOLUE — Couleurs dans les PDF clients :**
+Tout texte dans un PDF destiné au client (factures, BT, BL) DOIT être en **noir pur `[0, 0, 0]`**.
+Le gris (`[100, 100, 100]` ou toute autre valeur) est **INTERDIT** pour le contenu visible —
+il s'imprime très mal, voire invisible sur papier. Seul le pied de page discret (numéro de page,
+coordonnées entreprises) peut rester en gris, car c'est intentionnellement effacé.
+
 Standards visuels pour tous les PDF générés avec jsPDF:
 
 ```javascript

@@ -6,9 +6,10 @@
  *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.5.0
- * @date 2026-06-14
+ * @version 1.6.0
+ * @date 2026-06-30
  * @changelog
+ *   1.6.0 - Affichage signataire + date de signature sur le PDF (si disponible)
  *   1.5.0 - Message de confirmation explicite incluant la copie au bureau (CC COMPANY_EMAIL)
  *   1.4.0 - Ajout avis no-reply Resend (sous "N'hésitez pas à nous contacter")
  *           + lien de contact cliquable (mailto) dans le pied de page du courriel
@@ -153,7 +154,7 @@ function generateInvoicePDF(invoice, settings) {
   // TPS — numéro TPS à gauche, montant à droite
   if (settings && settings.invoice_tps_number) {
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
     doc.text(`TPS: ${settings.invoice_tps_number}`, leftX, y);
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(pdfCommon.FONT.body);
@@ -165,7 +166,7 @@ function generateInvoicePDF(invoice, settings) {
   // TVQ — numéro TVQ à gauche, montant à droite
   if (settings && settings.invoice_tvq_number) {
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
     doc.text(`TVQ: ${settings.invoice_tvq_number}`, leftX, y);
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(pdfCommon.FONT.body);
@@ -186,6 +187,27 @@ function generateInvoicePDF(invoice, settings) {
   doc.text(pdfCommon.formatCurrency(invoice.total), rightX, y, { align: 'right' });
   y += 12;
 
+  // ---- SIGNATAIRE ----
+  if (invoice.client_signature_name) {
+    y = pdfCommon.checkPageBreak(doc, y, 10);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    let signLine = `Signé par : ${invoice.client_signature_name}`;
+    if (invoice.signature_timestamp) {
+      const sigDate = new Date(invoice.signature_timestamp).toLocaleDateString('fr-CA', {
+        timeZone: 'America/Toronto',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      signLine += `, en date du ${sigDate}`;
+    }
+    doc.text(signLine, pdfCommon.PAGE.margin.left, y);
+    y += 7;
+    doc.setTextColor(0, 0, 0);
+  }
+
   // ---- NOTE DE PIED ----
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(pdfCommon.FONT.body);
@@ -204,11 +226,10 @@ function generateInvoicePDF(invoice, settings) {
     y = pdfCommon.checkPageBreak(doc, y, 15);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
     const footerLines = doc.splitTextToSize(settings.invoice_footer_note, pdfCommon.CONTENT_WIDTH);
     doc.text(footerLines, pdfCommon.PAGE.margin.left, y);
     y += footerLines.length * 4 + 3;
-    doc.setTextColor(0, 0, 0);
   }
 
   // Message de propriété (settings)
@@ -235,7 +256,7 @@ export async function POST(request, { params }) {
   try {
     const { id } = params;
     const body = await request.json();
-    const { emails: customEmails, print_only } = body;
+    const { emails: customEmails, print_only, show_signature } = body;
 
     // 1. Récupérer la facture
     const { data: invoice, error: invoiceError } = await supabaseAdmin
@@ -267,13 +288,15 @@ export async function POST(request, { params }) {
       const descField = invoice.source_type === 'work_order' ? 'work_description' : 'delivery_description';
       const { data: sourceDoc } = await supabaseAdmin
         .from(sourceTable)
-        .select(`linked_po_id, ${descField}`)
+        .select(`linked_po_id, ${descField}, client_signature_name, signature_timestamp`)
         .eq('id', invoice.source_id)
         .single();
 
       if (sourceDoc) {
         // Description du BT/BL
         invoice.source_description = sourceDoc[descField] || null;
+        invoice.client_signature_name = sourceDoc.client_signature_name || null;
+        invoice.signature_timestamp = sourceDoc.signature_timestamp || null;
 
         if (sourceDoc.linked_po_id) {
           const { data: po } = await supabaseAdmin
@@ -311,6 +334,12 @@ export async function POST(request, { params }) {
     }
 
     // 4. Générer le PDF
+    // show_signature: undefined = non fourni (ancien code) → on affiche si signataire présent
+    // show_signature: false → on masque même si signataire présent
+    if (show_signature === false) {
+      invoice.client_signature_name = null;
+      invoice.signature_timestamp = null;
+    }
     const pdfBuffer = generateInvoicePDF(invoice, settings);
     const pdfBufferNode = Buffer.from(pdfBuffer);
 
