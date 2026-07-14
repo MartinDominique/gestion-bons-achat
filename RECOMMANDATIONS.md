@@ -1569,4 +1569,25 @@ Le rapport annuel utilise l'année civile (1er janv. → 31 déc.).
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-06-14 par Claude AI*
+## Inventaire — Édition complète (Code + Unité) + unité « Longueur » ✅ COMPLETE (2026-07-14)
+
+**Implémentation complétée (2026-07-14):**
+- `lib/constants/units.js` (nouveau) — liste canonique partagée des unités de mesure,
+  avec ajout de **« Longueur » (Lg)**. Helper `unitOptionsWith()` pour garder l'unité
+  courante d'un produit sélectionnable même si absente de la liste canonique.
+- `components/InventoryManager.js` v3.10.0 — le **Code (product_id)** et l'**Unité de
+  mesure** sont maintenant modifiables dans le modal d'édition (onglet Modifier).
+  Avertissement affiché lors d'un changement de code.
+- `app/api/products/rename/route.js` (nouveau) — renomme le code d'un produit avec
+  **cascade** (product_id sans contrainte FK) : met à jour `products`/`non_inventory_items`,
+  puis `inventory_movements`, `work_order_materials` et `delivery_note_materials`
+  (colonnes `product_id` + `product_code`). Via `supabaseAdmin` (bypass RLS).
+  Vérifie l'unicité du nouveau code avant renommage.
+- `components/DirectReceiptModal.js` v1.5.0 — la création de produit utilise désormais la
+  liste d'unités partagée (donc « Longueur » disponible aussi à la création).
+
+**Aucune migration SQL requise** (aucune nouvelle colonne).
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-07-14 par Claude AI*

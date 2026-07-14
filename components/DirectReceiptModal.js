@@ -7,9 +7,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.4.0
- * @date 2026-03-07
+ * @version 1.5.0
+ * @date 2026-07-14
  * @changelog
+ *   1.5.0 - Liste d'unités partagée (lib/constants/units.js) incluant "Longueur" (Lg)
  *   1.4.0 - Forcer majuscules sur description produit (onBlur toUpperCase + CSS textTransform + uppercase au save)
  *   1.3.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -22,6 +23,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import { searchProducts } from './SupplierPurchaseServices';
+import { UNIT_OPTIONS } from '../lib/constants/units';
 import {
   Package, Check, X, Truck, AlertCircle, Search, Plus, Trash2, ToggleLeft, ToggleRight
 } from 'lucide-react';
@@ -678,15 +680,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                     onChange={(e) => setNewItemForm(prev => ({ ...prev, unit: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   >
-                    <option value="Un">Un</option>
-                    <option value="M">M (mètre)</option>
-                    <option value="Pi">Pi (pied)</option>
-                    <option value="Bte">Bte (boîte)</option>
-                    <option value="Rl">Rl (rouleau)</option>
-                    <option value="Kg">Kg</option>
-                    <option value="Lb">Lb (livre)</option>
-                    <option value="L">L (litre)</option>
-                    <option value="Pqt">Pqt (paquet)</option>
+                    {UNIT_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
