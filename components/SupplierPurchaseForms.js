@@ -9,9 +9,13 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.3.0
- * @date 2026-06-05
+ * @version 1.4.0
+ * @date 2026-07-13
  * @changelog
+ *   1.4.0 - Fournisseurs: ajout d'un 2e et 3e contact (nom + email + téléphone optionnel)
+ *           dans SupplierFormModal + affichage dans la liste. Dans le formulaire d'AF,
+ *           sélecteur de destinataire(s) courriel (cases à cocher: contact principal + #2 + #3)
+ *           utilisé pour l'envoi mailto au fournisseur.
  *   1.3.0 - PriceUpdateModal: affichage du prix de vente actuel (comparaison) + bouton "Conserver"
  *   1.2.0 - Sauvegarde automatique avant impression/envoi PDF pour corriger date N/A
  *   1.1.0 - Ajout bouton "Gestion des Soumissions" à côté de Frais de livraison (ouvre SplitView)
@@ -162,6 +166,47 @@ export const PurchaseForm = ({
   const selectedSupplier = suppliers.find(s => s.id === purchaseForm.supplier_id);
   const selectedAddress = shippingAddresses.find(a => a.id === purchaseForm.shipping_address_id);
 
+  // Contacts courriel disponibles pour ce fournisseur (primaire + #2 + #3 avec email)
+  const supplierContacts = React.useMemo(() => {
+    if (!selectedSupplier) return [];
+    const list = [];
+    if (selectedSupplier.email) {
+      list.push({
+        key: 'primary',
+        name: selectedSupplier.contact_name || selectedSupplier.company_name || 'Contact principal',
+        email: selectedSupplier.email
+      });
+    }
+    if (selectedSupplier.email_2) {
+      list.push({
+        key: 'c2',
+        name: selectedSupplier.contact_name_2 || 'Contact 2',
+        email: selectedSupplier.email_2
+      });
+    }
+    if (selectedSupplier.email_3) {
+      list.push({
+        key: 'c3',
+        name: selectedSupplier.contact_name_3 || 'Contact 3',
+        email: selectedSupplier.email_3
+      });
+    }
+    return list;
+  }, [selectedSupplier]);
+
+  // Destinataires cochés (par défaut: le contact principal quand le fournisseur change)
+  const [selectedRecipientEmails, setSelectedRecipientEmails] = React.useState([]);
+  React.useEffect(() => {
+    const primary = supplierContacts[0]?.email;
+    setSelectedRecipientEmails(primary ? [primary] : []);
+  }, [purchaseForm.supplier_id, supplierContacts.length]);
+
+  const toggleRecipient = (email) => {
+    setSelectedRecipientEmails((prev) =>
+      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
+    );
+  };
+
   const handlePrint = async () => {
     try {
       // Sauvegarder avant impression pour avoir created_at et purchase_number
@@ -209,8 +254,13 @@ export const PurchaseForm = ({
       return;
     }
 
-    if (!selectedSupplier.email) {
-      alert('⚠️ Aucun email trouvé pour ce fournisseur.\nAjoutez un email dans la fiche fournisseur.');
+    // Destinataires: contacts cochés, sinon repli sur le courriel principal
+    const recipients = (selectedRecipientEmails.length > 0
+      ? selectedRecipientEmails
+      : [selectedSupplier.email].filter(Boolean));
+
+    if (recipients.length === 0) {
+      alert('⚠️ Aucun courriel de destinataire.\nSélectionnez au moins un contact ou ajoutez un email dans la fiche fournisseur.');
       return;
     }
 
@@ -231,7 +281,7 @@ export const PurchaseForm = ({
 
       const confirmation = confirm(
         `✅ AF sauvegardé + PDF : ${purchaseForm.purchase_number}.pdf\n\n` +
-        `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${selectedSupplier.email} ?`
+        `Voulez-vous ouvrir eM Client pour envoyer ce PDF à :\n${recipients.join(', ')} ?`
       );
 
       if (confirmation) {
@@ -273,7 +323,7 @@ Veuillez confirmer la réception et la date d'expédition prévue.
 
 Merci!`;
 
-          const mailtoLink = `mailto:${selectedSupplier.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
+          const mailtoLink = `mailto:${encodeURIComponent(recipients.join(','))}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
           
           // Iframe invisible pour éviter la navigation
           const iframe = document.createElement('iframe');
@@ -460,6 +510,35 @@ Merci!`;
                       <Building2 className="w-5 h-5" />
                     </button>
                   </div>
+
+                  {/* Destinataire(s) courriel — choix du/des contact(s) pour l'envoi */}
+                  {selectedSupplier && supplierContacts.length > 0 && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                        Destinataire(s) courriel
+                      </label>
+                      <div className="space-y-1">
+                        {supplierContacts.map((c) => (
+                          <label
+                            key={c.key}
+                            className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-700 cursor-pointer"
+                            style={{ minHeight: '44px' }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedRecipientEmails.includes(c.email)}
+                              onChange={() => toggleRecipient(c.email)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5 flex-shrink-0"
+                            />
+                            <span className="text-sm text-gray-800 dark:text-gray-200 min-w-0">
+                              <span className="font-medium">{c.name}</span>
+                              <span className="text-gray-500 dark:text-gray-400 break-all"> — {c.email}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <LinkedPOSection
@@ -1614,6 +1693,12 @@ export const SupplierModal = ({
                         {supplier.contact_name && <p>Contact: {supplier.contact_name}</p>}
                         {supplier.email && <p>{supplier.email}</p>}
                         {supplier.phone && <p>{supplier.phone}</p>}
+                        {(supplier.contact_name_2 || supplier.email_2) && (
+                          <p>Contact 2: {[supplier.contact_name_2, supplier.email_2].filter(Boolean).join(' — ')}</p>
+                        )}
+                        {(supplier.contact_name_3 || supplier.email_3) && (
+                          <p>Contact 3: {[supplier.contact_name_3, supplier.email_3].filter(Boolean).join(' — ')}</p>
+                        )}
                         {supplier.address && (
                           <p>{supplier.address}, {supplier.city}, {supplier.province} {supplier.postal_code}</p>
                         )}
@@ -1626,6 +1711,12 @@ export const SupplierModal = ({
                           setEditingSupplier(supplier);
                           setSupplierForm({
                             ...supplier,
+                            contact_name_2: supplier.contact_name_2 || '',
+                            email_2: supplier.email_2 || '',
+                            phone_2: supplier.phone_2 || '',
+                            contact_name_3: supplier.contact_name_3 || '',
+                            email_3: supplier.email_3 || '',
+                            phone_3: supplier.phone_3 || '',
                             preferred_english: supplier.preferred_english || false,
                             tax_id: supplier.tax_id || '',
                             tax_exempt: supplier.tax_exempt || false
@@ -1693,6 +1784,12 @@ export const SupplierFormModal = ({
     setSupplierForm({...supplierForm, phone: formatted});
   };
 
+  // Handler générique pour un champ téléphone secondaire (phone_2, phone_3)
+  const handlePhoneFieldChange = (field) => (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setSupplierForm({...supplierForm, [field]: formatted});
+  };
+
   return (
     <dialog id="supplier-form-modal" className="p-0 rounded-lg backdrop:bg-black backdrop:bg-opacity-50 dark:bg-gray-900">
       <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl p-6">
@@ -1756,6 +1853,106 @@ export const SupplierFormModal = ({
                 type="tel"
                 value={supplierForm.phone}
                 onChange={handlePhoneChange}
+                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                placeholder="(418) 225-3875"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+            </div>
+
+            {/* ===== CONTACT #2 (optionnel) ===== */}
+            <div className="md:col-span-2 pt-2 border-t dark:border-gray-700">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                Contact #2 (optionnel)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nom du contact
+              </label>
+              <input
+                type="text"
+                value={supplierForm.contact_name_2 || ''}
+                onChange={(e) => setSupplierForm({...supplierForm, contact_name_2: e.target.value})}
+                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={supplierForm.email_2 || ''}
+                onChange={(e) => setSupplierForm({...supplierForm, email_2: e.target.value})}
+                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Téléphone (optionnel)
+              </label>
+              <input
+                type="tel"
+                value={supplierForm.phone_2 || ''}
+                onChange={handlePhoneFieldChange('phone_2')}
+                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                placeholder="(418) 225-3875"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+            </div>
+
+            {/* ===== CONTACT #3 (optionnel) ===== */}
+            <div className="md:col-span-2 pt-2 border-t dark:border-gray-700">
+              <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                Contact #3 (optionnel)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nom du contact
+              </label>
+              <input
+                type="text"
+                value={supplierForm.contact_name_3 || ''}
+                onChange={(e) => setSupplierForm({...supplierForm, contact_name_3: e.target.value})}
+                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                spellCheck={true}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={supplierForm.email_3 || ''}
+                onChange={(e) => setSupplierForm({...supplierForm, email_3: e.target.value})}
+                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Téléphone (optionnel)
+              </label>
+              <input
+                type="tel"
+                value={supplierForm.phone_3 || ''}
+                onChange={handlePhoneFieldChange('phone_3')}
                 className="w-full rounded-lg border-gray-300 shadow-sm p-3"
                 placeholder="(418) 225-3875"
                 autoCorrect="off"

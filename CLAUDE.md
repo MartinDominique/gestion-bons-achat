@@ -755,6 +755,14 @@ CRON_SECRET                   # Auth pour cron jobs
     - **Statistiques financières** (`app/api/statistics/financial/route.js` v1.1.0 + `FinancialReport.js` + `FinancialPDFExport.js`): même ventilation depuis `line_items` + colonne/ligne **Forfait/Autre** (résumé, par mois, par client, PDF). Réutilise `salesBreakdown` exporté de `report-data.js`
     - **Reste:** exécuter la migration SQL `20260614b_add_accountant_email.sql` dans Supabase Dashboard
 
+22. ~~**Contacts fournisseurs #2/#3 + choix destinataire courriel (AF)**~~ - ✅ COMPLÉTÉ (2026-07-13)
+    - `supabase/migrations/20260713_add_supplier_contacts.sql` — colonnes `contact_name_2/email_2/phone_2` + `contact_name_3/email_3/phone_3` sur `suppliers`
+    - `components/SupplierPurchaseHooks.js` — `supplierForm` (défauts + `resetSupplierForm`) incluent les 6 nouveaux champs
+    - `components/SupplierPurchaseForms.js` v1.4.0 — SupplierFormModal: sections Contact #2 et #3 (nom + email + téléphone optionnel, formatage tél. réutilisé); liste fournisseurs affiche les contacts 2/3; bouton Modifier initialise les nouveaux champs
+    - Envoi AF par courriel: sélecteur **Destinataire(s) courriel** (cases à cocher — contact principal + #2 + #3 ayant un email) sous le sélecteur de fournisseur; le `mailto:` envoie à tous les contacts cochés (défaut = principal)
+    - Aussi: `MaterialSelector.js` v1.7.0 — affichage « En main » (stock) dans le modal d'ajout, le modal d'édition et la liste des matériaux (BT + BL)
+    - **Reste:** exécuter la migration SQL `20260713_add_supplier_contacts.sql` dans Supabase Dashboard (sinon création/màj fournisseur échoue: colonnes manquantes)
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)

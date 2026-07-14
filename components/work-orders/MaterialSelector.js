@@ -6,9 +6,16 @@
  *              - Clavier numérique pour saisie quantités (optimisé tablette)
  *              - Affichage/masquage prix par article
  *              - Affichage stock en main + quantité en commande (AF) dans la recherche
- * @version 1.6.0
- * @date 2026-06-11
+ *              - Affichage "En main" (stock) dans le modal d'ajout, le modal d'édition
+ *                et la liste des matériaux ajoutés (BT + BL)
+ * @version 1.7.0
+ * @date 2026-07-13
  * @changelog
+ *   1.7.0 - Affiche la quantité "En main" (stock) au moment d'ajouter un article:
+ *           dans le modal d'ajout (quantité), dans le modal d'édition et sur chaque
+ *           ligne de la liste des matériaux. Rouge si stock <= 0. Helper getMaterialStock()
+ *           avec repli sur la liste des produits chargés (stock à jour même pour un
+ *           matériau existant sans snapshot). Masqué pour les produits non-inventaire.
  *   1.6.0 - Affiche la quantité "En commande" (AF ordered/partial) à côté du stock
  *           dans les résultats de recherche, via /api/inventory/reservations.
  *   1.5.0 - Fix badge "Stock" périmé (BT+BL): rafraîchissement auto en arrière-plan à l'ouverture
@@ -468,6 +475,26 @@ const deleteMaterialFromModal = () => {
     }).format(amount || 0);
   };
 
+  // Retourne la quantité en main (stock) pour un matériau déjà ajouté.
+  // Priorise le stock embarqué dans le snapshot produit, sinon cherche le
+  // stock à jour dans la liste des produits chargés (par product_id ou id).
+  // Retourne null si non applicable (produit non-inventaire ou introuvable).
+  const getMaterialStock = (material) => {
+    if (!material) return null;
+    const prod = material.product;
+    if (prod?.product_group === 'Non-Inventaire') return null;
+    if (prod && prod.stock_qty != null) return prod.stock_qty;
+    const key =
+      prod?.product_id || material.product_code || material.product_id;
+    if (!key) return null;
+    const found = (products || []).find(
+      (p) => p.product_id === key || p.id === key
+    );
+    if (!found) return null;
+    if (found.product_group === 'Non-Inventaire') return null;
+    return found.stock_qty ?? 0;
+  };
+
   // 🆕 NOUVELLE FONCTION - AJOUT RAPIDE PRODUIT NON-INVENTAIRE
       const saveQuickAddProduct = async () => {
         // Validation
@@ -649,7 +676,22 @@ const deleteMaterialFromModal = () => {
                   <p className="text-sm text-gray-700 dark:text-gray-300 truncate">
                     {material.product?.description || 'Sans description'}
                   </p>
-                  
+
+                  {/* Quantité en main (stock) */}
+                  {(() => {
+                    const stock = getMaterialStock(material);
+                    if (stock == null) return null;
+                    return (
+                      <p className={`text-xs mt-1 font-medium ${
+                        stock <= 0
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-gray-500 dark:text-gray-400'
+                      }`}>
+                        📦 En main: {stock} {material.product?.unit || material.unit || ''}
+                      </p>
+                    );
+                  })()}
+
                   {/* Notes si présentes */}
                   {material.notes && (
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 truncate">
@@ -860,6 +902,19 @@ const deleteMaterialFromModal = () => {
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {material.product?.description}
                     </p>
+                    {(() => {
+                      const stock = getMaterialStock(material);
+                      if (stock == null) return null;
+                      return (
+                        <p className={`text-xs mt-1 font-medium ${
+                          stock <= 0
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}>
+                          📦 En main: {stock} {material.product?.unit || 'UN'}
+                        </p>
+                      );
+                    })()}
                     {material.product?.selling_price && (
                       <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                         Prix: {formatCurrency(material.product.selling_price)} / {material.product?.unit || 'UN'}
@@ -1013,6 +1068,20 @@ const deleteMaterialFromModal = () => {
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Unité: {pendingProduct.unit || 'pcs'}
                 </p>
+                {pendingProduct.product_group !== 'Non-Inventaire' && (
+                  <p className={`text-xs mt-1 font-medium ${
+                    (pendingProduct.stock_qty || 0) <= 0
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                    📦 En main: {pendingProduct.stock_qty || 0} {pendingProduct.unit || 'UN'}
+                    {(onOrderMap[pendingProduct.product_id] > 0) && (
+                      <span className="text-blue-600 dark:text-blue-400 ml-2">
+                        (En commande: +{onOrderMap[pendingProduct.product_id]})
+                      </span>
+                    )}
+                  </p>
+                )}
                 {pendingProduct.selling_price && (
                   <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                     Prix: {formatCurrency(pendingProduct.selling_price)} / {pendingProduct.unit || 'UN'}
