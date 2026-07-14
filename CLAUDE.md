@@ -763,6 +763,13 @@ CRON_SECRET                   # Auth pour cron jobs
     - Aussi: `MaterialSelector.js` v1.7.0 — affichage « En main » (stock) dans le modal d'ajout, le modal d'édition et la liste des matériaux (BT + BL)
     - **Reste:** exécuter la migration SQL `20260713_add_supplier_contacts.sql` dans Supabase Dashboard (sinon création/màj fournisseur échoue: colonnes manquantes)
 
+23. ~~**Inventaire: édition complète (Code + Unité) + unité « Longueur »**~~ - ✅ COMPLÉTÉ (2026-07-14)
+    - `lib/constants/units.js` (nouveau) — liste d'unités partagée avec ajout de « Longueur » (Lg) + helper `unitOptionsWith()`
+    - `components/InventoryManager.js` v3.10.0 — Code (product_id) et Unité modifiables dans le modal d'édition + avertissement au changement de code
+    - `app/api/products/rename/route.js` (nouveau) — renommage du code avec cascade (inventory_movements, work_order_materials, delivery_note_materials via supabaseAdmin) + contrôle d'unicité
+    - `components/DirectReceiptModal.js` v1.5.0 — création de produit utilise la liste d'unités partagée
+    - Aucune migration SQL requise
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)

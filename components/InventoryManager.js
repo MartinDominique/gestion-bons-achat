@@ -8,9 +8,14 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.9.0
- * @date 2026-06-11
+ * @version 3.10.0
+ * @date 2026-07-14
  * @changelog
+ *   3.10.0 - Édition complète: le Code (product_id) et l'Unité de mesure sont
+ *            maintenant modifiables dans le modal d'édition. Le changement de code
+ *            passe par /api/products/rename (cascade sur mouvements + matériaux BT/BL
+ *            pour préserver l'historique). Liste d'unités partagée (lib/constants/units.js)
+ *            incluant "Longueur" (Lg).
  *   3.9.0 - Rafraîchit les quantités En commande/Réservé à chaque chargement
  *           (recherche, charger tout, charger par groupe) et plus seulement au
  *           montage. Corrige l'affichage "+0 en commande" pour un AF créé après
@@ -72,6 +77,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
+import { unitOptionsWith } from '../lib/constants/units';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
@@ -107,6 +113,8 @@ export default function InventoryManager() {
   // Modal d'édition (unifié avec historique)
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({
+    code: '',
+    unit: '',
     description: '',
     supplier: '',
     cost_price: '',
@@ -419,6 +427,8 @@ export default function InventoryManager() {
   const openEditModal = async (item, initialTab = 'edit') => {
     setEditingItem(item);
     setEditForm({
+      code: item.product_id || '',
+      unit: item.unit || '',
       description: item.description || '',
       supplier: item.supplier || '',
       cost_price: item.cost_price?.toString() || '',
@@ -447,6 +457,8 @@ export default function InventoryManager() {
   const closeEditModal = () => {
     setEditingItem(null);
     setEditForm({
+      code: '',
+      unit: '',
       description: '',
       supplier: '',
       cost_price: '',
@@ -465,7 +477,36 @@ export default function InventoryManager() {
     try {
       setSaving(true);
 
+      // ===== Renommage du code (product_id) si modifié =====
+      // Passe par un endpoint serveur (cascade sur mouvements + matériaux BT/BL)
+      // car product_id est une référence texte sans contrainte FK.
+      const oldCode = editingItem.product_id;
+      const newCode = (editForm.code || '').trim();
+      const codeChanged = newCode && newCode !== oldCode;
+
+      if (codeChanged) {
+        const renameRes = await fetch('/api/products/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            oldCode,
+            newCode,
+            source: isProduct ? 'products' : 'non_inventory',
+          }),
+        });
+        const renameResult = await renameRes.json();
+        if (!renameRes.ok || !renameResult.success) {
+          showToast(renameResult.error || 'Erreur lors du changement de code', 'error');
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Code cible pour toutes les mises à jour suivantes
+      const targetCode = codeChanged ? newCode : oldCode;
+
       const updates = {
+        unit: (editForm.unit || '').trim() || null,
         description: editForm.description.trim().toUpperCase(),
         supplier: editForm.supplier.trim() || null,
         cost_price: parseFloat(editForm.cost_price) || 0,
@@ -487,7 +528,14 @@ export default function InventoryManager() {
       const oldQty = parseInt(editingItem.stock_qty) || 0;
       const oldDescription = editingItem.description || '';
       const oldSupplier = editingItem.supplier || '';
+      const oldUnit = editingItem.unit || '';
 
+      if (codeChanged) {
+        changes.push(`Code: "${oldCode}" → "${newCode}"`);
+      }
+      if ((updates.unit || '') !== oldUnit) {
+        changes.push(`Unité: "${oldUnit}" → "${updates.unit || ''}"`);
+      }
       if (updates.description !== oldDescription) {
         changes.push(`Description: "${oldDescription}" → "${updates.description}"`);
       }
@@ -509,7 +557,7 @@ export default function InventoryManager() {
       const { data, error } = await supabase
         .from(tableName)
         .update(updates)
-        .eq('product_id', editingItem.product_id)
+        .eq('product_id', targetCode)
         .select();
 
       if (error) throw error;
@@ -524,10 +572,10 @@ export default function InventoryManager() {
           await supabase
             .from('inventory_movements')
             .insert({
-              product_id: editingItem.product_id,
+              product_id: targetCode,
               product_description: updates.description,
               product_group: editingItem.product_group || '',
-              unit: editingItem.unit || 'UN',
+              unit: updates.unit || 'UN',
               movement_type: qtyDiff > 0 ? 'IN' : 'OUT',
               quantity: Math.abs(qtyDiff),
               unit_cost: updates.cost_price,
@@ -550,8 +598,8 @@ export default function InventoryManager() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              productId: editingItem.product_id,
-              description: editingItem.description,
+              productId: targetCode,
+              description: updates.description,
               changes: changes,
               type: isProduct ? 'Inventaire' : 'Non-Inventaire'
             })
@@ -567,7 +615,8 @@ export default function InventoryManager() {
 
         setDisplayItems(prev =>
           prev.map(item =>
-            item.product_id === updatedItem.product_id && item._source === updatedItem._source
+            // On matche sur l'ANCIEN code (l'item en mémoire) car le code a pu changer
+            item.product_id === oldCode && item._source === updatedItem._source
               ? updatedItem
               : item
           )
@@ -941,6 +990,52 @@ export default function InventoryManager() {
               {/* === ONGLET MODIFIER === */}
               {modalTab === 'edit' && (
                 <div className="space-y-4">
+                  {/* Code (product_id) + Unité côte à côte */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Code
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.code}
+                        onChange={(e) => setEditForm({...editForm, code: e.target.value})}
+                        onFocus={(e) => e.target.select()}
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 font-mono"
+                        placeholder="Code produit"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Unité de mesure
+                      </label>
+                      <select
+                        value={editForm.unit}
+                        onChange={(e) => setEditForm({...editForm, unit: e.target.value})}
+                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                      >
+                        {unitOptionsWith(editForm.unit).map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Avertissement changement de code */}
+                  {editForm.code.trim() && editForm.code.trim() !== editingItem.product_id && (
+                    <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-800 dark:text-amber-300">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <span>
+                        Le code passera de <strong className="font-mono">{editingItem.product_id}</strong> à{' '}
+                        <strong className="font-mono">{editForm.code.trim()}</strong>. L'historique des
+                        mouvements et les BT/BL liés seront mis à jour automatiquement.
+                      </span>
+                    </div>
+                  )}
+
                   {/* Description (modifiable, majuscules) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
