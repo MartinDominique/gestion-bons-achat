@@ -5,9 +5,10 @@
  *              - Intégration TimeTracker (suivi temps) et MaterialSelector (matériaux)
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion emails et workflow signature client
- * @version 1.4.0
- * @date 2026-06-22
+ * @version 1.5.0
+ * @date 2026-07-15
  * @changelog
+ *   1.5.0 - Bloque la présentation client (« Présenter au client ») tant qu'une session de temps est en cours. Évite qu'une session soit envoyée au client sans total (0h). L'utilisateur doit d'abord appuyer sur « Terminer » (et vérifier les cases Retour/Transport).
  *   1.4.0 - Désactive le pull-to-refresh natif pendant la saisie (DisablePullToRefresh) pour éviter la perte de données sur mobile/tablette
  *   1.3.1 - Saisie manuelle du BA Client forcée en MAJUSCULES (CSS textTransform + onBlur, autoCapitalize="characters" pour clavier mobile)
  *   1.3.0 - UX mobile: bouton "Commencer nouvelle session" déplacé entre la section BA et la Date de travail. Checkbox Prix Jobé déplacée sous le TimeTracker. Sessions affichées en ordre inversé dans le formulaire (dernière en haut, via TimeTracker v2.3.0)
@@ -1106,6 +1107,21 @@ const getFilteredSupplierPurchases = () => {
     // ✅ PROTECTION: Empêcher double soumission
     if (isSubmitting) {
       console.log('⏸️ Soumission déjà en cours, ignorée');
+      return;
+    }
+
+    // ⏱️ BLOCAGE: Empêcher la présentation client si une session de temps est
+    // encore en cours (chrono non arrêté). Sinon la session est enregistrée sans
+    // total (0h) → le PDF client affiche les heures mais pas le total.
+    // L'utilisateur doit d'abord appuyer sur « Terminer » pour figer l'heure de
+    // fin ET pouvoir vérifier les cases Retour/Transport de la session.
+    if (status === 'ready_for_signature' && trackerIsWorking) {
+      alert(
+        '⏱️ Session de travail en cours!\n\n' +
+        'Le chronomètre est toujours démarré. Appuyez sur « Terminer » dans le ' +
+        'Suivi du temps pour arrêter la session, puis vérifiez les cases ' +
+        'Retour / Transport avant de présenter le BT au client.'
+      );
       return;
     }
 

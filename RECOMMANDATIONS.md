@@ -1590,4 +1590,32 @@ Le rapport annuel utilise l'année civile (1er janv. → 31 déc.).
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-07-14 par Claude AI*
+## BT — Blocage présentation client si session de temps en cours ✅ COMPLETE (2026-07-15)
+
+**Problème signalé (Martin):** Quand une session de travail n'était pas arrêtée
+(chrono oublié) et que le client signait, le PDF affichait bien les heures
+travaillées (ex. `08:22-11:35`) mais le **total tombait à 0h** — par ligne ET au
+grand total.
+
+**Cause:** Le rattrapage à la signature (`complete-signature`, auto-terminaison
+de la session `in_progress`) ne couvre pas tous les cas : une session pouvait être
+enregistrée avec une heure de fin mais `total_hours: 0`, donc le PDF (qui lit
+`entry.total_hours`) affichait `0h`.
+
+**Correctif (à la source):** On empêche désormais de présenter le BT au client
+(« Présenter au client » → statut `ready_for_signature`) tant que le chronomètre
+tourne. L'utilisateur doit d'abord appuyer sur « Terminer » — ce qui fige l'heure
+de fin, calcule le total, ET permet de vérifier les cases Retour/Transport de la
+session avant présentation.
+
+**Implémentation complétée (2026-07-15):**
+- `components/work-orders/WorkOrderForm.js` v1.5.0 — garde-fou dans `handleSubmit`:
+  si `status === 'ready_for_signature'` et que le TimeTracker signale une session
+  active (`trackerIsWorking`), on bloque avec un message explicite et on ne
+  sauvegarde pas. Couvre les deux boutons « Présenter au client » (haut + bas).
+
+**Aucune migration SQL requise.**
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-07-15 par Claude AI*
