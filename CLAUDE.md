@@ -777,6 +777,9 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~BT sans total (0h) sur le PDF client quand le chrono n'est pas arrêté~~ → Corrigé (2026-07-15)
+  - Symptôme: session non arrêtée (chrono oublié) → à la signature, le PDF affichait les heures travaillées (ex. `08:22-11:35`) mais le total tombait à `0h` (par ligne + grand total), car la session était enregistrée avec une heure de fin mais `total_hours: 0`. Le rattrapage à la signature (`complete-signature`, auto-terminaison des sessions `in_progress`) ne couvrait pas tous les cas.
+  - Correctif à la source: `WorkOrderForm.js` v1.5.0 — la présentation client (« Présenter au client » → `ready_for_signature`) est **bloquée** tant que le chronomètre tourne (`trackerIsWorking`). L'utilisateur doit appuyer sur « Terminer » d'abord (fige l'heure de fin, calcule le total, permet de vérifier les cases Retour/Transport). Aucune migration requise.
 - ~~Pull-to-refresh natif perd les données en cours (BT/BL/Facture) sur mobile/tablette~~ → Corrigé (2026-06-22)
   - `components/DisablePullToRefresh.js` (nouveau) — Composant qui applique `overscroll-behavior-y: contain` sur `<html>`/`<body>` **uniquement** pendant qu'un formulaire de saisie est monté, puis restaure la valeur au démontage. Monté dans `WorkOrderForm.js` (v1.4.0), `DeliveryNoteForm.js` (v3.4.0) et `InvoiceEditor.js` (v2.8.0).
   - **Ciblé volontairement** : le pull-to-refresh reste actif sur les pages de liste (BT/BL) où il sert à voir un document punché depuis un autre appareil. Une règle globale `html, body` casserait ce besoin.
