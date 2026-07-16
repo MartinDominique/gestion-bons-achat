@@ -4,9 +4,11 @@
  *              - Section Apparence (thème clair/sombre)
  *              - Section Taux & Tarifs horaires (taux régulier, 1.5x, 2x, augmentation)
  *              - Section Facturation (numéros taxes, taux TPS/TVQ, conditions, N° facture)
- * @version 2.4.0
- * @date 2026-06-14
+ *              - Section Sauvegarde & Restauration (procédure + lien vers /admin/restore)
+ * @version 2.5.0
+ * @date 2026-07-16
  * @changelog
+ *   2.5.0 - Ajout section Sauvegarde & Restauration (procédure pas-à-pas + bouton vers la page de restauration)
  *   2.4.0 - Ajout champ Courriel du comptable (rapports comptables ventes/paiements)
  *   2.3.0 - Ajout champs Taux d'intérêt de retard + Note de pied de relevé (état de compte)
  *   2.2.0 - Ajout champ Marge de profit minimale (min_margin_percent) - alerte facturation
@@ -20,7 +22,7 @@
 
 import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
-import { Sun, Moon, Monitor, DollarSign, FileText, Save, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Sun, Moon, Monitor, DollarSign, FileText, Save, RefreshCw, AlertTriangle, Database, Download, Upload, Mail } from 'lucide-react';
 
 export default function ParametresPage() {
   const { theme, setTheme } = useTheme();
@@ -609,6 +611,114 @@ export default function ParametresPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ======== SECTION SAUVEGARDE & RESTAURATION ======== */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
+          <Database className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          Sauvegarde & Restauration
+        </h2>
+
+        {/* Comment fonctionne le backup */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">Sauvegarde automatique quotidienne</p>
+              <p>
+                Chaque jour vers 15 h (heure du Québec), un courriel
+                <strong> « 💾 Backup Services TMT »</strong> est envoyé à
+                <strong> servicestmt@gmail.com</strong>, avec toute la base de données
+                en pièce jointe (fichier compressé <code className="px-1 rounded bg-blue-100 dark:bg-blue-800/50">.json.gz</code>).
+                Conservez ces courriels : c&apos;est à partir d&apos;eux qu&apos;on restaure.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Procédure de restauration */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Procédure de restauration (en cas de perte de données)
+          </h3>
+          <ol className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold flex items-center justify-center text-xs">1</span>
+              <span>
+                Ouvrez la boîte <strong>servicestmt@gmail.com</strong> et repérez le dernier courriel
+                <strong> « 💾 Backup Services TMT »</strong> (celui de la date voulue).
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold flex items-center justify-center text-xs">2</span>
+              <span>
+                Téléchargez la pièce jointe <code className="px-1 rounded bg-gray-100 dark:bg-gray-700">backup-services-tmt-AAAA-MM-JJ.json.gz</code>.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold flex items-center justify-center text-xs">3</span>
+              <span>
+                <strong>Décompressez</strong> le fichier pour obtenir le <code className="px-1 rounded bg-gray-100 dark:bg-gray-700">.json</code> :
+                sur Mac, double-cliquez sur le <code className="px-1 rounded bg-gray-100 dark:bg-gray-700">.gz</code> ;
+                sur Windows, clic droit puis « Extraire » (ou avec 7-Zip). La page de restauration
+                n&apos;accepte que le fichier <code className="px-1 rounded bg-gray-100 dark:bg-gray-700">.json</code> décompressé.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold flex items-center justify-center text-xs">4</span>
+              <span>
+                Ouvrez la <strong>page de restauration</strong> (bouton ci-dessous) et sélectionnez le fichier
+                <code className="px-1 rounded bg-gray-100 dark:bg-gray-700">.json</code>.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold flex items-center justify-center text-xs">5</span>
+              <span>
+                Choisissez les <strong>tables à restaurer</strong> (toutes par défaut). Vous pouvez n&apos;en
+                restaurer qu&apos;une seule si une seule a été touchée.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold flex items-center justify-center text-xs">6</span>
+              <span>
+                Tapez <strong>RESTAURER</strong> pour confirmer, puis lancez. Un
+                <strong> backup de sécurité</strong> des données actuelles est automatiquement créé et
+                envoyé par courriel <strong>avant</strong> tout écrasement.
+              </span>
+            </li>
+          </ol>
+        </div>
+
+        {/* Avertissement */}
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mt-6 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            La restauration <strong>écrase</strong> les données actuelles des tables sélectionnées.
+            Faites-la seulement en cas de réel besoin. En cas de doute, restaurez d&apos;abord une seule
+            table, ou demandez de l&apos;aide.
+          </p>
+        </div>
+
+        {/* Bouton vers la page de restauration */}
+        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+          <a
+            href="/admin/restore"
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+          >
+            <Upload className="w-4 h-4" />
+            Ouvrir la page de restauration
+          </a>
+          <a
+            href="https://mail.google.com/mail/u/0/#search/Backup+Services+TMT"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Trouver les courriels de backup
+          </a>
+        </div>
       </div>
 
       {/* Bouton sauvegarder en bas (sticky pour mobile) */}
