@@ -1,3 +1,18 @@
+/**
+ * @file app/api/cron/backup/route.ts
+ * @description Backup quotidien de la base de données Supabase (envoi email gzip via Resend).
+ *              - Sauvegarde TOUTES les tables applicatives (voir liste `tables` ci-dessous)
+ *              - IMPORTANT: toute nouvelle table Supabase DOIT être ajoutée à `tables`
+ *                (voir CLAUDE.md > "Backup base de données")
+ *              - Tri par created_at avec repli automatique pour les tables sans cette colonne (ex: settings)
+ * @version 2.0.0
+ * @date 2026-07-16
+ * @changelog
+ *   2.0.0 - Ajout des tables manquantes (products, inventory_movements, delivery_notes,
+ *           delivery_note_materials, invoices, invoice_payments, notes, settings,
+ *           supplier_purchase_receipts) + tri résilient (repli sans order si created_at absent)
+ *   1.0.0 - Version initiale
+ */
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -20,21 +35,31 @@ export async function GET(request: Request) {
     );
 
    // Liste des tables à sauvegarder
+   // ⚠️ IMPORTANT: toute NOUVELLE table Supabase doit être ajoutée ici (voir CLAUDE.md).
     const tables = [
       'backup_purchase_orders',
       'client_po_items',
       'client_purchase_orders',
       'clients',
+      'delivery_note_materials',   // BL - matériaux livrés
+      'delivery_notes',            // BL - bons de livraison
       'delivery_slip_items',
       'delivery_slips',
+      'inventory_movements',       // Mouvements de stock (IN/OUT)
+      'invoice_payments',          // Paiements de factures (état de compte)
+      'invoices',                  // Factures
       'non_inventory_items',
+      'notes',                     // Système de notes (page d'ouverture)
+      'products',                  // Inventaire (produits)
       'purchase_order_files',
       'purchase_orders',
       'quote_items',
       'quotes',
+      'settings',                  // Paramètres globaux (singleton id=1, PAS de created_at)
       'shipping_addresses',
       'submissions',
       'supplier_documents',
+      'supplier_purchase_receipts',// Réceptions AF (partielles/complètes)
       'supplier_purchases',
       'suppliers',
       'work_order_materials',
@@ -49,10 +74,15 @@ export async function GET(request: Request) {
 
     // Récupérer les données de chaque table
     for (const table of tables) {
-      const { data, error } = await supabase
+      // Tri par created_at, avec repli SANS tri pour les tables sans cette colonne (ex: settings)
+      let { data, error } = await supabase
         .from(table)
         .select('*')
         .order('created_at', { ascending: false });
+
+      if (error) {
+        ({ data, error } = await supabase.from(table).select('*'));
+      }
 
       if (error) {
         console.error(`Erreur sur table ${table}:`, error);
@@ -88,7 +118,7 @@ export async function GET(request: Request) {
       from: 'Services TMT <noreply@servicestmt.ca>',
       to: 'servicestmt@gmail.com',
       subject: `💾 Backup Services TMT - ${backupDate}`,
-      text: `Backup hebdomadaire de la base de données Services TMT
+      text: `Backup quotidien de la base de données Services TMT
 
 Date: ${backup.date}
 Taille originale: ${sizeInMB} MB

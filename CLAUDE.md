@@ -139,6 +139,32 @@ CREATE POLICY "Users can delete own data" ON nom_table
 
 **Note:** Pour les tables partagées (ex: products), adapter les policies selon le besoin.
 
+### Backup base de données (OBLIGATOIRE)
+
+Le backup quotidien (`app/api/cron/backup/route.ts`) sauvegarde table par table via une **liste
+explicite** (`const tables = [...]`). Cette liste n'est PAS automatique : une table absente de la liste
+n'est **jamais sauvegardée**, et donc **définitivement perdue** en cas de restauration.
+
+**RÈGLE ABSOLUE — À chaque modification importante de la DB, mettre à jour le backup :**
+
+1. **Nouvelle table** → l'ajouter (ordre alphabétique) dans le tableau `tables` de
+   `app/api/cron/backup/route.ts` **dans le même commit** que la migration SQL.
+2. **Table renommée** → mettre à jour son nom dans la liste.
+3. **Table supprimée** → la retirer de la liste.
+4. **Table sans colonne `created_at`** (ex: `settings`, singleton) → aucune action spéciale : le backup
+   fait déjà un repli automatique sans tri. Ne PAS ajouter de `.order('created_at')` qui casserait la table.
+5. Incrémenter la version + changelog de l'en-tête de `route.ts` (voir Standards de Code).
+
+**Checklist rapide lors de l'ajout d'une table :**
+- [ ] Migration SQL créée dans `supabase/migrations/`
+- [ ] RLS + policies définies (voir section ci-dessus)
+- [ ] Table ajoutée au tableau `tables` de `app/api/cron/backup/route.ts`
+- [ ] En-tête `route.ts` versionné + changelog mis à jour
+
+**Note restauration :** `app/api/admin/restore/route.ts` est agnostique (restaure les tables présentes
+dans le fichier de backup uploadé) — aucune modification requise de son côté, tant que la table est bien
+dans le backup.
+
 ### Génération PDF (jsPDF)
 
 **RÈGLE ABSOLUE — Couleurs dans les PDF clients :**
@@ -851,7 +877,12 @@ CRON_SECRET                   # Auth pour cron jobs
 
 ### Backup/Restauration
 - `/api/admin/restore` existe mais jamais testé
-- Backup quotidien par email fonctionne
+- Backup quotidien par email fonctionne (`app/api/cron/backup/route.ts`, workflow GitHub `weekly-backup.yml`)
+- ⚠️ La liste des tables sauvegardées est **manuelle** : voir la règle **« Backup base de données (OBLIGATOIRE) »**
+  (Standards de Code) — toute nouvelle table DOIT être ajoutée au tableau `tables` de `route.ts`.
+- Backup v2.0.0 (2026-07-16) : ajout de `products`, `inventory_movements`, `delivery_notes`,
+  `delivery_note_materials`, `invoices`, `invoice_payments`, `notes`, `settings`, `supplier_purchase_receipts`
+  (9 tables qui manquaient) + tri résilient pour les tables sans `created_at`.
 
 ---
 
