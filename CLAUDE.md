@@ -5,7 +5,7 @@ Ce fichier contient les informations essentielles pour comprendre et modifier ce
 ## Contexte Rapide
 
 **Application:** Gestion opérationnelle pour Services TMT Inc. (services techniques + panneaux d'automatisation)
-**Utilisateur principal:** Martin et/ou (Martin seul utilisateur sur le terrin actuellement, Dominique au bureau seulement sur Desktop, multi-utilisateurs prévu)
+**Utilisateur principal:** Martin (seul utilisateur sur le terrain actuellement). Une adjointe (« L'Adjointe ») pourra travailler au bureau sur Desktop. Multi-utilisateurs prévu. (Note: Dominique ne travaille plus pour l'entreprise.)
 **Localisation:** Saint-Georges, Québec, Canada
 **Stack:** Next.js 14 + Supabase + Resend + Vercel
 
@@ -1057,7 +1057,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" $VERCEL_URL/api/cron/backup
 
 ## Contact
 
-**Utilisateur:** Martin et/ou Dominique
+**Utilisateur:** Martin (propriétaire) + « L'Adjointe » (bureau, Desktop)
 **Entreprise:** Services TMT Inc.
 **Adresse:** 3195 42e Rue Nord, Saint-Georges, QC, G5Z 0V9
 **Téléphone:** (418) 225-3875
