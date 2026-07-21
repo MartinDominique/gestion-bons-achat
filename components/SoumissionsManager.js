@@ -32,6 +32,7 @@ import {
   drawTwoColumns, loadLogoBase64Client,
   formatDate as pdfFormatDate, formatCurrency as pdfFormatCurrency, PAGE
 } from '../lib/services/pdf-common';
+import AddToOrderButton from './order-list/AddToOrderButton';
 
 // ============================================
 // GÉNÉRATION PDF SOUMISSION (jsPDF)
@@ -2999,6 +3000,7 @@ const cleanupFilesForSubmission = async (files) => {
                             <th className="text-right p-2 font-semibold">Total Vente</th>
                             <th className="text-right p-2 font-semibold">Total Coût</th>
                             <th className="text-center p-2 font-semibold">💬</th>
+                            <th className="text-center p-2 font-semibold">🛒</th>
                             <th className="text-center p-2 font-semibold">Actions</th>
                           </tr>
                         </thead>
@@ -3053,6 +3055,25 @@ const cleanupFilesForSubmission = async (files) => {
                                   </button>
                                 </td>
                                 <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                  <AddToOrderButton
+                                    variant="icon"
+                                    item={{
+                                      product_id: item.product_id,
+                                      product_code: item.product_id,
+                                      description: item.description,
+                                      unit: item.unit || 'UN',
+                                      quantity: item.quantity || 1,
+                                      cost_price: item.cost_price ?? null,
+                                    }}
+                                    source={{
+                                      type: 'submission',
+                                      id: editingSubmission?.id || null,
+                                      number: submissionForm.submission_number || null,
+                                      clientName: submissionForm.client_name || null,
+                                    }}
+                                  />
+                                </td>
+                                <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     type="button"
                                     onClick={() => removeItemFromSubmission(item.product_id)}
@@ -3093,6 +3114,25 @@ const cleanupFilesForSubmission = async (files) => {
                                 Qté: {item.quantity} × {formatCurrency(item.selling_price)}
                               </div>
                             </div>
+                          </div>
+                          <div onClick={(e) => e.stopPropagation()} className="mt-1">
+                            <AddToOrderButton
+                              variant="chip"
+                              item={{
+                                product_id: item.product_id,
+                                product_code: item.product_id,
+                                description: item.description,
+                                unit: item.unit || 'UN',
+                                quantity: item.quantity || 1,
+                                cost_price: item.cost_price ?? null,
+                              }}
+                              source={{
+                                type: 'submission',
+                                id: editingSubmission?.id || null,
+                                number: submissionForm.submission_number || null,
+                                clientName: submissionForm.client_name || null,
+                              }}
+                            />
                           </div>
                         </div>
                       ))}

@@ -5,9 +5,10 @@
  *              - IMPORTANT: toute nouvelle table Supabase DOIT être ajoutée à `tables`
  *                (voir CLAUDE.md > "Backup base de données")
  *              - Tri par created_at avec repli automatique pour les tables sans cette colonne (ex: settings)
- * @version 2.0.0
- * @date 2026-07-16
+ * @version 2.1.0
+ * @date 2026-07-21
  * @changelog
+ *   2.1.0 - Ajout de la table items_to_order (liste À Commander)
  *   2.0.0 - Ajout des tables manquantes (products, inventory_movements, delivery_notes,
  *           delivery_note_materials, invoices, invoice_payments, notes, settings,
  *           supplier_purchase_receipts) + tri résilient (repli sans order si created_at absent)
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
       'delivery_slip_items',
       'delivery_slips',
       'inventory_movements',       // Mouvements de stock (IN/OUT)
+      'items_to_order',            // Liste À Commander (réapprovisionnement)
       'invoice_payments',          // Paiements de factures (état de compte)
       'invoices',                  // Factures
       'non_inventory_items',

@@ -1618,4 +1618,61 @@ session avant présentation.
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-07-15 par Claude AI*
+## Liste « À Commander » (réapprovisionnement fournisseur) ✅ COMPLETE (2026-07-21)
+
+**Besoin (Martin):** Sur le terrain (BT/BL), en soumission ou à la vérification de
+l'inventaire, on n'a pas toujours le temps de passer une commande fournisseur. On
+veut pouvoir « cocher » un produit d'un tap pour l'ajouter à une liste **À Commander**,
+puis, plus tard au bureau, sélectionner des produits et créer un Achat Fournisseur (AF)
+pré-rempli — il ne reste qu'à ajuster quantités et prix.
+
+**Décisions confirmées (discussion préalable):**
+- Emplacement: onglet « À Commander » dans le module Achats (à côté des AF)
+- Portée: liste **globale** (partagée entre utilisateurs TMT)
+- Capture: **tap direct** (quantité = celle du document, ajustable au bureau)
+- Après commande: l'item passe en **Commandés** (badge vert + N° AF), 2 vues
+  (À commander / Commandés)
+- Fournisseur: **suggestion souple** (dernier fournisseur du produit), changeable à la
+  commande; groupe « À assigner » pour les produits sans fournisseur
+- Apprentissage: le produit **retient le dernier fournisseur commandé** (déjà géré par
+  le hook AF à la sauvegarde, `products.supplier`)
+- Indicateur: **pastille compteur** colorée sur l'onglet Achat (pas de clignotant)
+
+**Implémentation complétée (2026-07-21):**
+- `supabase/migrations/20260721_create_items_to_order.sql` — Table `items_to_order`
+  + RLS (authenticated) + index. Provenance (source_type/id/number), fournisseur
+  suggéré, coûtant, statut pending/ordered, lien AF (supplier_purchase_id/number).
+- `app/api/items-to-order/route.js` — GET (liste par statut) + POST (ajout avec
+  **enrichissement serveur** du fournisseur + coûtant depuis `products`/
+  `non_inventory_items`, et **fusion des doublons** en attente par code produit).
+- `app/api/items-to-order/[id]/route.js` — GET/PUT (qté, fournisseur, coûtant, notes,
+  statut) / DELETE.
+- `app/api/items-to-order/mark-ordered/route.js` — Marque un lot commandé + lie l'AF.
+- `components/order-list/AddToOrderButton.js` — Bouton réutilisable « + À commander »
+  (variants icon/chip/full, feedback « Ajouté ✓ », touch target 44px, stopPropagation).
+- `components/order-list/OrderListManager.js` — Page À Commander: 2 vues, groupement
+  par fournisseur (+ « À assigner »), sélection multi-items, édition inline qté +
+  fournisseur, « Créer l'AF » (sessionStorage `af-prefill` → onglet AF).
+- `app/(protected)/achat-materiels/page.js` v2.0.0 — 2 onglets (AF | À Commander)
+  + pastille compteur.
+- `components/SupplierPurchaseHooks.js` — Effet de montage: lit `af-prefill`, pré-remplit
+  `selectedItems` + fournisseur + N° AF, ouvre le formulaire; après sauvegarde de l'AF,
+  marque les items « commandés » (2 chemins de sauvegarde).
+- `components/work-orders/MaterialSelector.js` — Bouton « À commander » par matériau
+  (partagé BT + BL) + props de provenance.
+- `components/work-orders/WorkOrderForm.js` + `components/delivery-notes/DeliveryNoteForm.js`
+  — passent la provenance (type, id, N°, client).
+- `components/SoumissionsManager.js` — Bouton « À commander » par item (table desktop +
+  cartes mobile).
+- `components/InventoryManager.js` — Bouton « À commander » par produit (fournisseur +
+  coûtant déjà connus → pré-remplis).
+- `components/Navigation.js` v2.2.0 — Pastille compteur sur l'onglet Achat (desktop +
+  menu Plus mobile).
+- `app/api/cron/backup/route.ts` v2.1.0 — Table `items_to_order` ajoutée au backup.
+
+**Reste:** exécuter la migration SQL `20260721_create_items_to_order.sql` dans Supabase
+Dashboard (sinon les appels à la liste échouent: table manquante).
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-07-21 par Claude AI*

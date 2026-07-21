@@ -1521,6 +1521,10 @@ export default function DeliveryNoteForm({
                 setMaterials([...boMaterials, ...newNonBo]);
                 onFormChange?.();
               }}
+              sourceType="delivery_note"
+              sourceId={deliveryNote?.id || null}
+              sourceNumber={deliveryNote?.bl_number || null}
+              sourceClientName={selectedClient?.name || null}
             />
           );
         })()}
