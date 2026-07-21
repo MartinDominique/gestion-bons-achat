@@ -77,6 +77,10 @@ export const useSupplierPurchase = () => {
   
   // ===== ÉTAT CORRECTION =====
   const [isFixingPOs, setIsFixingPOs] = useState(false);
+
+  // ===== ÉTAT LISTE « À COMMANDER » =====
+  // ids des items items_to_order pré-remplis → marqués 'ordered' après sauvegarde de l'AF
+  const [pendingToOrderIds, setPendingToOrderIds] = useState([]);
   
   // ===== FORMULAIRE PRINCIPAL - MODIFIÉ avec ba_acomba =====
   const [purchaseForm, setPurchaseForm] = useState({
@@ -301,6 +305,71 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
   useEffect(() => {
   fetchExchangeRate();
 }, []);
+
+  // ===== PRÉ-REMPLISSAGE DEPUIS LA LISTE « À COMMANDER » =====
+  // Quand l'utilisateur clique « Créer l'AF » dans l'onglet À Commander, les items
+  // sélectionnés + le fournisseur choisi sont déposés dans sessionStorage ('af-prefill').
+  // On les charge ici au montage, on ouvre le formulaire, et on retient les ids pour
+  // les marquer 'ordered' après la sauvegarde de l'AF (voir markPrefillItemsOrdered).
+  useEffect(() => {
+    let raw = null;
+    try { raw = sessionStorage.getItem('af-prefill'); } catch (e) { raw = null; }
+    if (!raw) return;
+    try { sessionStorage.removeItem('af-prefill'); } catch (e) {}
+
+    let payload = null;
+    try { payload = JSON.parse(raw); } catch (e) { return; }
+    if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) return;
+
+    (async () => {
+      const items = payload.items.map((it) => {
+        const cost = parseFloat(it.cost_price) || 0;
+        return {
+          product_id: it.product_id,
+          description: it.description,
+          quantity: parseFloat(it.quantity) || 1,
+          unit: it.unit || 'UN',
+          cost_price: cost,
+          selling_price: parseFloat(it.selling_price) || 0,
+          original_cost_price: cost,
+          notes: it.notes || '',
+          is_non_inventory: !!it.is_non_inventory,
+        };
+      });
+      setSelectedItems(items);
+
+      const newNumber = await generatePurchaseNumber();
+      setPurchaseForm((prev) => ({
+        ...prev,
+        supplier_id: payload.supplier_id || '',
+        supplier_name: payload.supplier_name || '',
+        purchase_number: newNumber,
+      }));
+      setPendingToOrderIds(Array.isArray(payload.toOrderIds) ? payload.toOrderIds : []);
+      setShowForm(true);
+    })();
+  }, []);
+
+  // Marque les items « À commander » pré-remplis comme commandés (lie l'AF créé).
+  // No-op s'il n'y a pas d'items en attente (AF créé sans passer par la liste).
+  const markPrefillItemsOrdered = async (savedPurchase) => {
+    if (!pendingToOrderIds || pendingToOrderIds.length === 0) return;
+    try {
+      await fetch('/api/items-to-order/mark-ordered', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: pendingToOrderIds,
+          supplier_purchase_id: savedPurchase?.id || null,
+          supplier_purchase_number: savedPurchase?.purchase_number || null,
+        }),
+      });
+    } catch (err) {
+      console.error('Erreur marquage items commandés:', err);
+    } finally {
+      setPendingToOrderIds([]);
+    }
+  };
 
   // ===== FONCTIONS DE CHARGEMENT =====
   const loadAllData = async () => {
@@ -855,6 +924,9 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         }
       }
 
+      // Marquer « commandés » les items de la liste À Commander (si AF pré-rempli)
+      await markPrefillItemsOrdered(savedPurchase);
+
       // Email de confirmation à Dominique retiré (non nécessaire) — voir CLAUDE.md
       // L'envoi manuel reste possible via le bouton "Imprimer et envoyer au fournisseur".
 
@@ -921,6 +993,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         savedPurchase = await createSupplierPurchase(purchaseData);
         // Passer en mode édition avec le nouvel achat
         setEditingPurchase(savedPurchase);
+        // Marquer « commandés » les items de la liste À Commander (si AF pré-rempli)
+        await markPrefillItemsOrdered(savedPurchase);
       }
 
       // Mettre à jour le numéro dans le formulaire si nouvelle création

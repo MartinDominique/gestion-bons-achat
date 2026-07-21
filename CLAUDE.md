@@ -408,6 +408,9 @@ const total = subtotal + tps + tvq;
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
 /api/inventory/reservations            → En commande (AF) + Réservé (BT/BL non signés) + détail par doc
+/api/items-to-order                    → Liste À Commander (GET par statut + POST ajout enrichi/fusion)
+/api/items-to-order/[id]               → GET/PUT/DELETE item à commander
+/api/items-to-order/mark-ordered       → Marque un lot commandé + lie l'AF (après création AF)
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
 /api/statistics/financial              → Statistiques financières (GET: par mois, par client, en attente)
 /api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
@@ -439,6 +442,8 @@ components/work-orders/TimeTracker.js         → Suivi temps (arrondi quart heu
 components/work-orders/MaterialSelector.js    → Sélection matériaux (partagé BT+BL)
 components/delivery-notes/DeliveryNoteForm.js → Formulaire BL (livraison matériels)
 components/delivery-notes/DeliveryNoteClientView.js → Vue client + signature BL (page publique)
+components/order-list/OrderListManager.js     → Page « À Commander » (2 vues, groupement fournisseur, Créer AF)
+components/order-list/AddToOrderButton.js     → Bouton réutilisable « + À commander » (BT/BL/Soum./Inventaire)
 components/SupplierPurchaseManager.js         → Gestion AF + bouton Réception directe
 components/SupplierPurchaseServices.js        → Services recherche produits, hooks AF
 components/SupplierReceiptModal.js            → Réception AF (partielle/complète)
@@ -541,6 +546,22 @@ user_id, created_at, updated_at
 **Urgence (couleur):** 🔴 0-1 j ou en retard · 🟠 2-7 j · ⚪ 8+ j ou sans date.
 **Complétées:** masquées du tableau de bord (jamais supprimées par la complétion).
 **Lien projet:** `project_id` polymorphe (pas de FK), badge cliquable → panneau SplitView.
+
+### items_to_order (Liste À Commander)
+```sql
+id (UUID), product_id, product_code, description, unit, quantity,
+suggested_supplier, cost_price,
+source_type ('work_order'|'delivery_note'|'submission'|'inventory'|'manual'),
+source_id, source_number, client_name, notes,
+status ('pending'|'ordered'), ordered_at,
+supplier_purchase_id, supplier_purchase_number,
+user_id, created_at, updated_at
+```
+**But:** file de réapprovisionnement. Ajout d'un tap (« + À commander ») depuis BT/BL/Soumission/Inventaire.
+**Enrichissement:** fournisseur suggéré + coûtant remplis côté serveur depuis `products`/`non_inventory_items` si absents.
+**Fusion:** un doublon `pending` (même `product_code`) additionne la quantité au lieu de créer une ligne.
+**Flux commande:** sélection → « Créer l'AF » (sessionStorage `af-prefill`) → onglet AF pré-rempli → à la sauvegarde, items passés en `ordered` + lien `supplier_purchase_id/number`.
+**RLS:** authenticated (liste partagée, comme notes/factures).
 
 ### products / non_inventory_items
 ```sql
@@ -795,6 +816,23 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/products/rename/route.js` (nouveau) — renommage du code avec cascade (inventory_movements, work_order_materials, delivery_note_materials via supabaseAdmin) + contrôle d'unicité
     - `components/DirectReceiptModal.js` v1.5.0 — création de produit utilise la liste d'unités partagée
     - Aucune migration SQL requise
+
+24. ~~**Liste « À Commander » (réapprovisionnement fournisseur)**~~ - ✅ COMPLÉTÉ (2026-07-21)
+    - `supabase/migrations/20260721_create_items_to_order.sql` (nouveau) — Table `items_to_order` + RLS (authenticated) + index
+    - `app/api/items-to-order/route.js` (nouveau) — GET (par statut) + POST (enrichissement fournisseur/coûtant depuis products + fusion doublons)
+    - `app/api/items-to-order/[id]/route.js` (nouveau) — GET/PUT/DELETE
+    - `app/api/items-to-order/mark-ordered/route.js` (nouveau) — marque un lot commandé + lie l'AF
+    - `components/order-list/AddToOrderButton.js` (nouveau) — bouton réutilisable « + À commander » (variants icon/chip/full)
+    - `components/order-list/OrderListManager.js` (nouveau) — page 2 vues (À commander/Commandés), groupement fournisseur, sélection, Créer AF
+    - `app/(protected)/achat-materiels/page.js` v2.0.0 — 2 onglets (AF | À Commander) + pastille compteur
+    - `components/SupplierPurchaseHooks.js` — pré-remplissage AF via sessionStorage `af-prefill` + marquage commandé après sauvegarde
+    - `components/work-orders/MaterialSelector.js` (BT+BL) + `WorkOrderForm.js` + `delivery-notes/DeliveryNoteForm.js` — bouton par matériau + provenance
+    - `components/SoumissionsManager.js` — bouton par item (table desktop + cartes mobile)
+    - `components/InventoryManager.js` — bouton par produit (fournisseur + coûtant pré-remplis)
+    - `components/Navigation.js` v2.2.0 — pastille compteur sur l'onglet Achat (desktop + menu Plus)
+    - `app/api/cron/backup/route.ts` v2.1.0 — table `items_to_order` ajoutée au backup
+    - Décisions: liste globale, tap direct, fournisseur suggéré changeable (groupe « À assigner »), apprentissage dernier fournisseur, badge compteur (pas de clignotant), vue Commandés (historique + lien AF)
+    - **Reste:** exécuter la migration SQL `20260721_create_items_to_order.sql` dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

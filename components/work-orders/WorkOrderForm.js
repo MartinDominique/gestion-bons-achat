@@ -1787,6 +1787,10 @@ const getFilteredSupplierPurchases = () => {
           <MaterialSelector
             materials={materials}
             onMaterialsChange={handleMaterialsChange}
+            sourceType="work_order"
+            sourceId={workOrder?.id || currentWorkOrderId || null}
+            sourceNumber={workOrder?.bt_number || null}
+            sourceClientName={selectedClient?.name || null}
           />
           
           {errors.materials && (

@@ -4,9 +4,10 @@
  *              - Desktop: barre complète avec tous les modules
  *              - Tablette/Mobile: modules principaux (BA, BT, Clients) + menu "Plus"
  *              - Menu Plus (bottom sheet): Soumissions, Inventaire, Achat, Stats, Facturation, Paramètres
- * @version 2.1.0
- * @date 2026-06-09
+ * @version 2.2.0
+ * @date 2026-07-21
  * @changelog
+ *   2.2.0 - Pastille compteur « À commander » sur l'onglet Achat (desktop + menu Plus)
  *   2.1.0 - Ajout onglet Notes (1er) + badge notes urgentes + route /notes protégée
  *   2.0.0 - Navigation mobile Option A: menu "Plus" pour modules bureau
  *   1.0.0 - Version initiale
@@ -52,6 +53,7 @@ export default function Navigation() {
   const [showClientManager, setShowClientManager] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [urgentNotes, setUrgentNotes] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
 
   // Compteur de notes urgentes (échéance 0-1 jour) pour le badge.
   // Rechargé à chaque changement de page pour refléter les complétions.
@@ -62,6 +64,21 @@ export default function Navigation() {
       .then((r) => r.json())
       .then((json) => {
         if (!cancelled && json.success) setUrgentNotes(countUrgent(json.data || []));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, pathname]);
+
+  // Compteur d'items « À commander » (liste de réapprovisionnement) pour la pastille.
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
+    fetch('/api/items-to-order?status=pending')
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelled && json.success) setOrderCount((json.data || []).length);
       })
       .catch(() => {});
     return () => {
@@ -212,6 +229,11 @@ return (
                         {urgentNotes}
                       </span>
                     )}
+                    {id === 'achat-materiels' && orderCount > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-orange-600 text-white">
+                        {orderCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -284,6 +306,11 @@ return (
               >
                 <MoreHorizontal className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
                 <span className="text-[10px] sm:text-xs leading-tight text-center">Plus</span>
+                {orderCount > 0 && (
+                  <span className="absolute top-0.5 right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-orange-600 text-white">
+                    {orderCount}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -360,7 +387,7 @@ return (
                     key={id}
                     href={`/${id}`}
                     onClick={() => setShowPlusMenu(false)}
-                    className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
+                    className={`relative flex flex-col items-center p-3 rounded-xl transition-colors ${
                       active
                         ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
                         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -368,6 +395,11 @@ return (
                   >
                     <Icon className="w-7 h-7 mb-2" />
                     <span className="text-xs text-center font-medium">{name}</span>
+                    {id === 'achat-materiels' && orderCount > 0 && (
+                      <span className="absolute top-1 right-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-orange-600 text-white">
+                        {orderCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

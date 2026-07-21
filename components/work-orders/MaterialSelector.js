@@ -33,7 +33,8 @@ import {
   Search, Package, Plus, Minus, X, Edit, Save, 
   AlertCircle, CheckCircle, RotateCcw, Hash, Eye, EyeOff
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase'; 
+import { supabase } from '../../lib/supabase';
+import AddToOrderButton from '../order-list/AddToOrderButton';
 
 // Composant clavier numérique personnalisé
 function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
@@ -139,9 +140,14 @@ function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
 }
 
 // NOUVEAU: Plus de paramètre showPrices global - géré par ligne
-export default function MaterialSelector({ 
-  materials = [], 
-  onMaterialsChange
+export default function MaterialSelector({
+  materials = [],
+  onMaterialsChange,
+  // Provenance pour la liste « À Commander » (optionnel)
+  sourceType,      // 'work_order' | 'delivery_note'
+  sourceId,        // id du BT/BL
+  sourceNumber,    // ex: 'BT-2607-012'
+  sourceClientName // nom du client
 }) {
   // États principaux (pattern InventoryManager)
   const [products, setProducts] = useState([]);
@@ -700,11 +706,29 @@ const deleteMaterialFromModal = () => {
                   )}
                 </div>
                 
-                {/* Icône de menu */}
-                <div className="text-gray-400 dark:text-gray-500 mt-1">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                {/* Bouton « À commander » + icône de menu */}
+                <div className="flex items-center gap-1 mt-0.5 flex-shrink-0">
+                  <AddToOrderButton
+                    variant="icon"
+                    item={{
+                      product_id: material.product_id,
+                      product_code: material.product?.product_id || material.product_code || null,
+                      description: material.product?.description || '',
+                      unit: material.product?.unit || material.unit || 'UN',
+                      quantity: material.quantity || 1,
+                    }}
+                    source={{
+                      type: sourceType || 'manual',
+                      id: sourceId || null,
+                      number: sourceNumber || null,
+                      clientName: sourceClientName || null,
+                    }}
+                  />
+                  <div className="text-gray-400 dark:text-gray-500">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>

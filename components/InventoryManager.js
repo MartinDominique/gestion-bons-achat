@@ -78,6 +78,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import { unitOptionsWith } from '../lib/constants/units';
+import AddToOrderButton from './order-list/AddToOrderButton';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
@@ -917,6 +918,23 @@ export default function InventoryManager() {
                           {getMarginPercentage(item.cost_price, item.selling_price)}
                         </div>
                       </div>
+                    </div>
+
+                    {/* Ajouter à la liste À Commander */}
+                    <div className="mt-2 flex justify-end" onClick={(e) => e.stopPropagation()}>
+                      <AddToOrderButton
+                        variant="chip"
+                        item={{
+                          product_id: item.product_id,
+                          product_code: item.product_id,
+                          description: item.description || '',
+                          unit: item.unit || 'UN',
+                          quantity: 1,
+                          cost_price: item.cost_price ?? null,
+                          suggested_supplier: item.supplier || null,
+                        }}
+                        source={{ type: 'inventory' }}
+                      />
                     </div>
                   </div>
                 );
