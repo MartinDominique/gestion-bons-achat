@@ -310,7 +310,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
   // Quand l'utilisateur clique « Créer l'AF » dans l'onglet À Commander, les items
   // sélectionnés + le fournisseur choisi sont déposés dans sessionStorage ('af-prefill').
   // On les charge ici au montage, on ouvre le formulaire, et on retient les ids pour
-  // les marquer 'ordered' après la sauvegarde de l'AF (voir markPrefillItemsOrdered).
+  // les marquer 'ordered' après la sauvegarde de l'AF (voir markOrderedForPurchase).
   useEffect(() => {
     let raw = null;
     try { raw = sessionStorage.getItem('af-prefill'); } catch (e) { raw = null; }
@@ -350,20 +350,38 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     })();
   }, []);
 
-  // Marque les items « À commander » pré-remplis comme commandés (lie l'AF créé).
-  // No-op s'il n'y a pas d'items en attente (AF créé sans passer par la liste).
-  const markPrefillItemsOrdered = async (savedPurchase) => {
-    if (!pendingToOrderIds || pendingToOrderIds.length === 0) return;
+  // Marque les items « À commander » comme commandés une fois l'AF sauvegardé.
+  // Robuste: on cible les items par leur id explicite (flux « Créer l'AF ») ET, pour
+  // un NOUVEL AF, par le code produit des articles de l'AF (couvre aussi l'AF construit
+  // manuellement, sans passer par le bouton « Créer l'AF »). La correspondance par code
+  // est volontairement désactivée en mode édition pour ne pas vider la liste par erreur.
+  const markOrderedForPurchase = async (savedPurchase, isNew) => {
+    const ids = pendingToOrderIds || [];
+    const productCodes = isNew
+      ? (selectedItems || [])
+          .map((it) => it.product_code || it.product_id)
+          .filter((c) => c != null && String(c).trim() !== '')
+          .map((c) => String(c).trim())
+      : [];
+
+    // Rien à marquer: ni lien explicite, ni code produit à faire correspondre.
+    if (ids.length === 0 && productCodes.length === 0) return;
+
     try {
-      await fetch('/api/items-to-order/mark-ordered', {
+      const res = await fetch('/api/items-to-order/mark-ordered', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ids: pendingToOrderIds,
+          ids,
+          product_codes: productCodes,
           supplier_purchase_id: savedPurchase?.id || null,
           supplier_purchase_number: savedPurchase?.purchase_number || null,
         }),
       });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) {
+        console.error('Marquage items commandés échoué:', json.error || res.status);
+      }
     } catch (err) {
       console.error('Erreur marquage items commandés:', err);
     } finally {
@@ -924,8 +942,9 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         }
       }
 
-      // Marquer « commandés » les items de la liste À Commander (si AF pré-rempli)
-      await markPrefillItemsOrdered(savedPurchase);
+      // Marquer « commandés » les items de la liste À Commander (par lien explicite
+      // et/ou par code produit pour un nouvel AF — voir markOrderedForPurchase)
+      await markOrderedForPurchase(savedPurchase, !editingPurchase);
 
       // Email de confirmation à Dominique retiré (non nécessaire) — voir CLAUDE.md
       // L'envoi manuel reste possible via le bouton "Imprimer et envoyer au fournisseur".
@@ -993,8 +1012,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         savedPurchase = await createSupplierPurchase(purchaseData);
         // Passer en mode édition avec le nouvel achat
         setEditingPurchase(savedPurchase);
-        // Marquer « commandés » les items de la liste À Commander (si AF pré-rempli)
-        await markPrefillItemsOrdered(savedPurchase);
+        // Marquer « commandés » les items de la liste À Commander (nouvel AF)
+        await markOrderedForPurchase(savedPurchase, true);
       }
 
       // Mettre à jour le numéro dans le formulaire si nouvelle création

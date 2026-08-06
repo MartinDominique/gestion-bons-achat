@@ -408,7 +408,7 @@ const total = subtotal + tps + tvq;
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
 /api/inventory/reservations            → En commande (AF) + Réservé (BT/BL non signés) + détail par doc
-/api/items-to-order                    → Liste À Commander (GET par statut + POST ajout enrichi/fusion)
+/api/items-to-order                    → Liste À Commander (GET par statut, enrichi inventaire vivant qté/coûtant/vendant + POST ajout enrichi/fusion)
 /api/items-to-order/[id]               → GET/PUT/DELETE item à commander
 /api/items-to-order/mark-ordered       → Marque un lot commandé + lie l'AF (après création AF)
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
@@ -561,6 +561,7 @@ user_id, created_at, updated_at
 **Enrichissement:** fournisseur suggéré + coûtant remplis côté serveur depuis `products`/`non_inventory_items` si absents.
 **Fusion:** un doublon `pending` (même `product_code`) additionne la quantité au lieu de créer une ligne.
 **Flux commande:** sélection → « Créer l'AF » (sessionStorage `af-prefill`) → onglet AF pré-rempli → à la sauvegarde, items passés en `ordered` + lien `supplier_purchase_id/number`.
+**Marquage robuste (2026-08-06):** à la sauvegarde d'un AF, les items en attente sont marqués `ordered` par leur `id` explicite (flux « Créer l'AF ») ET, pour un **nouvel** AF, par correspondance de `product_code` avec les articles de l'AF — donc un AF construit **manuellement** vide aussi la liste. Voir `mark-ordered` v1.1.0 + `markOrderedForPurchase` (SupplierPurchaseHooks).
 **RLS:** authenticated (liste partagée, comme notes/factures).
 
 ### products / non_inventory_items
@@ -841,6 +842,10 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Items « À Commander » non retirés de la liste après création de l'AF~~ → Corrigé (2026-08-06)
+  - Symptôme: après avoir passé la commande (« Créer l'AF » puis envoi au fournisseur), les produits restaient dans l'onglet « À commander » au lieu de passer en « Commandés ». Le marquage `ordered` reposait uniquement sur les `id` transmis via `sessionStorage` (`pendingToOrderIds`), et l'appel `fetch` avalait silencieusement toute erreur d'API (aucun contrôle de `res.ok`).
+  - Correctif (robuste, demandé par Martin): le marquage s'appuie désormais **aussi** sur le `product_code` des articles de l'AF, donc un AF créé **manuellement** (sans le bouton « Créer l'AF ») vide également la liste. La correspondance par code n'est active qu'en **création** d'AF (pas en édition) pour ne pas vider la liste par erreur.
+  - Fichiers: `app/api/items-to-order/mark-ordered/route.js` v1.1.0 (matching id + product_code, ne touche que les items `pending`), `components/SupplierPurchaseHooks.js` (`markPrefillItemsOrdered` → `markOrderedForPurchase`, vérifie `res.ok`/`success`, envoie les codes produits). Aucune migration requise.
 - ~~BT sans total (0h) sur le PDF client quand le chrono n'est pas arrêté~~ → Corrigé (2026-07-15)
   - Symptôme: session non arrêtée (chrono oublié) → à la signature, le PDF affichait les heures travaillées (ex. `08:22-11:35`) mais le total tombait à `0h` (par ligne + grand total), car la session était enregistrée avec une heure de fin mais `total_hours: 0`. Le rattrapage à la signature (`complete-signature`, auto-terminaison des sessions `in_progress`) ne couvrait pas tous les cas.
   - Correctif à la source: `WorkOrderForm.js` v1.5.0 — la présentation client (« Présenter au client » → `ready_for_signature`) est **bloquée** tant que le chronomètre tourne (`trackerIsWorking`). L'utilisateur doit appuyer sur « Terminer » d'abord (fige l'heure de fin, calcule le total, permet de vérifier les cases Retour/Transport). Aucune migration requise.
