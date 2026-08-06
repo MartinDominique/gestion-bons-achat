@@ -9,9 +9,10 @@
  *                sessionStorage ('af-prefill') puis bascule vers l'onglet Achats
  *                Fournisseurs (le hook AF pré-remplit le formulaire au montage).
  *              - Mobile/tablette: touch targets 44px, cartes empilées.
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-08-06
  * @changelog
+ *   1.2.0 - Ajout « En commande » (qté sur AF actifs) entre En main et Coûtant.
  *   1.1.0 - Ligne d'info inventaire vivant (En main / Coûtant / Vendant) sur chaque
  *           item en attente; libellé « Qté » → « À commander ».
  *   1.0.0 - Version initiale (Liste À Commander MVP)
@@ -408,6 +409,18 @@ export default function OrderListManager({ onCreateAF, onCountChange }) {
                               }`}
                             >
                               {formatStock(it.inv_stock_qty)}
+                            </span>
+                          </span>
+                          <span className="text-gray-500 dark:text-gray-400">
+                            En commande :{' '}
+                            <span
+                              className={`font-semibold ${
+                                parseFloat(it.inv_on_order) > 0
+                                  ? 'text-blue-700 dark:text-blue-300'
+                                  : 'text-gray-900 dark:text-gray-100'
+                              }`}
+                            >
+                              {formatStock(it.inv_on_order)}
                             </span>
                           </span>
                           <span className="text-gray-500 dark:text-gray-400">

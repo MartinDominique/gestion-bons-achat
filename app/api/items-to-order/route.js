@@ -7,9 +7,11 @@
  *                table products/non_inventory_items (les lignes BT/BL/Soum. ne portent
  *                pas ces champs). Fusionne les doublons en attente (même code produit)
  *                en additionnant les quantités.
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-08-06
  * @changelog
+ *   1.2.0 - Ajout « En commande » (inv_on_order): quantité sur les AF actifs
+ *           (ordered/partial), même logique que /api/inventory/reservations.
  *   1.1.0 - GET enrichit chaque item avec l'inventaire vivant (qté en main + coûtant
  *           + vendant) depuis products/non_inventory_items (inv_stock_qty,
  *           inv_cost_price, inv_selling_price, inv_is_non_inventory).
@@ -100,7 +102,8 @@ export async function GET(request) {
     ];
 
     if (codes.length > 0) {
-      const [prodRes, nonInvRes] = await Promise.all([
+      const codeSet = new Set(codes);
+      const [prodRes, nonInvRes, afRes] = await Promise.all([
         supabaseAdmin
           .from('products')
           .select('product_id, stock_qty, cost_price, selling_price')
@@ -109,7 +112,25 @@ export async function GET(request) {
           .from('non_inventory_items')
           .select('product_id, cost_price, selling_price')
           .in('product_id', codes),
+        // « En commande »: quantités sur les AF actifs (ordered/partial), items en JSONB.
+        // Même logique que /api/inventory/reservations (clé = product_id || product_code).
+        supabaseAdmin
+          .from('supplier_purchases')
+          .select('items, status')
+          .in('status', ['ordered', 'partial']),
       ]);
+
+      // Somme « en commande » par code produit (uniquement les codes de notre liste).
+      const onOrderMap = new Map();
+      (afRes.data || []).forEach((purchase) => {
+        (purchase.items || []).forEach((item) => {
+          const raw = item.product_id || item.product_code;
+          if (raw == null) return;
+          const key = String(raw).trim();
+          if (!codeSet.has(key)) return;
+          onOrderMap.set(key, (onOrderMap.get(key) || 0) + (parseFloat(item.quantity) || 0));
+        });
+      });
 
       const invMap = new Map();
       (prodRes.data || []).forEach((p) => {
@@ -134,12 +155,14 @@ export async function GET(request) {
       });
 
       items.forEach((it) => {
-        const info = it.product_code ? invMap.get(String(it.product_code).trim()) : null;
+        const key = it.product_code ? String(it.product_code).trim() : null;
+        const info = key ? invMap.get(key) : null;
         it.inv_stock_qty = info ? info.stock_qty : null;
         it.inv_cost_price =
           info && info.cost_price != null ? info.cost_price : it.cost_price;
         it.inv_selling_price = info ? info.selling_price : null;
         it.inv_is_non_inventory = info ? info.is_non_inventory : null;
+        it.inv_on_order = key && onOrderMap.has(key) ? onOrderMap.get(key) : 0;
       });
     }
 
