@@ -408,7 +408,7 @@ const total = subtotal + tps + tvq;
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
 /api/products/groups                   → Groupes de produits distincts
 /api/inventory/reservations            → En commande (AF) + Réservé (BT/BL non signés) + détail par doc
-/api/items-to-order                    → Liste À Commander (GET par statut, enrichi inventaire vivant qté/coûtant/vendant + POST ajout enrichi/fusion)
+/api/items-to-order                    → Liste À Commander (GET par statut, enrichi inventaire vivant qté/en commande/coûtant/vendant + POST ajout enrichi/fusion)
 /api/items-to-order/[id]               → GET/PUT/DELETE item à commander
 /api/items-to-order/mark-ordered       → Marque un lot commandé + lie l'AF (après création AF)
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
