@@ -6,6 +6,7 @@ import {
   fetchSuppliers,
   fetchPurchaseOrders,
   fetchShippingAddresses,
+  fetchClients,
   createSupplierPurchase,
   updateSupplierPurchase,
   deleteSupplierPurchase,
@@ -35,6 +36,7 @@ export const useSupplierPurchase = () => {
   const [supplierPurchases, setSupplierPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [clients, setClients] = useState([]);
   const [shippingAddresses, setShippingAddresses] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,9 @@ export const useSupplierPurchase = () => {
     linked_po_number: '',
     linked_submission_id: null,
     supplier_quote_reference: '',
-    ba_acomba: '', // NOUVEAU CHAMP
+    ba_acomba: '', // Conservé pour compatibilité (champ retiré de l'UI)
+    client_id: '',      // Client associé (même sans BA lié)
+    client_name: '',    // Nom du client (affichage/liste/PDF)
     shipping_address_id: '',
     shipping_company: '',
     shipping_account: '',
@@ -396,6 +400,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         loadSupplierPurchases(),
         loadSuppliers(),
         loadPurchaseOrders(),
+        loadClients(),
         loadShippingAddresses()
       ]);
     } catch (error) {
@@ -429,6 +434,15 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       setPurchaseOrders(data);
     } catch (error) {
       console.error('Erreur chargement bons achat:', error);
+    }
+  };
+
+  const loadClients = async () => {
+    try {
+      const data = await fetchClients();
+      setClients(data);
+    } catch (error) {
+      console.error('Erreur chargement clients:', error);
     }
   };
 
@@ -898,7 +912,9 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         linked_po_number: purchaseForm.linked_po_number,
         linked_submission_id: purchaseForm.linked_submission_id || null,
         supplier_quote_reference: purchaseForm.supplier_quote_reference,
-        ba_acomba: purchaseForm.ba_acomba, // NOUVEAU CHAMP
+        ba_acomba: purchaseForm.ba_acomba, // Conservé pour compatibilité (champ retiré de l'UI)
+        client_id: purchaseForm.client_id || null,
+        client_name: purchaseForm.client_name || '',
         shipping_address_id: purchaseForm.shipping_address_id,
         shipping_company: purchaseForm.shipping_company,
         shipping_account: purchaseForm.shipping_account,
@@ -981,6 +997,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         linked_submission_id: purchaseForm.linked_submission_id || null,
         supplier_quote_reference: purchaseForm.supplier_quote_reference,
         ba_acomba: purchaseForm.ba_acomba,
+        client_id: purchaseForm.client_id || null,
+        client_name: purchaseForm.client_name || '',
         shipping_address_id: purchaseForm.shipping_address_id,
         shipping_company: purchaseForm.shipping_company,
         shipping_account: purchaseForm.shipping_account,
@@ -1183,7 +1201,9 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       linked_po_number: '',
       linked_submission_id: null,
       supplier_quote_reference: '',
-      ba_acomba: '', // NOUVEAU CHAMP
+      ba_acomba: '', // Conservé pour compatibilité (champ retiré de l'UI)
+      client_id: '',
+      client_name: '',
       shipping_address_id: '',
       shipping_company: '',
       shipping_account: '',
@@ -1295,7 +1315,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       purchase.purchase_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       purchase.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       purchase.linked_po_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      purchase.ba_acomba?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      purchase.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      purchase.linked_client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPONumber(purchase, purchaseOrders)?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || purchase.status === statusFilter;
@@ -1348,6 +1369,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     supplierPurchases,
     suppliers,
     purchaseOrders,
+    clients,
     shippingAddresses,
     products,
     loading,

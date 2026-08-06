@@ -1675,4 +1675,28 @@ Dashboard (sinon les appels à la liste échouent: table manquante).
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-07-21 par Claude AI*
+### Achat Fournisseur (AF): champ « Client » (remplace « BA Acomba ») ✅ COMPLETE (2026-08-06)
+
+Dans le cadre « Bon d'achat client lié » du formulaire AF, ajout d'un sélecteur
+**« Ou Client »** permettant d'associer un client à l'AF même lorsqu'aucun BA client
+n'est lié (« pour qui » la commande est passée). Le champ **« BA Acomba »** est retiré
+du formulaire et remplacé par **« Client »** dans la liste (desktop + mobile) et le PDF.
+
+- `supabase/migrations/20260806_add_client_to_supplier_purchases.sql` (nouveau) — colonnes
+  `client_id` (BIGINT) + `client_name` (TEXT) sur `supplier_purchases` (référence souple, sans FK).
+- `components/SupplierPurchaseServices.js` v2.3.0 — `fetchClients()` (liste id/nom/compagnie);
+  en-tête PDF affiche « Client » au lieu de « BA Acomba ».
+- `components/SupplierPurchaseHooks.js` — chargement des clients, `client_id`/`client_name`
+  dans le formulaire + les 2 chemins de sauvegarde; recherche par client (au lieu de BA Acomba).
+- `components/SupplierPurchaseForms.js` v1.5.0 — `LinkedPOSection`: sélecteur « Ou Client »
+  (auto-rempli depuis le BA lié); retrait du champ « BA Acomba » (grille 4→3 colonnes).
+- `components/SupplierPurchaseManager.js` v1.1.0 — colonne « Client » (desktop + mobile) au lieu
+  de « BA Acomba »; recherche par client; passe `clients` au formulaire.
+
+**Note:** `ba_acomba` conservé en base et dans le payload (rétrocompatibilité), simplement retiré
+de l'UI. **Reste:** exécuter la migration SQL `20260806_add_client_to_supplier_purchases.sql`
+dans Supabase Dashboard (sinon la sauvegarde d'un AF échoue: colonnes manquantes).
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-08-06 par Claude AI*

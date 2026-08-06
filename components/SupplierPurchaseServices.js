@@ -2,9 +2,10 @@
  * @file components/SupplierPurchaseServices.js
  * @description Services pour la gestion des achats fournisseurs (AF)
  *              PDF standardisé via pdf-common.js, envoi email, CRUD Supabase
- * @version 2.2.0
- * @date 2026-03-25
+ * @version 2.3.0
+ * @date 2026-08-06
  * @changelog
+ *   2.3.0 - Ajout fetchClients (sélecteur « Ou Client »); PDF affiche « Client » au lieu de « BA Acomba »
  *   2.2.0 - PDF: ajout Transporteur + N° Compte sous adresse livraison, fix date N/A
  *   2.1.0 - Ajout quantités inventaire (en main, en commande, réservé) dans recherche produits
  *   2.0.0 - Standardisation PDF avec pdf-common.js, suppression html2canvas
@@ -433,6 +434,24 @@ export const fetchPurchaseOrders = async () => {
   }
 };
 
+// ===== API SUPABASE - CLIENTS =====
+
+// Récupérer tous les clients (pour le sélecteur « Ou Client » du formulaire AF)
+export const fetchClients = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('id, name, company')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Erreur chargement clients:', error);
+    throw error;
+  }
+};
+
 // ===== API SUPABASE - ADRESSES DE LIVRAISON =====
 
 // Récupérer toutes les adresses de livraison
@@ -700,8 +719,9 @@ export const generatePurchasePDF = async (purchase, options = {}) => {
   if (purchase.supplier_quote_reference) {
     headerFields.push({ label: 'Soumission:', value: purchase.supplier_quote_reference });
   }
-  if (purchase.ba_acomba) {
-    headerFields.push({ label: 'BA Acomba:', value: purchase.ba_acomba });
+  const pdfClientName = purchase.client_name || purchase.linked_client_name || purchase.purchase_orders?.client_name;
+  if (pdfClientName) {
+    headerFields.push({ label: 'Client:', value: pdfClientName });
   }
   if (purchase.linked_po_number) {
     headerFields.push({ label: 'BA Client:', value: purchase.linked_po_number });

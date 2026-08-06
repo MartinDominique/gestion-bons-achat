@@ -835,6 +835,14 @@ CRON_SECRET                   # Auth pour cron jobs
     - Décisions: liste globale, tap direct, fournisseur suggéré changeable (groupe « À assigner »), apprentissage dernier fournisseur, badge compteur (pas de clignotant), vue Commandés (historique + lien AF)
     - **Reste:** exécuter la migration SQL `20260721_create_items_to_order.sql` dans Supabase Dashboard
 
+25. ~~**AF: champ « Client » (remplace « BA Acomba »)**~~ - ✅ COMPLÉTÉ (2026-08-06)
+    - `supabase/migrations/20260806_add_client_to_supplier_purchases.sql` (nouveau) — colonnes `client_id` + `client_name` sur `supplier_purchases` (référence souple, sans FK)
+    - `components/SupplierPurchaseServices.js` v2.3.0 — `fetchClients()` + en-tête PDF « Client » au lieu de « BA Acomba »
+    - `components/SupplierPurchaseHooks.js` — chargement clients, `client_id`/`client_name` (formulaire + 2 chemins de sauvegarde), recherche par client
+    - `components/SupplierPurchaseForms.js` v1.5.0 — `LinkedPOSection`: sélecteur « Ou Client » (auto-rempli depuis le BA lié); retrait du champ « BA Acomba »
+    - `components/SupplierPurchaseManager.js` v1.1.0 — colonne « Client » (desktop + mobile) au lieu de « BA Acomba »
+    - Note: `ba_acomba` conservé en base (rétrocompat), retiré de l'UI. **Reste:** exécuter la migration SQL dans Supabase Dashboard
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
