@@ -4,9 +4,10 @@
  *              - Liste, création, modification, suppression des AF
  *              - Réception directe et réception AF
  *              - Gestion des adresses de livraison fournisseur
- * @version 1.0.2
- * @date 2026-03-07
+ * @version 1.1.0
+ * @date 2026-08-06
  * @changelog
+ *   1.1.0 - Colonne « BA Acomba » remplacée par « Client » (liste desktop + mobile), recherche par client
  *   1.0.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.0.0 - Version initiale
@@ -44,6 +45,7 @@ export default function SupplierPurchaseManager() {
     supplierPurchases,
     suppliers,
     purchaseOrders,
+    clients,
     shippingAddresses,
     loading,
     
@@ -185,6 +187,13 @@ export default function SupplierPurchaseManager() {
   setShowReceiptModal(true);
 };
   
+  // Nom du client d'un AF: client saisi directement, sinon hérité du BA lié
+  const getClientLabel = (purchase) =>
+    purchase.client_name ||
+    purchase.linked_client_name ||
+    purchase.purchase_orders?.client_name ||
+    '';
+
   // Loading state
   if (loading) {
     return (
@@ -206,6 +215,7 @@ export default function SupplierPurchaseManager() {
           suppliers={suppliers}
           shippingAddresses={shippingAddresses}
           purchaseOrders={purchaseOrders}
+          clients={clients}
           selectedItems={selectedItems}
           setSelectedItems={setSelectedItems}
           editingPurchase={editingPurchase}
@@ -487,7 +497,7 @@ export default function SupplierPurchaseManager() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Rechercher par numéro, fournisseur, BA Acomba..."
+                  placeholder="Rechercher par numéro, fournisseur, client..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="block w-full pl-10 pr-4 py-3 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base"
@@ -595,7 +605,7 @@ export default function SupplierPurchaseManager() {
               <tr>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">N° Achat</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Création</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">BA Acomba</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Client</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">PO Client Lié</th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fournisseur</th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Livraison</th>
@@ -628,10 +638,10 @@ export default function SupplierPurchaseManager() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-4 whitespace-nowrap">
-                      {purchase.ba_acomba ? (
-                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
-                          {purchase.ba_acomba}
+                    <td className="px-3 py-4">
+                      {getClientLabel(purchase) ? (
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {getClientLabel(purchase)}
                         </span>
                       ) : (
                         <span className="text-gray-400">-</span>
@@ -825,15 +835,17 @@ export default function SupplierPurchaseManager() {
                     </div>
                   </div>
 
-                  {/* LIGNE 2: BA Acomba + PO Client */}
+                  {/* LIGNE 2: Client + PO Client */}
                   <div className="flex items-center justify-between gap-2 text-xs text-gray-600 pl-2">
                     <div className="flex items-center gap-2 truncate flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                      {purchase.ba_acomba && (
-                        <span className="text-purple-600 font-medium">BA: {purchase.ba_acomba}</span>
+                      {getClientLabel(purchase) && (
+                        <span className="text-gray-700 dark:text-gray-300 font-medium truncate">
+                          {getClientLabel(purchase)}
+                        </span>
                       )}
                       {poNumber && (
                         <>
-                          {purchase.ba_acomba && <span className="text-gray-400">•</span>}
+                          {getClientLabel(purchase) && <span className="text-gray-400">•</span>}
                           <ReferenceLink
                             type="purchase-order"
                             label={`PO: ${poNumber}`}
@@ -842,7 +854,7 @@ export default function SupplierPurchaseManager() {
                           />
                         </>
                       )}
-                      {!purchase.ba_acomba && !poNumber && (
+                      {!getClientLabel(purchase) && !poNumber && (
                         <span className="text-gray-400 italic">Aucune référence</span>
                       )}
                     </div>

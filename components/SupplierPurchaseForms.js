@@ -9,9 +9,11 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.4.0
- * @date 2026-07-13
+ * @version 1.5.0
+ * @date 2026-08-06
  * @changelog
+ *   1.5.0 - Cadre « Bon d'achat client lié »: ajout d'un sélecteur « Ou Client » (client associé
+ *           même sans BA, auto-rempli depuis le BA lié). Retrait du champ « BA Acomba » du formulaire.
  *   1.4.0 - Fournisseurs: ajout d'un 2e et 3e contact (nom + email + téléphone optionnel)
  *           dans SupplierFormModal + affichage dans la liste. Dans le formulaire d'AF,
  *           sélecteur de destinataire(s) courriel (cases à cocher: contact principal + #2 + #3)
@@ -77,6 +79,7 @@ export const PurchaseForm = ({
   suppliers,
   shippingAddresses,
   purchaseOrders,
+  clients,
   selectedItems,
   setSelectedItems,
   editingPurchase,
@@ -545,28 +548,13 @@ Merci!`;
                   purchaseForm={purchaseForm}
                   setPurchaseForm={setPurchaseForm}
                   purchaseOrders={purchaseOrders}
+                  clients={clients}
                   suppliers={suppliers}
                 />
               </div>
 
-              {/* NOUVEAU - BA Acomba et Soumission fournisseur */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
-                  <label className="block text-sm font-semibold text-purple-800 dark:text-purple-300 mb-2">
-                    BA Acomba
-                  </label>
-                  <input
-                    type="text"
-                    value={purchaseForm.ba_acomba}
-                    onChange={(e) => setPurchaseForm({...purchaseForm, ba_acomba: e.target.value})}
-                    className="block w-full rounded-lg border-purple-300 dark:border-purple-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-base p-3"
-                    placeholder="BA Acomba..."
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
-                  />
-                </div>
-
+              {/* Soumission fournisseur + Date livraison + Statut */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700">
                   <label className="block text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">
                     Soumission
@@ -2265,7 +2253,7 @@ export const SupplierFormSimpleModal = ({
 };
 
 // ===== SECTION BA LIÉ AVEC BOUTON +BA ET LIEN CLIQUABLE =====
-const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppliers }) => {
+const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, clients = [], suppliers }) => {
   let splitView;
   try {
     splitView = useSplitView();
@@ -2320,6 +2308,10 @@ const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppli
               ...purchaseForm,
               linked_po_id: selectedPoId,
               linked_po_number: po?.po_number || '',
+              // Auto-remplir le client depuis le BA sélectionné (si présent)
+              ...(po
+                ? { client_id: po.client_id || '', client_name: po.client_name || '' }
+                : {}),
             });
           }}
           className="block w-full rounded-lg border-green-300 dark:border-green-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
@@ -2354,6 +2346,39 @@ const LinkedPOSection = ({ purchaseForm, setPurchaseForm, purchaseOrders, suppli
           >
             +BA
           </button>
+        )}
+      </div>
+
+      {/* Ou Client — pour savoir pour qui la commande est passée, même sans BA */}
+      <div className="mt-3">
+        <label className="block text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
+          Ou Client (si aucun BA)
+        </label>
+        <select
+          value={purchaseForm.client_id || ''}
+          onChange={(e) => {
+            const selectedClientId = e.target.value;
+            const client = clients.find(c => String(c.id) === String(selectedClientId));
+            setPurchaseForm({
+              ...purchaseForm,
+              client_id: selectedClientId,
+              client_name: client?.name || '',
+            });
+          }}
+          className="block w-full rounded-lg border-green-300 dark:border-green-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-green-500 focus:ring-green-500 text-base p-3"
+        >
+          <option value="">Aucun (optionnel)</option>
+          {clients.map((client) => (
+            <option key={client.id} value={client.id}>
+              {client.name}{client.company ? ` (${client.company})` : ''}
+            </option>
+          ))}
+        </select>
+        {/* Repli: client hérité d'un BA lié sans correspondance dans la liste */}
+        {!purchaseForm.client_id && purchaseForm.client_name && (
+          <p className="text-xs text-green-700 dark:text-green-400 mt-1">
+            Client : {purchaseForm.client_name}
+          </p>
         )}
       </div>
     </div>
