@@ -9,9 +9,11 @@
  *                sessionStorage ('af-prefill') puis bascule vers l'onglet Achats
  *                Fournisseurs (le hook AF pré-remplit le formulaire au montage).
  *              - Mobile/tablette: touch targets 44px, cartes empilées.
- * @version 1.0.0
- * @date 2026-07-21
+ * @version 1.1.0
+ * @date 2026-08-06
  * @changelog
+ *   1.1.0 - Ligne d'info inventaire vivant (En main / Coûtant / Vendant) sur chaque
+ *           item en attente; libellé « Qté » → « À commander ».
  *   1.0.0 - Version initiale (Liste À Commander MVP)
  */
 
@@ -38,6 +40,22 @@ function formatQcDate(iso) {
   } catch {
     return '';
   }
+}
+
+// Montant en devise CAD (— si absent). Utilisé pour Coûtant / Vendant.
+function formatMoney(v) {
+  if (v == null || v === '') return '—';
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return n.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' });
+}
+
+// Qté en main (stock). '—' pour un article non-inventaire (pas de stock suivi).
+function formatStock(v) {
+  if (v == null || v === '') return '—';
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return String(n);
 }
 
 /**
@@ -378,10 +396,37 @@ export default function OrderListManager({ onCreateAF, onCountChange }) {
                             {it.client_name && <span>{it.client_name}</span>}
                           </div>
                         )}
+                        {/* Ligne 2b: inventaire vivant (en main / coûtant / vendant) */}
+                        <div className="flex items-center gap-x-3 gap-y-1 mt-1 text-xs flex-wrap">
+                          <span className="text-gray-500 dark:text-gray-400">
+                            En main :{' '}
+                            <span
+                              className={`font-semibold ${
+                                it.inv_stock_qty != null && parseFloat(it.inv_stock_qty) <= 0
+                                  ? 'text-red-600 dark:text-red-400'
+                                  : 'text-gray-900 dark:text-gray-100'
+                              }`}
+                            >
+                              {formatStock(it.inv_stock_qty)}
+                            </span>
+                          </span>
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Coûtant :{' '}
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                              {formatMoney(it.inv_cost_price)}
+                            </span>
+                          </span>
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Vendant :{' '}
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                              {formatMoney(it.inv_selling_price)}
+                            </span>
+                          </span>
+                        </div>
                         {/* Ligne 3: contrôles (qté + fournisseur) */}
                         <div className="flex items-center gap-3 mt-2 flex-wrap">
                           <div className="flex items-center gap-1">
-                            <label className="text-xs text-gray-500 dark:text-gray-400">Qté</label>
+                            <label className="text-xs text-gray-500 dark:text-gray-400">À commander</label>
                             <input
                               type="number"
                               inputMode="decimal"

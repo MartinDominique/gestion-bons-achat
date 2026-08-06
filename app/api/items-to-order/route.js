@@ -7,9 +7,12 @@
  *                table products/non_inventory_items (les lignes BT/BL/Soum. ne portent
  *                pas ces champs). Fusionne les doublons en attente (même code produit)
  *                en additionnant les quantités.
- * @version 1.0.0
- * @date 2026-07-21
+ * @version 1.1.0
+ * @date 2026-08-06
  * @changelog
+ *   1.1.0 - GET enrichit chaque item avec l'inventaire vivant (qté en main + coûtant
+ *           + vendant) depuis products/non_inventory_items (inv_stock_qty,
+ *           inv_cost_price, inv_selling_price, inv_is_non_inventory).
  *   1.0.0 - Version initiale (Liste À Commander MVP)
  */
 
@@ -83,7 +86,64 @@ export async function GET(request) {
       );
     }
 
-    return NextResponse.json({ success: true, data: data || [] });
+    const items = data || [];
+
+    // Enrichissement inventaire vivant: qté en main + coûtant + vendant à jour.
+    // (items_to_order ne stocke que le coûtant au moment de l'ajout.)
+    const codes = [
+      ...new Set(
+        items
+          .map((it) => it.product_code)
+          .filter(Boolean)
+          .map((c) => String(c).trim())
+      ),
+    ];
+
+    if (codes.length > 0) {
+      const [prodRes, nonInvRes] = await Promise.all([
+        supabaseAdmin
+          .from('products')
+          .select('product_id, stock_qty, cost_price, selling_price')
+          .in('product_id', codes),
+        supabaseAdmin
+          .from('non_inventory_items')
+          .select('product_id, cost_price, selling_price')
+          .in('product_id', codes),
+      ]);
+
+      const invMap = new Map();
+      (prodRes.data || []).forEach((p) => {
+        invMap.set(String(p.product_id).trim(), {
+          stock_qty: p.stock_qty,
+          cost_price: p.cost_price,
+          selling_price: p.selling_price,
+          is_non_inventory: false,
+        });
+      });
+      // Non-inventaire: pas de stock; ne pas écraser un produit d'inventaire existant.
+      (nonInvRes.data || []).forEach((n) => {
+        const key = String(n.product_id).trim();
+        if (!invMap.has(key)) {
+          invMap.set(key, {
+            stock_qty: null,
+            cost_price: n.cost_price,
+            selling_price: n.selling_price,
+            is_non_inventory: true,
+          });
+        }
+      });
+
+      items.forEach((it) => {
+        const info = it.product_code ? invMap.get(String(it.product_code).trim()) : null;
+        it.inv_stock_qty = info ? info.stock_qty : null;
+        it.inv_cost_price =
+          info && info.cost_price != null ? info.cost_price : it.cost_price;
+        it.inv_selling_price = info ? info.selling_price : null;
+        it.inv_is_non_inventory = info ? info.is_non_inventory : null;
+      });
+    }
+
+    return NextResponse.json({ success: true, data: items });
   } catch (err) {
     console.error('Erreur GET /api/items-to-order:', err);
     return NextResponse.json({ success: false, error: 'Erreur serveur' }, { status: 500 });
