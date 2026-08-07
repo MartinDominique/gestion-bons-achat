@@ -7,9 +7,12 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.6.0
+ * @version 1.7.0
  * @date 2026-08-07
  * @changelog
+ *   1.7.0 - Affiche la quantité « En commande » (AF) par article, pour référence
+ *           (chargée via /api/inventory/reservations à l'ouverture). Le select des
+ *           prix inclut les colonnes de dates (price_updated_at*) pour le shift.
  *   1.6.0 - Fix "les ajustements/réceptions ne mettent pas à jour l'inventaire":
  *           l'échec de la mise à jour du stock était avalé silencieusement.
  *           Désormais: sélection fiable de la table via _source (repli sur l'autre
@@ -77,6 +80,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
   const [supplierName, setSupplierName] = useState('');
   const [receiptNotes, setReceiptNotes] = useState('');
 
+  // Quantités « En commande » (AF) par product_id, pour référence dans les cartes
+  const [onOrderMap, setOnOrderMap] = useState({});
+
   // Recherche avec debounce
   useEffect(() => {
     if (!productSearchTerm || productSearchTerm.length < 2) {
@@ -114,6 +120,23 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       setIsAdjustment(false);
       setShowNewItemForm(false);
       resetNewItemForm();
+
+      // Charger les quantités « En commande » (AF) pour référence dans les cartes
+      (async () => {
+        try {
+          const res = await fetch('/api/inventory/reservations');
+          const json = await res.json();
+          if (json?.success && json.quantities) {
+            const map = {};
+            Object.entries(json.quantities).forEach(([pid, q]) => {
+              map[pid] = parseFloat(q?.onOrder) || 0;
+            });
+            setOnOrderMap(map);
+          }
+        } catch (err) {
+          console.error('Erreur chargement quantités en commande:', err);
+        }
+      })();
     }
   }, [isOpen]);
 
@@ -347,7 +370,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       //    Robustesse: on cible la bonne table via _source (repli sur l'autre table
       //    si le produit n'y est pas) et on VÉRIFIE que la ligne a bien été modifiée
       //    (.select() après update) au lieu d'avaler l'échec silencieusement.
-      const priceCols = 'stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price, selling_price_1st, selling_price_2nd, selling_price_3rd';
+      const priceCols = 'stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price, selling_price_1st, selling_price_2nd, selling_price_3rd, price_updated_at, price_updated_at_1st, price_updated_at_2nd, price_updated_at_3rd';
       const failedItems = [];
       let updatedCount = 0;
 
@@ -800,6 +823,11 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                         <div className="text-blue-600 dark:text-blue-400 text-xs">
                           Stock: <span className="font-bold">{item.current_stock}</span>
                         </div>
+                        {(onOrderMap[item.product_id] || 0) > 0 && (
+                          <div className="text-indigo-600 dark:text-indigo-400 text-xs" title="En commande (AF non reçu)">
+                            En cmd: <span className="font-bold">+{onOrderMap[item.product_id]}</span>
+                          </div>
+                        )}
                         {item.quantity !== 0 && (
                           <div className={`text-xs px-1.5 py-0.5 rounded mt-0.5 ${
                             item.quantity > 0 ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'

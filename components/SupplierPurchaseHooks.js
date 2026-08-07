@@ -717,7 +717,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         // (sinon l'ancien prix est écrasé et « Hist. Prix » reste vide).
         const { data: current, error: fetchError } = await supabase
           .from(tableName)
-          .select('cost_price, selling_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price_1st, selling_price_2nd, selling_price_3rd')
+          .select('cost_price, selling_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price_1st, selling_price_2nd, selling_price_3rd, price_updated_at, price_updated_at_1st, price_updated_at_2nd, price_updated_at_3rd')
           .eq('product_id', priceUpdateItem.product_id)
           .single();
 

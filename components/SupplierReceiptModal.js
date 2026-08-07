@@ -294,7 +294,7 @@ export default function SupplierReceiptModal({
         // Récupérer le produit actuel (stock + prix pour le shift)
         const { data: product, error: productError } = await supabase
           .from(tableName)
-          .select('stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd')
+          .select('stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd, price_updated_at, price_updated_at_1st, price_updated_at_2nd, price_updated_at_3rd')
           .eq('product_id', item.product_id)
           .single();
 

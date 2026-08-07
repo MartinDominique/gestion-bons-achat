@@ -8,9 +8,11 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.11.0
+ * @version 3.12.0
  * @date 2026-08-07
  * @changelog
+ *   3.12.0 - « Hist. Prix »: affiche aussi la date de chaque prix précédent
+ *            (n-1/n-2/n-3) via price_updated_at_1st/2nd/3rd.
  *   3.11.0 - Affiche la date du dernier changement de prix (price_updated_at)
  *            dans l'onglet « Hist. Prix » (carte Prix actuel).
  *   3.10.0 - Édition complète: le Code (product_id) et l'Unité de mesure sont
@@ -406,6 +408,14 @@ export default function InventoryManager() {
       style: 'currency',
       currency: 'CAD'
     }).format(amount || 0);
+  };
+
+  // Date courte fr-CA pour l'historique des prix (ex: 7 août 2026)
+  const formatPriceDate = (value) => {
+    if (!value) return null;
+    return new Date(value).toLocaleDateString('fr-CA', {
+      year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Toronto',
+    });
   };
 
   const getMarginColor = (costPrice, sellingPrice) => {
@@ -1395,7 +1405,12 @@ export default function InventoryManager() {
                       {/* Prix précédent (1st) */}
                       {(editingItem.cost_price_1st != null || editingItem.selling_price_1st != null) && (
                         <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                          <div className="text-xs font-medium text-gray-400 mb-1">Prix précédent (n-1)</div>
+                          <div className="flex justify-between items-baseline mb-1">
+                            <div className="text-xs font-medium text-gray-400">Prix précédent (n-1)</div>
+                            {formatPriceDate(editingItem.price_updated_at_1st) && (
+                              <div className="text-xs text-gray-400">le {formatPriceDate(editingItem.price_updated_at_1st)}</div>
+                            )}
+                          </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs text-gray-400">Coûtant</div>
@@ -1416,7 +1431,12 @@ export default function InventoryManager() {
                       {/* Prix n-2 (2nd) */}
                       {(editingItem.cost_price_2nd != null || editingItem.selling_price_2nd != null) && (
                         <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                          <div className="text-xs font-medium text-gray-400 mb-1">Avant-dernier (n-2)</div>
+                          <div className="flex justify-between items-baseline mb-1">
+                            <div className="text-xs font-medium text-gray-400">Avant-dernier (n-2)</div>
+                            {formatPriceDate(editingItem.price_updated_at_2nd) && (
+                              <div className="text-xs text-gray-400">le {formatPriceDate(editingItem.price_updated_at_2nd)}</div>
+                            )}
+                          </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs text-gray-400">Coûtant</div>
@@ -1437,7 +1457,12 @@ export default function InventoryManager() {
                       {/* Prix n-3 (3rd) */}
                       {(editingItem.cost_price_3rd != null || editingItem.selling_price_3rd != null) && (
                         <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                          <div className="text-xs font-medium text-gray-400 mb-1">Plus ancien (n-3)</div>
+                          <div className="flex justify-between items-baseline mb-1">
+                            <div className="text-xs font-medium text-gray-400">Plus ancien (n-3)</div>
+                            {formatPriceDate(editingItem.price_updated_at_3rd) && (
+                              <div className="text-xs text-gray-400">le {formatPriceDate(editingItem.price_updated_at_3rd)}</div>
+                            )}
+                          </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs text-gray-400">Coûtant</div>
