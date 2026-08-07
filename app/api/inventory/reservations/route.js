@@ -3,9 +3,12 @@
  * @description API serveur pour calculer les quantités "En commande" (AF) et "Réservé" (BT/BL non signés)
  *              par product_id, ainsi que le détail des documents qui réservent chaque item.
  *              Utilise supabaseAdmin pour bypass RLS (notamment sur work_order_materials).
- * @version 1.0.0
- * @date 2026-04-21
+ * @version 1.1.0
+ * @date 2026-08-07
  * @changelog
+ *   1.1.0 - Fix "En commande" à +0: inclut désormais le statut `in_order`
+ *           (libellé "En commande") en plus de `ordered`/`partial`. Un AF placé
+ *           mais non reçu doit compter dans la quantité "En commande" de l'inventaire.
  *   1.0.0 - Version initiale
  *           Consolide le calcul précédemment fait côté client dans InventoryManager.loadQuantities().
  *           Raison: work_order_materials a RLS SELECT qui bloque les lectures client-side.
@@ -27,11 +30,13 @@ export async function GET() {
       details[pid].push(entry);
     };
 
-    // 1. En commande: AF avec statut ordered ou partial (items en JSONB)
+    // 1. En commande: AF placé mais non reçu (items en JSONB).
+    //    Inclut `in_order` (libellé "En commande"), `ordered` (Commandé) et
+    //    `partial` (réception partielle). Exclut draft/received/cancelled.
     const { data: afPurchases } = await supabaseAdmin
       .from('supplier_purchases')
       .select('items, status')
-      .in('status', ['ordered', 'partial']);
+      .in('status', ['in_order', 'ordered', 'partial']);
 
     if (afPurchases) {
       afPurchases.forEach(purchase => {
