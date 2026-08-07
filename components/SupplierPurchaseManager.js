@@ -4,9 +4,11 @@
  *              - Liste, création, modification, suppression des AF
  *              - Réception directe et réception AF
  *              - Gestion des adresses de livraison fournisseur
- * @version 1.1.0
- * @date 2026-08-06
+ * @version 1.2.0
+ * @date 2026-08-07
  * @changelog
+ *   1.2.0 - Desktop: colonne « Actions » collante à droite (sticky) + défilement horizontal + nom fournisseur tronqué
+ *           → le bouton de réception (camion) reste toujours visible même avec un nom de fournisseur long
  *   1.1.0 - Colonne « BA Acomba » remplacée par « Client » (liste desktop + mobile), recherche par client
  *   1.0.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -593,7 +595,7 @@ export default function SupplierPurchaseManager() {
       </div>
 
       {/* Liste des achats - Desktop AVEC DATE DE CRÉATION */}
-      <div className="hidden md:block bg-white dark:bg-gray-900 shadow-lg rounded-lg overflow-hidden">
+      <div className="hidden md:block bg-white dark:bg-gray-900 shadow-lg rounded-lg overflow-x-auto">
         {filteredPurchases.length === 0 ? (
           <div className="text-center py-12">
             <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
@@ -611,14 +613,14 @@ export default function SupplierPurchaseManager() {
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Livraison</th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Montant</th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Statut</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase sticky right-0 z-20 bg-gray-50 dark:bg-gray-800">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredPurchases.map((purchase) => {
                 const poNumber = getPONumber(purchase, purchaseOrders);
                 return (
-                  <tr key={purchase.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <tr key={purchase.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td className="px-3 py-4 whitespace-nowrap">
                       <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
                         {purchase.purchase_number}
@@ -660,7 +662,12 @@ export default function SupplierPurchaseManager() {
                       )}
                     </td>
                     <td className="px-3 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{purchase.supplier_name}</div>
+                      <div
+                        className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[220px]"
+                        title={purchase.supplier_name}
+                      >
+                        {purchase.supplier_name}
+                      </div>
                     </td>
                     <td className={`px-3 py-4 text-center text-sm ${
                       purchase.delivery_date && 
@@ -695,7 +702,7 @@ export default function SupplierPurchaseManager() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-4 text-center">
+                    <td className="px-3 py-4 text-center whitespace-nowrap sticky right-0 z-10 bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800">
                       <div className="flex justify-center space-x-1">
                         <button
                           onClick={() => handleEditPurchase(purchase)}
