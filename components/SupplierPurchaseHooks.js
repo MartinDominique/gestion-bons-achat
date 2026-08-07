@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import { 
   // API Functions
   fetchSupplierPurchases,
@@ -709,17 +710,33 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     
       try {
         const tableName = priceUpdateItem.is_non_inventory ? 'non_inventory_items' : 'products';
-        
+        const newCost = parseFloat(priceUpdateForm.newCostPrice);
+        const newSelling = parseFloat(priceUpdateForm.newSellingPrice);
+
+        // Charger le produit courant pour décaler correctement l'historique des prix
+        // (sinon l'ancien prix est écrasé et « Hist. Prix » reste vide).
+        const { data: current, error: fetchError } = await supabase
+          .from(tableName)
+          .select('cost_price, selling_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price_1st, selling_price_2nd, selling_price_3rd')
+          .eq('product_id', priceUpdateItem.product_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const updates = {
+          cost_price: newCost,
+          selling_price: newSelling,
+          // Décalage historique (_1st/_2nd/_3rd) + price_updated_at si un prix change
+          ...buildPriceShiftUpdates(current || {}, { cost_price: newCost, selling_price: newSelling }),
+        };
+
         const { error } = await supabase
           .from(tableName)
-          .update({
-            cost_price: parseFloat(priceUpdateForm.newCostPrice),
-            selling_price: parseFloat(priceUpdateForm.newSellingPrice)
-          })
+          .update(updates)
           .eq('product_id', priceUpdateItem.product_id);
-    
+
         if (error) throw error;
-    
+
         console.log(`✅ Prix mis à jour dans ${tableName}:`, priceUpdateItem.product_id);
         
         // Mettre à jour l'item dans selectedItems avec le nouveau original_cost_price
@@ -980,14 +997,18 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
   };
 
   // ===== SAUVEGARDE SILENCIEUSE (sans reset ni email) =====
-  // Utilisé par imprimerEtEnvoyerFournisseur pour sauvegarder avant d'ouvrir le mail
-  const savePurchaseOnly = async () => {
+  // Utilisé par imprimerEtEnvoyerFournisseur pour sauvegarder avant d'ouvrir le mail.
+  // statusOverride: force un statut (ex. passer un brouillon en "Commandé" à l'envoi
+  // au fournisseur) pour que l'AF compte immédiatement dans "En commande" de l'inventaire.
+  const savePurchaseOnly = async (statusOverride = null) => {
     try {
       let purchaseNumber = purchaseForm.purchase_number;
 
       if (!editingPurchase) {
         purchaseNumber = await generatePurchaseNumber();
       }
+
+      const effectiveStatus = statusOverride || purchaseForm.status;
 
       const purchaseData = {
         supplier_id: purchaseForm.supplier_id,
@@ -1018,7 +1039,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         tvq: purchaseForm.tvq,
         shipping_cost: parseFloat(purchaseForm.shipping_cost || 0),
         total_amount: purchaseForm.total_amount,
-        status: purchaseForm.status,
+        status: effectiveStatus,
         notes: purchaseForm.notes,
         purchase_number: purchaseNumber
       };
@@ -1034,10 +1055,12 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         await markOrderedForPurchase(savedPurchase, true);
       }
 
-      // Mettre à jour le numéro dans le formulaire si nouvelle création
-      if (!editingPurchase) {
-        setPurchaseForm(prev => ({ ...prev, purchase_number: purchaseNumber }));
-      }
+      // Refléter dans le formulaire: numéro (nouvelle création) + statut forcé
+      setPurchaseForm(prev => ({
+        ...prev,
+        ...(editingPurchase ? {} : { purchase_number: purchaseNumber }),
+        status: effectiveStatus,
+      }));
 
       console.log('AF sauvegardé silencieusement:', savedPurchase.purchase_number);
 

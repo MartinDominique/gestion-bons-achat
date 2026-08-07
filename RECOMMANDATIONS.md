@@ -1699,4 +1699,4 @@ dans Supabase Dashboard (sinon la sauvegarde d'un AF échoue: colonnes manquante
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-08-06 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-08-07 par Claude AI*

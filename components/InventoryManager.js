@@ -8,9 +8,11 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.10.0
- * @date 2026-07-14
+ * @version 3.11.0
+ * @date 2026-08-07
  * @changelog
+ *   3.11.0 - Affiche la date du dernier changement de prix (price_updated_at)
+ *            dans l'onglet « Hist. Prix » (carte Prix actuel).
  *   3.10.0 - Édition complète: le Code (product_id) et l'Unité de mesure sont
  *            maintenant modifiables dans le modal d'édition. Le changement de code
  *            passe par /api/products/rename (cascade sur mouvements + matériaux BT/BL
@@ -1373,6 +1375,16 @@ export default function InventoryManager() {
                     <div className={`text-sm font-medium mt-1 ${getMarginColor(editingItem.cost_price, editingItem.selling_price)}`}>
                       Marge: {getMarginPercentage(editingItem.cost_price, editingItem.selling_price)}
                     </div>
+                    {editingItem.price_updated_at && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        Dernier changement de prix&nbsp;:{' '}
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                          {new Date(editingItem.price_updated_at).toLocaleDateString('fr-CA', {
+                            year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Toronto',
+                          })}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Historique des prix */}

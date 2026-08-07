@@ -268,11 +268,15 @@ export const PurchaseForm = ({
     }
 
     try {
-      // Sauvegarder l'AF avant de générer le PDF
+      // Sauvegarder l'AF avant de générer le PDF.
+      // Envoyer au fournisseur = la commande est placée: si l'AF est encore en
+      // brouillon, on le passe à "Commandé" pour qu'il compte dans "En commande"
+      // de l'inventaire (voir /api/inventory/reservations).
+      const nextStatus = purchaseForm.status === 'draft' ? 'ordered' : purchaseForm.status;
       let savedData = editingPurchase;
       if (savePurchaseOnly) {
-        savedData = await savePurchaseOnly();
-        console.log('AF sauvegardé avant envoi email fournisseur');
+        savedData = await savePurchaseOnly(nextStatus);
+        console.log('AF sauvegardé avant envoi email fournisseur (statut:', nextStatus, ')');
       }
 
       // Générer et sauvegarder le PDF via jsPDF (inclure selectedItems actuels)
