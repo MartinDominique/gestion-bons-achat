@@ -4,9 +4,12 @@
  *              - Liste, création, modification, suppression des AF
  *              - Réception directe et réception AF
  *              - Gestion des adresses de livraison fournisseur
- * @version 1.2.0
+ * @version 1.2.1
  * @date 2026-08-07
  * @changelog
+ *   1.2.1 - Desktop: retrait du collage (sticky) qui recouvrait la colonne « Statut ». Table compactée
+ *           (espacements px-2, colonnes Client/Fournisseur tronquées, cellules non sécables) pour que
+ *           TOUTES les colonnes (Statut + Actions) tiennent sans chevauchement. Défilement horizontal conservé.
  *   1.2.0 - Desktop: colonne « Actions » collante à droite (sticky) + défilement horizontal + nom fournisseur tronqué
  *           → le bouton de réception (camion) reste toujours visible même avec un nom de fournisseur long
  *   1.1.0 - Colonne « BA Acomba » remplacée par « Client » (liste desktop + mobile), recherche par client
@@ -605,29 +608,29 @@ export default function SupplierPurchaseManager() {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">N° Achat</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Création</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Client</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">PO Client Lié</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fournisseur</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Livraison</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Montant</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Statut</th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase sticky right-0 z-20 bg-gray-50 dark:bg-gray-800">Actions</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">N° Achat</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Création</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Client</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">PO Client Lié</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fournisseur</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date Livraison</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Montant</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Statut</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredPurchases.map((purchase) => {
                 const poNumber = getPONumber(purchase, purchaseOrders);
                 return (
-                  <tr key={purchase.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="px-3 py-4 whitespace-nowrap">
+                  <tr key={purchase.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-2 py-4 whitespace-nowrap">
                       <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
                         {purchase.purchase_number}
                       </span>
                     </td>
                     {/* NOUVELLE COLONNE - DATE DE CRÉATION */}
-                    <td className="px-3 py-4 whitespace-nowrap">
+                    <td className="px-2 py-4 whitespace-nowrap">
                       <div className="text-sm">
                         <div className="font-medium text-gray-900 dark:text-gray-100">
                           {formatDate(purchase.created_at)}
@@ -640,16 +643,19 @@ export default function SupplierPurchaseManager() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="px-2 py-4">
                       {getClientLabel(purchase) ? (
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <div
+                          className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[130px]"
+                          title={getClientLabel(purchase)}
+                        >
                           {getClientLabel(purchase)}
-                        </span>
+                        </div>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-4 text-center">
+                    <td className="px-2 py-4 text-center">
                       {poNumber ? (
                         <ReferenceLink
                           type="purchase-order"
@@ -661,16 +667,16 @@ export default function SupplierPurchaseManager() {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="px-2 py-4">
                       <div
-                        className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[220px]"
+                        className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[150px]"
                         title={purchase.supplier_name}
                       >
                         {purchase.supplier_name}
                       </div>
                     </td>
-                    <td className={`px-3 py-4 text-center text-sm ${
-                      purchase.delivery_date && 
+                    <td className={`px-2 py-4 text-center text-sm whitespace-nowrap ${
+                      purchase.delivery_date &&
                       new Date(purchase.delivery_date) < new Date().setHours(0,0,0,0) &&
                       purchase.status !== 'received'
                         ? 'bg-red-100 text-red-700 font-semibold'
@@ -678,13 +684,13 @@ export default function SupplierPurchaseManager() {
                     }`}>
                       {formatDate(purchase.delivery_date)}
                     </td>
-                    <td className="px-3 py-4 text-center">
+                    <td className="px-2 py-4 text-center whitespace-nowrap">
                       <span className="text-sm font-medium text-green-600">
                         {formatCurrency(purchase.total_amount)}
                       </span>
                     </td>
                     {/* SELECT POUR STATUT */}
-                    <td className="px-3 py-4 text-center">
+                    <td className="px-2 py-4 text-center">
                       <select
                         value={purchase.status}
                         onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
@@ -702,7 +708,7 @@ export default function SupplierPurchaseManager() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-4 text-center whitespace-nowrap sticky right-0 z-10 bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800">
+                    <td className="px-2 py-4 text-center whitespace-nowrap">
                       <div className="flex justify-center space-x-1">
                         <button
                           onClick={() => handleEditPurchase(purchase)}
