@@ -850,6 +850,12 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Réception directe / Ajustement: l'inventaire n'était pas mis à jour~~ → Corrigé (2026-08-07)
+  - Symptôme: après un Ajustement (ou une Réception directe) dans la page Achat, le stock « En main » ne changeait pas, alors que l'écran affichait « Enregistré ».
+  - Cause: dans `handleSaveReceipt` (DirectReceiptModal), l'échec de la mise à jour de `stock_qty` était **avalé silencieusement** (aucun contrôle d'erreur sur l'`update`, ni vérification qu'une ligne avait été modifiée). De plus, la table cible (`products` vs `non_inventory_items`) était choisie via le drapeau `is_non_inventory` **non fiable** sur d'anciennes lignes → `.single()` échouait → item ignoré sans message.
+  - Correctif: (1) sélection fiable de la table via `_source` fourni par l'API de recherche (repli sur l'autre table); (2) `.select()` après l'`update` pour **confirmer** qu'une ligne a bien changé; (3) remontée explicite des échecs à l'utilisateur (« Stock NON mis à jour pour: … »); (4) le mouvement d'inventaire n'est enregistré **qu'après** confirmation du changement de stock (plus de mouvements orphelins); (5) `stock_qty` écrit en nombre.
+  - Fichiers: `components/DirectReceiptModal.js` v1.6.0. Aucune migration requise.
+  - Note: si l'utilisateur voit désormais « aucune ligne modifiée », c'est une RLS `products` qui bloque l'écriture côté navigateur → à basculer côté serveur (supabaseAdmin).
 - ~~Inventaire: « En commande » reste à +0 après avoir passé un AF~~ → Corrigé (2026-08-07)
   - Symptôme: après avoir commandé un item (ex. D71PP, 4 unités) sans l'avoir reçu, l'inventaire affichait « +0 cmd » au lieu de « +4 cmd ». (À noter: « En main » ne change PAS à la commande — commander chez un fournisseur ne retire rien du stock physique; c'est le « +4 en commande » qui manquait.)
   - Cause: `GET /api/inventory/reservations` ne comptait que les AF `ordered`/`partial`. Or un AF fraîchement créé/envoyé reste `draft`, et le statut littéralement libellé « En commande » (`in_order`) n'était même pas compté.

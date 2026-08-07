@@ -7,9 +7,15 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.5.0
- * @date 2026-07-14
+ * @version 1.6.0
+ * @date 2026-08-07
  * @changelog
+ *   1.6.0 - Fix "les ajustements/réceptions ne mettent pas à jour l'inventaire":
+ *           l'échec de la mise à jour du stock était avalé silencieusement.
+ *           Désormais: sélection fiable de la table via _source (repli sur l'autre
+ *           table), vérification que la ligne a bien été modifiée (.select() après
+ *           update), et remontée explicite des échecs (mouvements + stock) à
+ *           l'utilisateur. stock_qty écrit en nombre (au lieu de string).
  *   1.5.0 - Liste d'unités partagée (lib/constants/units.js) incluant "Longueur" (Lg)
  *   1.4.0 - Forcer majuscules sur description produit (onBlur toUpperCase + CSS textTransform + uppercase au save)
  *   1.3.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
@@ -131,6 +137,11 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       return;
     }
 
+    // _source vient de l'API de recherche ('products' | 'non_inventory') et est
+    // la source de vérité pour choisir la bonne table à la sauvegarde (le drapeau
+    // is_non_inventory n'est pas fiable sur les anciennes lignes).
+    const source = product._source || (product.is_non_inventory ? 'non_inventory' : 'products');
+
     setReceiptItems(prev => [...prev, {
       product_id: product.product_id,
       description: product.description,
@@ -139,7 +150,8 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
       selling_price: parseFloat(product.selling_price) || 0,
       current_stock: parseFloat(product.stock_qty) || 0,
       quantity: 1,
-      is_non_inventory: product.is_non_inventory || false,
+      is_non_inventory: source === 'non_inventory',
+      _source: source,
       product_group: product.product_group || '',
       _margin_percent: ''
     }]);
@@ -210,7 +222,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
         }
       }
 
-      // Ajouter à la liste de réception
+      // Ajouter à la liste de réception (toujours créé dans products)
       setReceiptItems(prev => [...prev, {
         product_id,
         description,
@@ -220,6 +232,7 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
         current_stock: 0,
         quantity: 1,
         is_non_inventory: false,
+        _source: 'products',
         product_group: newItemForm.product_group || '',
         _margin_percent: ''
       }]);
@@ -325,72 +338,109 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
       // Générer un numéro de référence pour le lot
       const refNumber = `RD-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+      const movementNote = isAdjustment
+        ? `Ajustement inventaire${supplierName ? ` - ${supplierName}` : ''}${receiptNotes ? ` - ${receiptNotes}` : ''}`
+        : `Réception directe${supplierName ? ` de ${supplierName}` : ''}${supplierDeliveryNumber ? ` (BL: ${supplierDeliveryNumber})` : ''}${receiptNotes ? ` - ${receiptNotes}` : ''}`;
 
-      // 1. Créer les mouvements d'inventaire
-      const movements = validItems.map(item => ({
-        product_id: item.product_id,
-        product_description: item.description,
-        product_group: item.product_group || '',
-        unit: item.unit,
-        movement_type: item.quantity > 0 ? 'IN' : 'OUT',
-        quantity: Math.abs(item.quantity),
-        unit_cost: item.cost_price,
-        total_cost: Math.abs(item.quantity) * item.cost_price,
-        reference_type: 'direct_receipt',
-        reference_id: null,
-        reference_number: refNumber,
-        notes: isAdjustment
-          ? `Ajustement inventaire${supplierName ? ` - ${supplierName}` : ''}${receiptNotes ? ` - ${receiptNotes}` : ''}`
-          : `Réception directe${supplierName ? ` de ${supplierName}` : ''}${supplierDeliveryNumber ? ` (BL: ${supplierDeliveryNumber})` : ''}${receiptNotes ? ` - ${receiptNotes}` : ''}`,
-        created_at: new Date().toISOString()
-      }));
+      // Mettre à jour le stock + décalage prix, PUIS enregistrer le mouvement
+      // seulement si le stock a bien changé (évite les mouvements orphelins).
+      //    Robustesse: on cible la bonne table via _source (repli sur l'autre table
+      //    si le produit n'y est pas) et on VÉRIFIE que la ligne a bien été modifiée
+      //    (.select() après update) au lieu d'avaler l'échec silencieusement.
+      const priceCols = 'stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price, selling_price_1st, selling_price_2nd, selling_price_3rd';
+      const failedItems = [];
+      let updatedCount = 0;
 
-      const { error: movementError } = await supabase
-        .from('inventory_movements')
-        .insert(movements);
+      for (const item of validItems) {
+        const preferred = (item._source === 'non_inventory' || item.is_non_inventory)
+          ? 'non_inventory_items'
+          : 'products';
+        const otherTable = preferred === 'products' ? 'non_inventory_items' : 'products';
 
-      if (movementError) {
-        console.error('Erreur mouvements:', movementError);
+        // Localiser le produit dans la bonne table (repli sur l'autre)
+        let tableName = preferred;
+        let { data: product } = await supabase
+          .from(tableName)
+          .select(priceCols)
+          .eq('product_id', item.product_id)
+          .maybeSingle();
+
+        if (!product) {
+          const alt = await supabase
+            .from(otherTable)
+            .select(priceCols)
+            .eq('product_id', item.product_id)
+            .maybeSingle();
+          if (alt.data) {
+            product = alt.data;
+            tableName = otherTable;
+          }
+        }
+
+        if (!product) {
+          failedItems.push(`${item.product_id} (introuvable)`);
+          continue;
+        }
+
+        const currentStock = parseFloat(product.stock_qty) || 0;
+        const newStock = Math.max(0, currentStock + item.quantity); // quantity négatif = ajustement
+
+        const updates = { stock_qty: newStock };
+
+        // Décalage prix pour les réceptions (quantité positive)
+        if (item.quantity > 0) {
+          Object.assign(updates, buildPriceShiftUpdates(product, {
+            cost_price: item.cost_price,
+            selling_price: item.selling_price,
+          }));
+        } else if (item.selling_price > 0) {
+          // En ajustement négatif, mettre à jour le selling_price si changé
+          Object.assign(updates, buildPriceShiftUpdates(product, {
+            selling_price: item.selling_price,
+          }));
+        }
+
+        // .select() confirme qu'une ligne a réellement été modifiée
+        const { data: updated, error: updateError } = await supabase
+          .from(tableName)
+          .update(updates)
+          .eq('product_id', item.product_id)
+          .select('product_id');
+
+        if (updateError || !updated || updated.length === 0) {
+          failedItems.push(`${item.product_id}${updateError ? ` (${updateError.message})` : ' (aucune ligne modifiée)'}`);
+          continue;
+        }
+
+        // Enregistrer le mouvement d'inventaire pour cet item (stock confirmé modifié)
+        const { error: movementError } = await supabase
+          .from('inventory_movements')
+          .insert({
+            product_id: item.product_id,
+            product_description: item.description,
+            product_group: item.product_group || '',
+            unit: item.unit,
+            movement_type: item.quantity > 0 ? 'IN' : 'OUT',
+            quantity: Math.abs(item.quantity),
+            unit_cost: item.cost_price,
+            total_cost: Math.abs(item.quantity) * item.cost_price,
+            reference_type: 'direct_receipt',
+            reference_id: null,
+            reference_number: refNumber,
+            notes: movementNote,
+            created_at: new Date().toISOString(),
+          });
+
+        if (movementError) {
+          console.error(`Mouvement non enregistré pour ${item.product_id}:`, movementError.message);
+        }
+
+        updatedCount++;
+        console.log(`Stock mis à jour: ${item.product_id} (${tableName}): ${currentStock} → ${newStock}`);
       }
 
-      // 2. Mettre à jour le stock + décalage prix
-      for (const item of validItems) {
-        const tableName = item.is_non_inventory ? 'non_inventory_items' : 'products';
-
-        const { data: product, error: productError } = await supabase
-          .from(tableName)
-          .select('stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price, selling_price_1st, selling_price_2nd, selling_price_3rd')
-          .eq('product_id', item.product_id)
-          .single();
-
-        if (!productError && product) {
-          const currentStock = parseFloat(product.stock_qty) || 0;
-          const newStock = currentStock + item.quantity; // quantity peut être négatif en ajustement
-
-          const updates = { stock_qty: Math.max(0, newStock).toString() };
-
-          // Décalage prix pour les réceptions
-          if (item.quantity > 0) {
-            const priceShiftUpdates = buildPriceShiftUpdates(product, {
-              cost_price: item.cost_price,
-              selling_price: item.selling_price,
-            });
-            Object.assign(updates, priceShiftUpdates);
-          } else if (item.selling_price > 0) {
-            // En ajustement négatif, mettre à jour le selling_price si changé
-            const sellingUpdates = buildPriceShiftUpdates(product, {
-              selling_price: item.selling_price,
-            });
-            Object.assign(updates, sellingUpdates);
-          }
-
-          await supabase
-            .from(tableName)
-            .update(updates)
-            .eq('product_id', item.product_id);
-
-          console.log(`Stock mis à jour: ${item.product_id} (${tableName}): ${currentStock} → ${Math.max(0, newStock)}`);
-        }
+      if (failedItems.length > 0) {
+        throw new Error(`Stock NON mis à jour pour: ${failedItems.join(', ')}${updatedCount > 0 ? ` (${updatedCount} article(s) OK)` : ''}`);
       }
 
       const actionLabel = isAdjustment ? 'Ajustement' : 'Réception';
