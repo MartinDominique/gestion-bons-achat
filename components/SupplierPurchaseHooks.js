@@ -417,6 +417,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       alert(
         '⚠️ L\'AF a bien été enregistré, mais les articles n\'ont pas pu être retirés ' +
         'automatiquement de la liste « À Commander ».\n\n' +
+        (lastError ? `Détail: ${lastError}\n\n` : '') +
         'Réessayez en ré-enregistrant l\'AF, ou retirez-les manuellement dans l\'onglet ' +
         '« À Commander ».'
       );
