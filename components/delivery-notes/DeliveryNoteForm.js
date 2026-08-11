@@ -9,9 +9,13 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 3.4.0
- * @date 2026-06-22
+ * @version 3.5.0
+ * @date 2026-08-11
  * @changelog
+ *   3.5.0 - Import Achats Fournisseurs identique au BT: charge TOUS les achats fournisseurs
+ *           (plus seulement ceux liés au client) + barre de recherche + filtre optionnel
+ *           "achats liés au client". Permet d'importer un item commandé chez un fournisseur
+ *           sans BA/client attitré (comme dans le Bon de Travail).
  *   3.4.0 - Désactive le pull-to-refresh natif pendant la saisie (DisablePullToRefresh) pour éviter la perte de données sur mobile/tablette
  *   3.3.2 - Fix bouton supprimer hors champ sur PC/desktop: tableau BO resserré
  *           (inputs w-16, paddings px-2, description max-w-180) pour que la colonne
@@ -72,7 +76,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Package, Calendar, FileText, User, Mail,
-  Save, Eye, X, Plus, Truck, PenTool, Check, AlertTriangle, Link2, Trash2
+  Save, Eye, X, Plus, Truck, PenTool, Check, AlertTriangle, Link2, Trash2, Search
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
@@ -179,6 +183,8 @@ export default function DeliveryNoteForm({
   const [selectedPurchaseForImport, setSelectedPurchaseForImport] = useState(null);
   const [selectedItemsForImport, setSelectedItemsForImport] = useState([]);
   const [isLoadingSupplierPurchases, setIsLoadingSupplierPurchases] = useState(false);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
+  const [filterByCurrentClient, setFilterByCurrentClient] = useState(false);
 
   // =============================================
   // LOAD CLIENTS (identique au BT)
@@ -643,53 +649,29 @@ export default function DeliveryNoteForm({
   // =============================================
 
   const loadClientSupplierPurchases = async () => {
-    if (!selectedClient) {
-      toast.error('Veuillez d\'abord sélectionner un client');
-      return;
-    }
-
     setIsLoadingSupplierPurchases(true);
+    setSupplierSearchTerm(''); // Reset recherche
+    setFilterByCurrentClient(false); // Reset filtre
     try {
-      // Rechercher tous les BAs de ce client pour trouver les achats fournisseurs liés
-      const { data: clientPOs, error: clientPOsError } = await supabase
-        .from('purchase_orders')
-        .select('id, po_number')
-        .eq('client_name', selectedClient.name);
-
-      if (clientPOsError) {
-        console.error('Erreur chargement BAs client:', clientPOsError);
-        throw clientPOsError;
-      }
-
-      const clientPOIds = clientPOs?.map(po => po.id) || [];
-
-      // Charger tous les achats fournisseurs liés à ce client
+      // ✅ Charger TOUS les achats fournisseurs (identique au BT) — permet d'importer
+      //    un item commandé chez un fournisseur sans BA/client attitré.
       const { data, error } = await supabase
         .from('supplier_purchases')
         .select('*')
-        .or(
-          clientPOIds.length > 0
-            ? `linked_po_id.in.(${clientPOIds.join(',')}),supplier_name.ilike.%${selectedClient.name}%`
-            : `supplier_name.ilike.%${selectedClient.name}%`
-        )
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(200);
 
       if (error) throw error;
 
-      // Filtrer pour ne garder que ceux avec des items
-      const uniquePurchases = (data || []).filter((purchase, index, self) =>
-        purchase.items &&
-        purchase.items.length > 0 &&
-        self.findIndex(p => p.id === purchase.id) === index
-      );
+      const purchasesWithItems = (data || []).filter(p => p.items && p.items.length > 0);
 
-      if (uniquePurchases.length === 0) {
-        toast.error('Aucun achat fournisseur avec articles trouvé pour ce client');
+      if (purchasesWithItems.length === 0) {
+        toast.error('Aucun achat fournisseur trouvé');
         setIsLoadingSupplierPurchases(false);
         return;
       }
 
-      setClientSupplierPurchases(uniquePurchases);
+      setClientSupplierPurchases(purchasesWithItems);
       setShowSupplierImportModal(true);
     } catch (error) {
       console.error('Erreur chargement achats fournisseurs:', error);
@@ -697,6 +679,38 @@ export default function DeliveryNoteForm({
     } finally {
       setIsLoadingSupplierPurchases(false);
     }
+  };
+
+  // Filtrer les achats affichés (recherche + filtre client optionnel), identique au BT
+  const getFilteredSupplierPurchases = () => {
+    let filtered = clientSupplierPurchases;
+
+    // Filtre par client actuel si activé
+    if (filterByCurrentClient && selectedClient) {
+      const clientName = selectedClient.name?.toLowerCase() || '';
+      filtered = filtered.filter(p =>
+        p.linked_po_number?.toLowerCase().includes(clientName) ||
+        p.supplier_name?.toLowerCase().includes(clientName) ||
+        p.client_name?.toLowerCase().includes(clientName) ||
+        p.notes?.toLowerCase().includes(clientName)
+      );
+    }
+
+    // Filtre par terme de recherche
+    if (supplierSearchTerm.trim()) {
+      const search = supplierSearchTerm.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.purchase_number?.toLowerCase().includes(search) ||
+        p.supplier_name?.toLowerCase().includes(search) ||
+        p.linked_po_number?.toLowerCase().includes(search) ||
+        p.items?.some(item =>
+          item.product_id?.toLowerCase().includes(search) ||
+          item.description?.toLowerCase().includes(search)
+        )
+      );
+    }
+
+    return filtered;
   };
 
   const selectPurchaseForImport = (purchase) => {
@@ -1780,7 +1794,7 @@ export default function DeliveryNoteForm({
             <div className="bg-purple-600 text-white p-6 rounded-t-lg flex justify-between items-center">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Package size={24} />
-                Import Achats Fournisseurs - {selectedClient?.name}
+                Import depuis Achats Fournisseurs
               </h2>
               <button
                 onClick={() => {
@@ -1797,10 +1811,61 @@ export default function DeliveryNoteForm({
             <div className="flex-1 overflow-y-auto p-6">
               {!selectedPurchaseForImport ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Sélectionnez un achat fournisseur pour voir ses articles
-                  </p>
-                  {clientSupplierPurchases.map((purchase) => (
+                  {/* Barre de recherche et filtres (identique au BT) */}
+                  <div className="sticky top-0 bg-white dark:bg-gray-900 pb-4 space-y-3">
+                    {/* Recherche */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Rechercher par # achat, fournisseur, produit..."
+                        value={supplierSearchTerm}
+                        onChange={(e) => setSupplierSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-800 dark:text-gray-100"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                      />
+                    </div>
+
+                    {/* Filtre par client */}
+                    {selectedClient && (
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filterByCurrentClient}
+                          onChange={(e) => setFilterByCurrentClient(e.target.checked)}
+                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                        />
+                        <span className="text-gray-700 dark:text-gray-300">
+                          Afficher seulement les achats liés à <strong>{selectedClient.name}</strong>
+                        </span>
+                      </label>
+                    )}
+
+                    {/* Compteur résultats */}
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {getFilteredSupplierPurchases().length} achat(s) trouvé(s)
+                      {filterByCurrentClient && selectedClient && ` pour ${selectedClient.name}`}
+                    </p>
+                  </div>
+
+                  {/* Liste des achats */}
+                  {getFilteredSupplierPurchases().length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <Package className="mx-auto mb-2 text-gray-300" size={48} />
+                      <p>Aucun achat trouvé</p>
+                      {filterByCurrentClient && (
+                        <button
+                          onClick={() => setFilterByCurrentClient(false)}
+                          className="mt-2 text-purple-600 hover:underline text-sm"
+                        >
+                          Voir tous les achats
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    getFilteredSupplierPurchases().map((purchase) => (
                     <div
                       key={purchase.id}
                       onClick={() => selectPurchaseForImport(purchase)}
@@ -1814,6 +1879,11 @@ export default function DeliveryNoteForm({
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {purchase.supplier_name}
                           </p>
+                          {purchase.linked_po_number && (
+                            <p className="text-xs text-purple-600 mt-1">
+                              🔗 PO: {purchase.linked_po_number}
+                            </p>
+                          )}
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             {new Date(purchase.created_at).toLocaleDateString('fr-CA')}
                           </p>
@@ -1831,7 +1901,8 @@ export default function DeliveryNoteForm({
                         </div>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
