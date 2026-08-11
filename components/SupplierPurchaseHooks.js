@@ -356,13 +356,22 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
   }, []);
 
   // Marque les items « À commander » comme commandés une fois l'AF sauvegardé.
-  // Robuste: on cible les items par leur id explicite (flux « Créer l'AF ») ET, pour
-  // un NOUVEL AF, par le code produit des articles de l'AF (couvre aussi l'AF construit
-  // manuellement, sans passer par le bouton « Créer l'AF »). La correspondance par code
-  // est volontairement désactivée en mode édition pour ne pas vider la liste par erreur.
+  // Robuste: on cible les items par leur id explicite (flux « Créer l'AF ») ET par le
+  // code produit des articles de l'AF, ce qui couvre aussi l'AF construit manuellement.
+  // La correspondance par code est active pour un NOUVEL AF ou dès qu'une provenance
+  // « Créer l'AF » (pendingToOrderIds) reste non marquée après un échec — mais désactivée
+  // en édition simple (sans provenance) pour ne pas vider la liste par erreur.
+  //
+  // Résilience (corrige « items non retirés de la liste À Commander »):
+  //  - jusqu'à 3 tentatives (échecs réseau/serveur transitoires);
+  //  - les ids de provenance ne sont effacés QUE sur succès confirmé (une nouvelle
+  //    sauvegarde peut donc réessayer — ex. Imprimer puis Envoyer);
+  //  - un échec persistant est SIGNALÉ à l'utilisateur au lieu d'être avalé
+  //    silencieusement (c'était la cause du bug: aucun feedback, aucune récupération).
   const markOrderedForPurchase = async (savedPurchase, isNew) => {
     const ids = pendingToOrderIds || [];
-    const productCodes = isNew
+    const useCodeMatch = isNew || ids.length > 0;
+    const productCodes = useCodeMatch
       ? (selectedItems || [])
           .map((it) => it.product_code || it.product_id)
           .filter((c) => c != null && String(c).trim() !== '')
@@ -372,25 +381,45 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     // Rien à marquer: ni lien explicite, ni code produit à faire correspondre.
     if (ids.length === 0 && productCodes.length === 0) return;
 
-    try {
-      const res = await fetch('/api/items-to-order/mark-ordered', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ids,
-          product_codes: productCodes,
-          supplier_purchase_id: savedPurchase?.id || null,
-          supplier_purchase_number: savedPurchase?.purchase_number || null,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || json.success === false) {
-        console.error('Marquage items commandés échoué:', json.error || res.status);
+    const payload = {
+      ids,
+      product_codes: productCodes,
+      supplier_purchase_id: savedPurchase?.id || null,
+      supplier_purchase_number: savedPurchase?.purchase_number || null,
+    };
+
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await fetch('/api/items-to-order/mark-ordered', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json.success !== false) {
+          // Succès confirmé → on peut oublier la provenance.
+          setPendingToOrderIds([]);
+          return;
+        }
+        lastError = json.error || `HTTP ${res.status}`;
+      } catch (err) {
+        lastError = err?.message || 'réseau';
       }
-    } catch (err) {
-      console.error('Erreur marquage items commandés:', err);
-    } finally {
-      setPendingToOrderIds([]);
+      // Petite attente croissante avant nouvelle tentative (200ms, 400ms).
+      if (attempt < 3) await new Promise((r) => setTimeout(r, attempt * 200));
+    }
+
+    // Échec persistant: NE PAS effacer pendingToOrderIds (une nouvelle sauvegarde
+    // pourra réessayer) et prévenir l'utilisateur — plus de disparition silencieuse.
+    console.error('Marquage items « À commander » échoué:', lastError);
+    if (typeof window !== 'undefined') {
+      alert(
+        '⚠️ L\'AF a bien été enregistré, mais les articles n\'ont pas pu être retirés ' +
+        'automatiquement de la liste « À Commander ».\n\n' +
+        'Réessayez en ré-enregistrant l\'AF, ou retirez-les manuellement dans l\'onglet ' +
+        '« À Commander ».'
+      );
     }
   };
 
@@ -1217,6 +1246,10 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     setShowForm(false);
     setEditingPurchase(null);
     setSelectedItems([]);
+    // Oublier la provenance « Créer l'AF » (évite qu'un lot d'ids périmé soit renvoyé
+    // lors d'une prochaine sauvegarde d'un autre AF). Le succès du marquage l'a déjà
+    // effacé; ici on couvre l'annulation ou un échec persistant après fermeture.
+    setPendingToOrderIds([]);
     setPurchaseForm({
       supplier_id: '',
       supplier_name: '',
