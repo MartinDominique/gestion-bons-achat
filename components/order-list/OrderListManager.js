@@ -9,9 +9,12 @@
  *                sessionStorage ('af-prefill') puis bascule vers l'onglet Achats
  *                Fournisseurs (le hook AF pré-remplit le formulaire au montage).
  *              - Mobile/tablette: touch targets 44px, cartes empilées.
- * @version 1.2.0
- * @date 2026-08-06
+ * @version 1.3.0
+ * @date 2026-08-12
  * @changelog
+ *   1.3.0 - Vue « Commandés »: le N° d'AF devient cliquable (ReferenceLink →
+ *           ouvre l'AF dans le panneau latéral) quand supplier_purchase_id est lié.
+ *           Sans id lié (AF antérieurs à la migration 20260812), texte simple.
  *   1.2.0 - Ajout « En commande » (qté sur AF actifs) entre En main et Coûtant.
  *   1.1.0 - Ligne d'info inventaire vivant (En main / Coûtant / Vendant) sur chaque
  *           item en attente; libellé « Qté » → « À commander ».
@@ -22,10 +25,11 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  ShoppingCart, Trash2, ExternalLink, Check, Loader2, RefreshCw,
+  ShoppingCart, Trash2, Check, Loader2, RefreshCw,
   PackageCheck, ClipboardList, ChevronRight,
 } from 'lucide-react';
 import { createClient } from '../../lib/supabase';
+import ReferenceLink from '../SplitView/ReferenceLink';
 
 const UNASSIGNED = '__unassigned__';
 
@@ -528,10 +532,23 @@ export default function OrderListManager({ onCreateAF, onCountChange }) {
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
                   {it.suggested_supplier && <span>{it.suggested_supplier}</span>}
                   {it.supplier_purchase_number && (
-                    <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400 font-medium">
-                      <ExternalLink className="w-3 h-3" />
-                      {it.supplier_purchase_number}
-                    </span>
+                    it.supplier_purchase_id ? (
+                      // Numéro cliquable → ouvre l'AF dans le panneau latéral (SplitView).
+                      // Nécessite supplier_purchase_id (uuid) : présent pour les AF créés
+                      // après la migration 20260812 alignant le type de la colonne.
+                      <ReferenceLink
+                        type="supplier-purchase"
+                        label={it.supplier_purchase_number}
+                        data={{ purchaseId: it.supplier_purchase_id }}
+                        variant="green"
+                      />
+                    ) : (
+                      // Pas d'id lié (AF antérieurs à la migration) → texte simple, sans
+                      // icône de lien pour ne pas laisser croire que c'est cliquable.
+                      <span className="text-green-700 dark:text-green-400 font-medium">
+                        {it.supplier_purchase_number}
+                      </span>
+                    )
                   )}
                   {it.ordered_at && <span>· Commandé le {formatQcDate(it.ordered_at)}</span>}
                 </div>
