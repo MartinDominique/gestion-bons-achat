@@ -11,9 +11,14 @@
  *              Note « l'app apprend » : la mise à jour de products.supplier (dernier
  *              fournisseur) est déjà faite par le hook AF à la sauvegarde
  *              (SupplierPurchaseHooks.handlePurchaseSubmit) — pas dupliquée ici.
- * @version 1.1.0
- * @date 2026-08-06
+ * @version 1.2.0
+ * @date 2026-08-11
  * @changelog
+ *   1.2.0 - Marquage résilient en 2 temps : (1) statut 'ordered' (colonnes sûres) —
+ *           c'est ce qui retire l'item de la liste ; (2) lien AF
+ *           (supplier_purchase_id/number) en best-effort, un échec ici n'empêche plus
+ *           le retrait. Le message d'erreur Postgres réel est renvoyé au client
+ *           (fin des échecs opaques du flux « Créer l'AF »).
  *   1.1.0 - Correspondance par product_code en plus des ids (AF manuel + robustesse
  *           du flux « Créer l'AF ») ; ne marque que les items encore 'pending'.
  *   1.0.0 - Version initiale (Liste À Commander MVP)
@@ -85,29 +90,54 @@ export async function POST(request) {
       return NextResponse.json({ success: true, data: [], count: 0 });
     }
 
-    // Marquer les items commandés + lier l'AF. On restreint à 'pending' pour ne pas
-    // réécrire le lien d'un item déjà commandé lors d'une re-sauvegarde.
+    const nowIso = new Date().toISOString();
+
+    // ÉTAPE 1 (critique) — passer en 'ordered'. C'est CE marquage qui retire l'item
+    // de la vue « À commander ». On n'écrit ici que des colonnes sûres (aucune valeur
+    // externe risquant un conflit de type) pour garantir le retrait. On restreint à
+    // 'pending' pour ne pas réécrire un item déjà commandé lors d'une re-sauvegarde.
     const { data, error } = await supabaseAdmin
       .from('items_to_order')
       .update({
         status: 'ordered',
-        ordered_at: new Date().toISOString(),
-        supplier_purchase_id: supplier_purchase_id || null,
+        ordered_at: nowIso,
+        updated_at: nowIso,
+        // supplier_purchase_number est TEXT (aucun risque de type) et c'est la seule
+        // valeur affichée dans la vue « Commandés » → on la stocke ici, garantie.
         supplier_purchase_number: supplier_purchase_number
           ? String(supplier_purchase_number).trim()
           : null,
-        updated_at: new Date().toISOString(),
       })
       .in('id', finalIds)
       .eq('status', 'pending')
       .select();
 
     if (error) {
-      console.error('Erreur mark-ordered items:', error);
+      console.error('Erreur mark-ordered items (statut):', error);
       return NextResponse.json(
-        { success: false, error: 'Erreur lors du marquage des items commandés' },
+        {
+          success: false,
+          // On remonte le message Postgres réel pour diagnostic (plus d'échec opaque).
+          error: `Marquage impossible: ${error.message || error.code || 'erreur DB'}`,
+        },
         { status: 500 }
       );
+    }
+
+    // ÉTAPE 2 (best-effort) — attacher supplier_purchase_id (BIGINT). Si le type réel
+    // de supplier_purchases.id ne correspond pas (ex. UUID vs BIGINT), cet UPDATE
+    // échoue — mais l'item est DÉJÀ retiré de la liste (étape 1) et son N° d'AF est
+    // déjà stocké. On journalise seulement, sans bloquer.
+    const markedIds = (data || []).map((d) => d.id);
+    if (markedIds.length > 0 && supplier_purchase_id != null) {
+      const { error: linkErr } = await supabaseAdmin
+        .from('items_to_order')
+        .update({ supplier_purchase_id })
+        .in('id', markedIds);
+
+      if (linkErr) {
+        console.error('mark-ordered: supplier_purchase_id non enregistré (non bloquant):', linkErr);
+      }
     }
 
     return NextResponse.json({ success: true, data: data || [], count: (data || []).length });
