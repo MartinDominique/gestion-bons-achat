@@ -15,9 +15,14 @@
  *              - Consultation BA/Soumission liés: badges cliquables (N° BA et N° soumission)
  *                dans l'entête ouvrant un panneau latéral en lecture seule (prix de vente
  *                déjà donnés au client), côte-à-côte sur desktop / superposition sur mobile.
- * @version 2.9.0
- * @date 2026-06-30
+ *              - Lignes de main d'oeuvre: si le BT compte plus d'une session, la date et la
+ *                description du TimeTracker sont ajoutées au libellé, sur une seule ligne
+ *                (« Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »).
+ * @version 2.10.0
+ * @date 2026-08-20
  * @changelog
+ *   2.10.0 - Libellé main d'oeuvre enrichi de la date + description du TimeTracker quand le BT
+ *            a plusieurs sessions (date seule si pas de description, rien si session unique)
  *   2.9.0 - Case à cocher "Inclure la signature sur la facture" (visible si BT/BL signé,
  *           cochée par défaut, décochable pour les cas sans signature client réelle)
  *   2.8.0 - Désactive le pull-to-refresh natif pendant l'édition (DisablePullToRefresh) pour éviter la perte de données sur mobile/tablette
@@ -89,6 +94,39 @@ function getSurchargeLabel(surchargeType) {
 }
 
 /**
+ * Formate une date de session du TimeTracker (YYYY-MM-DD) en « JJ MMM YYYY ».
+ * Parsing manuel: `new Date('2026-08-15')` est interprété en UTC et afficherait
+ * la veille en America/Toronto.
+ */
+function formatSessionDate(dateString) {
+  if (!dateString) return '';
+  const match = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return String(dateString);
+  const [, year, month, day] = match;
+  const d = new Date(Number(year), Number(month) - 1, Number(day));
+  if (isNaN(d.getTime())) return String(dateString);
+  return d.toLocaleDateString('fr-CA', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/**
+ * Construit le libellé d'une ligne de main d'oeuvre.
+ * Règles (demande Martin, 2026-08-20) — tout sur une seule ligne:
+ *   - BT à UNE seule session  → « Main d'oeuvre — Régulier » (ni date ni description)
+ *   - BT à PLUSIEURS sessions → « Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »
+ *     (la description du TimeTracker est omise si vide → date seulement)
+ */
+function buildLaborLabel(entry, surchargeType, multiSession) {
+  const parts = [`Main d'\u0153uvre \u2014 ${getSurchargeLabel(surchargeType)}`];
+  if (multiSession) {
+    const sessionDate = formatSessionDate(entry?.date);
+    if (sessionDate) parts.push(sessionDate);
+    const sessionDescription = (entry?.session_description || '').trim();
+    if (sessionDescription) parts.push(sessionDescription);
+  }
+  return parts.join(' \u2014 ');
+}
+
+/**
  * Extrait les numéros de soumission liés à un BT/BL.
  * Sources:
  *   - Soumission du BA lié (linked_po.submission_no)
@@ -142,6 +180,7 @@ function generateBTLines(bt, settings) {
   const transportFee = bt.client?.transport_fee || 0;
 
   // Time entries → lignes main d'oeuvre
+  const multiSession = (bt.time_entries?.length || 0) > 1;
   if (bt.time_entries && bt.time_entries.length > 0) {
     bt.time_entries.forEach((entry, idx) => {
       const surchargeType = entry.surcharge_type || null;
@@ -149,9 +188,7 @@ function generateBTLines(bt, settings) {
       const hours = entry.total_hours || 0;
       const lineTotal = Math.round(hours * rate * 100) / 100;
 
-      const label = surchargeType
-        ? `Main d'\u0153uvre \u2014 ${getSurchargeLabel(surchargeType)}`
-        : 'Main d\'\u0153uvre \u2014 Régulier';
+      const label = buildLaborLabel(entry, surchargeType, multiSession);
 
       lines.push({
         id: `labor-${entry.date}-${entry.start_time || idx}`,
