@@ -1753,4 +1753,41 @@ rejeté par la contrainte).
 
 ---
 
+### Date du relevé sur l'état de compte (Facturation) ✅ COMPLETE (2026-08-20)
+
+**Demande utilisateur (Martin):** un client demande son état de compte **pour juillet**; l'écran
+et le PDF affichaient toujours la situation d'aujourd'hui, donc les factures d'**août** apparaissaient
+aussi. Besoin: choisir la date (ex. 31 juillet), voir l'aperçu et **envoyer** le relevé à cette date.
+
+**Implémentation (2026-08-20):**
+
+- `lib/services/statement-data.js` (nouveau, v1.0.0) — construction du relevé « open item » à une
+  date donnée (`as_of`), partagée par l'écran, l'aperçu PDF et le courriel (une seule logique, donc
+  l'aperçu correspond toujours à ce qui est envoyé):
+  - factures retenues: `invoice_date <= as_of` (une facture d'août n'apparaît plus sur un relevé au
+    31 juillet);
+  - crédits retenus: paiements dont `payment_date <= as_of` (une facture de juillet payée en août
+    réapparaît, à juste titre, comme due au 31 juillet);
+  - **crédit historique préservé:** les anciennes factures marquées payées avant le module de
+    paiements (`amount_paid` rempli par le backfill de migration, sans ligne dans `invoice_payments`)
+    restent créditées à toute date — sinon elles ressurgiraient à tort comme impayées;
+  - retard, intérêts et vieillissement (aging) calculés **par rapport à `as_of`**, pas à aujourd'hui.
+- `app/api/statements/[clientId]/route.js` v1.2.0 — paramètre `?as_of=YYYY-MM-DD`; calcul délégué au
+  service partagé; retourne `statement_date` + `is_today`.
+- `app/api/statements/[clientId]/send-email/route.js` v1.2.0 — accepte `as_of` dans le body (aperçu
+  `print_only` **et** envoi); la date choisie apparaît dans l'en-tête du PDF (« Date du relevé »), le
+  nom du fichier, l'objet du courriel (« État de compte au 31 juil. 2026 — … ») et le corps du message.
+- `components/invoices/ClientStatementView.js` v1.3.0 — barre **« Date du relevé »** sous l'en-tête:
+  champ date (touch target 44px, plafonné à aujourd'hui) + raccourcis **Fin du mois dernier** et
+  **Aujourd'hui**; rechargement automatique à la sélection; bandeau d'avertissement quand la date
+  n'est pas aujourd'hui; rappel de la date + du total dans la fenêtre d'envoi; message « Aucune
+  facture impayée **au …** » adapté.
+
+**Comportement par défaut inchangé:** à l'ouverture, la date est celle du jour (fuseau Québec) — le
+relevé courant fonctionne exactement comme avant.
+
+Aucune migration SQL requise.
+
+---
+
 *Document genere le 2026-02-05, mis a jour le 2026-08-20 par Claude AI*

@@ -6,16 +6,20 @@
  *              - Upload dans Supabase Storage (bucket 'invoices', préfixe statements/)
  *              - print_only: retourne l'URL du PDF sans envoyer de courriel (aperçu)
  *              - Sinon envoie via Resend aux adresses sélectionnées (cascade email_billing)
- * @version 1.1.0
- * @date 2026-06-14
+ *              - Body as_of (YYYY-MM-DD): relevé à une date passée (ex. fin juillet);
+ *                exclut les factures émises après cette date et les paiements postérieurs
+ * @version 1.2.0
+ * @date 2026-08-20
  * @changelog
+ *   1.2.0 - Date du relevé (as_of): aperçu et courriel générés à la date choisie à l'écran
+ *           (construction du relevé partagée via lib/services/statement-data.js)
  *   1.1.0 - Message de confirmation explicite incluant la copie au bureau (CC COMPANY_EMAIL)
  *   1.0.0 - Version initiale (module État de compte client)
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
-import { computeInterest, daysOverdue, agingBucket } from '../../../../../lib/services/invoice-payments';
+import { buildStatement } from '../../../../../lib/services/statement-data';
 
 const { Resend } = require('resend');
 const { jsPDF } = require('jspdf');
@@ -25,7 +29,6 @@ const path = require('path');
 const pdfCommon = require('../../../../../lib/services/pdf-common');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const EPSILON = 0.005;
 
 // Charger le logo (serveur)
 let LOGO_BASE64 = null;
@@ -45,85 +48,10 @@ function formatDateFr(dateStr) {
 }
 
 /**
- * Construit les données du relevé pour un client (factures impayées + intérêts + aging).
- */
-async function buildStatement(clientId) {
-  const { data: client } = await supabaseAdmin
-    .from('clients')
-    .select('id, name, company, address, email, email_billing, email_admin, email_2, email_3, contact_name, payment_terms')
-    .eq('id', parseInt(clientId))
-    .single();
-
-  if (!client) return null;
-
-  const { data: settings } = await supabaseAdmin
-    .from('settings')
-    .select('late_interest_annual_rate, statement_footer_note, invoice_tps_number, invoice_tvq_number')
-    .eq('id', 1)
-    .single();
-  const interestRate = Number(settings?.late_interest_annual_rate) || 0;
-
-  const { data: invoices } = await supabaseAdmin
-    .from('invoices')
-    .select('id, invoice_number, source_number, invoice_date, due_date, total, amount_paid, status')
-    .eq('client_id', parseInt(clientId))
-    .in('status', ['sent', 'partial', 'paid'])
-    .order('invoice_date', { ascending: true });
-
-  const openInvoices = (invoices || []).filter(
-    inv => (Number(inv.total) || 0) - (Number(inv.amount_paid) || 0) > EPSILON
-  );
-
-  const now = new Date();
-  const aging = { current: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0 };
-  let totalBalance = 0;
-  let totalInterest = 0;
-
-  const lines = openInvoices.map(inv => {
-    const total = Number(inv.total) || 0;
-    const balance = Math.round((total - (Number(inv.amount_paid) || 0)) * 100) / 100;
-    const od = daysOverdue(inv.due_date, now);
-    const interest = computeInterest(balance, inv.due_date, interestRate, now);
-    aging[agingBucket(inv.due_date, now)] += balance;
-    totalBalance += balance;
-    totalInterest += interest;
-    return {
-      invoice_number: inv.invoice_number,
-      source_number: inv.source_number,
-      invoice_date: inv.invoice_date,
-      due_date: inv.due_date,
-      total,
-      amount_paid: Number(inv.amount_paid) || 0,
-      balance,
-      days_overdue: od,
-      interest,
-    };
-  });
-
-  Object.keys(aging).forEach(k => { aging[k] = Math.round(aging[k] * 100) / 100; });
-  totalBalance = Math.round(totalBalance * 100) / 100;
-  totalInterest = Math.round(totalInterest * 100) / 100;
-
-  return {
-    client,
-    settings,
-    interestRate,
-    lines,
-    aging,
-    totals: {
-      balance: totalBalance,
-      interest: totalInterest,
-      total_with_interest: Math.round((totalBalance + totalInterest) * 100) / 100,
-    },
-    statementDate: now.toISOString().split('T')[0],
-  };
-}
-
-/**
  * Génère le PDF de l'état de compte.
  */
 function generateStatementPDF(statement) {
-  const { client, lines, aging, totals, interestRate, statementDate, settings } = statement;
+  const { client, invoices: lines, aging, totals, interestRate, statementDate, settings } = statement;
   const doc = new jsPDF({ format: 'letter', unit: 'mm' });
 
   let y = pdfCommon.drawHeader(doc, LOGO_BASE64, {
@@ -325,22 +253,25 @@ function generateStatementPDF(statement) {
 
 /**
  * POST /api/statements/[clientId]/send-email
- * Body: { emails?: string[], print_only?: boolean }
+ * Body: { emails?: string[], print_only?: boolean, as_of?: 'YYYY-MM-DD' }
  */
 export async function POST(request, { params }) {
   try {
     const { clientId } = params;
     const body = await request.json();
-    const { emails: customEmails, print_only } = body;
+    const { emails: customEmails, print_only, as_of } = body;
 
-    const statement = await buildStatement(clientId);
+    const statement = await buildStatement(supabaseAdmin, clientId, { asOf: as_of });
     if (!statement) {
       return NextResponse.json({ success: false, error: 'Client non trouvé' }, { status: 404 });
     }
 
-    if (statement.lines.length === 0) {
+    if (statement.invoices.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'Aucune facture impayée pour ce client' },
+        {
+          success: false,
+          error: `Aucune facture impayée pour ce client au ${formatDateFr(statement.statementDate)}`,
+        },
         { status: 400 }
       );
     }
@@ -406,7 +337,7 @@ export async function POST(request, { params }) {
             <h2 style="color: #333; margin-bottom: 20px;">État de compte</h2>
             <p>Bonjour,</p>
             <p>Veuillez trouver ci-joint votre état de compte au <strong>${formatDateFr(statement.statementDate)}</strong>.</p>
-            <p>Nombre de factures impayées: <strong>${statement.lines.length}</strong><br>
+            <p>Nombre de factures impayées: <strong>${statement.invoices.length}</strong><br>
                Solde dû: <strong>${Number(t.balance).toFixed(2)} $</strong>${
                  t.interest > 0
                    ? `<br>Intérêts de retard: <strong>${Number(t.interest).toFixed(2)} $</strong><br>Total à payer: <strong>${Number(t.total_with_interest).toFixed(2)} $</strong>`
@@ -432,7 +363,7 @@ export async function POST(request, { params }) {
       const emailConfig = {
         from: `${companyName} <${fromEmail}>`,
         to: emailAddresses,
-        subject: `État de compte ${statement.client.name} — ${companyName}`,
+        subject: `État de compte au ${formatDateFr(statement.statementDate)} — ${statement.client.name} — ${companyName}`,
         html: htmlContent,
         attachments: [{
           filename: `Etat_de_compte_${statement.statementDate}.pdf`,
@@ -458,7 +389,7 @@ export async function POST(request, { params }) {
     if (print_only) {
       return NextResponse.json({
         success: true,
-        message: `État de compte prêt pour ${statement.client.name}`,
+        message: `État de compte prêt pour ${statement.client.name} (au ${formatDateFr(statement.statementDate)})`,
         pdf_url: pdfUrl,
         print_only: true,
       });
@@ -467,7 +398,7 @@ export async function POST(request, { params }) {
     const ccNote = process.env.COMPANY_EMAIL ? ` (copie au bureau: ${process.env.COMPANY_EMAIL})` : '';
     return NextResponse.json({
       success: true,
-      message: `État de compte envoyé à ${emailAddresses.join(', ')}${ccNote}`,
+      message: `État de compte au ${formatDateFr(statement.statementDate)} envoyé à ${emailAddresses.join(', ')}${ccNote}`,
       sentTo: emailAddresses,
       cc: process.env.COMPANY_EMAIL || null,
       pdf_url: pdfUrl,

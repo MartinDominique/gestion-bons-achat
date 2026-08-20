@@ -417,6 +417,8 @@ const total = subtotal + tps + tvq;
 /api/invoices                          → CRUD Factures (GET liste + POST création)
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
+/api/statements/[clientId]              → État de compte client (GET, ?as_of=YYYY-MM-DD)
+/api/statements/[clientId]/send-email   → Aperçu/envoi PDF de l'état de compte (body as_of)
 /api/reports/sales                     → Rapport de ventes comptable (GET: mois/année/plage)
 /api/reports/sales/send-email          → Envoi rapport de ventes PDF au comptable (CC bureau)
 /api/reports/payments                  → Rapport de paiements comptable (GET: mois/année/plage)
@@ -429,6 +431,7 @@ const total = subtotal + tps + tvq;
 lib/services/email-service.js       → Génération PDF + envoi email (BT + BL + rapports)
 lib/services/pdf-common.js          → En-tête/footer PDF standardisé
 lib/services/client-signature.js    → Gestion signatures (BT + BL)
+lib/services/statement-data.js      → État de compte à une date donnée (as_of), partagé écran/PDF/courriel
 lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique)
 lib/utils/priceShift.js             → Décalage historique prix (3 niveaux)
 lib/supabase.js                     → Client Supabase (browser)
@@ -852,6 +855,13 @@ CRON_SECRET                   # Auth pour cron jobs
     - `components/invoices/ClientStatementView.js` v1.2.0 — Interac dans le sélecteur de méthode; pastilles « Paiement habituel » + conditions sous le nom du client; mode habituel pré-sélectionné à la saisie
     - `app/api/statements/[clientId]/route.js` v1.1.0, `app/api/invoice-payments/route.js` v1.1.0, `lib/services/report-data.js` v1.2.0, `lib/services/report-pdf.js` v1.2.0, `app/api/reports/payments/send-email/route.js` v1.1.0
     - **Reste:** exécuter la migration SQL `20260820_add_client_payment_method.sql` dans Supabase Dashboard
+
+27. ~~**Date du relevé sur l'état de compte (relevé au 31 juillet, etc.)**~~ - ✅ COMPLÉTÉ (2026-08-20)
+    - `lib/services/statement-data.js` (nouveau) — relevé « open item » à une date donnée (`as_of`), partagé par l'écran, l'aperçu PDF et le courriel: factures `invoice_date <= as_of`, paiements `payment_date <= as_of`, retard/intérêts/aging calculés à cette date; le crédit historique des anciennes factures payées (backfill `amount_paid` sans ligne `invoice_payments`) reste acquis à toute date
+    - `app/api/statements/[clientId]/route.js` v1.2.0 — `?as_of=YYYY-MM-DD` + `statement_date`/`is_today`
+    - `app/api/statements/[clientId]/send-email/route.js` v1.2.0 — `as_of` dans le body (aperçu + envoi); date reprise dans l'en-tête PDF, le nom du fichier, l'objet et le corps du courriel
+    - `components/invoices/ClientStatementView.js` v1.3.0 — barre « Date du relevé » (champ date 44px + raccourcis « Fin du mois dernier » / « Aujourd'hui »), rechargement auto, bandeau d'avertissement hors date du jour, rappel de la date dans la fenêtre d'envoi
+    - Défaut inchangé: date du jour (fuseau Québec). Aucune migration SQL requise
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

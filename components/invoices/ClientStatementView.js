@@ -6,10 +6,14 @@
  *                plusieurs factures, avec escompte 2% optionnel par facture
  *              - Historique des paiements appliqués (suppression possible)
  *              - Aperçu PDF + envoi du relevé par courriel (destinataires du dossier client)
+ *              - Date du relevé sélectionnable (ex. 31 juillet): l'écran, l'aperçu PDF et
+ *                le courriel montrent alors le compte tel qu'il était à cette date
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.2.0
+ * @version 1.3.0
  * @date 2026-08-20
  * @changelog
+ *   1.3.0 - Sélecteur « Date du relevé » (+ raccourcis Aujourd'hui / Fin du mois dernier),
+ *           transmis à l'aperçu PDF et à l'envoi courriel (as_of)
  *   1.2.0 - Mode de paiement Interac ajouté (liste partagée lib/constants/paymentMethods)
  *           + pastilles sous le nom du client (mode de paiement habituel, conditions de
  *           paiement) et pré-sélection du mode habituel à la saisie d'un paiement
@@ -24,7 +28,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, RefreshCw, AlertCircle, CheckCircle, Trash2, Send, Eye,
-  DollarSign, Clock, Mail, Plus, CreditCard,
+  DollarSign, Clock, Mail, Plus, CreditCard, Calendar,
 } from 'lucide-react';
 import { PAYMENT_METHODS, paymentMethodLabel } from '../../lib/constants/paymentMethods';
 
@@ -38,7 +42,21 @@ const BUCKET_LABELS = {
   d90_plus: '90+ jours',
 };
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+// Date du jour au fuseau Québec (évite le décalage UTC en soirée)
+const todayStr = () =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+
+// Dernier jour du mois précédent (raccourci « fin du mois dernier »)
+const endOfLastMonthStr = () => {
+  const [y, m] = todayStr().split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1, 0)); // jour 0 du mois courant = dernier jour du mois précédent
+  return d.toISOString().split('T')[0];
+};
 
 const fmtCurrency = (amount) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(amount || 0);
@@ -65,6 +83,10 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Date du relevé (« au »): par défaut aujourd'hui, modifiable (ex. 31 juillet)
+  const [asOf, setAsOf] = useState(todayStr());
+  const isPastStatement = asOf !== todayStr();
+
   useEffect(() => { setMounted(true); }, []);
 
   // Paiement en cours de saisie (partagé entre les factures cochées)
@@ -86,7 +108,7 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/statements/${clientId}`);
+      const res = await fetch(`/api/statements/${clientId}?as_of=${asOf}`);
       const json = await res.json();
       if (json.success) {
         setData(json.data);
@@ -107,7 +129,7 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, asOf]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -234,7 +256,7 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       const res = await fetch(`/api/statements/${clientId}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ print_only: true }),
+        body: JSON.stringify({ print_only: true, as_of: asOf }),
       });
       const json = await res.json();
       if (json.success) {
@@ -263,7 +285,7 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       const res = await fetch(`/api/statements/${clientId}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails }),
+        body: JSON.stringify({ emails, as_of: asOf }),
       });
       const json = await res.json();
       if (json.success) {
@@ -350,6 +372,57 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
           </button>
         </div>
 
+        {/* Date du relevé (« au ») */}
+        <div className="px-4 sm:px-6 py-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              htmlFor="statement-as-of"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 inline-flex items-center gap-1.5"
+            >
+              <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              Date du relevé
+            </label>
+            <input
+              id="statement-as-of"
+              type="date"
+              value={asOf}
+              max={todayStr()}
+              onChange={(e) => { if (e.target.value) setAsOf(e.target.value); }}
+              disabled={busy}
+              className="min-h-[44px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 disabled:opacity-50"
+            />
+            <button
+              type="button"
+              onClick={() => setAsOf(endOfLastMonthStr())}
+              disabled={busy}
+              className="min-h-[44px] px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              title="Dernier jour du mois précédent"
+            >
+              Fin du mois dernier
+            </button>
+            {isPastStatement && (
+              <button
+                type="button"
+                onClick={() => setAsOf(todayStr())}
+                disabled={busy}
+                className="min-h-[44px] px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                Aujourd&apos;hui
+              </button>
+            )}
+          </div>
+          {isPastStatement && (
+            <p className="mt-2 text-xs sm:text-sm text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
+              <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>
+                Relevé au <strong>{fmtDate(asOf)}</strong> : les factures émises après cette date et les
+                paiements reçus après cette date sont exclus. L&apos;aperçu PDF et le courriel utilisent
+                cette même date.
+              </span>
+            </p>
+          )}
+        </div>
+
         {/* Messages */}
         <div className="px-4 sm:px-6">
           {success && (
@@ -374,8 +447,14 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
           ) : !data || data.invoices.length === 0 ? (
             <div className="p-8 text-center">
               <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-3" />
-              <p className="text-gray-700 dark:text-gray-300 text-lg">Aucune facture impayée</p>
-              <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">Le compte de ce client est à jour.</p>
+              <p className="text-gray-700 dark:text-gray-300 text-lg">
+                Aucune facture impayée{isPastStatement ? ` au ${fmtDate(asOf)}` : ''}
+              </p>
+              <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">
+                {isPastStatement
+                  ? 'Aucun solde dû à cette date. Changez la date du relevé pour voir une autre période.'
+                  : 'Le compte de ce client est à jour.'}
+              </p>
             </div>
           ) : (
             <>
@@ -632,6 +711,13 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
               <button onClick={() => setShowSend(false)} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">
                 <X className="w-5 h-5" />
               </button>
+            </div>
+            <div className="mb-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-3 py-2 text-sm text-indigo-800 dark:text-indigo-300 flex items-center gap-2">
+              <Calendar className="w-4 h-4 flex-shrink-0" />
+              <span>
+                Relevé au <strong>{fmtDate(asOf)}</strong> · {data?.totals?.open_count || 0} facture(s) ·{' '}
+                {fmtCurrency(totals.total_with_interest)}
+              </span>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Choisissez les destinataires:</p>
             <div className="space-y-2 mb-3">
