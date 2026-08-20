@@ -494,6 +494,7 @@ contact_name_2, email_2, contact_2,
 contact_name_admin, email_admin, contact_admin,
 hourly_rate_regular, transport_fee, email_billing, payment_terms,
 preferred_payment_method,   -- mode habituel: cheque | virement | interac | comptant (NULL = non spécifié)
+additional_emails,          -- JSONB [{email, label}]: adresses supplémentaires (ex. 2e admin)
 signatory_1..signatory_5
 ```
 
@@ -865,6 +866,14 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/statements/[clientId]/send-email/route.js` v1.3.0 — `include_interest` (défaut true) dans le body
     - Standard respecté: relevé « open item » **à une date** — une facture de juin impayée figure bien sur un relevé au 31 juillet (tranche 31-60 j), intérêts arrêtés à la date du relevé; vieillissement basé sur la date d'échéance
     - Défaut inchangé: date du jour (fuseau Québec). Aucune migration SQL requise
+
+28. ~~**Destinataires de l'état de compte + adresses courriel supplémentaires**~~ - ✅ COMPLÉTÉ (2026-08-20)
+    - `supabase/migrations/20260820b_add_client_additional_emails.sql` (nouveau) — `clients.additional_emails` JSONB `[{email, label}]`, nombre illimité (couvre « plus d'une adresse d'administration »)
+    - `app/api/statements/[clientId]/send-email/route.js` v1.4.0 — `save_to_client` (défaut true): après envoi réussi, une adresse absente du dossier est écrite dans `email_admin` s'il est vide, sinon ajoutée à `additional_emails`; insensible à la casse, best-effort (n'annule jamais l'envoi), retourne `saved_emails`
+    - `components/invoices/ClientStatementView.js` v1.5.0 — fenêtre d'envoi: cases à cocher (nom + rôle: Facturation/Principal/#2/#3/Administration/Supplémentaire), ajout de **plusieurs** adresses à la volée (pastilles retirables), case « Ajouter au dossier client », encadré « Envoi à (n) » + copie au bureau
+    - `components/ClientModal.js` v2.3.0 — section « Courriels supplémentaires » (adresse + libellé, ajout/retrait)
+    - `lib/services/statement-data.js` v1.1.0 — retourne `additional_emails`
+    - **Reste:** exécuter la migration SQL `20260820b_add_client_additional_emails.sql` dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

@@ -1805,4 +1805,43 @@ Aucune migration SQL requise.
 
 ---
 
+### Destinataires de l'état de compte + adresses supplémentaires au dossier ✅ COMPLETE (2026-08-20)
+
+**Demande utilisateur (Martin):** voir clairement à qui part l'état de compte, pouvoir cocher les
+courriels du dossier client **et/ou** en ajouter un qui n'y est pas, et que cette nouvelle adresse
+soit **mémorisée au dossier** — dans un champ vide, ou comme adresse d'administration, avec la
+possibilité d'en avoir **plus d'une**.
+
+**Implémentation (2026-08-20):**
+
+- `supabase/migrations/20260820b_add_client_additional_emails.sql` (nouveau) — colonne
+  `clients.additional_emails` (JSONB, défaut `[]`), format `[{email, label}]`. Nombre d'adresses
+  illimité, sans multiplier les colonnes. `clients` figure déjà dans le backup quotidien: aucune
+  modification requise de `app/api/cron/backup/route.ts` (ajout de colonne, pas de table).
+- `lib/services/statement-data.js` v1.1.0 — retourne `additional_emails`.
+- `app/api/statements/[clientId]/send-email/route.js` v1.4.0 — `save_to_client` (défaut true):
+  après un **envoi réussi**, toute adresse utilisée absente du dossier est enregistrée —
+  `email_admin` s'il est vide (première adresse), sinon ajout à `additional_emails` avec le libellé
+  « Administration ». Comparaison insensible à la casse, dédoublonnage dans le même envoi,
+  best-effort (un échec d'écriture n'annule jamais l'envoi). La réponse renvoie `saved_emails`.
+- `components/invoices/ClientStatementView.js` v1.5.0 — fenêtre d'envoi refaite:
+  - liste à cocher des courriels du dossier avec **nom du contact + rôle** (Facturation, Principal,
+    Contact #2/#3, Administration, Supplémentaire), adresses supplémentaires incluses;
+  - ajout de **plusieurs** adresses à la volée (champ + bouton Ajouter, touche Entrée, pastilles
+    retirables) au lieu d'une seule;
+  - case **« Ajouter cette adresse au dossier client »** (cochée par défaut), qui annonce où
+    l'adresse ira (champ Administration vide, sinon adresse supplémentaire);
+  - encadré récapitulatif **« Envoi à (n) »** listant les destinataires définitifs + « copie au
+    bureau », et bouton Envoyer désactivé s'il n'y a personne;
+  - une adresse tapée mais pas encore « ajoutée » est quand même incluse à l'envoi (rien ne se perd);
+  - rechargement automatique du dossier après un envoi qui a enrichi le client.
+- `components/ClientModal.js` v2.3.0 — section **« Courriels supplémentaires »**: liste
+  adresse + libellé, ajout/retrait, pour corriger une faute de frappe ou gérer plusieurs adresses
+  d'administration à la main.
+
+**Reste:** exécuter la migration SQL `20260820b_add_client_additional_emails.sql` dans Supabase
+Dashboard (sinon l'ajout automatique d'adresse échoue: colonne manquante).
+
+---
+
 *Document genere le 2026-02-05, mis a jour le 2026-08-20 par Claude AI*

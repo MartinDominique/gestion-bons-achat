@@ -5,15 +5,21 @@
  *              - Saisie d'un paiement (chèque/virement/comptant) couvrant une ou
  *                plusieurs factures, avec escompte 2% optionnel par facture
  *              - Historique des paiements appliqués (suppression possible)
- *              - Aperçu PDF + envoi du relevé par courriel (destinataires du dossier client)
+ *              - Envoi par courriel: destinataires du dossier client à cocher (nom + rôle),
+ *                ajout d'adresses hors dossier, récapitulatif « Envoi à », et mémorisation
+ *                automatique des nouvelles adresses au dossier client
  *              - Date du relevé sélectionnable (ex. 31 juillet): l'écran, l'aperçu PDF et
  *                le courriel montrent alors le compte tel qu'il était à cette date
  *              - Case « Facturer les intérêts de retard »: décochée = relevé sans intérêts
  *                (geste commercial pour un bon client en léger retard)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.4.0
+ * @version 1.5.0
  * @date 2026-08-20
  * @changelog
+ *   1.5.0 - Fenêtre d'envoi refaite: rôle affiché par adresse (Facturation/Principal/#2/#3/
+ *           Administration/Supplémentaire), ajout de plusieurs adresses hors dossier
+ *           (pastilles retirables), case « Ajouter au dossier client » (save_to_client),
+ *           récapitulatif « Envoi à (n) » + copie au bureau
  *   1.4.0 - Case à cocher « Facturer les intérêts de retard » (décochée = aucun intérêt sur
  *           l'écran, l'aperçu PDF et le courriel); remise à cochée à chaque rechargement
  *   1.3.0 - Sélecteur « Date du relevé » (+ raccourcis Aujourd'hui / Fin du mois dernier),
@@ -110,6 +116,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
   const [showSend, setShowSend] = useState(false);
   const [selectedEmails, setSelectedEmails] = useState([]);
   const [customEmail, setCustomEmail] = useState('');
+  // Adresses ajoutées à la volée (hors dossier client) + mémorisation au dossier
+  const [extraEmails, setExtraEmails] = useState([]);
+  const [saveToClient, setSaveToClient] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -282,8 +291,16 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
   };
 
   const sendStatement = async () => {
-    const emails = [...selectedEmails];
-    if (customEmail.trim()) emails.push(customEmail.trim());
+    // Inclure une adresse tapée mais pas encore ajoutée (évite de la perdre)
+    const pending = customEmail.trim();
+    const emails = [...selectedEmails, ...extraEmails];
+    if (pending && !emails.some(e => e.toLowerCase() === pending.toLowerCase())) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pending)) {
+        setError('Adresse courriel invalide');
+        return;
+      }
+      emails.push(pending);
+    }
     if (emails.length === 0) {
       setError('Sélectionnez au moins un destinataire');
       return;
@@ -294,12 +311,21 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       const res = await fetch(`/api/statements/${clientId}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails, as_of: asOf, include_interest: chargeInterest }),
+        body: JSON.stringify({
+          emails,
+          as_of: asOf,
+          include_interest: chargeInterest,
+          save_to_client: saveToClient,
+        }),
       });
       const json = await res.json();
       if (json.success) {
         setSuccess(json.message || 'État de compte envoyé');
         setShowSend(false);
+        setCustomEmail('');
+        setExtraEmails([]);
+        // Le dossier client vient d'être enrichi: recharger pour proposer les nouvelles adresses
+        if (json.saved_emails?.length > 0) load();
       } else {
         setError(json.error || 'Erreur envoi');
       }
@@ -310,33 +336,79 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
     }
   };
 
-  // Destinataires disponibles (courriels du dossier client)
+  // Destinataires disponibles (courriels du dossier client, incl. adresses supplémentaires)
   const availableEmails = (() => {
     const c = data?.client;
     if (!c) return [];
     const items = [
-      { email: c.email_billing, label: 'Facturation' },
-      { email: c.email, label: c.contact_name || 'Principal' },
-      { email: c.email_2, label: c.contact_name_2 || 'Contact 2' },
-      { email: c.email_3, label: c.contact_name_3 || 'Contact 3' },
-      { email: c.email_admin, label: c.contact_name_admin || 'Administration' },
+      { email: c.email_billing, label: 'Facturation', role: 'Facturation' },
+      { email: c.email, label: c.contact_name || 'Contact principal', role: 'Principal' },
+      { email: c.email_2, label: c.contact_name_2 || 'Contact #2', role: 'Contact #2' },
+      { email: c.email_3, label: c.contact_name_3 || 'Contact #3', role: 'Contact #3' },
+      { email: c.email_admin, label: c.contact_name_admin || 'Administration', role: 'Administration' },
+      ...(Array.isArray(c.additional_emails) ? c.additional_emails : []).map(a => ({
+        email: a?.email,
+        label: a?.label || 'Administration',
+        role: 'Supplémentaire',
+      })),
     ].filter(x => x.email);
-    // Dédoublonner par adresse
+    // Dédoublonner par adresse (insensible à la casse)
     const seen = new Set();
-    return items.filter(x => (seen.has(x.email) ? false : seen.add(x.email)));
+    return items.filter(x => {
+      const k = x.email.trim().toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
   })();
 
   const openSend = () => {
     // Pré-cocher l'email de facturation (ou le premier disponible)
-    const def = availableEmails.find(e => e.label === 'Facturation') || availableEmails[0];
+    const def = availableEmails.find(e => e.role === 'Facturation') || availableEmails[0];
     setSelectedEmails(def ? [def.email] : []);
     setCustomEmail('');
+    setExtraEmails([]);
+    setSaveToClient(true);
     setShowSend(true);
   };
 
   const toggleEmail = (email) => {
     setSelectedEmails(prev => prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]);
   };
+
+  // Adresses hors dossier client ajoutées à la volée
+  const knownEmail = (email) => {
+    const k = email.trim().toLowerCase();
+    return availableEmails.some(e => e.email.trim().toLowerCase() === k)
+      || extraEmails.some(e => e.toLowerCase() === k);
+  };
+
+  const addExtraEmail = () => {
+    const value = customEmail.trim();
+    if (!value) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setError('Adresse courriel invalide');
+      return;
+    }
+    if (knownEmail(value)) {
+      setError('Cette adresse est déjà dans la liste');
+      return;
+    }
+    setExtraEmails(prev => [...prev, value]);
+    setCustomEmail('');
+    setError(null);
+  };
+
+  const removeExtraEmail = (email) => {
+    setExtraEmails(prev => prev.filter(e => e !== email));
+  };
+
+  // Liste définitive des destinataires (dossier coché + ajouts)
+  const finalRecipients = [...selectedEmails, ...extraEmails];
+  // Adresses qui seront mémorisées au dossier client
+  const newForClient = extraEmails.filter(e => !availableEmails.some(
+    a => a.email.trim().toLowerCase() === e.toLowerCase()
+  ));
 
   const rawTotals = data?.totals || { balance: 0, interest: 0, total_with_interest: 0, open_count: 0 };
   // Intérêts non facturés: le total à payer se limite au solde des factures
@@ -778,37 +850,112 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                 )}
               </span>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Choisissez les destinataires:</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Courriels au dossier client:</p>
             <div className="space-y-2 mb-3">
               {availableEmails.length === 0 && (
-                <p className="text-sm text-amber-600 dark:text-amber-400">Aucun courriel au dossier client. Saisissez une adresse ci-dessous.</p>
+                <p className="text-sm text-amber-600 dark:text-amber-400">Aucun courriel au dossier client. Ajoutez une adresse ci-dessous.</p>
               )}
               {availableEmails.map(e => (
-                <label key={e.email} className="flex items-center gap-3 p-2 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+                <label key={e.email} className="flex items-center gap-3 p-2 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 min-h-[44px]">
                   <input
                     type="checkbox"
                     checked={selectedEmails.includes(e.email)}
                     onChange={() => toggleEmail(e.email)}
-                    className="w-5 h-5 rounded accent-indigo-600"
+                    className="w-5 h-5 rounded accent-indigo-600 flex-shrink-0"
                   />
-                  <span className="min-w-0">
+                  <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{e.email}</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">{e.label}</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {e.label}{e.label !== e.role ? ` · ${e.role}` : ''}
+                    </span>
                   </span>
                 </label>
               ))}
             </div>
-            <div className="mb-4">
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Autre adresse (optionnel)</label>
-              <input
-                type="email"
-                value={customEmail}
-                onChange={(e) => setCustomEmail(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                placeholder="courriel@exemple.com"
-                autoCorrect="off" autoCapitalize="off" spellCheck={false}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
-              />
+
+            {/* Adresses ajoutées à la volée */}
+            <div className="mb-3">
+              <label htmlFor="statement-extra-email" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                Ajouter une autre adresse (hors dossier)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="statement-extra-email"
+                  type="email"
+                  value={customEmail}
+                  onChange={(e) => setCustomEmail(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExtraEmail(); } }}
+                  placeholder="courriel@exemple.com"
+                  inputMode="email"
+                  autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                  className="flex-1 min-h-[44px] px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={addExtraEmail}
+                  disabled={!customEmail.trim()}
+                  className="min-h-[44px] px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 inline-flex items-center gap-1 disabled:opacity-50"
+                >
+                  <Plus className="w-4 h-4" /> Ajouter
+                </button>
+              </div>
+              {extraEmails.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {extraEmails.map(e => (
+                    <span key={e} className="inline-flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 text-xs px-2 py-1 rounded-full">
+                      {e}
+                      <button
+                        type="button"
+                        onClick={() => removeExtraEmail(e)}
+                        className="p-0.5 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-800"
+                        title="Retirer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Mémoriser au dossier client */}
+            {newForClient.length > 0 && (
+              <label className="flex items-start gap-2.5 mb-3 cursor-pointer select-none min-h-[44px] py-1">
+                <input
+                  type="checkbox"
+                  checked={saveToClient}
+                  onChange={(e) => setSaveToClient(e.target.checked)}
+                  className="w-5 h-5 mt-0.5 rounded accent-emerald-600 flex-shrink-0"
+                />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Ajouter {newForClient.length > 1 ? 'ces adresses' : 'cette adresse'} au dossier client
+                  <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {data?.client?.email_admin
+                      ? 'Sera enregistrée comme adresse d\u2019administration supplémentaire.'
+                      : 'Le champ Administration du dossier est vide: l\u2019adresse ira là.'}
+                  </span>
+                </span>
+              </label>
+            )}
+
+            {/* Récapitulatif: à qui ça part */}
+            <div className="mb-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-3 py-2">
+              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                Envoi à ({finalRecipients.length})
+              </div>
+              {finalRecipients.length === 0 ? (
+                <p className="text-sm text-amber-600 dark:text-amber-400">Aucun destinataire sélectionné</p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {finalRecipients.map(e => (
+                    <li key={e} className="text-sm text-gray-900 dark:text-gray-100 truncate flex items-center gap-1.5">
+                      <Mail className="w-3 h-3 flex-shrink-0 text-gray-400" /> {e}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">+ copie au bureau</p>
             </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setShowSend(false)} className="min-h-[44px] px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">
@@ -816,7 +963,7 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
               </button>
               <button
                 onClick={sendStatement}
-                disabled={busy}
+                disabled={busy || (finalRecipients.length === 0 && !customEmail.trim())}
                 className="min-h-[44px] px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center gap-2 disabled:opacity-50"
               >
                 {busy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
