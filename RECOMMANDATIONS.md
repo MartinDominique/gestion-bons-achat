@@ -1720,4 +1720,37 @@ Aucune migration SQL requise. Les factures déjà créées gardent leur libellé
 
 ---
 
+## Mode de paiement habituel du client + mode Interac ✅ COMPLETE (2026-08-20)
+
+**Demande (Martin):** ajouter un champ « Mode de paiement habituel » (Chèque / Virement bancaire /
+Interac / Comptant) dans le gestionnaire des clients, ajouter le mode **Interac** aux modes de
+paiement de Facturation → État de compte, et afficher le mode habituel du client dans la page
+État de compte (en description du client).
+
+**Implementation completee (2026-08-20):**
+- `supabase/migrations/20260820_add_client_payment_method.sql` (nouveau) — colonne
+  `clients.preferred_payment_method` (CHECK: cheque/virement/interac/comptant, NULL permis) +
+  contrainte `invoice_payments.method` élargie au mode `interac`.
+- `lib/constants/paymentMethods.js` (nouveau) — liste canonique partagée `PAYMENT_METHODS`
+  (Chèque, Virement bancaire, Interac, Comptant, Autre), `CLIENT_PAYMENT_METHODS` (sans « Autre »,
+  pour la fiche client), `PAYMENT_METHOD_VALUES` (validation API) et `paymentMethodLabel()`.
+- `components/ClientModal.js` v2.2.0 — sélecteur « Mode de paiement habituel » dans la section
+  Tarification (valeur vide = « Non spécifié »).
+- `components/invoices/ClientStatementView.js` v1.2.0 — mode **Interac** dans le sélecteur de
+  méthode; pastilles « Paiement habituel: … » + conditions de paiement sous le nom du client
+  (en-tête de l'état de compte); le mode habituel est **pré-sélectionné** à la saisie d'un paiement
+  et conservé après l'enregistrement; rappel « Habituel: … » sous le sélecteur.
+- `app/api/statements/[clientId]/route.js` v1.1.0 — retourne `preferred_payment_method`.
+- `app/api/invoice-payments/route.js` v1.1.0 — validation du mode via `PAYMENT_METHOD_VALUES`.
+- `lib/services/report-data.js` v1.2.0 — `by_method` inclut `interac`.
+- `lib/services/report-pdf.js` v1.2.0 — `METHOD_LABELS` inclut Interac (et « Virement bancaire »);
+  le sommaire par mode se construit à partir de `METHOD_LABELS` (plus de liste en dur).
+- `app/api/reports/payments/send-email/route.js` v1.1.0 — même sommaire (courriel au comptable).
+
+**Reste:** exécuter la migration SQL `20260820_add_client_payment_method.sql` dans Supabase
+Dashboard (sinon la sauvegarde d'un client échoue: colonne manquante, et un paiement Interac est
+rejeté par la contrainte).
+
+---
+
 *Document genere le 2026-02-05, mis a jour le 2026-08-20 par Claude AI*

@@ -4,14 +4,16 @@
  *              - GET: liste les paiements (filtre invoice_id ou client_id)
  *              - POST: enregistre un paiement (partiel/complet) + recalcule le statut
  *                de la facture (amount_paid, paid/partial/sent)
- * @version 1.0.0
- * @date 2026-06-14
+ * @version 1.1.0
+ * @date 2026-08-20
  * @changelog
+ *   1.1.0 - Modes de paiement validés via la liste partagée (ajout d'Interac)
  *   1.0.0 - Version initiale (module État de compte client)
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { PAYMENT_METHOD_VALUES } from '../../../lib/constants/paymentMethods';
 import { recomputeInvoiceStatus } from '../../../lib/services/invoice-payments';
 
 export const dynamic = 'force-dynamic';
@@ -84,7 +86,7 @@ export async function POST(request) {
       );
     }
 
-    if (!['cheque', 'virement', 'comptant', 'autre'].includes(method)) {
+    if (!PAYMENT_METHOD_VALUES.includes(method)) {
       return NextResponse.json(
         { success: false, error: 'Méthode de paiement invalide' },
         { status: 400 }

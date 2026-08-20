@@ -7,9 +7,12 @@
  *              - Historique des paiements appliqués (suppression possible)
  *              - Aperçu PDF + envoi du relevé par courriel (destinataires du dossier client)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.1.0
- * @date 2026-06-14
+ * @version 1.2.0
+ * @date 2026-08-20
  * @changelog
+ *   1.2.0 - Mode de paiement Interac ajouté (liste partagée lib/constants/paymentMethods)
+ *           + pastilles sous le nom du client (mode de paiement habituel, conditions de
+ *           paiement) et pré-sélection du mode habituel à la saisie d'un paiement
  *   1.1.0 - Rendu via portail (document.body) pour échapper au conteneur
  *           overflow-hidden + backdrop-blur de l'onglet (en-tête/boutons coupés)
  *   1.0.0 - Version initiale (module État de compte client)
@@ -21,15 +24,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, RefreshCw, AlertCircle, CheckCircle, Trash2, Send, Eye,
-  DollarSign, Clock, Mail, Plus,
+  DollarSign, Clock, Mail, Plus, CreditCard,
 } from 'lucide-react';
+import { PAYMENT_METHODS, paymentMethodLabel } from '../../lib/constants/paymentMethods';
 
-const METHODS = [
-  { value: 'cheque', label: 'Chèque' },
-  { value: 'virement', label: 'Virement' },
-  { value: 'comptant', label: 'Comptant' },
-  { value: 'autre', label: 'Autre' },
-];
+const METHODS = PAYMENT_METHODS;
 
 const BUCKET_LABELS = {
   current: 'Courant',
@@ -91,6 +90,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       const json = await res.json();
       if (json.success) {
         setData(json.data);
+        // Pré-sélectionner le mode de paiement habituel du client (fiche client)
+        const usual = json.data?.client?.preferred_payment_method;
+        if (usual) setPay(p => ({ ...p, method: usual }));
         // Réinitialiser les allocations
         const a = {};
         (json.data.invoices || []).forEach(inv => {
@@ -190,7 +192,12 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
         }
       }
       setSuccess('Paiement(s) enregistré(s)');
-      setPay({ payment_date: todayStr(), method: 'cheque', reference: '', notes: '' });
+      setPay({
+        payment_date: todayStr(),
+        method: data?.client?.preferred_payment_method || 'cheque',
+        reference: '',
+        notes: '',
+      });
       await load();
       onChanged?.();
     } catch (err) {
@@ -316,6 +323,22 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-white truncate">État de compte</h2>
               <p className="text-emerald-50 text-sm truncate">{data?.client?.name || '...'}</p>
+              {/* Description du client: mode de paiement habituel + conditions */}
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                <span className="inline-flex items-center gap-1 bg-white/20 text-white text-[11px] sm:text-xs px-2 py-0.5 rounded-full">
+                  <CreditCard className="w-3 h-3" />
+                  Paiement habituel:{' '}
+                  {data?.client?.preferred_payment_method
+                    ? paymentMethodLabel(data.client.preferred_payment_method)
+                    : 'non spécifié'}
+                </span>
+                {data?.client?.payment_terms && (
+                  <span className="inline-flex items-center gap-1 bg-white/20 text-white text-[11px] sm:text-xs px-2 py-0.5 rounded-full">
+                    <Clock className="w-3 h-3" />
+                    {data.client.payment_terms}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -417,6 +440,11 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                     >
                       {METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
+                    {data?.client?.preferred_payment_method && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Habituel: {paymentMethodLabel(data.client.preferred_payment_method)}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">N° chèque / virement</label>
