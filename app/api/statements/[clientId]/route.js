@@ -3,9 +3,10 @@
  * @description API état de compte détaillé d'un client
  *              - GET: client + factures ouvertes (solde > 0) avec paiements appliqués,
  *                jours de retard, intérêts, tranches de vieillissement (aging) et totaux.
- * @version 1.0.0
- * @date 2026-06-14
+ * @version 1.1.0
+ * @date 2026-08-20
  * @changelog
+ *   1.1.0 - Retourne le mode de paiement habituel du client (preferred_payment_method)
  *   1.0.0 - Version initiale (module État de compte client)
  */
 
@@ -29,7 +30,7 @@ export async function GET(request, { params }) {
     // Client + coordonnées + courriels
     const { data: client, error: clientErr } = await supabaseAdmin
       .from('clients')
-      .select('id, name, company, address, email, email_billing, email_admin, email_2, email_3, contact_name, contact_name_2, contact_name_3, contact_name_admin, phone, payment_terms')
+      .select('id, name, company, address, email, email_billing, email_admin, email_2, email_3, contact_name, contact_name_2, contact_name_3, contact_name_admin, phone, payment_terms, preferred_payment_method')
       .eq('id', parseInt(clientId))
       .single();
 

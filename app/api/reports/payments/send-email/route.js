@@ -3,9 +3,10 @@
  * @description Génère le rapport de paiements (PDF) et l'envoie au comptable (CC bureau).
  *              - print_only: retourne l'URL du PDF sans envoyer de courriel (aperçu)
  *              - Sinon envoie au courriel du comptable (Paramètres) ou à une liste fournie
- * @version 1.0.0
- * @date 2026-06-14
+ * @version 1.1.0
+ * @date 2026-08-20
  * @changelog
+ *   1.1.0 - Sommaire par mode basé sur METHOD_LABELS (inclut Interac)
  *   1.0.0 - Version initiale (rapports comptables ventes/paiements)
  */
 
@@ -79,7 +80,7 @@ export async function POST(request) {
 
     const t = data.totals;
     const bm = t.by_method || {};
-    const methodRows = ['cheque', 'virement', 'comptant', 'autre']
+    const methodRows = Object.keys(METHOD_LABELS)
       .filter(k => (bm[k] || 0) !== 0)
       .map(k => [METHOD_LABELS[k], `${(bm[k] || 0).toFixed(2)} $`]);
 

@@ -489,6 +489,8 @@ id, name, company, address, travel_minutes,
 contact_name, email, phone,
 contact_name_2, email_2, contact_2,
 contact_name_admin, email_admin, contact_admin,
+hourly_rate_regular, transport_fee, email_billing, payment_terms,
+preferred_payment_method,   -- mode habituel: cheque | virement | interac | comptant (NULL = non spécifié)
 signatory_1..signatory_5
 ```
 
@@ -842,6 +844,14 @@ CRON_SECRET                   # Auth pour cron jobs
     - `components/SupplierPurchaseForms.js` v1.5.0 — `LinkedPOSection`: sélecteur « Ou Client » (auto-rempli depuis le BA lié); retrait du champ « BA Acomba »
     - `components/SupplierPurchaseManager.js` v1.1.0 — colonne « Client » (desktop + mobile) au lieu de « BA Acomba »
     - Note: `ba_acomba` conservé en base (rétrocompat), retiré de l'UI. **Reste:** exécuter la migration SQL dans Supabase Dashboard
+
+26. ~~**Mode de paiement habituel du client + mode Interac**~~ - ✅ COMPLÉTÉ (2026-08-20)
+    - `supabase/migrations/20260820_add_client_payment_method.sql` (nouveau) — `clients.preferred_payment_method` (CHECK cheque/virement/interac/comptant) + `invoice_payments.method` élargi à `interac`
+    - `lib/constants/paymentMethods.js` (nouveau) — liste canonique des modes (Chèque, Virement bancaire, Interac, Comptant, Autre) + `paymentMethodLabel()`
+    - `components/ClientModal.js` v2.2.0 — sélecteur « Mode de paiement habituel » (section Tarification)
+    - `components/invoices/ClientStatementView.js` v1.2.0 — Interac dans le sélecteur de méthode; pastilles « Paiement habituel » + conditions sous le nom du client; mode habituel pré-sélectionné à la saisie
+    - `app/api/statements/[clientId]/route.js` v1.1.0, `app/api/invoice-payments/route.js` v1.1.0, `lib/services/report-data.js` v1.2.0, `lib/services/report-pdf.js` v1.2.0, `app/api/reports/payments/send-email/route.js` v1.1.0
+    - **Reste:** exécuter la migration SQL `20260820_add_client_payment_method.sql` dans Supabase Dashboard
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

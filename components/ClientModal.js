@@ -6,9 +6,11 @@
  *              - 5 signataires autorisés
  *              - Formatage automatique des numéros de téléphone
  *              - email_admin optionnel
- * @version 2.1.0
- * @date 2026-03-07
+ * @version 2.2.0
+ * @date 2026-08-20
  * @changelog
+ *   2.2.0 - Ajout du champ « Mode de paiement habituel » (Chèque / Virement bancaire /
+ *           Interac / Comptant) dans la section Tarification
  *   2.1.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   2.0.1 - Fix: ContactSection causait perte de focus (rendu fonction au lieu de composant)
  *   2.0.0 - Ajout Tarification + Contact #3 + email_admin optionnel (Phase A)
@@ -18,6 +20,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { X, User, Users, Building, PenTool, DollarSign } from 'lucide-react';
+import { CLIENT_PAYMENT_METHODS } from '../lib/constants/paymentMethods';
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: '', label: 'Non spécifié' },
+  ...CLIENT_PAYMENT_METHODS,
+];
 
 const PAYMENT_TERMS_OPTIONS = [
   { value: '', label: 'Par défaut (voir Paramètres)' },
@@ -51,6 +59,7 @@ const EMPTY_FORM = {
   transport_fee: '',
   email_billing: '',
   payment_terms: '',
+  preferred_payment_method: '',
   // Signataires
   signatory_1: '',
   signatory_2: '',
@@ -80,6 +89,7 @@ function clientToForm(client) {
     transport_fee: client.transport_fee ?? '',
     email_billing: client.email_billing || '',
     payment_terms: client.payment_terms || '',
+    preferred_payment_method: client.preferred_payment_method || '',
     signatory_1: client.signatory_1 || '',
     signatory_2: client.signatory_2 || '',
     signatory_3: client.signatory_3 || '',
@@ -171,6 +181,7 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
         transport_fee: form.transport_fee !== '' ? parseFloat(form.transport_fee) : null,
         email_billing: form.email_billing?.trim() || null,
         payment_terms: form.payment_terms || null,
+        preferred_payment_method: form.preferred_payment_method || null,
         // Signataires
         signatory_1: form.signatory_1?.trim() || '',
         signatory_2: form.signatory_2?.trim() || '',
@@ -504,6 +515,25 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Mode de paiement habituel */}
+                  <div>
+                    <label className="block text-sm font-medium text-emerald-800 dark:text-emerald-300 mb-1">
+                      Mode de paiement habituel
+                    </label>
+                    <select
+                      className={`${inputBase} border-emerald-300 dark:border-emerald-600 focus:border-emerald-500 focus:ring-emerald-200 dark:focus:ring-emerald-800`}
+                      value={form.preferred_payment_method}
+                      onChange={onChange('preferred_payment_method')}
+                    >
+                      {PAYMENT_METHOD_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                      Affiché à l&apos;état de compte (Facturation)
+                    </p>
                   </div>
                 </div>
               </div>
