@@ -8,10 +8,14 @@
  *              - Aperçu PDF + envoi du relevé par courriel (destinataires du dossier client)
  *              - Date du relevé sélectionnable (ex. 31 juillet): l'écran, l'aperçu PDF et
  *                le courriel montrent alors le compte tel qu'il était à cette date
+ *              - Case « Facturer les intérêts de retard »: décochée = relevé sans intérêts
+ *                (geste commercial pour un bon client en léger retard)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.3.0
+ * @version 1.4.0
  * @date 2026-08-20
  * @changelog
+ *   1.4.0 - Case à cocher « Facturer les intérêts de retard » (décochée = aucun intérêt sur
+ *           l'écran, l'aperçu PDF et le courriel); remise à cochée à chaque rechargement
  *   1.3.0 - Sélecteur « Date du relevé » (+ raccourcis Aujourd'hui / Fin du mois dernier),
  *           transmis à l'aperçu PDF et à l'envoi courriel (as_of)
  *   1.2.0 - Mode de paiement Interac ajouté (liste partagée lib/constants/paymentMethods)
@@ -87,6 +91,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
   const [asOf, setAsOf] = useState(todayStr());
   const isPastStatement = asOf !== todayStr();
 
+  // Intérêts de retard: facturés par défaut, décochable (bon client en léger retard)
+  const [chargeInterest, setChargeInterest] = useState(true);
+
   useEffect(() => { setMounted(true); }, []);
 
   // Paiement en cours de saisie (partagé entre les factures cochées)
@@ -112,6 +119,8 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       const json = await res.json();
       if (json.success) {
         setData(json.data);
+        // Repartir du comportement normal (intérêts facturés) à chaque rechargement
+        setChargeInterest(true);
         // Pré-sélectionner le mode de paiement habituel du client (fiche client)
         const usual = json.data?.client?.preferred_payment_method;
         if (usual) setPay(p => ({ ...p, method: usual }));
@@ -256,7 +265,7 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       const res = await fetch(`/api/statements/${clientId}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ print_only: true, as_of: asOf }),
+        body: JSON.stringify({ print_only: true, as_of: asOf, include_interest: chargeInterest }),
       });
       const json = await res.json();
       if (json.success) {
@@ -285,7 +294,7 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       const res = await fetch(`/api/statements/${clientId}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails, as_of: asOf }),
+        body: JSON.stringify({ emails, as_of: asOf, include_interest: chargeInterest }),
       });
       const json = await res.json();
       if (json.success) {
@@ -329,7 +338,12 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
     setSelectedEmails(prev => prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]);
   };
 
-  const totals = data?.totals || { balance: 0, interest: 0, total_with_interest: 0 };
+  const rawTotals = data?.totals || { balance: 0, interest: 0, total_with_interest: 0, open_count: 0 };
+  // Intérêts non facturés: le total à payer se limite au solde des factures
+  const totals = chargeInterest
+    ? rawTotals
+    : { ...rawTotals, interest: 0, total_with_interest: rawTotals.balance };
+  const waivedInterest = chargeInterest ? 0 : rawTotals.interest;
   const aging = data?.aging || {};
 
   if (!mounted) return null;
@@ -411,6 +425,31 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
               </button>
             )}
           </div>
+          {/* Intérêts de retard: facturés ou non (geste commercial) */}
+          {rawTotals.interest > 0 && (
+            <label className="mt-2 flex items-start gap-2.5 cursor-pointer select-none min-h-[44px] py-1">
+              <input
+                type="checkbox"
+                checked={chargeInterest}
+                onChange={(e) => setChargeInterest(e.target.checked)}
+                disabled={busy}
+                className="w-5 h-5 mt-0.5 rounded accent-emerald-600 flex-shrink-0"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Facturer les intérêts de retard
+                <span className="text-gray-500 dark:text-gray-400">
+                  {' '}({data?.interest_rate}%/an ={' '}
+                  {fmtCurrency(rawTotals.interest)})
+                </span>
+                {!chargeInterest && (
+                  <span className="block text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    Intérêts retirés: le relevé, l&apos;aperçu PDF et le courriel n&apos;en feront
+                    aucune mention. Total à payer: {fmtCurrency(rawTotals.balance)}.
+                  </span>
+                )}
+              </span>
+            </label>
+          )}
           {isPastStatement && (
             <p className="mt-2 text-xs sm:text-sm text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
               <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -466,7 +505,16 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
                   <div className="text-xs text-gray-500 dark:text-gray-400">Intérêts ({data.interest_rate}%/an)</div>
-                  <div className="text-lg font-bold text-amber-600 dark:text-amber-400">{fmtCurrency(totals.interest)}</div>
+                  <div className={`text-lg font-bold ${
+                    chargeInterest
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-gray-400 dark:text-gray-500 line-through'
+                  }`}>
+                    {fmtCurrency(chargeInterest ? totals.interest : waivedInterest)}
+                  </div>
+                  {!chargeInterest && (
+                    <div className="text-[10px] text-emerald-700 dark:text-emerald-400">non facturés</div>
+                  )}
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3">
                   <div className="text-xs text-emerald-700 dark:text-emerald-400">Total à payer</div>
@@ -595,7 +643,13 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                             <span>Total: {fmtCurrency(inv.total)}</span>
                             {inv.amount_paid > 0 && <span>Déjà payé: {fmtCurrency(inv.amount_paid)}</span>}
                             <span className="font-semibold text-gray-900 dark:text-gray-100">Solde: {fmtCurrency(inv.balance)}</span>
-                            {inv.interest > 0 && <span className="text-amber-600 dark:text-amber-400">Intérêt: {fmtCurrency(inv.interest)}</span>}
+                            {inv.interest > 0 && (
+                              <span className={chargeInterest
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-gray-400 dark:text-gray-500 line-through'}>
+                                Intérêt: {fmtCurrency(inv.interest)}
+                              </span>
+                            )}
                           </div>
 
                           {/* Paiements déjà appliqués */}
@@ -717,6 +771,11 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
               <span>
                 Relevé au <strong>{fmtDate(asOf)}</strong> · {data?.totals?.open_count || 0} facture(s) ·{' '}
                 {fmtCurrency(totals.total_with_interest)}
+                {!chargeInterest && rawTotals.interest > 0 && (
+                  <span className="block text-xs mt-0.5">
+                    Sans intérêts de retard ({fmtCurrency(rawTotals.interest)} non facturés)
+                  </span>
+                )}
               </span>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Choisissez les destinataires:</p>

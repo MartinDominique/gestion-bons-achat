@@ -8,9 +8,13 @@
  *              - Sinon envoie via Resend aux adresses sélectionnées (cascade email_billing)
  *              - Body as_of (YYYY-MM-DD): relevé à une date passée (ex. fin juillet);
  *                exclut les factures émises après cette date et les paiements postérieurs
- * @version 1.2.0
+ *              - Body include_interest (défaut true): à false, aucun intérêt de retard n'est
+ *                facturé ni mentionné (PDF + courriel) — geste commercial pour un bon client
+ * @version 1.3.0
  * @date 2026-08-20
  * @changelog
+ *   1.3.0 - Intérêts de retard optionnels (include_interest): total = solde des factures,
+ *           ni ligne d'intérêts ni avis de taux dans le PDF, ni mention dans le courriel
  *   1.2.0 - Date du relevé (as_of): aperçu et courriel générés à la date choisie à l'écran
  *           (construction du relevé partagée via lib/services/statement-data.js)
  *   1.1.0 - Message de confirmation explicite incluant la copie au bureau (CC COMPANY_EMAIL)
@@ -52,6 +56,8 @@ function formatDateFr(dateStr) {
  */
 function generateStatementPDF(statement) {
   const { client, invoices: lines, aging, totals, interestRate, statementDate, settings } = statement;
+  // Intérêts facturés? (case décochée à l'écran => relevé totalement muet sur les intérêts)
+  const chargeInterest = statement.chargeInterest !== false;
   const doc = new jsPDF({ format: 'letter', unit: 'mm' });
 
   let y = pdfCommon.drawHeader(doc, LOGO_BASE64, {
@@ -202,7 +208,7 @@ function generateStatementPDF(statement) {
   doc.text(pdfCommon.formatCurrency(totals.balance), rightX, y, { align: 'right' });
   y += 6;
 
-  if (totals.interest > 0) {
+  if (chargeInterest && totals.interest > 0) {
     doc.text(`Intérêts de retard (${interestRate}%/an):`, labelX, y);
     doc.text(pdfCommon.formatCurrency(totals.interest), rightX, y, { align: 'right' });
     y += 6;
@@ -215,14 +221,17 @@ function generateStatementPDF(statement) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.text('TOTAL À PAYER:', labelX, y);
-  doc.text(pdfCommon.formatCurrency(totals.total_with_interest), rightX, y, { align: 'right' });
+  doc.text(
+    pdfCommon.formatCurrency(chargeInterest ? totals.total_with_interest : totals.balance),
+    rightX, y, { align: 'right' }
+  );
   y += 12;
 
   // ---- NOTE DE PIED ----
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(pdfCommon.FONT.body);
 
-  if (totals.interest > 0 || interestRate > 0) {
+  if (chargeInterest && (totals.interest > 0 || interestRate > 0)) {
     y = pdfCommon.checkPageBreak(doc, y, 12);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
@@ -253,13 +262,15 @@ function generateStatementPDF(statement) {
 
 /**
  * POST /api/statements/[clientId]/send-email
- * Body: { emails?: string[], print_only?: boolean, as_of?: 'YYYY-MM-DD' }
+ * Body: { emails?: string[], print_only?: boolean, as_of?: 'YYYY-MM-DD', include_interest?: boolean }
  */
 export async function POST(request, { params }) {
   try {
     const { clientId } = params;
     const body = await request.json();
-    const { emails: customEmails, print_only, as_of } = body;
+    const { emails: customEmails, print_only, as_of, include_interest } = body;
+    // Intérêts facturés par défaut; false = geste commercial (aucune mention nulle part)
+    const chargeInterest = include_interest !== false;
 
     const statement = await buildStatement(supabaseAdmin, clientId, { asOf: as_of });
     if (!statement) {
@@ -296,6 +307,8 @@ export async function POST(request, { params }) {
       }
     }
 
+    statement.chargeInterest = chargeInterest;
+
     // Générer le PDF
     const pdfBuffer = generateStatementPDF(statement);
     const pdfBufferNode = Buffer.from(pdfBuffer);
@@ -305,7 +318,10 @@ export async function POST(request, { params }) {
     try {
       const [year, month] = statement.statementDate.split('-');
       const safeName = (statement.client.name || `client-${clientId}`).replace(/[^a-zA-Z0-9-_]/g, '_').substring(0, 40);
-      const storagePath = `statements/${year}/${month}/etat-compte-${safeName}-${statement.statementDate}.pdf`;
+      // Suffixe distinct quand les intérêts sont retirés: évite qu'un aperçu précédent
+      // (même chemin, donc même URL signée) reste affiché depuis le cache du navigateur.
+      const variant = chargeInterest ? '' : '-sans-interets';
+      const storagePath = `statements/${year}/${month}/etat-compte-${safeName}-${statement.statementDate}${variant}.pdf`;
 
       const { error: uploadError } = await supabaseAdmin
         .storage.from('invoices')
@@ -339,7 +355,7 @@ export async function POST(request, { params }) {
             <p>Veuillez trouver ci-joint votre état de compte au <strong>${formatDateFr(statement.statementDate)}</strong>.</p>
             <p>Nombre de factures impayées: <strong>${statement.invoices.length}</strong><br>
                Solde dû: <strong>${Number(t.balance).toFixed(2)} $</strong>${
-                 t.interest > 0
+                 chargeInterest && t.interest > 0
                    ? `<br>Intérêts de retard: <strong>${Number(t.interest).toFixed(2)} $</strong><br>Total à payer: <strong>${Number(t.total_with_interest).toFixed(2)} $</strong>`
                    : ''
                }</p>
@@ -389,7 +405,9 @@ export async function POST(request, { params }) {
     if (print_only) {
       return NextResponse.json({
         success: true,
-        message: `État de compte prêt pour ${statement.client.name} (au ${formatDateFr(statement.statementDate)})`,
+        message: `État de compte prêt pour ${statement.client.name} (au ${formatDateFr(statement.statementDate)})${
+        !chargeInterest && statement.totals.interest > 0 ? ' — sans intérêts de retard' : ''
+      }`,
         pdf_url: pdfUrl,
         print_only: true,
       });
@@ -398,7 +416,9 @@ export async function POST(request, { params }) {
     const ccNote = process.env.COMPANY_EMAIL ? ` (copie au bureau: ${process.env.COMPANY_EMAIL})` : '';
     return NextResponse.json({
       success: true,
-      message: `État de compte au ${formatDateFr(statement.statementDate)} envoyé à ${emailAddresses.join(', ')}${ccNote}`,
+      message: `État de compte au ${formatDateFr(statement.statementDate)}${
+        !chargeInterest && statement.totals.interest > 0 ? ' (sans intérêts de retard)' : ''
+      } envoyé à ${emailAddresses.join(', ')}${ccNote}`,
       sentTo: emailAddresses,
       cc: process.env.COMPANY_EMAIL || null,
       pdf_url: pdfUrl,

@@ -861,6 +861,9 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/statements/[clientId]/route.js` v1.2.0 — `?as_of=YYYY-MM-DD` + `statement_date`/`is_today`
     - `app/api/statements/[clientId]/send-email/route.js` v1.2.0 — `as_of` dans le body (aperçu + envoi); date reprise dans l'en-tête PDF, le nom du fichier, l'objet et le corps du courriel
     - `components/invoices/ClientStatementView.js` v1.3.0 — barre « Date du relevé » (champ date 44px + raccourcis « Fin du mois dernier » / « Aujourd'hui »), rechargement auto, bandeau d'avertissement hors date du jour, rappel de la date dans la fenêtre d'envoi
+    - Case **« Facturer les intérêts de retard »** (cochée par défaut, visible s'il y a des intérêts): décochée = relevé muet sur les intérêts (aucune ligne, aucun avis de taux en pied de PDF, total = solde, aucune mention au courriel); se remet à cochée à chaque rechargement; PDF stocké sous `…-sans-interets.pdf` (évite le cache navigateur de l'aperçu précédent)
+    - `app/api/statements/[clientId]/send-email/route.js` v1.3.0 — `include_interest` (défaut true) dans le body
+    - Standard respecté: relevé « open item » **à une date** — une facture de juin impayée figure bien sur un relevé au 31 juillet (tranche 31-60 j), intérêts arrêtés à la date du relevé; vieillissement basé sur la date d'échéance
     - Défaut inchangé: date du jour (fuseau Québec). Aucune migration SQL requise
 
 ### À faire (priorité utilisateur)

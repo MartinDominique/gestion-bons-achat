@@ -1786,6 +1786,21 @@ aussi. Besoin: choisir la date (ex. 31 juillet), voir l'aperçu et **envoyer** l
 **Comportement par défaut inchangé:** à l'ouverture, la date est celle du jour (fuseau Québec) — le
 relevé courant fonctionne exactement comme avant.
 
+**Validation du choix (recherche, 2026-08-20):** le standard est le relevé « open item » **à une
+date**, pas « du mois X »: toutes les factures encore impayées à cette date y figurent, peu importe
+leur mois d'émission (une facture de juin impayée apparaît donc sur un relevé au 31 juillet, dans la
+tranche 31-60 jours), et les intérêts s'arrêtent **à la date du relevé** (pas à aujourd'hui). C'est
+le comportement implémenté. Le vieillissement est calculé à partir de la **date d'échéance**
+(« Courant » = pas encore échue).
+
+**Intérêts de retard optionnels (2026-08-20):** case à cocher **« Facturer les intérêts de retard »**
+(cochée par défaut) dans la barre d'outils, visible seulement s'il y a des intérêts à retirer.
+Décochée, le relevé devient totalement muet sur les intérêts: pas de ligne d'intérêts, pas d'avis de
+taux en pied de PDF, total à payer = solde des factures, et aucune mention dans le courriel. Se
+remet à cochée à chaque rechargement (changement de date ou de client) pour que l'exonération reste
+un geste ponctuel et jamais un défaut silencieux. Le PDF sans intérêts est stocké sous un nom
+distinct (`…-sans-interets.pdf`) pour qu'un aperçu précédent ne reste pas affiché depuis le cache.
+
 Aucune migration SQL requise.
 
 ---
