@@ -872,6 +872,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/statements/[clientId]/send-email/route.js` v1.4.0 — `save_to_client` (défaut true): après envoi réussi, une adresse absente du dossier est écrite dans `email_admin` s'il est vide, sinon ajoutée à `additional_emails`; insensible à la casse, best-effort (n'annule jamais l'envoi), retourne `saved_emails`
     - `components/invoices/ClientStatementView.js` v1.5.0 — fenêtre d'envoi: cases à cocher (nom + rôle: Facturation/Principal/#2/#3/Administration/Supplémentaire), ajout de **plusieurs** adresses à la volée (pastilles retirables), case « Ajouter au dossier client », encadré « Envoi à (n) » + copie au bureau
     - `components/ClientModal.js` v2.3.0 — section « Courriels supplémentaires » (adresse + libellé, ajout/retrait)
+    - `ClientStatementView.js` v1.6.0 — barre du bas: ligne « Envoi à … (rôle) + n autres au dossier — modifier » (cliquable) visible **sans** ouvrir la fenêtre; bouton « Envoyer le relevé… » (aucun envoi sans confirmation)
     - `lib/services/statement-data.js` v1.1.0 — retourne `additional_emails`
     - **Reste:** exécuter la migration SQL `20260820b_add_client_additional_emails.sql` dans Supabase Dashboard
 

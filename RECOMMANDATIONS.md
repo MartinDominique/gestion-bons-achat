@@ -1839,6 +1839,14 @@ possibilité d'en avoir **plus d'une**.
   adresse + libellé, ajout/retrait, pour corriger une faute de frappe ou gérer plusieurs adresses
   d'administration à la main.
 
+**Correctif de découvrabilité (2026-08-20, v1.6.0):** le choix des destinataires n'était visible
+qu'après avoir tapé « Envoyer le relevé », ce qui obligeait à appuyer sur un bouton d'apparence
+définitive pour simplement voir à qui le relevé irait. La barre du bas affiche désormais en
+permanence **« Envoi à julie@client.com (Facturation) + 2 autres au dossier — modifier »**
+(ligne cliquable qui ouvre le choix des destinataires), ou un avertissement ambre s'il n'y a aucun
+courriel au dossier. Le bouton est renommé **« Envoyer le relevé… »**: les points de suspension
+signalent qu'une fenêtre s'ouvre — aucun courriel ne part sans confirmation.
+
 **Reste:** exécuter la migration SQL `20260820b_add_client_additional_emails.sql` dans Supabase
 Dashboard (sinon l'ajout automatique d'adresse échoue: colonne manquante).
 

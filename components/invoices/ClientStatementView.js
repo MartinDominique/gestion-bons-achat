@@ -5,6 +5,7 @@
  *              - Saisie d'un paiement (chèque/virement/comptant) couvrant une ou
  *                plusieurs factures, avec escompte 2% optionnel par facture
  *              - Historique des paiements appliqués (suppression possible)
+ *              - Destinataire affiché dans la barre du bas (avant même d'ouvrir l'envoi)
  *              - Envoi par courriel: destinataires du dossier client à cocher (nom + rôle),
  *                ajout d'adresses hors dossier, récapitulatif « Envoi à », et mémorisation
  *                automatique des nouvelles adresses au dossier client
@@ -13,9 +14,12 @@
  *              - Case « Facturer les intérêts de retard »: décochée = relevé sans intérêts
  *                (geste commercial pour un bon client en léger retard)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.5.0
+ * @version 1.6.0
  * @date 2026-08-20
  * @changelog
+ *   1.6.0 - Destinataire visible sans ouvrir la fenêtre: ligne « Envoi à … — modifier » dans
+ *           la barre du bas (cliquable, ouvre le choix des destinataires); bouton renommé
+ *           « Envoyer le relevé… » pour signaler qu'une fenêtre s'ouvre avant tout envoi
  *   1.5.0 - Fenêtre d'envoi refaite: rôle affiché par adresse (Facturation/Principal/#2/#3/
  *           Administration/Supplémentaire), ajout de plusieurs adresses hors dossier
  *           (pastilles retirables), case « Ajouter au dossier client » (save_to_client),
@@ -362,9 +366,11 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
     });
   })();
 
+  // Adresse pré-cochée à l'envoi: facturation en priorité, sinon la première du dossier
+  const defaultRecipient = availableEmails.find(e => e.role === 'Facturation') || availableEmails[0];
+
   const openSend = () => {
-    // Pré-cocher l'email de facturation (ou le premier disponible)
-    const def = availableEmails.find(e => e.role === 'Facturation') || availableEmails[0];
+    const def = defaultRecipient;
     setSelectedEmails(def ? [def.email] : []);
     setCustomEmail('');
     setExtraEmails([]);
@@ -794,12 +800,42 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
 
         {/* Footer actions */}
         {!loading && data && data.invoices.length > 0 && (
-          <div className="border-t dark:border-gray-700 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-gray-50 dark:bg-gray-800/50 sm:rounded-b-2xl">
-            {selectedInvoices.length > 0 && (
-              <div className="text-sm text-gray-700 dark:text-gray-300 sm:mr-auto">
-                {selectedInvoices.length} facture(s) · Paiement total: <strong>{fmtCurrency(paymentTotal)}</strong>
-              </div>
-            )}
+          <div className="border-t dark:border-gray-700 px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-800/50 sm:rounded-b-2xl space-y-2">
+            {/* Qui recevra le relevé (modifiable à l'envoi) */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+              <button
+                type="button"
+                onClick={openSend}
+                disabled={busy}
+                className="text-left text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-start sm:items-center gap-1.5 min-w-0 hover:text-indigo-700 dark:hover:text-indigo-400 transition-colors disabled:opacity-50"
+                title="Choisir les destinataires"
+              >
+                <Mail className="w-4 h-4 flex-shrink-0 mt-0.5 sm:mt-0" />
+                {defaultRecipient ? (
+                  <span className="min-w-0">
+                    Envoi à <strong className="text-gray-900 dark:text-gray-100">{defaultRecipient.email}</strong>
+                    <span className="text-gray-500 dark:text-gray-500"> ({defaultRecipient.role})</span>
+                    {availableEmails.length > 1 && (
+                      <span className="text-gray-500 dark:text-gray-500">
+                        {' '}+ {availableEmails.length - 1} autre{availableEmails.length > 2 ? 's' : ''} au dossier
+                      </span>
+                    )}
+                    <span className="underline decoration-dotted"> — modifier</span>
+                  </span>
+                ) : (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    Aucun courriel au dossier client — à saisir à l&apos;envoi
+                  </span>
+                )}
+              </button>
+              {selectedInvoices.length > 0 && (
+                <div className="text-sm text-gray-700 dark:text-gray-300 sm:ml-auto">
+                  {selectedInvoices.length} facture(s) · Paiement total: <strong>{fmtCurrency(paymentTotal)}</strong>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-2">
             <button
               onClick={submitPayment}
               disabled={busy || selectedInvoices.length === 0}
@@ -820,8 +856,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
               disabled={busy}
               className="min-h-[44px] bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Send className="w-4 h-4" /> Envoyer le relevé
+              <Send className="w-4 h-4" /> Envoyer le relevé…
             </button>
+            </div>
           </div>
         )}
       </div>
