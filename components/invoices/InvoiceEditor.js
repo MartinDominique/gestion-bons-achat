@@ -15,12 +15,15 @@
  *              - Consultation BA/Soumission liés: badges cliquables (N° BA et N° soumission)
  *                dans l'entête ouvrant un panneau latéral en lecture seule (prix de vente
  *                déjà donnés au client), côte-à-côte sur desktop / superposition sur mobile.
- *              - Lignes de main d'oeuvre: si le BT compte plus d'une session, la date et la
- *                description du TimeTracker sont ajoutées au libellé, sur une seule ligne
+ *              - Lignes de main d'oeuvre: la date du TimeTracker est toujours ajoutée au
+ *                libellé (confirmation de la date des travaux du BT), suivie de la
+ *                description de session si elle est saisie, le tout sur une seule ligne
  *                (« Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »).
- * @version 2.10.0
+ * @version 2.11.0
  * @date 2026-08-20
  * @changelog
+ *   2.11.0 - Date du TimeTracker TOUJOURS affichée sur les lignes de main d'oeuvre, y compris
+ *            sur un BT à session unique (nécessaire pour confirmer la date des travaux)
  *   2.10.0 - Libellé main d'oeuvre enrichi de la date + description du TimeTracker quand le BT
  *            a plusieurs sessions (date seule si pas de description, rien si session unique)
  *   2.9.0 - Case à cocher "Inclure la signature sur la facture" (visible si BT/BL signé,
@@ -111,18 +114,18 @@ function formatSessionDate(dateString) {
 /**
  * Construit le libellé d'une ligne de main d'oeuvre.
  * Règles (demande Martin, 2026-08-20) — tout sur une seule ligne:
- *   - BT à UNE seule session  → « Main d'oeuvre — Régulier » (ni date ni description)
- *   - BT à PLUSIEURS sessions → « Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »
- *     (la description du TimeTracker est omise si vide → date seulement)
+ *   - La date du TimeTracker est TOUJOURS affichée (même sur un BT à session unique):
+ *     elle sert à confirmer la date des travaux du BT au moment de facturer.
+ *   - La description de session s'ajoute après la date quand elle est saisie.
+ *   → « Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »
+ *   → « Main d'oeuvre — Régulier — 15 août 2026 » (sans description)
  */
-function buildLaborLabel(entry, surchargeType, multiSession) {
+function buildLaborLabel(entry, surchargeType) {
   const parts = [`Main d'\u0153uvre \u2014 ${getSurchargeLabel(surchargeType)}`];
-  if (multiSession) {
-    const sessionDate = formatSessionDate(entry?.date);
-    if (sessionDate) parts.push(sessionDate);
-    const sessionDescription = (entry?.session_description || '').trim();
-    if (sessionDescription) parts.push(sessionDescription);
-  }
+  const sessionDate = formatSessionDate(entry?.date);
+  if (sessionDate) parts.push(sessionDate);
+  const sessionDescription = (entry?.session_description || '').trim();
+  if (sessionDescription) parts.push(sessionDescription);
   return parts.join(' \u2014 ');
 }
 
@@ -180,7 +183,6 @@ function generateBTLines(bt, settings) {
   const transportFee = bt.client?.transport_fee || 0;
 
   // Time entries → lignes main d'oeuvre
-  const multiSession = (bt.time_entries?.length || 0) > 1;
   if (bt.time_entries && bt.time_entries.length > 0) {
     bt.time_entries.forEach((entry, idx) => {
       const surchargeType = entry.surcharge_type || null;
@@ -188,7 +190,7 @@ function generateBTLines(bt, settings) {
       const hours = entry.total_hours || 0;
       const lineTotal = Math.round(hours * rate * 100) / 100;
 
-      const label = buildLaborLabel(entry, surchargeType, multiSession);
+      const label = buildLaborLabel(entry, surchargeType);
 
       lines.push({
         id: `labor-${entry.date}-${entry.start_time || idx}`,

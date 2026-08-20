@@ -1704,14 +1704,14 @@ dans Supabase Dashboard (sinon la sauvegarde d'un AF échoue: colonnes manquante
 **Demande (Martin):** ajouter la date et la description saisies dans le TimeTracker du BT à côté
 du libellé « Main d'oeuvre — Régulier », le tout sur une seule ligne.
 
-**Règles appliquées:**
-- BT à **une seule** session → libellé inchangé (« Main d'oeuvre — Régulier »), ni date ni description
-- BT à **plusieurs** sessions → « Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »
-- Session sans description → date seulement (« Main d'oeuvre — Régulier — 16 août 2026 »)
+**Règles appliquées** (ajustées le 2026-08-20 après test de Martin — la date doit **toujours**
+être visible pour confirmer la date des travaux du BT):
+- **Toujours** la date, même sur un BT à session unique → « Main d'oeuvre — Régulier — 15 août 2026 »
+- Description de session saisie → ajoutée après la date → « Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »
 - Fonctionne aussi avec les surcharges (« Main d'oeuvre — Samedi (1.5×) — 16 août 2026 »)
 
 **Implementation completee (2026-08-20):**
-- `components/invoices/InvoiceEditor.js` v2.10.0 — helpers `formatSessionDate()` (parsing manuel
+- `components/invoices/InvoiceEditor.js` v2.11.0 — helpers `formatSessionDate()` (parsing manuel
   YYYY-MM-DD pour éviter le décalage UTC/America-Toronto) + `buildLaborLabel()`, utilisés par
   `generateBTLines()`. Le libellé étant stocké dans `line_items.description`, il apparaît
   tel quel dans l'éditeur **et** sur le PDF de la facture client.
