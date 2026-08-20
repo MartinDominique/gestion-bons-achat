@@ -6,9 +6,13 @@
  *              - 5 signataires autorisés
  *              - Formatage automatique des numéros de téléphone
  *              - email_admin optionnel
- * @version 2.2.0
+ *              - Courriels supplémentaires illimités (additional_emails, JSONB)
+ * @version 2.3.0
  * @date 2026-08-20
  * @changelog
+ *   2.3.0 - Section « Courriels supplémentaires »: plus d'une adresse d'administration par
+ *           client (liste illimitée, ajout/retrait); alimentée aussi automatiquement à
+ *           l'envoi d'un état de compte
  *   2.2.0 - Ajout du champ « Mode de paiement habituel » (Chèque / Virement bancaire /
  *           Interac / Comptant) dans la section Tarification
  *   2.1.0 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
@@ -19,7 +23,7 @@
  */
 'use client';
 import { useState, useEffect } from 'react';
-import { X, User, Users, Building, PenTool, DollarSign } from 'lucide-react';
+import { X, User, Users, Building, PenTool, DollarSign, Mail, Plus } from 'lucide-react';
 import { CLIENT_PAYMENT_METHODS } from '../lib/constants/paymentMethods';
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -54,6 +58,8 @@ const EMPTY_FORM = {
   contact_name_admin: '',
   email_admin: '',
   contact_admin: '',
+  // Courriels supplémentaires: [{ email, label }]
+  additional_emails: [],
   // Tarification
   hourly_rate_regular: '',
   transport_fee: '',
@@ -85,6 +91,7 @@ function clientToForm(client) {
     contact_name_admin: client.contact_name_admin || '',
     email_admin: client.email_admin || '',
     contact_admin: client.contact_admin || '',
+    additional_emails: Array.isArray(client.additional_emails) ? client.additional_emails : [],
     hourly_rate_regular: client.hourly_rate_regular ?? '',
     transport_fee: client.transport_fee ?? '',
     email_billing: client.email_billing || '',
@@ -176,6 +183,10 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
         contact_name_admin: form.contact_name_admin?.trim() || '',
         email_admin: form.email_admin?.trim() || '',
         contact_admin: form.contact_admin?.trim() || '',
+        // Courriels supplémentaires (nettoyés)
+        additional_emails: (form.additional_emails || [])
+          .map(a => ({ email: (a?.email || '').trim(), label: (a?.label || '').trim() || 'Administration' }))
+          .filter(a => a.email),
         // Tarification
         hourly_rate_regular: form.hourly_rate_regular !== '' ? parseFloat(form.hourly_rate_regular) : null,
         transport_fee: form.transport_fee !== '' ? parseFloat(form.transport_fee) : null,
@@ -240,6 +251,30 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
       text: 'text-purple-800 dark:text-purple-300',
       icon: 'text-purple-600 dark:text-purple-400',
     },
+  };
+
+  /* ---------- Courriels supplémentaires ---------- */
+  const setExtraEmail = (index, field) => (e) => {
+    const value = e.target.value;
+    setForm(prev => {
+      const list = [...(prev.additional_emails || [])];
+      list[index] = { ...list[index], [field]: value };
+      return { ...prev, additional_emails: list };
+    });
+  };
+
+  const addExtraEmailRow = () => {
+    setForm(prev => ({
+      ...prev,
+      additional_emails: [...(prev.additional_emails || []), { email: '', label: 'Administration' }],
+    }));
+  };
+
+  const removeExtraEmailRow = (index) => {
+    setForm(prev => ({
+      ...prev,
+      additional_emails: (prev.additional_emails || []).filter((_, i) => i !== index),
+    }));
   };
 
   // Fonction de rendu (PAS un composant React — évite le remount à chaque render)
@@ -416,6 +451,62 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                   { label: 'Courriel Admin', key: 'email_admin', type: 'email', placeholder: 'admin@exemple.com' },
                   { label: 'Contact Admin', key: 'contact_admin', type: 'tel', placeholder: '(418) 225-3875' },
                 ])}
+              </div>
+
+              {/* SECTION - Courriels supplémentaires (plus d'une adresse d'administration) */}
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-purple-800 dark:text-purple-300 mb-1 flex items-center">
+                  <Mail className="w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
+                  Courriels supplémentaires
+                </h3>
+                <p className="text-xs text-purple-700 dark:text-purple-400 mb-3">
+                  Adresses additionnelles proposées à l&apos;envoi des états de compte (2e adresse
+                  d&apos;administration, comptable du client, etc.).
+                </p>
+
+                <div className="space-y-2">
+                  {(form.additional_emails || []).length === 0 && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Aucune adresse supplémentaire.</p>
+                  )}
+                  {(form.additional_emails || []).map((row, i) => (
+                    <div key={i} className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="email"
+                        className={`${inputBase} border-purple-200 dark:border-purple-700 flex-1`}
+                        value={row?.email || ''}
+                        onChange={setExtraEmail(i, 'email')}
+                        placeholder="compta@exemple.com"
+                        autoComplete="email"
+                        inputMode="email"
+                        autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                      />
+                      <input
+                        type="text"
+                        className={`${inputBase} border-purple-200 dark:border-purple-700 sm:w-48`}
+                        value={row?.label || ''}
+                        onChange={setExtraEmail(i, 'label')}
+                        placeholder="Administration"
+                        autoCorrect="on" autoCapitalize="sentences" spellCheck={true}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeExtraEmailRow(i)}
+                        className="min-h-[44px] px-3 rounded-lg text-sm font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 inline-flex items-center justify-center gap-1"
+                        title="Retirer cette adresse"
+                      >
+                        <X className="w-4 h-4" /> Retirer
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addExtraEmailRow}
+                  className="mt-3 min-h-[44px] px-4 py-2 rounded-lg text-sm font-medium bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/60 inline-flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Ajouter une adresse
+                </button>
               </div>
 
               {/* SECTION - Tarification */}

@@ -10,9 +10,14 @@
  *                exclut les factures émises après cette date et les paiements postérieurs
  *              - Body include_interest (défaut true): à false, aucun intérêt de retard n'est
  *                facturé ni mentionné (PDF + courriel) — geste commercial pour un bon client
- * @version 1.3.0
+ *              - Body save_to_client (défaut true): une adresse saisie à la volée est
+ *                enregistrée au dossier client (email_admin s'il est vide, sinon
+ *                additional_emails) pour être proposée aux prochains envois
+ * @version 1.4.0
  * @date 2026-08-20
  * @changelog
+ *   1.4.0 - Enregistrement au dossier client des adresses ajoutées à la volée
+ *           (save_to_client) + retour de la liste des adresses ajoutées
  *   1.3.0 - Intérêts de retard optionnels (include_interest): total = solde des factures,
  *           ni ligne d'intérêts ni avis de taux dans le PDF, ni mention dans le courriel
  *   1.2.0 - Date du relevé (as_of): aperçu et courriel générés à la date choisie à l'écran
@@ -49,6 +54,65 @@ function formatDateFr(dateStr) {
   if (!dateStr) return '-';
   const [y, m, d] = dateStr.split('-');
   return `${parseInt(d)} ${MONTHS_FR[parseInt(m)]} ${y}`;
+}
+
+/**
+ * Enregistre au dossier client les adresses utilisées qui n'y figurent pas encore.
+ * - Remplit `email_admin` s'il est vide (première adresse seulement)
+ * - Sinon ajoute à `additional_emails` (liste illimitée, libellée « Administration »)
+ *
+ * Best-effort: un échec n'empêche jamais l'envoi du relevé.
+ *
+ * @returns {Promise<string[]>} adresses effectivement ajoutées au dossier
+ */
+async function saveNewEmailsToClient(clientId, client, usedEmails) {
+  const norm = (e) => String(e || '').trim().toLowerCase();
+
+  const existing = new Set(
+    [client.email, client.email_2, client.email_3, client.email_admin, client.email_billing]
+      .concat((client.additional_emails || []).map(a => a?.email))
+      .filter(Boolean)
+      .map(norm)
+  );
+
+  // Dédoublonner les nouvelles adresses entre elles
+  const fresh = [];
+  for (const e of usedEmails) {
+    const n = norm(e);
+    if (!n || existing.has(n)) continue;
+    existing.add(n);
+    fresh.push(String(e).trim());
+  }
+  if (fresh.length === 0) return [];
+
+  const updates = {};
+  const additional = Array.isArray(client.additional_emails) ? [...client.additional_emails] : [];
+  let remaining = fresh;
+
+  // Champ Administration vide: la première adresse y va
+  if (!client.email_admin) {
+    updates.email_admin = fresh[0];
+    remaining = fresh.slice(1);
+  }
+  for (const e of remaining) {
+    additional.push({ email: e, label: 'Administration' });
+  }
+  if (additional.length !== (client.additional_emails || []).length) {
+    updates.additional_emails = additional;
+  }
+
+  if (Object.keys(updates).length === 0) return [];
+
+  const { error } = await supabaseAdmin
+    .from('clients')
+    .update(updates)
+    .eq('id', parseInt(clientId));
+
+  if (error) {
+    console.error('Enregistrement des courriels au dossier client échoué:', error.message);
+    return [];
+  }
+  return fresh;
 }
 
 /**
@@ -262,13 +326,14 @@ function generateStatementPDF(statement) {
 
 /**
  * POST /api/statements/[clientId]/send-email
- * Body: { emails?: string[], print_only?: boolean, as_of?: 'YYYY-MM-DD', include_interest?: boolean }
+ * Body: { emails?: string[], print_only?: boolean, as_of?: 'YYYY-MM-DD',
+ *         include_interest?: boolean, save_to_client?: boolean }
  */
 export async function POST(request, { params }) {
   try {
     const { clientId } = params;
     const body = await request.json();
-    const { emails: customEmails, print_only, as_of, include_interest } = body;
+    const { emails: customEmails, print_only, as_of, include_interest, save_to_client } = body;
     // Intérêts facturés par défaut; false = geste commercial (aucune mention nulle part)
     const chargeInterest = include_interest !== false;
 
@@ -289,6 +354,7 @@ export async function POST(request, { params }) {
 
     // Déterminer les destinataires (sauf en aperçu)
     let emailAddresses = [];
+    let savedEmails = [];
     if (!print_only) {
       if (customEmails && customEmails.length > 0) {
         emailAddresses = customEmails.filter(Boolean);
@@ -400,6 +466,15 @@ export async function POST(request, { params }) {
           { status: 500 }
         );
       }
+
+      // Mémoriser au dossier client les adresses saisies à la volée (après envoi réussi)
+      if (save_to_client !== false) {
+        try {
+          savedEmails = await saveNewEmailsToClient(clientId, statement.client, emailAddresses);
+        } catch (saveErr) {
+          console.error('Enregistrement des courriels (non bloquant):', saveErr.message);
+        }
+      }
     }
 
     if (print_only) {
@@ -414,11 +489,15 @@ export async function POST(request, { params }) {
     }
 
     const ccNote = process.env.COMPANY_EMAIL ? ` (copie au bureau: ${process.env.COMPANY_EMAIL})` : '';
+    const savedNote = savedEmails.length > 0
+      ? ` — ${savedEmails.length > 1 ? 'adresses ajoutées' : 'adresse ajoutée'} au dossier client: ${savedEmails.join(', ')}`
+      : '';
     return NextResponse.json({
       success: true,
+      saved_emails: savedEmails,
       message: `État de compte au ${formatDateFr(statement.statementDate)}${
         !chargeInterest && statement.totals.interest > 0 ? ' (sans intérêts de retard)' : ''
-      } envoyé à ${emailAddresses.join(', ')}${ccNote}`,
+      } envoyé à ${emailAddresses.join(', ')}${ccNote}${savedNote}`,
       sentTo: emailAddresses,
       cc: process.env.COMPANY_EMAIL || null,
       pdf_url: pdfUrl,
