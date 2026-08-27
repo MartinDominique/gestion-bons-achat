@@ -19,6 +19,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { searchWithFallback } from '../lib/utils/productSearch';
 import DeliverySlipModal from './DeliverySlipModal';
 import BCCConfirmationModal from './PurchaseOrder/BCCConfirmationModal';
 
@@ -750,12 +751,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
     // Délai de 300ms pour éviter trop de requêtes
     const timeoutId = setTimeout(async () => {
       try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .or('product_id.ilike.%' + term + '%,description.ilike.%' + term + '%')
-          .order('product_id')
-          .limit(10);
+        // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
+        const { data, error } = await searchWithFallback(
+          (orFilter) =>
+            supabase
+              .from('products')
+              .select('*')
+              .or(orFilter)
+              .order('product_id')
+              .limit(10),
+          term,
+          ['product_id', 'description']
+        );
 
         if (error) throw error;
 
@@ -785,12 +792,18 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
       }
 
       try {
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .or('product_id.ilike.%' + term + '%,description.ilike.%' + term + '%')
-          .order('product_id')
-          .limit(10);
+        // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
+        const { data, error } = await searchWithFallback(
+          (orFilter) =>
+            supabase
+              .from('products')
+              .select('*')
+              .or(orFilter)
+              .order('product_id')
+              .limit(10),
+          term,
+          ['product_id', 'description']
+        );
 
         if (error) throw error;
 

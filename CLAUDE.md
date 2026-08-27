@@ -876,6 +876,13 @@ CRON_SECRET                   # Auth pour cron jobs
     - `lib/services/statement-data.js` v1.1.0 — retourne `additional_emails`
     - **Reste:** exécuter la migration SQL `20260820b_add_client_additional_emails.sql` dans Supabase Dashboard
 
+29. ~~**Soumissions: marge 27/30/35, ajustement du stock + prix répercutés dans l'inventaire**~~ - ✅ COMPLÉTÉ (2026-08-27)
+    - `lib/utils/productSearch.js` (nouveau) — recherche tolérante: `p1540` trouve `P1-540`, `ecrou` trouve `ÉCROU` (tirets/espaces/points/accents/casse ignorés). Filtre `.or()` = `ilike` habituel + regex `imatch`, avec **repli automatique** sur `ilike` seul si l'opérateur est refusé. `matchesNormalized()` pour les listes en mémoire
+    - Appliqué à: Soumissions, BT/BL (`MaterialSelector.js` v1.8.0 + `app/api/products/route.js` v1.2.0), Inventaire (`app/api/products/search/route.js` v1.1.0), AF (`SupplierPurchaseServices.js` v2.4.0), BA (`PurchaseOrderModal.js`)
+    - `components/SoumissionsManager.js` v2.3.0 — modal « Modifier l'article »: boutons de marge **27 / 30 / 35 %** (au lieu de 10/15/27); champ **« Quantité en inventaire — En main »** (écrit `stock_qty` + insère un mouvement `manual_edit` avec le N° de soumission → Inventaire > Historique); case **« Mettre à jour la fiche inventaire »** cochée par défaut (écrit coûtant/vendant via `buildPriceShiftUpdates` → alimente « Hist. Prix »)
+    - Table cible résolue en interrogeant `products` puis `non_inventory_items` (`is_non_inventory` peu fiable sur les anciennes lignes); spinner + message d'erreur explicite si l'écriture échoue
+    - Aucune migration SQL requise
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
@@ -883,6 +890,12 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Prix vendant modifié dans une Soumission: aucun effet sur l'Inventaire ni sur « Hist. Prix »~~ → Corrigé (2026-08-27)
+  - Symptôme: changer le vendant (ou le coûtant) d'un article dans le modal « Modifier l'article » d'une soumission ne changeait que la ligne de la soumission. L'inventaire gardait l'ancien prix et l'onglet « Hist. Prix » restait muet.
+  - Cause: `SoumissionsManager` n'écrivait jamais dans `products`/`non_inventory_items` — les prix n'existaient que dans le JSON `submissions.items`.
+  - Correctif: case « Mettre à jour la fiche inventaire » (cochée par défaut) dans le modal; l'écriture passe par `buildPriceShiftUpdates()` (décalage `_1st/_2nd/_3rd` + dates), donc l'historique est alimenté comme depuis l'Inventaire ou un AF. Décocher = prix valable seulement pour cette soumission.
+  - Autres modules vérifiés: Inventaire (`InventoryManager.saveChanges`), AF (`SupplierPurchaseHooks.updateInventoryPrice`), réceptions AF/directe — tous passent déjà par `buildPriceShiftUpdates`. BT/BL et Facturation modifient volontairement le prix **de la ligne du document** (prix client pour ce travail), pas la fiche inventaire.
+  - Fichiers: `components/SoumissionsManager.js` v2.3.0. Aucune migration requise.
 - ~~Réception directe / Ajustement: l'inventaire n'était pas mis à jour~~ → Corrigé (2026-08-07)
   - Symptôme: après un Ajustement (ou une Réception directe) dans la page Achat, le stock « En main » ne changeait pas, alors que l'écran affichait « Enregistré ».
   - Cause: dans `handleSaveReceipt` (DirectReceiptModal), l'échec de la mise à jour de `stock_qty` était **avalé silencieusement** (aucun contrôle d'erreur sur l'`update`, ni vérification qu'une ligne avait été modifiée). De plus, la table cible (`products` vs `non_inventory_items`) était choisie via le drapeau `is_non_inventory` **non fiable** sur d'anciennes lignes → `.single()` échouait → item ignoré sans message.

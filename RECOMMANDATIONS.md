@@ -1850,6 +1850,45 @@ signalent qu'une fenêtre s'ouvre — aucun courriel ne part sans confirmation.
 **Reste:** exécuter la migration SQL `20260820b_add_client_additional_emails.sql` dans Supabase
 Dashboard (sinon l'ajout automatique d'adresse échoue: colonne manquante).
 
+### 29. ~~Soumissions: calculateur de marge, ajustement du stock et prix répercutés dans l'inventaire~~ ✅ COMPLETE (2026-08-27)
+
+**Implementation completee (2026-08-27):**
+
+- `components/SoumissionsManager.js` v2.3.0 — modal **« Modifier l'article »**:
+  - Boutons du calculateur de marge passés de **10 / 15 / 27 %** à **27 / 30 / 35 %**
+    (le champ « % personnalisé » reste disponible pour toute autre valeur).
+  - Nouveau champ **« Quantité en inventaire — En main »**: corriger le stock sans quitter la
+    soumission. Toute correction écrit `stock_qty` **et** insère un mouvement
+    `inventory_movements` (`reference_type: 'manual_edit'`, N° de soumission en `reference_number`,
+    note « Ajustement depuis la soumission … (ancien → nouveau) ») → visible dans
+    **Inventaire → Historique**. Le stock n'est touché que si le champ a réellement été modifié,
+    donc une valeur périmée ne peut pas écraser une quantité changée sur un autre appareil.
+  - Nouvelle case **« Mettre à jour la fiche inventaire »** (cochée par défaut): le coûtant et le
+    vendant saisis ici sont écrits dans `products` / `non_inventory_items` via
+    `buildPriceShiftUpdates()` — l'**historique des prix** (« Hist. Prix » + dates) est donc
+    alimenté, ce qui n'était pas le cas auparavant. Décocher la case garde le prix local à la
+    soumission (rabais ponctuel pour un client).
+  - La table cible est résolue en interrogeant `products` puis `non_inventory_items` (le drapeau
+    `is_non_inventory` n'est pas fiable sur les anciennes lignes).
+  - Feedback de chargement (bouton désactivé + spinner) et **message d'erreur explicite** si
+    l'écriture inventaire échoue (plus d'échec silencieux); un article absent de l'inventaire
+    n'empêche pas la modification de la ligne de soumission, il prévient simplement.
+
+- `lib/utils/productSearch.js` (nouveau) — **recherche tolérante**: taper `p1540` trouve `P1-540`,
+  `ecrou` trouve `ÉCROU`. Tirets, espaces, points, barres obliques, accents et casse sont ignorés.
+  Deux mécanismes: filtre `.or()` combinant le `ilike` habituel **et** une expression régulière
+  `imatch` (`p[^a-z0-9]*1[^a-z0-9]*5…`), avec **repli automatique** sur le `ilike` seul si la base
+  refuse l'opérateur — aucune régression possible; et `matchesNormalized()` pour les listes déjà
+  chargées en mémoire.
+  Appliqué à: `components/SoumissionsManager.js` (Soumissions),
+  `components/work-orders/MaterialSelector.js` v1.8.0 (BT + BL),
+  `app/api/products/search/route.js` v1.1.0 (Inventaire),
+  `app/api/products/route.js` v1.2.0 (recherche matériaux BT/BL),
+  `components/SupplierPurchaseServices.js` v2.4.0 (Achat fournisseur),
+  `components/PurchaseOrderModal.js` (Bon d'achat client).
+
+Aucune migration SQL requise.
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-08-20 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-08-27 par Claude AI*

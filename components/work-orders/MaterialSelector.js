@@ -8,9 +8,10 @@
  *              - Affichage stock en main + quantité en commande (AF) dans la recherche
  *              - Affichage "En main" (stock) dans le modal d'ajout, le modal d'édition
  *                et la liste des matériaux ajoutés (BT + BL)
- * @version 1.7.0
- * @date 2026-07-13
+ * @version 1.8.0
+ * @date 2026-08-27
  * @changelog
+ *   1.8.0 - Recherche tolérante: « p1540 » trouve « P1-540 » (tirets, accents et casse ignorés)
  *   1.7.0 - Affiche la quantité "En main" (stock) au moment d'ajouter un article:
  *           dans le modal d'ajout (quantité), dans le modal d'édition et sur chaque
  *           ligne de la liste des matériaux. Rouge si stock <= 0. Helper getMaterialStock()
@@ -35,6 +36,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import AddToOrderButton from '../order-list/AddToOrderButton';
+import { matchesNormalized } from '../../lib/utils/productSearch';
 
 // Composant clavier numérique personnalisé
 function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
@@ -325,10 +327,14 @@ export default function MaterialSelector({
     } else {
       const searchLower = searchTerm.toLowerCase();
       const safeProducts = Array.isArray(products) ? products : [];
-      filtered = safeProducts.filter(product => 
-        product.product_id && product.product_id.toLowerCase().includes(searchLower) ||
+      // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents/casse ignorés)
+      filtered = safeProducts.filter(product =>
+        (product.product_id && product.product_id.toLowerCase().includes(searchLower)) ||
         (product.description && product.description.toLowerCase().includes(searchLower)) ||
-        (product.product_group && product.product_group.toLowerCase().includes(searchLower))
+        (product.product_group && product.product_group.toLowerCase().includes(searchLower)) ||
+        matchesNormalized(product.product_id, searchTerm) ||
+        matchesNormalized(product.description, searchTerm) ||
+        matchesNormalized(product.product_group, searchTerm)
       ).slice(0, 100); // Limiter à 100 résultats max
     }
     

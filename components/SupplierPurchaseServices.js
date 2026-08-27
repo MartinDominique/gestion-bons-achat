@@ -2,9 +2,10 @@
  * @file components/SupplierPurchaseServices.js
  * @description Services pour la gestion des achats fournisseurs (AF)
  *              PDF standardisé via pdf-common.js, envoi email, CRUD Supabase
- * @version 2.3.0
- * @date 2026-08-06
+ * @version 2.4.0
+ * @date 2026-08-27
  * @changelog
+ *   2.4.0 - Recherche produits tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
  *   2.3.0 - Ajout fetchClients (sélecteur « Ou Client »); PDF affiche « Client » au lieu de « BA Acomba »
  *   2.2.0 - PDF: ajout Transporteur + N° Compte sous adresse livraison, fix date N/A
  *   2.1.0 - Ajout quantités inventaire (en main, en commande, réservé) dans recherche produits
@@ -16,6 +17,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { supabase } from '../lib/supabase';
+import { searchWithFallback } from '../lib/utils/productSearch';
 import {
   drawHeader,
   drawFooter,
@@ -561,20 +563,30 @@ export const searchProducts = async (searchTerm) => {
       { data: draftDeliveryNotes },
       { data: acceptedSubmissions }
     ] = await Promise.all([
-      // 1. Recherche produits inventaire
-      supabase
-        .from('products')
-        .select('*')
-        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
-        .order('description', { ascending: true })
-        .limit(25),
-      // 2. Recherche produits non-inventaire
-      supabase
-        .from('non_inventory_items')
-        .select('*')
-        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%`)
-        .order('description', { ascending: true })
-        .limit(25),
+      // 1. Recherche produits inventaire (tolérante: « p1540 » trouve « P1-540 »)
+      searchWithFallback(
+        (orFilter) =>
+          supabase
+            .from('products')
+            .select('*')
+            .or(orFilter)
+            .order('description', { ascending: true })
+            .limit(25),
+        searchTerm,
+        ['description', 'product_id']
+      ),
+      // 2. Recherche produits non-inventaire (tolérante)
+      searchWithFallback(
+        (orFilter) =>
+          supabase
+            .from('non_inventory_items')
+            .select('*')
+            .or(orFilter)
+            .order('description', { ascending: true })
+            .limit(25),
+        searchTerm,
+        ['description', 'product_id']
+      ),
       // 3. AF en commande (pour "en commande")
       supabase
         .from('supplier_purchases')

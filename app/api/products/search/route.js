@@ -7,14 +7,16 @@
  *              - Support filtre par product_group
  *              - Mode "load all" pour charger tous les produits
  *              - Mode "load by group" pour charger un groupe spécifique
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.1.0
+ * @date 2026-08-27
  * @changelog
+ *   1.1.0 - Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
  *   1.0.0 - Version initiale — recherche serveur inventaire
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../../lib/supabaseAdmin';
+import { searchWithFallback } from '../../../../lib/utils/productSearch';
 
 export async function GET(request) {
   try {
@@ -32,15 +34,21 @@ export async function GET(request) {
         return NextResponse.json({ success: true, data: [], total: 0 });
       }
 
-      const searchPattern = `%${search}%`;
+      // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
+      const searchColumns = ['product_id', 'description'];
 
       // Recherche dans products (max 25)
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .or(`product_id.ilike.${searchPattern},description.ilike.${searchPattern}`)
-        .order('product_id', { ascending: true })
-        .limit(25);
+      const { data: productsData, error: productsError } = await searchWithFallback(
+        (orFilter) =>
+          supabase
+            .from('products')
+            .select('*')
+            .or(orFilter)
+            .order('product_id', { ascending: true })
+            .limit(25),
+        search,
+        searchColumns
+      );
 
       if (productsError) {
         console.error('Erreur recherche products:', productsError);
@@ -51,12 +59,17 @@ export async function GET(request) {
       }
 
       // Recherche dans non_inventory_items (max 25)
-      const { data: nonInvData, error: nonInvError } = await supabase
-        .from('non_inventory_items')
-        .select('*')
-        .or(`product_id.ilike.${searchPattern},description.ilike.${searchPattern}`)
-        .order('product_id', { ascending: true })
-        .limit(25);
+      const { data: nonInvData, error: nonInvError } = await searchWithFallback(
+        (orFilter) =>
+          supabase
+            .from('non_inventory_items')
+            .select('*')
+            .or(orFilter)
+            .order('product_id', { ascending: true })
+            .limit(25),
+        search,
+        searchColumns
+      );
 
       if (nonInvError) {
         console.error('Erreur recherche non_inventory_items:', nonInvError);
