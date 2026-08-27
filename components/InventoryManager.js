@@ -8,8 +8,8 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.12.0
- * @date 2026-08-07
+ * @version 3.13.0
+ * @date 2026-08-27
  * @changelog
  *   3.12.0 - « Hist. Prix »: affiche aussi la date de chaque prix précédent
  *            (n-1/n-2/n-3) via price_updated_at_1st/2nd/3rd.
@@ -57,6 +57,11 @@
  *   3.5.0 - Traçabilité modification manuelle stock: insertion mouvement inventaire (reference_type 'manual_edit')
  *           avec code produit, description, quantité +/-, et nom utilisateur authentifié
  *   3.4.0 - Forcer majuscules sur description au save (toUpperCase au trim)
+ *   3.13.0 - Achats en USD: le prix coûtant peut être saisi en dollars américains
+ *            (CostPriceField), converti en CAD au taux du marché + frais bancaires.
+ *            cost_price reste TOUJOURS en CAD. Badge « USD » sur les articles concernés
+ *            et bouton « Recalculer USD » pour remettre à jour tous les coûtants
+ *            quand le taux bouge (historique des prix conservé).
  *   3.3.2 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   3.3.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   3.3.0 - Prix coûtant et vendant côte à côte, auto-sélection champs numériques au focus
@@ -83,6 +88,8 @@ import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import { unitOptionsWith } from '../lib/constants/units';
 import AddToOrderButton from './order-list/AddToOrderButton';
+import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
+import { CURRENCY_CAD, CURRENCY_USD, safeCurrencyUpdates, formatRate, formatRateDate } from '../lib/utils/currency';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
@@ -112,6 +119,13 @@ export default function InventoryManager() {
   const [showReservationModal, setShowReservationModal] = useState(false);
   const [reservationModalProduct, setReservationModalProduct] = useState(null);
 
+  // Recalcul des coûtants achetés en USD (aperçu puis application)
+  const [showUsdRecalcModal, setShowUsdRecalcModal] = useState(false);
+  const [recalcLoading, setRecalcLoading] = useState(false);
+  const [recalcApplying, setRecalcApplying] = useState(false);
+  const [recalcPreview, setRecalcPreview] = useState(null);
+  const [recalcError, setRecalcError] = useState('');
+
   // Debounce timer
   const searchTimerRef = useRef(null);
 
@@ -124,8 +138,14 @@ export default function InventoryManager() {
     supplier: '',
     cost_price: '',
     selling_price: '',
-    stock_qty: ''
+    stock_qty: '',
+    // Achat en devise américaine — cost_price reste toujours en CAD
+    purchase_currency: CURRENCY_CAD,
+    cost_price_usd: '',
+    fx_rate_used: null,
+    fx_fee_percent_used: null
   });
+  const exchange = useExchangeRate();
   const [saving, setSaving] = useState(false);
   const [marginPercent, setMarginPercent] = useState('');
   const [modalTab, setModalTab] = useState('edit'); // 'edit', 'history', 'prices'
@@ -316,6 +336,68 @@ export default function InventoryManager() {
   };
 
   // ===== CHARGER ITEMS AVEC RÉSERVATIONS (filtre diagnostic) =====
+  // ===== Recalcul des coûtants achetés en USD =====
+  const openUsdRecalc = async () => {
+    setRecalcLoading(true);
+    setRecalcError('');
+    setRecalcPreview(null);
+    setShowUsdRecalcModal(true);
+    try {
+      const params = new URLSearchParams({
+        rate: String(exchange.rate),
+        fee: String(exchange.feePercent),
+      });
+      const res = await fetch(`/api/products/recalc-usd?${params.toString()}`);
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        setRecalcError(result.error || 'Aperçu impossible');
+      } else {
+        setRecalcPreview(result);
+      }
+    } catch (err) {
+      setRecalcError(err.message);
+    } finally {
+      setRecalcLoading(false);
+    }
+  };
+
+  const applyUsdRecalc = async () => {
+    setRecalcApplying(true);
+    setRecalcError('');
+    try {
+      const res = await fetch('/api/products/recalc-usd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rate: exchange.rate, fee_percent: exchange.feePercent }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.failed_count > 0) {
+        setRecalcError(
+          result.error ||
+            `${result.failed_count} article(s) non mis à jour: ${(result.failed || [])
+              .map(f => `${f.product_id} (${f.error})`)
+              .join(', ')}`
+        );
+        if (!result.updated_count) return;
+      }
+      showToast(
+        `${result.updated_count} coûtant(s) recalculé(s)` +
+          (result.unchanged_count ? ` — ${result.unchanged_count} déjà à jour` : '')
+      );
+      if (!result.failed_count) {
+        setShowUsdRecalcModal(false);
+        setRecalcPreview(null);
+      }
+      // Rafraîchir l'affichage courant
+      if (loadMode === 'search' && searchTerm.length >= 2) performSearch(searchTerm);
+      else if (loadMode === 'all') loadAll();
+    } catch (err) {
+      setRecalcError(err.message);
+    } finally {
+      setRecalcApplying(false);
+    }
+  };
+
   const loadReservedOnly = async () => {
     const reservedIds = Object.keys(reservationDetails).filter(
       pid => (quantityMap[pid]?.reserved || 0) > 0
@@ -446,7 +528,11 @@ export default function InventoryManager() {
       supplier: item.supplier || '',
       cost_price: item.cost_price?.toString() || '',
       selling_price: item.selling_price?.toString() || '',
-      stock_qty: item.stock_qty?.toString() || ''
+      stock_qty: item.stock_qty?.toString() || '',
+      purchase_currency: item.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD,
+      cost_price_usd: item.cost_price_usd != null ? item.cost_price_usd.toString() : '',
+      fx_rate_used: item.fx_rate_used ?? null,
+      fx_fee_percent_used: item.fx_fee_percent_used ?? null
     });
     setModalTab(initialTab);
     // Load movement history in background
@@ -476,7 +562,11 @@ export default function InventoryManager() {
       supplier: '',
       cost_price: '',
       selling_price: '',
-      stock_qty: ''
+      stock_qty: '',
+      purchase_currency: CURRENCY_CAD,
+      cost_price_usd: '',
+      fx_rate_used: null,
+      fx_fee_percent_used: null
     });
     setModalTab('edit');
     setMarginPercent('');
@@ -534,6 +624,16 @@ export default function InventoryManager() {
       });
       Object.assign(updates, priceShiftUpdates);
 
+      // Devise d'achat (USD): cost_price reste en CAD, on mémorise juste l'origine.
+      // safeCurrencyUpdates renvoie {} tant que la migration n'est pas passée,
+      // pour ne jamais faire échouer une sauvegarde qui marchait avant.
+      Object.assign(updates, await safeCurrencyUpdates(supabase, {
+        currency: editForm.purchase_currency,
+        usdAmount: editForm.cost_price_usd,
+        marketRate: exchange.rate,
+        feePercent: exchange.feePercent,
+      }));
+
       // Détecter les changements pour l'email
       const changes = [];
       const oldCost = parseFloat(editingItem.cost_price) || 0;
@@ -556,7 +656,15 @@ export default function InventoryManager() {
         changes.push(`Fournisseur: "${oldSupplier}" → "${updates.supplier || ''}"`);
       }
       if (updates.cost_price !== oldCost) {
-        changes.push(`Prix coûtant: ${oldCost.toFixed(2)}$ → ${updates.cost_price.toFixed(2)}$`);
+        const usdNote =
+          updates.purchase_currency === CURRENCY_USD && updates.cost_price_usd
+            ? ` (${parseFloat(updates.cost_price_usd).toFixed(2)} USD converti)`
+            : '';
+        changes.push(`Prix coûtant: ${oldCost.toFixed(2)}$ → ${updates.cost_price.toFixed(2)}$${usdNote}`);
+      }
+      const oldCurrency = editingItem.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD;
+      if (updates.purchase_currency !== oldCurrency) {
+        changes.push(`Devise d'achat: ${oldCurrency} → ${updates.purchase_currency}`);
       }
       if (updates.selling_price !== oldSelling) {
         changes.push(`Prix vendant: ${oldSelling.toFixed(2)}$ → ${updates.selling_price.toFixed(2)}$`);
@@ -783,6 +891,21 @@ export default function InventoryManager() {
             <AlertCircle className="w-4 h-4" />
             Avec réservé
           </button>
+
+          {/* Recalcul des coûtants des articles achetés en USD */}
+          <button
+            onClick={openUsdRecalc}
+            disabled={recalcLoading}
+            className="px-4 py-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 flex items-center justify-center gap-2 min-w-[140px]"
+            title="Recalculer le coûtant CAD des articles achetés en USD, au taux du jour"
+          >
+            {recalcLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <DollarSign className="w-4 h-4" />
+            )}
+            Recalculer USD
+          </button>
         </div>
 
         {/* Indicateur du mode actif + compteurs */}
@@ -882,6 +1005,7 @@ export default function InventoryManager() {
                           }`}>
                             {isProduct ? 'Inventaire' : 'Non-inv.'}
                           </span>
+                          <UsdBadge currency={item.purchase_currency} costPriceUsd={item.cost_price_usd} />
                           {stockQty < 10 && isProduct && (
                             <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
                               Stock faible
@@ -1103,27 +1227,23 @@ export default function InventoryManager() {
                     />
                   </div>
 
-                  {/* Prix coûtant + vendant côte à côte */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Prix coûtant
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        inputMode="decimal"
-                        value={editForm.cost_price}
-                        onChange={(e) => setEditForm({...editForm, cost_price: e.target.value})}
-                        onFocus={(e) => e.target.select()}
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                        className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
-                        placeholder="0.00"
-                      />
-                    </div>
+                  {/* Prix coûtant + vendant (empilés si achat en USD, le champ est plus haut) */}
+                  <div className={editForm.purchase_currency === CURRENCY_USD ? 'space-y-3' : 'grid grid-cols-2 gap-3'}>
+                    <CostPriceField
+                      label="Prix coûtant"
+                      currency={editForm.purchase_currency}
+                      usdAmount={editForm.cost_price_usd}
+                      cadValue={editForm.cost_price}
+                      exchange={exchange}
+                      onChange={({ currency, usdAmount, cad }) =>
+                        setEditForm(prev => ({
+                          ...prev,
+                          purchase_currency: currency,
+                          cost_price_usd: usdAmount,
+                          cost_price: currency === CURRENCY_USD ? (cad ?? 0).toString() : cad.toString(),
+                        }))
+                      }
+                    />
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Prix vendant *
@@ -1571,6 +1691,120 @@ export default function InventoryManager() {
       )}
 
       {/* Modal diagnostic "Voir détail" - liste des BT/BL qui réservent un item */}
+      {/* ===== MODAL RECALCUL DES COÛTANTS USD ===== */}
+      {showUsdRecalcModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !recalcApplying) setShowUsdRecalcModal(false);
+          }}
+        >
+          <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-t-xl">
+              <h3 className="text-lg font-bold">Recalculer les coûtants achetés en USD</h3>
+              <p className="text-blue-100 text-sm mt-1">
+                1 USD = {formatRate(exchange.rate)} CAD
+                {exchange.source ? ` — ${exchange.source}` : ''}
+                {exchange.rateDate ? ` (${formatRateDate(exchange.rateDate)})` : ''}
+                {' '}&bull; frais {parseFloat(exchange.feePercent || 0).toFixed(1)} %
+              </p>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {recalcLoading && (
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Calcul de l&apos;aperçu…
+                </div>
+              )}
+
+              {recalcError && (
+                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+                  ⚠️ {recalcError}
+                </div>
+              )}
+
+              {recalcPreview && recalcPreview.total === 0 && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Aucun article n&apos;est marqué comme acheté en USD. Ouvrez la fiche d&apos;un
+                  produit et basculez son prix coûtant sur <strong>USD</strong> pour qu&apos;il
+                  apparaisse ici.
+                </p>
+              )}
+
+              {recalcPreview && recalcPreview.total > 0 && (
+                <>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                    <strong>{recalcPreview.changed}</strong> coûtant(s) à modifier sur{' '}
+                    {recalcPreview.total} article(s) achetés en USD. Le prix vendant n&apos;est pas
+                    touché, et l&apos;historique des prix est conservé.
+                  </p>
+                  <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-gray-800">
+                        <tr className="text-left text-gray-600 dark:text-gray-400">
+                          <th className="px-3 py-2">Code</th>
+                          <th className="px-3 py-2">USD</th>
+                          <th className="px-3 py-2 text-right">Coûtant actuel</th>
+                          <th className="px-3 py-2 text-right">Nouveau</th>
+                          <th className="px-3 py-2 text-right">Écart</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {recalcPreview.items.map((row) => (
+                          <tr key={`${row.table}-${row.product_id}`} className="dark:text-gray-200">
+                            <td className="px-3 py-2 font-medium">{row.product_id}</td>
+                            <td className="px-3 py-2">
+                              {row.cost_price_usd != null ? `${row.cost_price_usd.toFixed(2)} $` : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-right">{formatCurrency(row.old_cost)}</td>
+                            <td className="px-3 py-2 text-right">
+                              {row.new_cost != null ? formatCurrency(row.new_cost) : '—'}
+                            </td>
+                            <td
+                              className={`px-3 py-2 text-right font-medium ${
+                                !row.delta
+                                  ? 'text-gray-400'
+                                  : row.delta > 0
+                                  ? 'text-red-600'
+                                  : 'text-green-600'
+                              }`}
+                            >
+                              {row.delta != null
+                                ? `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)} $`
+                                : row.skipped}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 rounded-b-xl flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowUsdRecalcModal(false)}
+                disabled={recalcApplying}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={applyUsdRecalc}
+                disabled={recalcApplying || !recalcPreview || !recalcPreview.changed}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {recalcApplying && <Loader2 className="w-4 h-4 animate-spin" />}
+                {recalcApplying ? 'Application…' : 'Appliquer les nouveaux coûtants'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showReservationModal && reservationModalProduct && (() => {
         const entries = reservationDetails[reservationModalProduct.product_id] || [];
         const total = entries.reduce((sum, e) => sum + (parseFloat(e.quantity) || 0), 0);

@@ -5,9 +5,10 @@
  *              - Section Taux & Tarifs horaires (taux régulier, 1.5x, 2x, augmentation)
  *              - Section Facturation (numéros taxes, taux TPS/TVQ, conditions, N° facture)
  *              - Section Sauvegarde & Restauration (procédure + lien vers /admin/restore)
- * @version 2.5.0
- * @date 2026-07-16
+ * @version 2.6.0
+ * @date 2026-08-27
  * @changelog
+ *   2.6.0 - Ajout section Change USD -> CAD (frais bancaires % + taux courant du jour)
  *   2.5.0 - Ajout section Sauvegarde & Restauration (procédure pas-à-pas + bouton vers la page de restauration)
  *   2.4.0 - Ajout champ Courriel du comptable (rapports comptables ventes/paiements)
  *   2.3.0 - Ajout champs Taux d'intérêt de retard + Note de pied de relevé (état de compte)
@@ -23,6 +24,7 @@
 import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { Sun, Moon, Monitor, DollarSign, FileText, Save, RefreshCw, AlertTriangle, Database, Download, Upload, Mail } from 'lucide-react';
+import { effectiveUsdToCadRate, formatRate, formatRateDate } from '../../../lib/utils/currency';
 
 export default function ParametresPage() {
   const { theme, setTheme } = useTheme();
@@ -35,6 +37,27 @@ export default function ParametresPage() {
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Taux de change du jour (affichage seulement — sert à valider les frais bancaires)
+  const [fxRate, setFxRate] = useState(null);
+  const [fxLoading, setFxLoading] = useState(false);
+
+  const fetchFxRate = useCallback(async () => {
+    setFxLoading(true);
+    try {
+      const res = await fetch('/api/exchange-rate');
+      const result = await res.json();
+      if (result?.success) setFxRate(result);
+    } catch (err) {
+      console.error('Taux de change indisponible:', err);
+    } finally {
+      setFxLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFxRate();
+  }, [fetchFxRate]);
 
   useEffect(() => {
     setMounted(true);
@@ -455,6 +478,89 @@ export default function ParametresPage() {
                   Sur une facture, le prix vendant d&apos;un article passe en rouge si sa marge
                   est sous ce seuil. Alerte interne seulement &mdash; jamais affichée au client.
                 </p>
+              </div>
+            </div>
+
+            {/* Change USD -> CAD (achats en devise américaine) */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Change USD &rarr; CAD
+              </h3>
+              <div className="max-w-xs">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Frais bancaires sur le change
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="25"
+                    className="w-full px-3 py-2 pr-8 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    value={settings?.usd_fx_fee_percent ?? ''}
+                    onChange={(e) => updateField('usd_fx_fee_percent', parseFloat(e.target.value) || 0)}
+                    onFocus={(e) => e.target.select()}
+                    inputMode="decimal"
+                    placeholder="3.5"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">%</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 max-w-2xl">
+                Marge que la banque ajoute au taux du marché sur une conversion USD &rarr; CAD.
+                Elle n&apos;apparaît jamais comme frais séparé sur le relevé &mdash; elle est cachée
+                dans le taux obtenu. BMO applique généralement de <strong>2,5 % à 3,5 %</strong>
+                (la marge monte quand le montant converti est petit).
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
+                <strong>Pour trouver votre vrai pourcentage :</strong> prenez une conversion BMO
+                récente, divisez le taux que BMO vous a donné par le taux de la Banque du Canada
+                de cette journée-là, puis inscrivez l&apos;écart ici.
+              </p>
+
+              {/* Taux courant */}
+              <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 max-w-2xl">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-sm text-blue-900 dark:text-blue-200">
+                    {fxRate ? (
+                      <>
+                        <div>
+                          Taux du marché : <strong>1 USD = {formatRate(fxRate.rate)} CAD</strong>
+                          {fxRate.rate_date && (
+                            <span className="text-blue-700 dark:text-blue-300">
+                              {' '}({formatRateDate(fxRate.rate_date)})
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1">
+                          Taux effectif avec {parseFloat(settings?.usd_fx_fee_percent ?? 0).toFixed(1)} % de frais :{' '}
+                          <strong>
+                            {formatRate(effectiveUsdToCadRate(fxRate.rate, settings?.usd_fx_fee_percent ?? 0))} CAD
+                          </strong>
+                        </div>
+                        <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                          Source : {fxRate.source}
+                          {fxRate.stale && ' — sources en ligne injoignables, taux en cache'}
+                        </div>
+                      </>
+                    ) : (
+                      <span>{fxLoading ? 'Chargement du taux…' : 'Taux indisponible'}</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchFxRate}
+                    disabled={fxLoading}
+                    className="px-3 py-2 text-sm rounded-lg border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${fxLoading ? 'animate-spin' : ''}`} />
+                    Actualiser
+                  </button>
+                </div>
               </div>
             </div>
 

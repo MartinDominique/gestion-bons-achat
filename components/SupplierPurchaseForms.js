@@ -9,9 +9,13 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.5.0
- * @date 2026-08-06
+ * @version 1.6.0
+ * @date 2026-08-27
  * @changelog
+ *   1.6.0 - Achats en USD: bascule CAD/USD sur le coûtant de chaque ligne d'AF
+ *           (conversion immédiate en CAD, taux + frais bancaires) et sur le coûtant
+ *           du modal « Produit non-inventaire » (CostPriceField partagé, qui remplace
+ *           l'ancien mini-calculateur USD). cost_price reste toujours en CAD.
  *   1.5.0 - Cadre « Bon d'achat client lié »: ajout d'un sélecteur « Ou Client » (client associé
  *           même sans BA, auto-rempli depuis le BA lié). Retrait du champ « BA Acomba » du formulaire.
  *   1.4.0 - Fournisseurs: ajout d'un 2e et 3e contact (nom + email + téléphone optionnel)
@@ -32,6 +36,8 @@ import {
   MapPin, Calendar, Package, DollarSign, Printer, Wrench, MessageSquare, Calculator
 } from 'lucide-react';
 import { useSplitView } from './SplitView/SplitViewContext';
+import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
+import { CURRENCY_CAD, CURRENCY_USD, formatRate } from '../lib/utils/currency';
 
 import { 
   CARRIERS,
@@ -112,6 +118,9 @@ export const PurchaseForm = ({
   addItemToPurchase,
   updateItemQuantity,
   updateItemPrice,
+  updateItemCostCurrency,
+  updateItemUsdCost,
+  usdFxFeePercent,
   updateItemNotes,
   removeItemFromPurchase,
 
@@ -771,6 +780,10 @@ Merci!`;
                 removeItemFromPurchase={removeItemFromPurchase}
                 formatCurrency={formatCurrency}
                 handlePriceBlur={handlePriceBlur}
+                updateItemCostCurrency={updateItemCostCurrency}
+                updateItemUsdCost={updateItemUsdCost}
+                usdToCadRate={usdToCadRate}
+                usdFxFeePercent={usdFxFeePercent}
               />
 
               {/* Modal mise à jour prix inventaire */}
@@ -1049,6 +1062,8 @@ export const NonInventoryModal = ({
   addNonInventoryProduct,
   formatCurrency
 }) => {
+  const exchange = useExchangeRate();
+
   if (!showNonInventoryModal) return null;
 
   return (
@@ -1133,107 +1148,22 @@ export const NonInventoryModal = ({
               )}
             </div>
 
-            {/* PRIX CÔTE À CÔTE */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Prix Coût CAD *</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={nonInventoryForm.cost_price}
-                  onChange={(e) => setNonInventoryForm({...nonInventoryForm, cost_price: e.target.value})}
-                  onFocus={(e) => e.target.select()}
-                  className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
-                  placeholder="0.00"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUsdCalculatorCost(!showUsdCalculatorCost);
-                    if (!showUsdCalculatorCost) {
-                      fetchExchangeRate();
-                    }
-                  }}
-                  className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium flex items-center"
-                  title="Convertir USD → CAD"
-                >
-                  <DollarSign className="w-4 h-4 mr-1" />
-                  USD
-                </button>
-              </div>
-
-              {/* CALCULATEUR USD COÛTANT */}
-              {showUsdCalculatorCost && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-blue-800 flex items-center">
-                      <Calculator className="w-4 h-4 mr-1" />
-                      Convertir USD → CAD
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => setShowUsdCalculatorCost(false)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-blue-700">Taux:</span>
-                      <span className="font-medium">1 USD = {usdToCadRate.toFixed(4)} CAD</span>
-                      {loadingExchangeRate && (
-                        <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={fetchExchangeRate}
-                        className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded hover:bg-blue-300"
-                        disabled={loadingExchangeRate}
-                      >
-                        🔄 Actualiser
-                      </button>
-                    </div>
-                    
-                    {exchangeRateError && (
-                      <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                        {exchangeRateError}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={usdAmountCost}
-                        onChange={(e) => setUsdAmountCost(e.target.value)}
-                        onFocus={(e) => e.target.select()}
-                        placeholder="Montant USD"
-                        className="flex-1 rounded border-blue-300 text-sm p-2"
-                      />
-                      <span className="text-sm text-blue-700">USD</span>
-                      <span className="text-sm">=</span>
-                      <span className="font-medium text-green-700">
-                        {usdAmountCost ? (parseFloat(usdAmountCost) * usdToCadRate).toFixed(2) : '0.00'} CAD
-                      </span>
-                    </div>
-                    
-                    <button
-                      type="button"
-                      onClick={useConvertedAmountCost}
-                      disabled={!usdAmountCost || parseFloat(usdAmountCost) <= 0}
-                      className="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                    >
-                      ✅ Utiliser {usdAmountCost ? (parseFloat(usdAmountCost) * usdToCadRate).toFixed(2) : '0.00'} CAD
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* PRIX COÛTANT — saisissable en CAD ou en USD */}
+            <CostPriceField
+              label="Prix coûtant *"
+              currency={nonInventoryForm.purchase_currency}
+              usdAmount={nonInventoryForm.cost_price_usd}
+              cadValue={nonInventoryForm.cost_price}
+              exchange={exchange}
+              onChange={({ currency, usdAmount, cad }) =>
+                setNonInventoryForm({
+                  ...nonInventoryForm,
+                  purchase_currency: currency,
+                  cost_price_usd: usdAmount,
+                  cost_price: (cad ?? 0).toString(),
+                })
+              }
+            />
 
             {/* PRIX VENDANT SANS USD */}
             <div>
@@ -1338,7 +1268,11 @@ export const SelectedItemsTable = ({
   updateItemNotes,
   removeItemFromPurchase,
   formatCurrency,
-  handlePriceBlur
+  handlePriceBlur,
+  updateItemCostCurrency,
+  updateItemUsdCost,
+  usdToCadRate,
+  usdFxFeePercent
 }) => {
   if (selectedItems.length === 0) return null;
 
@@ -1364,7 +1298,12 @@ export const SelectedItemsTable = ({
           <tbody>
             {selectedItems.map((item) => (
               <tr key={item.product_id} className="border-b dark:border-gray-700 dark:text-gray-200">
-                <td className="p-2">{item.product_id}</td>
+                <td className="p-2">
+                  <span className="inline-flex items-center gap-1">
+                    {item.product_id}
+                    <UsdBadge currency={item.purchase_currency} costPriceUsd={item.cost_price_usd} />
+                  </span>
+                </td>
                 <td className="p-2">{item.description}</td>
                 <td className="p-2 text-center">
                   <input
@@ -1378,16 +1317,58 @@ export const SelectedItemsTable = ({
                   />
                 </td>
                 <td className="p-2 text-right">
-                  <input
-                    type="number"
-                    step="0.0001"
-                    min="0"
-                    value={item.cost_price}
-                    onChange={(e) => updateItemPrice(item.product_id, e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    onBlur={(e) => handlePriceBlur && handlePriceBlur(item.product_id, e.target.value)}
-                    className="w-24 text-right rounded border-gray-300"
-                  />
+                  {item.purchase_currency === CURRENCY_USD ? (
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          step="0.0001"
+                          min="0"
+                          value={item.cost_price_usd ?? ''}
+                          onChange={(e) => updateItemUsdCost(item.product_id, e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          onBlur={() => handlePriceBlur && handlePriceBlur(item.product_id, item.cost_price)}
+                          className="w-20 text-right rounded border-blue-300 dark:border-blue-700 dark:bg-gray-800"
+                          title="Coûtant en dollars américains"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateItemCostCurrency(item.product_id, CURRENCY_CAD)}
+                          className="px-1.5 py-1 rounded text-[10px] font-bold bg-blue-600 text-white"
+                          title="Revenir à une saisie en dollars canadiens"
+                        >
+                          USD
+                        </button>
+                      </div>
+                      <span className="text-[11px] text-green-700 dark:text-green-400 font-medium">
+                        = {formatCurrency(item.cost_price)} CAD
+                      </span>
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                        {formatRate(usdToCadRate)} + {parseFloat(usdFxFeePercent || 0).toFixed(1)} %
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-end gap-1">
+                      <input
+                        type="number"
+                        step="0.0001"
+                        min="0"
+                        value={item.cost_price}
+                        onChange={(e) => updateItemPrice(item.product_id, e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={(e) => handlePriceBlur && handlePriceBlur(item.product_id, e.target.value)}
+                        className="w-24 text-right rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateItemCostCurrency(item.product_id, CURRENCY_USD)}
+                        className="px-1.5 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 dark:bg-gray-700 dark:text-gray-300"
+                        title="Saisir ce coûtant en dollars américains"
+                      >
+                        USD
+                      </button>
+                    </div>
+                  )}
                 </td>
                 <td className="p-2 text-right font-medium">
                   {formatCurrency(item.cost_price * item.quantity)}

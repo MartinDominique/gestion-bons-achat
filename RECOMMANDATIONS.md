@@ -1891,4 +1891,77 @@ Aucune migration SQL requise.
 
 ---
 
+### 30. ~~Achats en devise américaine (USD → CAD)~~ ✅ COMPLETE (2026-08-27)
+
+**Décision de conception — une seule devise circule dans l'app.**
+`cost_price` est **toujours** en dollars canadiens. Le dollar américain n'est qu'une manière de
+*saisir* un coûtant. Conséquence: soumissions, achats fournisseurs, BT/BL, factures, marges,
+statistiques et rapports comptables n'ont **rien** à changer — aucun risque de mélanger deux devises
+dans un total, une taxe ou un rapport au comptable.
+
+**Formule:** `CAD = USD × taux du marché × (1 + frais bancaires %)`
+
+Les frais bancaires ne sont pas un frais séparé sur le relevé: c'est la marge que la banque cache
+dans le taux qu'elle vous donne. Pour BMO, elle se situe généralement entre **2,5 % et 3,5 %**
+(elle monte quand le montant converti est petit). Défaut retenu: **3,5 %**, modifiable dans
+Paramètres. Pour calibrer sa vraie marge: prendre une conversion BMO récente et diviser le taux
+obtenu par le taux de la Banque du Canada de cette journée-là.
+
+**D'où vient le taux:**
+1. **Banque du Canada** (API Valet, `FXUSDCAD`) — taux officiel publié chaque jour ouvrable vers
+   16h30 HE, la référence reconnue par l'ARC et Revenu Québec;
+2. `exchangerate-api.com` si la Banque du Canada est injoignable;
+3. dernier taux enregistré dans `settings` (l'app reste utilisable, la date du taux est affichée);
+4. taux de repli codé en dur, en dernier recours;
+5. et dans tous les cas, **saisie manuelle** possible (relevé bancaire en main).
+
+**Implementation completee (2026-08-27):**
+
+- `supabase/migrations/20260827_add_usd_purchase_currency.sql` (nouveau) — `purchase_currency`
+  (CAD/USD, CHECK), `cost_price_usd`, `fx_rate_used`, `fx_fee_percent_used`, `fx_converted_at` sur
+  `products` et `non_inventory_items` (+ index partiels sur les articles USD);
+  `usd_fx_fee_percent` (défaut 3.5) et le cache du taux sur `settings`.
+- `lib/utils/currency.js` (nouveau) — conversion aller/retour, taux effectif, formats fr-CA,
+  `buildCurrencyUpdates()`. Surtout: **`safeCurrencyUpdates()`**, qui sonde une seule fois si les
+  colonnes existent et renvoie `{}` sinon — tant que la migration n'est pas passée, les
+  sauvegardes d'inventaire, d'AF et de réception continuent de fonctionner exactement comme avant
+  au lieu d'échouer en bloc sur une colonne manquante.
+- `app/api/exchange-rate/route.js` (nouveau) — taux côté serveur (pas de CORS), avec la chaîne de
+  replis ci-dessus, et mise en cache du dernier taux connu.
+- `app/api/products/recalc-usd/route.js` (nouveau) — `GET` = aperçu chiffré (aucune écriture),
+  `POST` = application. Recalcule le coûtant CAD de tous les articles USD au taux courant en
+  passant par `buildPriceShiftUpdates()`, donc « Hist. Prix » reste fidèle. **Le prix vendant
+  n'est jamais touché** — c'est une décision commerciale, pas une conséquence du taux de change.
+- `components/currency/CostPriceField.js` (nouveau) — champ coûtant partagé: bascule CAD/USD,
+  aperçu du calcul en toutes lettres (`45,00 USD × 1,3720 + 3,5 % de frais = 63,90 $ CAD`),
+  actualisation du taux, saisie manuelle du taux, hook `useExchangeRate()` et pastille `UsdBadge`.
+  Basculer en USD ne perd jamais un coûtant déjà saisi (conversion inverse automatique).
+
+**Modules câblés (cohérence demandée par Martin):**
+
+| Module | Où |
+|---|---|
+| **Inventaire** | Fiche produit (modal édition), badge USD dans la liste, bouton **« Recalculer USD »** avec aperçu avant application |
+| **Soumissions** | Modal « Modifier l'article » + formulaire « Ajout rapide » |
+| **Achat fournisseur** | Bascule USD **par ligne d'AF**, modal « Produit non-inventaire », modal « Mise à jour prix inventaire » |
+| **Réception directe** | Bascule USD par ligne, l'origine est écrite sur la fiche produit |
+| **Réception AF** | La devise de la ligne d'AF est reportée sur la fiche produit à la réception |
+
+Un article marqué USD dans sa fiche s'ouvre automatiquement en mode USD quand on l'ajoute à un AF.
+
+**Nettoyage:** les deux anciens mini-calculateurs USD locaux (Soumissions et AF) sont supprimés.
+Ils utilisaient un taux non officiel, n'appliquaient **aucun** frais bancaire (coûtant sous-évalué
+de 2 à 3,5 % sur chaque achat US) et ne gardaient aucune trace du prix USD.
+
+- `app/(protected)/parametres/page.js` v2.6.0 — section « Change USD → CAD »: frais bancaires,
+  taux du marché du jour, taux effectif, source et date, bouton Actualiser, et la méthode pour
+  calibrer son vrai pourcentage BMO.
+- `app/api/settings/route.js` v1.5.0 — champ `usd_fx_fee_percent` (validation 0–25 %) + cache du taux.
+
+**Reste:** exécuter la migration SQL `20260827_add_usd_purchase_currency.sql` dans Supabase
+Dashboard. Avant cela, la saisie en USD convertit correctement (le bon coûtant CAD est enregistré),
+mais l'origine USD n'est pas mémorisée et le bouton « Recalculer USD » ne trouve aucun article.
+
+---
+
 *Document genere le 2026-02-05, mis a jour le 2026-08-27 par Claude AI*
