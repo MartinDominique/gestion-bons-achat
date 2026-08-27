@@ -4,9 +4,10 @@
  *              - Liste, création, modification, suppression des AF
  *              - Réception directe et réception AF
  *              - Gestion des adresses de livraison fournisseur
- * @version 1.2.1
- * @date 2026-08-07
+ * @version 1.3.0
+ * @date 2026-08-27
  * @changelog
+ *   1.3.0 - Achats en USD: transmission des handlers de devise aux lignes d'AF
  *   1.2.1 - Desktop: retrait du collage (sticky) qui recouvrait la colonne « Statut ». Table compactée
  *           (espacements px-2, colonnes Client/Fournisseur tronquées, cellules non sécables) pour que
  *           TOUTES les colonnes (Statut + Actions) tiennent sans chevauchement. Défilement horizontal conservé.
@@ -143,6 +144,8 @@ export default function SupplierPurchaseManager() {
     addItemToPurchase,
     updateItemQuantity,
     updateItemPrice,
+    updateItemCostCurrency,
+    updateItemUsdCost,
     updateItemNotes,
     removeItemFromPurchase,
     
@@ -253,6 +256,9 @@ export default function SupplierPurchaseManager() {
           addItemToPurchase={addItemToPurchase}
           updateItemQuantity={updateItemQuantity}
           updateItemPrice={updateItemPrice}
+          updateItemCostCurrency={updateItemCostCurrency}
+          updateItemUsdCost={updateItemUsdCost}
+          usdFxFeePercent={hookData.usdFxFeePercent}
           updateItemNotes={updateItemNotes}
           removeItemFromPurchase={removeItemFromPurchase}
 

@@ -4,9 +4,11 @@
  *              - GET: Récupère les paramètres (taux horaires, taxes, facturation)
  *              - PUT: Met à jour les paramètres
  *              - Table singleton (id=1 toujours)
- * @version 1.4.0
- * @date 2026-06-14
+ * @version 1.5.0
+ * @date 2026-08-27
  * @changelog
+ *   1.5.0 - Ajout usd_fx_fee_percent (frais bancaires sur conversion USD->CAD)
+ *           et cache du dernier taux (usd_cad_rate / _date / _source)
  *   1.4.0 - Ajout champ accountant_email (rapports comptables ventes/paiements)
  *   1.3.0 - Ajout champs late_interest_annual_rate + statement_footer_note (état de compte)
  *   1.2.0 - Ajout champ min_margin_percent (seuil alerte marge faible facturation)
@@ -54,6 +56,10 @@ export async function GET() {
             late_interest_annual_rate: 18,
             statement_footer_note: '',
             accountant_email: '',
+            usd_fx_fee_percent: 3.5,
+            usd_cad_rate: null,
+            usd_cad_rate_date: null,
+            usd_cad_rate_source: null,
           }
         });
       }
@@ -95,6 +101,7 @@ export async function PUT(request) {
       'late_interest_annual_rate',
       'statement_footer_note',
       'accountant_email',
+      'usd_fx_fee_percent',
     ];
 
     const updates = { updated_at: new Date().toISOString() };
@@ -138,6 +145,12 @@ export async function PUT(request) {
     if (updates.late_interest_annual_rate !== undefined && (updates.late_interest_annual_rate < 0 || updates.late_interest_annual_rate > 100)) {
       return NextResponse.json(
         { success: false, error: 'Le taux d\'intérêt annuel doit être entre 0 et 100 %' },
+        { status: 400 }
+      );
+    }
+    if (updates.usd_fx_fee_percent !== undefined && (updates.usd_fx_fee_percent < 0 || updates.usd_fx_fee_percent > 25)) {
+      return NextResponse.json(
+        { success: false, error: 'Les frais bancaires de change doivent être entre 0 et 25 %' },
         { status: 400 }
       );
     }

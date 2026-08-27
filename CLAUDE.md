@@ -406,6 +406,8 @@ const total = subtotal + tps + tvq;
 /api/clients                           → CRUD clients
 /api/products                          → CRUD produits
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
+/api/products/recalc-usd               → Recalcul des coûtants achetés en USD (GET aperçu / POST appliquer)
+/api/exchange-rate                     → Taux USD→CAD (Banque du Canada + replis + cache settings)
 /api/products/groups                   → Groupes de produits distincts
 /api/inventory/reservations            → En commande (AF) + Réservé (BT/BL non signés) + détail par doc
 /api/items-to-order                    → Liste À Commander (GET par statut, enrichi inventaire vivant qté/en commande/coûtant/vendant + POST ajout enrichi/fusion)
@@ -434,6 +436,8 @@ lib/services/client-signature.js    → Gestion signatures (BT + BL)
 lib/services/statement-data.js      → État de compte à une date donnée (as_of), partagé écran/PDF/courriel
 lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique)
 lib/utils/priceShift.js             → Décalage historique prix (3 niveaux)
+lib/utils/currency.js               → Conversion USD→CAD (taux + frais bancaires), cost_price toujours en CAD
+lib/utils/productSearch.js          → Recherche produits tolérante (tirets/accents ignorés)
 lib/supabase.js                     → Client Supabase (browser)
 lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
 ```
@@ -452,6 +456,7 @@ components/SupplierPurchaseServices.js        → Services recherche produits, h
 components/SupplierReceiptModal.js            → Réception AF (partielle/complète)
 components/DirectReceiptModal.js              → Réception directe sans AF + ajustement inventaire
 components/InventoryManager.js                → Gestion inventaire (recherche serveur, modal unifié)
+components/currency/CostPriceField.js         → Champ coûtant partagé CAD/USD + hook useExchangeRate + UsdBadge
 components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation commande client)
 components/SplitView/                         → Panneau latéral (BA/AF/Soumission/BT/BL inline)
 components/ClientManager.js                   → Gestion clients
@@ -575,8 +580,14 @@ user_id, created_at, updated_at
 product_id, description, unit, cost_price, selling_price, stock_qty,
 cost_price_1st, cost_price_2nd, cost_price_3rd,
 selling_price_1st, selling_price_2nd, selling_price_3rd,
-supplier, product_group
+supplier, product_group,
+purchase_currency,          -- devise d'ACHAT: 'CAD' (défaut) ou 'USD'
+cost_price_usd,             -- coûtant tel que facturé par le fournisseur en USD
+fx_rate_used, fx_fee_percent_used, fx_converted_at
 ```
+**Devise d'achat:** `cost_price` est **TOUJOURS** en CAD. Un article acheté en USD garde son prix
+américain dans `cost_price_usd`; le CAD est recalculable au taux du jour (bouton « Recalculer USD »
+dans l'Inventaire). Aucun autre module n'a à connaître une seconde devise.
 **Historique des prix:** Lors d'une réception (AF ou directe), si le cost_price change, les anciens prix sont décalés (shift) dans les colonnes `_1st`, `_2nd`, `_3rd`. Voir `lib/utils/priceShift.js`.
 
 ---
@@ -882,6 +893,19 @@ CRON_SECRET                   # Auth pour cron jobs
     - `components/SoumissionsManager.js` v2.3.0 — modal « Modifier l'article »: boutons de marge **27 / 30 / 35 %** (au lieu de 10/15/27); champ **« Quantité en inventaire — En main »** (écrit `stock_qty` + insère un mouvement `manual_edit` avec le N° de soumission → Inventaire > Historique); case **« Mettre à jour la fiche inventaire »** cochée par défaut (écrit coûtant/vendant via `buildPriceShiftUpdates` → alimente « Hist. Prix »)
     - Table cible résolue en interrogeant `products` puis `non_inventory_items` (`is_non_inventory` peu fiable sur les anciennes lignes); spinner + message d'erreur explicite si l'écriture échoue
     - Aucune migration SQL requise
+
+30. ~~**Achats en devise américaine (USD → CAD)**~~ - ✅ COMPLÉTÉ (2026-08-27)
+    - `supabase/migrations/20260827_add_usd_purchase_currency.sql` (nouveau) — `purchase_currency` (CAD/USD), `cost_price_usd`, `fx_rate_used`, `fx_fee_percent_used`, `fx_converted_at` sur `products` + `non_inventory_items`; `usd_fx_fee_percent` (défaut 3.5) + cache du taux (`usd_cad_rate`/`_date`/`_source`) sur `settings`
+    - **Règle absolue:** `cost_price` reste TOUJOURS en CAD. Le USD n'est qu'une façon de *saisir* un coûtant — soumissions, AF, BT/BL, factures et rapports continuent de travailler uniquement en CAD
+    - Calcul: `CAD = USD × taux du marché × (1 + frais bancaires %)`. Les frais représentent la marge que la banque cache dans son taux (BMO: 2,5 % à 3,5 %; défaut configuré à 3,5 %)
+    - `lib/utils/currency.js` (nouveau) — conversion, taux effectif, formats, `buildCurrencyUpdates()`, et `safeCurrencyUpdates()` qui **n'écrit les colonnes de devise que si la migration a été passée** (sonde une fois par session) pour ne jamais casser une sauvegarde existante
+    - `app/api/exchange-rate/route.js` (nouveau) — taux via **Banque du Canada** (API Valet, taux officiel reconnu par l'ARC/Revenu Québec), repli `exchangerate-api.com`, puis dernier taux mis en cache dans `settings`, puis taux de repli. Passe par le serveur (pas de CORS) et met le taux en cache
+    - `app/api/products/recalc-usd/route.js` (nouveau) — GET aperçu / POST application: recalcule le coûtant CAD de tous les articles USD au taux courant, avec décalage de l'historique des prix. Le **vendant n'est jamais touché** (décision commerciale, pas conséquence du taux)
+    - `components/currency/CostPriceField.js` (nouveau) — champ coûtant partagé avec bascule CAD/USD, hook `useExchangeRate()`, saisie manuelle du taux, et pastille `UsdBadge`
+    - Modules câblés: **Inventaire** (fiche produit + badge USD + bouton « Recalculer USD »), **Soumissions** (modal « Modifier l'article » + « Ajout rapide »), **Achat fournisseur** (bascule USD par ligne d'AF + modal produit non-inventaire + modal mise à jour prix), **Réception directe**, **Réception AF** (reporte la devise de la ligne d'AF sur la fiche)
+    - Les anciens mini-calculateurs USD locaux (Soumissions + AF) sont remplacés: ils utilisaient un taux non officiel, sans frais bancaires, et n'étaient jamais mémorisés
+    - `app/(protected)/parametres/page.js` v2.6.0 — section « Change USD → CAD »: frais bancaires + taux du jour + taux effectif, avec la méthode pour calibrer son vrai % BMO
+    - **Reste:** exécuter la migration SQL `20260827_add_usd_purchase_currency.sql` dans Supabase Dashboard (avant, la saisie USD convertit correctement mais l'origine USD n'est pas mémorisée)
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

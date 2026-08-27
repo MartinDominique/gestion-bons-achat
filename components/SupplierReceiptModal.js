@@ -5,9 +5,12 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire (IN)
  *              - Décale l'historique des prix (shift) si le cost_price change
- * @version 1.2.3
- * @date 2026-03-07
+ * @version 1.3.0
+ * @date 2026-08-27
  * @changelog
+ *   1.3.0 - Achats en USD: la devise d'achat de la ligne d'AF (et le coûtant USD) est
+ *           reportée sur la fiche produit à la réception, pour garder le badge USD
+ *           et permettre le recalcul quand le taux change.
  *   1.2.3 - Fix curseur qui saute à la fin lors de la saisie dans les champs avec toUpperCase (CSS textTransform + onBlur)
  *   1.2.2 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.2.1 - Ajout onFocus select sur champ quantité (auto-sélection)
@@ -18,6 +21,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
+import { useExchangeRate } from './currency/CostPriceField';
+import { CURRENCY_CAD, CURRENCY_USD, safeCurrencyUpdates } from '../lib/utils/currency';
 import { Package, Check, X, Truck, AlertCircle, History } from 'lucide-react';
 
 // Formatage monétaire
@@ -57,6 +62,8 @@ export default function SupplierReceiptModal({
   
   // Items avec quantités à recevoir
   const [receiptItems, setReceiptItems] = useState([]);
+  // Taux USD -> CAD (articles achetés en dollars américains)
+  const exchange = useExchangeRate();
   
   // Notes de réception
   const [receiptNotes, setReceiptNotes] = useState('');
@@ -155,6 +162,9 @@ export default function SupplierReceiptModal({
           quantity_to_receive: 0, // À remplir par l'utilisateur
           selected: false,
           cost_price: item.cost_price || 0,
+          // Origine du coûtant, reprise de la ligne d'AF (cost_price reste en CAD)
+          purchase_currency: item.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD,
+          cost_price_usd: item.cost_price_usd ?? null,
           product_group: item.product_group || '',
           current_stock: currentStock, // Stock actuel
           is_non_inventory: item.is_non_inventory || false // Type d'item
@@ -310,6 +320,16 @@ export default function SupplierReceiptModal({
             cost_price: item.cost_price,
           });
           Object.assign(updates, priceShiftUpdates);
+
+          // Conserver la trace d'un achat en USD sur la fiche produit
+          if (item.purchase_currency === CURRENCY_USD) {
+            Object.assign(updates, await safeCurrencyUpdates(supabase, {
+              currency: CURRENCY_USD,
+              usdAmount: item.cost_price_usd,
+              marketRate: exchange.rate,
+              feePercent: exchange.feePercent,
+            }));
+          }
 
           await supabase
             .from(tableName)

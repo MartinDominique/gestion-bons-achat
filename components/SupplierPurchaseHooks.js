@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
+import {
+  CURRENCY_CAD,
+  CURRENCY_USD,
+  DEFAULT_FX_FEE_PERCENT,
+  safeCurrencyUpdates,
+  convertUsdToCad,
+} from '../lib/utils/currency';
 import { 
   // API Functions
   fetchSupplierPurchases,
@@ -152,7 +159,10 @@ export const useSupplierPurchase = () => {
   selling_price: '',
   unit: 'Un',
   product_group: 'Non-Inventaire',
-  supplier: ''
+  supplier: '',
+  // Devise d'achat — cost_price reste toujours en CAD
+  purchase_currency: CURRENCY_CAD,
+  cost_price_usd: ''
 });
 
   // États pour le modal non-inventaire
@@ -162,6 +172,8 @@ const [showUsdCalculatorSelling, setShowUsdCalculatorSelling] = useState(false);
 const [usdAmountCost, setUsdAmountCost] = useState('');
 const [usdAmountSelling, setUsdAmountSelling] = useState('');
 const [usdToCadRate, setUsdToCadRate] = useState(1.35);
+// Frais bancaires appliqués aux COÛTANTS convertis (jamais aux prix de vente)
+const [usdFxFeePercent, setUsdFxFeePercent] = useState(DEFAULT_FX_FEE_PERCENT);
 const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
 const [exchangeRateError, setExchangeRateError] = useState('');
 
@@ -681,6 +693,37 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     ));
   };
 
+  // ===== Ligne d'AF achetée en USD =====
+  // cost_price reste TOUJOURS en CAD (totaux, taxes et PDF de l'AF sont en CAD);
+  // seul le montant saisi change de devise.
+  const updateItemCostCurrency = (productId, currency) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.product_id !== productId) return item;
+      if (currency === CURRENCY_USD) {
+        const usd = item.cost_price_usd ?? '';
+        return {
+          ...item,
+          purchase_currency: CURRENCY_USD,
+          cost_price_usd: usd,
+          cost_price: convertUsdToCad(usd, usdToCadRate, usdFxFeePercent) ?? 0,
+        };
+      }
+      return { ...item, purchase_currency: CURRENCY_CAD, cost_price_usd: '' };
+    }));
+  };
+
+  const updateItemUsdCost = (productId, usdValue) => {
+    setSelectedItems(prev => prev.map(item =>
+      item.product_id === productId
+        ? {
+            ...item,
+            cost_price_usd: usdValue,
+            cost_price: convertUsdToCad(usdValue, usdToCadRate, usdFxFeePercent) ?? 0,
+          }
+        : item
+    ));
+  };
+
   // Vérifier si le prix a changé et ouvrir le modal
   const handlePriceBlur = (productId, newPrice) => {
     console.log('🔍 handlePriceBlur appelé:', productId, newPrice);
@@ -758,6 +801,13 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
           selling_price: newSelling,
           // Décalage historique (_1st/_2nd/_3rd) + price_updated_at si un prix change
           ...buildPriceShiftUpdates(current || {}, { cost_price: newCost, selling_price: newSelling }),
+          // Mémoriser que ce coûtant vient d'un achat en USD (cost_price reste en CAD)
+          ...(await safeCurrencyUpdates(supabase, {
+            currency: priceUpdateItem.purchase_currency,
+            usdAmount: priceUpdateItem.cost_price_usd,
+            marketRate: usdToCadRate,
+            feePercent: usdFxFeePercent,
+          })),
         };
 
         const { error } = await supabase
@@ -804,23 +854,27 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
   };
 
   // ===== GESTION MODAL NON-INVENTAIRE =====
+    // Taux officiel via /api/exchange-rate (Banque du Canada, avec replis)
     const fetchExchangeRate = async () => {
       setLoadingExchangeRate(true);
       setExchangeRateError('');
-      
+
       try {
-        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const response = await fetch('/api/exchange-rate');
         const data = await response.json();
-        
-        if (data && data.rates && data.rates.CAD) {
-          setUsdToCadRate(data.rates.CAD);
+
+        if (data?.success && data.rate) {
+          setUsdToCadRate(parseFloat(data.rate));
+          if (data.fee_percent !== undefined && data.fee_percent !== null) {
+            setUsdFxFeePercent(parseFloat(data.fee_percent));
+          }
+          if (data.warning) setExchangeRateError(data.warning);
         } else {
           throw new Error('Taux CAD non trouvé');
         }
       } catch (error) {
         console.error('Erreur récupération taux de change:', error);
         setExchangeRateError('Erreur de connexion - Taux par défaut utilisé');
-        setUsdToCadRate(1.35);
       } finally {
         setLoadingExchangeRate(false);
       }
@@ -891,7 +945,13 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
               unit: nonInventoryForm.unit || 'Un',
               product_group: nonInventoryForm.product_group || 'Non-Inventaire',
               supplier: nonInventoryForm.supplier || null,
-              is_non_inventory: true
+              is_non_inventory: true,
+              ...(await safeCurrencyUpdates(supabase, {
+                currency: nonInventoryForm.purchase_currency,
+                usdAmount: nonInventoryForm.cost_price_usd,
+                marketRate: usdToCadRate,
+                feePercent: usdFxFeePercent,
+              }))
             });
     
           if (insertError) {
@@ -928,7 +988,9 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
           selling_price: '',
           unit: 'Un',
           product_group: 'Non-Inventaire',
-          supplier: currentSupplier
+          supplier: currentSupplier,
+          purchase_currency: CURRENCY_CAD,
+          cost_price_usd: ''
         });
         setShowNonInventoryModal(false);
         setShowUsdCalculatorCost(false);
@@ -1062,7 +1124,11 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
           cost_price: item.cost_price,
           selling_price: item.selling_price,
           notes: item.notes || '',
-          is_non_inventory: item.is_non_inventory || false
+          is_non_inventory: item.is_non_inventory || false,
+          // Origine du coûtant si l'article a été acheté en USD (cost_price reste en CAD)
+          purchase_currency: item.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD,
+          cost_price_usd:
+            item.purchase_currency === CURRENCY_USD ? parseFloat(item.cost_price_usd) || 0 : null
         })),
         subtotal: purchaseForm.subtotal,
         tps: purchaseForm.tps,
@@ -1504,6 +1570,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     usdAmountSelling,
     setUsdAmountSelling,
     usdToCadRate,
+    usdFxFeePercent,
     loadingExchangeRate,
     exchangeRateError,
     
@@ -1544,6 +1611,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     addItemToPurchase,
     updateItemQuantity,
     updateItemPrice,
+    updateItemCostCurrency,
+    updateItemUsdCost,
     updateItemNotes,
     removeItemFromPurchase,
     

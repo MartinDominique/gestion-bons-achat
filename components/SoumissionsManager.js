@@ -6,9 +6,13 @@
  *              - Recherche produits (tolérante aux tirets/accents), calcul taxes QC, gestion fichiers
  *              - Modal « Modifier l'article »: calculateur de marge, ajustement du stock
  *                et répercussion des prix dans la fiche inventaire
- * @version 2.3.0
+ * @version 2.4.0
  * @date 2026-08-27
  * @changelog
+ *   2.4.0 - Achats en USD: le prix coûtant du modal « Modifier l'article » et du formulaire
+ *           « Ajout rapide » se saisit en CAD ou en USD (CostPriceField partagé, taux officiel
+ *           Banque du Canada + frais bancaires configurables). Remplace l'ancien mini-calculateur
+ *           USD local (taux non officiel, sans frais, non mémorisé).
  *   2.3.0 - Modal « Modifier l'article »: boutons de marge 27%/30%/35% (au lieu de 10/15/27);
  *           champ « Quantité en inventaire — En main » avec création d'un mouvement
  *           d'inventaire (Inventaire → Historique); case « Mettre à jour la fiche inventaire »
@@ -44,6 +48,8 @@ import {
 import AddToOrderButton from './order-list/AddToOrderButton';
 import { searchWithFallback } from '../lib/utils/productSearch';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
+import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
+import { CURRENCY_CAD, CURRENCY_USD, safeCurrencyUpdates, formatRate } from '../lib/utils/currency';
 
 // ============================================
 // GÉNÉRATION PDF SOUMISSION (jsPDF)
@@ -277,20 +283,18 @@ export default function SoumissionsManager() {
     selling_price: '',
     cost_price: '',
     comment: '',
-    stock_qty: ''
+    stock_qty: '',
+    // Devise d'achat — cost_price reste toujours en CAD
+    purchase_currency: CURRENCY_CAD,
+    cost_price_usd: ''
   });
+  const exchange = useExchangeRate();
   const [editItemMarginPercent, setEditItemMarginPercent] = useState('');
   // Répercuter les prix modifiés ici dans la fiche inventaire (avec historique)
   const [syncPricesToInventory, setSyncPricesToInventory] = useState(true);
   const [savingEditItem, setSavingEditItem] = useState(false);
   const [editItemError, setEditItemError] = useState('');
 
-  // États pour le calculateur USD
-  const [showUsdCalculator, setShowUsdCalculator] = useState(false);
-  const [usdAmount, setUsdAmount] = useState('');
-  const [usdToCadRate, setUsdToCadRate] = useState(1.35);
-  const [loadingExchangeRate, setLoadingExchangeRate] = useState(false);
-  const [exchangeRateError, setExchangeRateError] = useState('');
 
   // Debounce pour la recherche produits
   // Fermer le dropdown statut au clic extérieur
@@ -349,7 +353,10 @@ export default function SoumissionsManager() {
     selling_price: '',
     cost_price: '',
     unit: 'UN',
-    product_group: 'Divers'
+    product_group: 'Divers',
+    // Devise d'achat — cost_price reste toujours en CAD
+    purchase_currency: CURRENCY_CAD,
+    cost_price_usd: ''
   });
 
   // Calcul automatique du montant vente ET coût
@@ -376,31 +383,7 @@ export default function SoumissionsManager() {
     fetchSoumissions();
     fetchProducts();
     fetchClients();
-    fetchExchangeRate();
   }, []);
-
-  // Fonction pour récupérer le taux de change USD/CAD
-  const fetchExchangeRate = async () => {
-    setLoadingExchangeRate(true);
-    setExchangeRateError('');
-    
-    try {
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-      const data = await response.json();
-      
-      if (data && data.rates && data.rates.CAD) {
-        setUsdToCadRate(data.rates.CAD);
-      } else {
-        throw new Error('Taux CAD non trouvé');
-      }
-    } catch (error) {
-      console.error('Erreur récupération taux de change:', error);
-      setExchangeRateError('Erreur de connexion - Taux par défaut utilisé');
-      setUsdToCadRate(1.35);
-    } finally {
-      setLoadingExchangeRate(false);
-    }
-  };
 
   // Fonctions pour les boutons de profit
   const applyProfitMargin = (percentage) => {
@@ -414,17 +397,6 @@ export default function SoumissionsManager() {
     }
   };
 
-  // Fonction pour utiliser le montant USD converti
-  const useConvertedAmount = () => {
-    const convertedAmount = parseFloat(usdAmount) * usdToCadRate;
-    setQuickProductForm(prev => ({
-      ...prev,
-      cost_price: convertedAmount.toFixed(2)
-    }));
-    setShowUsdCalculator(false);
-    setUsdAmount('');
-  };
-  
       // Fonction pour générer le numéro automatique
   const generateSubmissionNumber = async () => {
     const now = new Date();
@@ -790,7 +762,9 @@ export default function SoumissionsManager() {
       selling_price: item.selling_price.toString(),
       cost_price: item.cost_price.toString(),
       comment: item.comment || '',
-      stock_qty: (item.stock_qty ?? 0).toString()
+      stock_qty: (item.stock_qty ?? 0).toString(),
+      purchase_currency: item.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD,
+      cost_price_usd: item.cost_price_usd != null ? item.cost_price_usd.toString() : ''
     });
     setEditItemMarginPercent('');
     setSyncPricesToInventory(true);
@@ -889,7 +863,9 @@ export default function SoumissionsManager() {
       selling_price: '',
       cost_price: '',
       comment: '',
-      stock_qty: ''
+      stock_qty: '',
+      purchase_currency: CURRENCY_CAD,
+      cost_price_usd: ''
     });
     setEditItemMarginPercent('');
     setSyncPricesToInventory(true);
@@ -935,7 +911,7 @@ export default function SoumissionsManager() {
    * - Un changement de quantité crée un mouvement dans inventory_movements
    * @returns {Promise<{ok: boolean, error?: string, changes: string[], stock: number|null}>}
    */
-  const applyEditItemToInventory = async ({ productId, preferNonInventory, newCost, newSelling, newStock, syncPrices }) => {
+  const applyEditItemToInventory = async ({ productId, preferNonInventory, newCost, newSelling, newStock, syncPrices, currency, usdAmount }) => {
     const found = await resolveInventoryRow(productId, preferNonInventory);
     if (!found) {
       // Article absent de l'inventaire (ex: ligne ajoutée manuellement): on ne bloque
@@ -968,6 +944,19 @@ export default function SoumissionsManager() {
       }
       if (priceUpdates.selling_price !== undefined) {
         changes.push(`Vendant: ${oldSelling.toFixed(2)}$ → ${newSelling.toFixed(2)}$`);
+      }
+
+      // Devise d'achat: cost_price reste en CAD, on mémorise seulement son origine
+      const oldCurrency = row.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD;
+      const currencyUpdates = await safeCurrencyUpdates(supabase, {
+        currency,
+        usdAmount,
+        marketRate: exchange.rate,
+        feePercent: exchange.feePercent,
+      });
+      Object.assign(updates, currencyUpdates);
+      if (currencyUpdates.purchase_currency !== oldCurrency) {
+        changes.push(`Devise d'achat: ${oldCurrency} → ${currencyUpdates.purchase_currency}`);
       }
     }
 
@@ -1055,9 +1044,13 @@ export default function SoumissionsManager() {
     }
 
     const stockChanged = parsedStock !== null && parsedStock !== (parseFloat(editItemQuantities.stock) || 0);
+    const currentCurrency =
+      editingItem.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD;
+    const currencyChanged = editItemForm.purchase_currency !== currentCurrency;
     const pricesChanged =
       newCost !== (parseFloat(editingItem.cost_price) || 0) ||
-      newSelling !== (parseFloat(editingItem.selling_price) || 0);
+      newSelling !== (parseFloat(editingItem.selling_price) || 0) ||
+      currencyChanged;
     const mustTouchInventory = stockChanged || (syncPricesToInventory && pricesChanged);
 
     setSavingEditItem(true);
@@ -1075,6 +1068,8 @@ export default function SoumissionsManager() {
           // (sinon une valeur périmée écraserait une quantité modifiée ailleurs)
           newStock: stockChanged ? parsedStock : null,
           syncPrices: syncPricesToInventory,
+          currency: editItemForm.purchase_currency,
+          usdAmount: editItemForm.cost_price_usd,
         });
       } catch (err) {
         inventoryResult = { ok: false, error: err.message, changes: [], stock: null };
@@ -1098,7 +1093,12 @@ export default function SoumissionsManager() {
             selling_price: newSelling,
             cost_price: newCost,
             comment: editItemForm.comment.trim(),
-            stock_qty: resolvedStock
+            stock_qty: resolvedStock,
+            purchase_currency: editItemForm.purchase_currency,
+            cost_price_usd:
+              editItemForm.purchase_currency === CURRENCY_USD
+                ? parseFloat(editItemForm.cost_price_usd) || 0
+                : null
           }
         : item
     ));
@@ -1147,7 +1147,13 @@ export default function SoumissionsManager() {
         selling_price: parseFloat(quickProductForm.selling_price),
         cost_price: parseFloat(quickProductForm.cost_price),
         unit: quickProductForm.unit,
-        product_group: quickProductForm.product_group || 'Non-Inventaire'
+        product_group: quickProductForm.product_group || 'Non-Inventaire',
+        ...(await safeCurrencyUpdates(supabase, {
+          currency: quickProductForm.purchase_currency,
+          usdAmount: quickProductForm.cost_price_usd,
+          marketRate: exchange.rate,
+          feePercent: exchange.feePercent,
+        }))
       };
 
       console.log('💾 Sauvegarde dans non_inventory_items:', nonInventoryData);
@@ -1232,10 +1238,10 @@ export default function SoumissionsManager() {
       selling_price: '',
       cost_price: '',
       unit: 'Un',
-      product_group: 'Non-Inventaire'
+      product_group: 'Non-Inventaire',
+      purchase_currency: CURRENCY_CAD,
+      cost_price_usd: ''
     });
-    setShowUsdCalculator(false);
-    setUsdAmount('');
   } else {
     alert('❌ Veuillez remplir tous les champs obligatoires');
   }
@@ -2719,111 +2725,22 @@ const cleanupFilesForSubmission = async (files) => {
                             />
                           </div>
                           
-                          {/* PRIX COÛT AVEC CALCULATEUR USD */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Prix Coût CAD *</label>
-                            <div className="flex gap-2">
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={quickProductForm.cost_price}
-                                onChange={(e) => setQuickProductForm({...quickProductForm, cost_price: e.target.value})}
-                                className="flex-1 rounded-lg border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-base p-3"
-                                placeholder="0.00"
-                                required
-                                autoCorrect="off"
-                                autoCapitalize="off"
-                                spellCheck={false}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setShowUsdCalculator(!showUsdCalculator);
-                                  if (!showUsdCalculator) {
-                                    fetchExchangeRate();
-                                  }
-                                }}
-                                className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium flex items-center"
-                                title="Convertir USD → CAD"
-                              >
-                                <DollarSign className="w-4 h-4 mr-1" />
-                                USD
-                              </button>
-                            </div>
-
-                            {/* MINI-CALCULATEUR USD INLINE */}
-                            {showUsdCalculator && (
-                              <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center">
-                                    <Calculator className="w-4 h-4 mr-1" />
-                                    Convertir USD → CAD
-                                  </h4>
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowUsdCalculator(false)}
-                                    className="text-blue-600 hover:text-blue-800"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-blue-700 dark:text-blue-300">Taux:</span>
-                                    <span className="font-medium">1 USD = {usdToCadRate.toFixed(4)} CAD</span>
-                                    {loadingExchangeRate && (
-                                      <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-600"></div>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={fetchExchangeRate}
-                                      className="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded hover:bg-blue-300"
-                                      disabled={loadingExchangeRate}
-                                    >
-                                      🔄 Actualiser
-                                    </button>
-                                  </div>
-                                  
-                                  {exchangeRateError && (
-                                    <div className="text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 p-2 rounded">
-                                      {exchangeRateError}
-                                    </div>
-                                  )}
-                                  
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={usdAmount}
-                                      onChange={(e) => setUsdAmount(e.target.value)}
-                                      placeholder="Montant USD"
-                                      className="flex-1 rounded border-blue-300 dark:border-blue-700 text-sm p-2 dark:bg-gray-800 dark:text-gray-100"
-                                      autoCorrect="off"
-                                      autoCapitalize="off"
-                                      spellCheck={false}
-                                    />
-                                    <span className="text-sm text-blue-700">USD</span>
-                                    <span className="text-sm">=</span>
-                                    <span className="font-medium text-green-700">
-                                      {usdAmount ? (parseFloat(usdAmount) * usdToCadRate).toFixed(2) : '0.00'} CAD
-                                    </span>
-                                  </div>
-                                  
-                                  <button
-                                    type="button"
-                                    onClick={useConvertedAmount}
-                                    disabled={!usdAmount || parseFloat(usdAmount) <= 0}
-                                    className="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                  >
-                                    ✅ Utiliser {usdAmount ? (parseFloat(usdAmount) * usdToCadRate).toFixed(2) : '0.00'} CAD
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          {/* PRIX COÛT — saisissable en CAD ou en USD */}
+                          <CostPriceField
+                            label="Prix coûtant *"
+                            currency={quickProductForm.purchase_currency}
+                            usdAmount={quickProductForm.cost_price_usd}
+                            cadValue={quickProductForm.cost_price}
+                            exchange={exchange}
+                            onChange={({ currency, usdAmount, cad }) =>
+                              setQuickProductForm(prev => ({
+                                ...prev,
+                                purchase_currency: currency,
+                                cost_price_usd: usdAmount,
+                                cost_price: (cad ?? 0).toString(),
+                              }))
+                            }
+                          />
 
                           {/* PRIX VENTE AVEC BOUTONS DE PROFIT */}
                           <div>
@@ -2894,10 +2811,10 @@ const cleanupFilesForSubmission = async (files) => {
                                 selling_price: '',
                                 cost_price: '',
                                 unit: 'Un',
-                                product_group: 'Divers'
+                                product_group: 'Divers',
+                                purchase_currency: CURRENCY_CAD,
+                                cost_price_usd: ''
                               });
-                              setShowUsdCalculator(false);
-                              setUsdAmount('');
                             }}
                             className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                           >
@@ -3000,30 +2917,23 @@ const cleanupFilesForSubmission = async (files) => {
                           />
                         </div>
 
-                        {/* Prix coûtant */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Prix coûtant ($)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={editItemForm.cost_price}
-                            onChange={(e) => setEditItemForm({...editItemForm, cost_price: e.target.value})}
-                            onFocus={(e) => e.target.select()}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                saveEditItemModal();
-                              }
-                            }}
-                            className="w-full rounded-lg border-orange-300 dark:border-orange-700 shadow-sm focus:border-orange-500 focus:ring-orange-500 p-3 dark:bg-gray-800 dark:text-gray-100"
-                            autoCorrect="off"
-                            autoCapitalize="off"
-                            spellCheck={false}
-                          />
-                        </div>
+                        {/* Prix coûtant — saisissable en CAD ou en USD */}
+                        <CostPriceField
+                          label="Prix coûtant ($)"
+                          currency={editItemForm.purchase_currency}
+                          usdAmount={editItemForm.cost_price_usd}
+                          cadValue={editItemForm.cost_price}
+                          exchange={exchange}
+                          onEnter={saveEditItemModal}
+                          onChange={({ currency, usdAmount, cad }) =>
+                            setEditItemForm(prev => ({
+                              ...prev,
+                              purchase_currency: currency,
+                              cost_price_usd: usdAmount,
+                              cost_price: (cad ?? 0).toString(),
+                            }))
+                          }
+                        />
 
                         {/* Calculateur prix de vente par % de marge sur coût */}
                         <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
@@ -3683,7 +3593,7 @@ const cleanupFilesForSubmission = async (files) => {
       {/* Info système */}
       <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          📊 6718 produits • 💱 USD→CAD (Taux: {usdToCadRate.toFixed(4)}) • 🎯 Marges auto • 📧 Email .EML
+          📊 6718 produits • 💱 USD→CAD (Taux: {formatRate(exchange.rate)}) • 🎯 Marges auto • 📧 Email .EML
         </p>
       </div>
 

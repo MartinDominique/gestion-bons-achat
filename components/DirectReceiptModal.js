@@ -7,9 +7,12 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.7.0
- * @date 2026-08-07
+ * @version 1.8.0
+ * @date 2026-08-27
  * @changelog
+ *   1.8.0 - Achats en USD: bascule CAD/USD sur le coûtant de chaque ligne. Le montant
+ *           saisi en USD est converti (taux + frais bancaires) et c'est le CAD qui est
+ *           enregistré dans cost_price; l'origine USD est conservée sur la fiche produit.
  *   1.7.0 - Affiche la quantité « En commande » (AF) par article, pour référence
  *           (chargée via /api/inventory/reservations à l'ouverture). Le select des
  *           prix inclut les colonnes de dates (price_updated_at*) pour le shift.
@@ -31,6 +34,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
+import { useExchangeRate } from './currency/CostPriceField';
+import {
+  CURRENCY_CAD,
+  CURRENCY_USD,
+  safeCurrencyUpdates,
+  convertUsdToCad,
+} from '../lib/utils/currency';
 import { searchProducts } from './SupplierPurchaseServices';
 import { UNIT_OPTIONS } from '../lib/constants/units';
 import {
@@ -56,6 +66,9 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
   // Items sélectionnés pour réception
   const [receiptItems, setReceiptItems] = useState([]);
+
+  // Taux USD -> CAD (pour les articles achetés en dollars américains)
+  const exchange = useExchangeRate();
 
   // Recherche de produits
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -297,6 +310,36 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
     }));
   };
 
+  // Bascule CAD <-> USD sur la ligne. cost_price reste toujours en CAD.
+  const toggleItemCurrency = (productId) => {
+    setReceiptItems(prev => prev.map(item => {
+      if (item.product_id !== productId) return item;
+      if (item.purchase_currency === CURRENCY_USD) {
+        return { ...item, purchase_currency: CURRENCY_CAD, cost_price_usd: '' };
+      }
+      const usd = item.cost_price_usd ?? '';
+      return {
+        ...item,
+        purchase_currency: CURRENCY_USD,
+        cost_price_usd: usd,
+        cost_price: convertUsdToCad(usd, exchange.rate, exchange.feePercent) ?? item.cost_price,
+      };
+    }));
+  };
+
+  const updateItemUsdCostPrice = (productId, value) => {
+    const cad = convertUsdToCad(value, exchange.rate, exchange.feePercent);
+    setReceiptItems(prev => prev.map(item => {
+      if (item.product_id !== productId) return item;
+      const updated = { ...item, cost_price_usd: value, cost_price: cad ?? 0 };
+      const margin = parseFloat(item._margin_percent) || 0;
+      if (updated.cost_price > 0 && margin > 0) {
+        updated.selling_price = parseFloat((updated.cost_price * (1 + margin / 100)).toFixed(2));
+      }
+      return updated;
+    }));
+  };
+
   // Mettre à jour le prix vendant d'un item
   const updateItemSellingPrice = (productId, value) => {
     const price = parseFloat(value);
@@ -415,6 +458,13 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
           Object.assign(updates, buildPriceShiftUpdates(product, {
             cost_price: item.cost_price,
             selling_price: item.selling_price,
+          }));
+          // Mémoriser l'origine du coûtant s'il a été saisi en USD
+          Object.assign(updates, await safeCurrencyUpdates(supabase, {
+            currency: item.purchase_currency,
+            usdAmount: item.cost_price_usd,
+            marketRate: exchange.rate,
+            feePercent: exchange.feePercent,
           }));
         } else if (item.selling_price > 0) {
           // En ajustement négatif, mettre à jour le selling_price si changé
@@ -848,21 +898,60 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
                     {/* Row 2: Coûtant + % + Vendant + Qté */}
                     <div className="flex items-end gap-2 mt-2 flex-wrap">
-                      <div className="w-[90px]">
-                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">Coûtant</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          inputMode="decimal"
-                          value={item.cost_price || ''}
-                          onChange={(e) => updateItemCostPrice(item.product_id, e.target.value)}
-                          onFocus={(e) => e.target.select()}
-                          autoCorrect="off"
-                          autoCapitalize="off"
-                          spellCheck={false}
-                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-center text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        />
+                      <div className="w-[110px]">
+                        <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5 flex items-center justify-between gap-1">
+                          <span>Coûtant</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleItemCurrency(item.product_id)}
+                            className={`px-1 rounded text-[10px] font-bold ${
+                              item.purchase_currency === CURRENCY_USD
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 dark:bg-gray-700 dark:text-gray-300'
+                            }`}
+                            title={
+                              item.purchase_currency === CURRENCY_USD
+                                ? 'Revenir à une saisie en dollars canadiens'
+                                : 'Saisir ce coûtant en dollars américains'
+                            }
+                          >
+                            USD
+                          </button>
+                        </label>
+                        {item.purchase_currency === CURRENCY_USD ? (
+                          <>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              inputMode="decimal"
+                              value={item.cost_price_usd ?? ''}
+                              onChange={(e) => updateItemUsdCostPrice(item.product_id, e.target.value)}
+                              onFocus={(e) => e.target.select()}
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck={false}
+                              className="w-full px-2 py-1.5 border border-blue-300 dark:border-blue-700 rounded text-center text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            />
+                            <div className="text-[10px] text-green-700 dark:text-green-400 text-center mt-0.5">
+                              = {formatCurrency(item.cost_price)}
+                            </div>
+                          </>
+                        ) : (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            inputMode="decimal"
+                            value={item.cost_price || ''}
+                            onChange={(e) => updateItemCostPrice(item.product_id, e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
+                            className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-center text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          />
+                        )}
                       </div>
 
                       <div className="w-16">
