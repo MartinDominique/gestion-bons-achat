@@ -3,9 +3,10 @@
  * @description API GET produits (inventaire + non-inventaire) pour la recherche de matériaux (BT/BL)
  *              - Mode inventory_only: produits de la table products (paginé)
  *              - Mode non_inventory_only: produits de la table non_inventory_items
- * @version 1.1.0
- * @date 2026-06-11
+ * @version 1.2.0
+ * @date 2026-08-27
  * @changelog
+ *   1.2.0 - Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
  *   1.1.0 - Fix: lire le vrai stock_qty (et prix) des items non-inventaire au lieu de forcer 0.
  *           Un item non-inventaire réceptionné affichait "Stock: 0" dans la recherche BT/BL
  *           alors que la page Inventaire (select *) montrait la vraie quantité.
@@ -13,6 +14,7 @@
  */
 import { NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabaseAdmin';
+import { searchWithFallback } from '../../../lib/utils/productSearch';
 
 export async function GET(request) {
   try {
@@ -27,17 +29,18 @@ export async function GET(request) {
     // MODE 1: SEULEMENT NON-INVENTAIRE
     // ========================================
     if (nonInventoryOnly) {
-      let queryNonInventory = supabase
-        .from('non_inventory_items')
-        .select(`product_id, description, unit, stock_qty, cost_price, selling_price`);
+      // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
+      const buildNonInventoryQuery = (orFilter) => {
+        let q = supabase
+          .from('non_inventory_items')
+          .select(`product_id, description, unit, stock_qty, cost_price, selling_price`);
+        if (orFilter) q = q.or(orFilter);
+        return q.order('description', { ascending: true });
+      };
 
-      if (search) {
-        queryNonInventory = queryNonInventory.or(`description.ilike.%${search}%,product_id.ilike.%${search}%`);
-      }
-
-      queryNonInventory = queryNonInventory.order('description', { ascending: true });
-
-      const { data, error } = await queryNonInventory;
+      const { data, error } = search
+        ? await searchWithFallback(buildNonInventoryQuery, search, ['description', 'product_id'])
+        : await buildNonInventoryQuery(null);
 
       if (error) {
         console.error('Erreur non_inventory_items:', error);
@@ -65,32 +68,37 @@ export async function GET(request) {
     // ========================================
     // MODE 2: SEULEMENT INVENTAIRE (avec pagination)
     // ========================================
-    let queryProducts = supabase
-      .from('products')
-      .select(`
-        product_id,
-        description,
-        unit,
-        selling_price,
-        cost_price,
-        stock_qty,
-        product_group
-      `);
+    // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
+    const buildProductsQuery = (orFilter) => {
+      let q = supabase
+        .from('products')
+        .select(`
+          product_id,
+          description,
+          unit,
+          selling_price,
+          cost_price,
+          stock_qty,
+          product_group
+        `);
 
-    if (search) {
-      queryProducts = queryProducts.or(`description.ilike.%${search}%,product_id.ilike.%${search}%,product_group.ilike.%${search}%`);
-    }
+      if (orFilter) q = q.or(orFilter);
 
-    queryProducts = queryProducts.order('description', { ascending: true });
-    
-    // Pagination
-    if (page > 0 || limit < 1000) {
-      const from = page * limit;
-      const to = from + limit - 1;
-      queryProducts = queryProducts.range(from, to);
-    }
+      q = q.order('description', { ascending: true });
 
-    const { data, error } = await queryProducts;
+      // Pagination
+      if (page > 0 || limit < 1000) {
+        const from = page * limit;
+        const to = from + limit - 1;
+        q = q.range(from, to);
+      }
+
+      return q;
+    };
+
+    const { data, error } = search
+      ? await searchWithFallback(buildProductsQuery, search, ['description', 'product_id', 'product_group'])
+      : await buildProductsQuery(null);
 
     if (error) {
       console.error('Erreur products:', error);

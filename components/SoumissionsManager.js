@@ -3,10 +3,19 @@
  * @description Gestionnaire complet des soumissions (devis/quotes)
  *              - Création, édition, suppression de soumissions
  *              - Impression PDF (version complète + version client)
- *              - Recherche produits, calcul taxes QC, gestion fichiers
- * @version 2.2.0
- * @date 2026-05-19
+ *              - Recherche produits (tolérante aux tirets/accents), calcul taxes QC, gestion fichiers
+ *              - Modal « Modifier l'article »: calculateur de marge, ajustement du stock
+ *                et répercussion des prix dans la fiche inventaire
+ * @version 2.3.0
+ * @date 2026-08-27
  * @changelog
+ *   2.3.0 - Modal « Modifier l'article »: boutons de marge 27%/30%/35% (au lieu de 10/15/27);
+ *           champ « Quantité en inventaire — En main » avec création d'un mouvement
+ *           d'inventaire (Inventaire → Historique); case « Mettre à jour la fiche inventaire »
+ *           (cochée par défaut) qui écrit le coûtant/vendant dans products/non_inventory_items
+ *           via buildPriceShiftUpdates (alimente « Hist. Prix »). Feedback de chargement +
+ *           message d'erreur explicite si l'écriture inventaire échoue.
+ *           Recherche produits tolérante: « p1540 » trouve « P1-540 ».
  *   2.2.0 - Retrait édition inline (Qté/Vente/Coût) dans tableau items: modification uniquement via clic sur la ligne. Ajout calculateur de prix de vente par % de marge (input personnalisé + boutons 10%/15%/27%) dans le modal Modifier l'article
  *   2.1.0 - Ajout quantités (en main, en commande, réservé) dans l'en-tête du modal Modifier l'article
  *   2.0.0 - Desktop: ligne cliquable ouvre soumission + dropdown statut inline sans ouvrir le formulaire
@@ -33,6 +42,8 @@ import {
   formatDate as pdfFormatDate, formatCurrency as pdfFormatCurrency, PAGE
 } from '../lib/services/pdf-common';
 import AddToOrderButton from './order-list/AddToOrderButton';
+import { searchWithFallback } from '../lib/utils/productSearch';
+import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 
 // ============================================
 // GÉNÉRATION PDF SOUMISSION (jsPDF)
@@ -265,9 +276,14 @@ export default function SoumissionsManager() {
     quantity: '',
     selling_price: '',
     cost_price: '',
-    comment: ''
+    comment: '',
+    stock_qty: ''
   });
   const [editItemMarginPercent, setEditItemMarginPercent] = useState('');
+  // Répercuter les prix modifiés ici dans la fiche inventaire (avec historique)
+  const [syncPricesToInventory, setSyncPricesToInventory] = useState(true);
+  const [savingEditItem, setSavingEditItem] = useState(false);
+  const [editItemError, setEditItemError] = useState('');
 
   // États pour le calculateur USD
   const [showUsdCalculator, setShowUsdCalculator] = useState(false);
@@ -492,12 +508,18 @@ export default function SoumissionsManager() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%,product_group.ilike.%${searchTerm}%`)
-        .order('description', { ascending: true })
-        .limit(50);
+      // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
+      const { data, error } = await searchWithFallback(
+        (orFilter) =>
+          supabase
+            .from('products')
+            .select('*')
+            .or(orFilter)
+            .order('description', { ascending: true })
+            .limit(50),
+        searchTerm,
+        ['description', 'product_id', 'product_group']
+      );
 
       if (error) {
         console.error('Erreur recherche produits:', error);
@@ -521,20 +543,32 @@ export default function SoumissionsManager() {
   try {
     console.log('🔍 Recherche combinée pour:', searchTerm);
     
+    // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
+    const searchColumns = ['description', 'product_id', 'product_group'];
     const [inventoryProducts, nonInventoryItems] = await Promise.all([
-      supabase
-        .from('products')
-        .select('*')
-        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%,product_group.ilike.%${searchTerm}%`)
-        .order('description', { ascending: true })
-        .limit(30),
-      
-      supabase
-        .from('non_inventory_items')
-        .select('*')
-        .or(`description.ilike.%${searchTerm}%,product_id.ilike.%${searchTerm}%,product_group.ilike.%${searchTerm}%`)
-        .order('description', { ascending: true })
-        .limit(20)
+      searchWithFallback(
+        (orFilter) =>
+          supabase
+            .from('products')
+            .select('*')
+            .or(orFilter)
+            .order('description', { ascending: true })
+            .limit(30),
+        searchTerm,
+        searchColumns
+      ),
+
+      searchWithFallback(
+        (orFilter) =>
+          supabase
+            .from('non_inventory_items')
+            .select('*')
+            .or(orFilter)
+            .order('description', { ascending: true })
+            .limit(20),
+        searchTerm,
+        searchColumns
+      )
     ]);
 
     console.log('📦 Inventaire trouvé:', inventoryProducts.data?.length || 0);
@@ -755,9 +789,12 @@ export default function SoumissionsManager() {
       quantity: item.quantity.toString(),
       selling_price: item.selling_price.toString(),
       cost_price: item.cost_price.toString(),
-      comment: item.comment || ''
+      comment: item.comment || '',
+      stock_qty: (item.stock_qty ?? 0).toString()
     });
     setEditItemMarginPercent('');
+    setSyncPricesToInventory(true);
+    setEditItemError('');
     setEditItemQuantities({ stock: item.stock_qty || 0, onOrder: 0, reserved: 0 });
     setShowEditItemModal(true);
 
@@ -831,11 +868,14 @@ export default function SoumissionsManager() {
         .eq('product_id', item.product_id)
         .single();
 
-      setEditItemQuantities({
-        stock: productData?.stock_qty ?? item.stock_qty ?? 0,
-        onOrder,
-        reserved
-      });
+      const freshStock = productData?.stock_qty ?? item.stock_qty ?? 0;
+      setEditItemQuantities({ stock: freshStock, onOrder, reserved });
+      // Refléter le stock réel dans le champ éditable (sauf si l'utilisateur a déjà tapé)
+      setEditItemForm(prev => (
+        prev.stock_qty === (item.stock_qty ?? 0).toString()
+          ? { ...prev, stock_qty: freshStock.toString() }
+          : prev
+      ));
     } catch (err) {
       console.error('Erreur chargement quantités:', err);
     }
@@ -848,9 +888,13 @@ export default function SoumissionsManager() {
       quantity: '',
       selling_price: '',
       cost_price: '',
-      comment: ''
+      comment: '',
+      stock_qty: ''
     });
     setEditItemMarginPercent('');
+    setSyncPricesToInventory(true);
+    setEditItemError('');
+    setSavingEditItem(false);
   };
 
   // Applique une marge % sur le coût pour obtenir le prix de vente
@@ -863,26 +907,211 @@ export default function SoumissionsManager() {
     }
   };
 
-  const saveEditItemModal = () => {
-    if (!editingItem) return;
-    
+  /**
+   * Retrouve la fiche inventaire d'un produit, quelle que soit la table
+   * (products / non_inventory_items). Le drapeau is_non_inventory n'est pas
+   * fiable sur les anciennes lignes: on essaie donc les deux tables.
+   */
+  const resolveInventoryRow = async (productId, preferNonInventory) => {
+    const tables = preferNonInventory
+      ? ['non_inventory_items', 'products']
+      : ['products', 'non_inventory_items'];
+
+    for (const table of tables) {
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .eq('product_id', productId)
+        .maybeSingle();
+      if (!error && data) return { table, row: data };
+    }
+    return null;
+  };
+
+  /**
+   * Répercute dans l'inventaire les prix et/ou la quantité modifiés dans le
+   * modal « Modifier l'article » d'une soumission.
+   * - Les prix passent par buildPriceShiftUpdates -> historique « Hist. Prix » alimenté
+   * - Un changement de quantité crée un mouvement dans inventory_movements
+   * @returns {Promise<{ok: boolean, error?: string, changes: string[], stock: number|null}>}
+   */
+  const applyEditItemToInventory = async ({ productId, preferNonInventory, newCost, newSelling, newStock, syncPrices }) => {
+    const found = await resolveInventoryRow(productId, preferNonInventory);
+    if (!found) {
+      // Article absent de l'inventaire (ex: ligne ajoutée manuellement): on ne bloque
+      // pas la modification de la soumission, on prévient simplement.
+      return {
+        ok: true,
+        notFound: true,
+        error: `Produit « ${productId} » introuvable dans l'inventaire — seule la ligne de la soumission a été modifiée.`,
+        changes: [],
+        stock: null,
+      };
+    }
+
+    const { table, row } = found;
+    const updates = {};
+    const changes = [];
+
+    const oldCost = parseFloat(row.cost_price) || 0;
+    const oldSelling = parseFloat(row.selling_price) || 0;
+    const oldStock = parseFloat(row.stock_qty) || 0;
+
+    if (syncPrices) {
+      const priceUpdates = buildPriceShiftUpdates(row, {
+        cost_price: newCost,
+        selling_price: newSelling,
+      });
+      Object.assign(updates, priceUpdates);
+      if (priceUpdates.cost_price !== undefined) {
+        changes.push(`Coûtant: ${oldCost.toFixed(2)}$ → ${newCost.toFixed(2)}$`);
+      }
+      if (priceUpdates.selling_price !== undefined) {
+        changes.push(`Vendant: ${oldSelling.toFixed(2)}$ → ${newSelling.toFixed(2)}$`);
+      }
+    }
+
+    const stockChanged = newStock !== null && newStock !== oldStock;
+    if (stockChanged) {
+      updates.stock_qty = newStock;
+      changes.push(`Quantité en main: ${oldStock} → ${newStock}`);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return { ok: true, changes: [], stock: oldStock };
+    }
+
+    const { data, error } = await supabase
+      .from(table)
+      .update(updates)
+      .eq('product_id', productId)
+      .select();
+
+    if (error) {
+      return { ok: false, error: error.message, changes: [], stock: null };
+    }
+    if (!data || data.length === 0) {
+      return {
+        ok: false,
+        error: "Aucune ligne modifiée dans l'inventaire (droits d'écriture ?).",
+        changes: [],
+        stock: null,
+      };
+    }
+
+    // Trace du mouvement de stock (visible dans Inventaire > onglet Historique)
+    if (stockChanged) {
+      const refNumber = submissionForm.submission_number || null;
+      const diff = newStock - oldStock;
+      const { error: movementError } = await supabase
+        .from('inventory_movements')
+        .insert({
+          product_id: productId,
+          product_description: row.description || '',
+          product_group: row.product_group || '',
+          unit: row.unit || 'UN',
+          movement_type: diff > 0 ? 'IN' : 'OUT',
+          quantity: Math.abs(diff),
+          unit_cost: syncPrices ? newCost : oldCost,
+          total_cost: Math.abs(diff) * (syncPrices ? newCost : oldCost),
+          reference_type: 'manual_edit',
+          reference_id: null,
+          reference_number: refNumber,
+          notes: `Ajustement depuis la soumission ${refNumber || '(brouillon)'} (${oldStock} → ${newStock})`,
+          created_at: new Date().toISOString(),
+        });
+
+      if (movementError) {
+        // Le stock est bien changé: on ne bloque pas, mais on le signale.
+        return {
+          ok: true,
+          error: `Stock mis à jour, mais le mouvement n'a pas été enregistré: ${movementError.message}`,
+          changes,
+          stock: newStock,
+        };
+      }
+    }
+
+    return { ok: true, changes, stock: data[0].stock_qty ?? newStock ?? oldStock };
+  };
+
+  const saveEditItemModal = async () => {
+    if (!editingItem || savingEditItem) return;
+
     const qty = parseFloat(editItemForm.quantity);
     if (isNaN(qty) || qty <= 0) {
-      alert('⚠️ Quantité invalide');
+      setEditItemError('Quantité invalide');
       return;
     }
+
+    const newSelling = parseFloat(editItemForm.selling_price) || 0;
+    const newCost = parseFloat(editItemForm.cost_price) || 0;
+
+    const rawStock = (editItemForm.stock_qty ?? '').toString().trim();
+    const parsedStock = rawStock === '' ? null : parseFloat(rawStock);
+    if (parsedStock !== null && isNaN(parsedStock)) {
+      setEditItemError('Quantité en inventaire invalide');
+      return;
+    }
+
+    const stockChanged = parsedStock !== null && parsedStock !== (parseFloat(editItemQuantities.stock) || 0);
+    const pricesChanged =
+      newCost !== (parseFloat(editingItem.cost_price) || 0) ||
+      newSelling !== (parseFloat(editingItem.selling_price) || 0);
+    const mustTouchInventory = stockChanged || (syncPricesToInventory && pricesChanged);
+
+    setSavingEditItem(true);
+    setEditItemError('');
+
+    let inventoryResult = null;
+    if (mustTouchInventory) {
+      try {
+        inventoryResult = await applyEditItemToInventory({
+          productId: editingItem.product_id,
+          preferNonInventory: !!editingItem.is_non_inventory,
+          newCost,
+          newSelling,
+          // On ne touche au stock que si l'utilisateur a réellement changé le champ
+          // (sinon une valeur périmée écraserait une quantité modifiée ailleurs)
+          newStock: stockChanged ? parsedStock : null,
+          syncPrices: syncPricesToInventory,
+        });
+      } catch (err) {
+        inventoryResult = { ok: false, error: err.message, changes: [], stock: null };
+      }
+
+      // Échec dur: on n'applique rien et on laisse le modal ouvert
+      if (!inventoryResult.ok) {
+        setSavingEditItem(false);
+        setEditItemError(`Inventaire non mis à jour — ${inventoryResult.error}`);
+        return;
+      }
+    }
+
+    const resolvedStock = inventoryResult?.stock ?? editItemQuantities.stock;
 
     setSelectedItems(selectedItems.map(item =>
       item.product_id === editingItem.product_id
         ? {
             ...item,
             quantity: qty,
-            selling_price: parseFloat(editItemForm.selling_price) || 0,
-            cost_price: parseFloat(editItemForm.cost_price) || 0,
-            comment: editItemForm.comment.trim()
+            selling_price: newSelling,
+            cost_price: newCost,
+            comment: editItemForm.comment.trim(),
+            stock_qty: resolvedStock
           }
         : item
     ));
+
+    if (inventoryResult?.changes?.length) {
+      console.log(`✅ Inventaire mis à jour (${editingItem.product_id}):`, inventoryResult.changes);
+    }
+    if (inventoryResult?.ok && inventoryResult.error) {
+      // Succès partiel (stock changé mais mouvement non enregistré)
+      alert(`⚠️ ${inventoryResult.error}`);
+    }
+
+    setSavingEditItem(false);
     closeEditItemModal();
   };
 
@@ -2833,29 +3062,74 @@ const cleanupFilesForSubmission = async (files) => {
                           <div className="grid grid-cols-3 gap-2">
                             <button
                               type="button"
-                              onClick={() => applyEditItemMargin(10)}
-                              disabled={!parseFloat(editItemForm.cost_price)}
-                              className="px-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/60 disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              +10%
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => applyEditItemMargin(15)}
-                              disabled={!parseFloat(editItemForm.cost_price)}
-                              className="px-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/60 disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              +15%
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => applyEditItemMargin(27)}
                               disabled={!parseFloat(editItemForm.cost_price)}
                               className="px-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/60 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               +27%
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => applyEditItemMargin(30)}
+                              disabled={!parseFloat(editItemForm.cost_price)}
+                              className="px-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/60 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              +30%
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => applyEditItemMargin(35)}
+                              disabled={!parseFloat(editItemForm.cost_price)}
+                              className="px-2 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/60 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              +35%
+                            </button>
                           </div>
+                        </div>
+
+                        {/* Répercussion des prix dans la fiche inventaire */}
+                        <label className="flex items-start gap-3 p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={syncPricesToInventory}
+                            onChange={(e) => setSyncPricesToInventory(e.target.checked)}
+                            className="mt-0.5 w-5 h-5 rounded border-green-400 text-green-600 focus:ring-green-500"
+                          />
+                          <span className="text-sm text-green-900 dark:text-green-200">
+                            <span className="font-medium">Mettre à jour la fiche inventaire</span>
+                            <span className="block text-xs text-green-700 dark:text-green-300 mt-0.5">
+                              Enregistre le nouveau coûtant / vendant dans l&apos;inventaire et alimente
+                              l&apos;historique des prix. Décochez pour un prix valable uniquement sur cette soumission.
+                            </span>
+                          </span>
+                        </label>
+
+                        {/* Quantité en inventaire (En main) */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Quantité en inventaire — En main ({editingItem.unit})
+                          </label>
+                          <input
+                            type="number"
+                            step="1"
+                            value={editItemForm.stock_qty}
+                            onChange={(e) => setEditItemForm({...editItemForm, stock_qty: e.target.value})}
+                            onFocus={(e) => e.target.select()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveEditItemModal();
+                              }
+                            }}
+                            className="w-full rounded-lg border-blue-300 dark:border-blue-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 dark:bg-gray-800 dark:text-gray-100"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
+                          />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Stock actuel: {editItemQuantities.stock}. Toute correction crée un mouvement
+                            « Modification manuelle » visible dans Inventaire → Historique.
+                          </p>
                         </div>
 
                         {/* Commentaire */}
@@ -2902,29 +3176,42 @@ const cleanupFilesForSubmission = async (files) => {
                       </div>
 
                       {/* Footer */}
-                      <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 rounded-b-xl flex justify-between items-center">
-                        <button
-                          type="button"
-                          onClick={deleteFromEditModal}
-                          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-2"
-                        >
-                          🗑️ Supprimer
-                        </button>
-                        <div className="flex gap-2">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 rounded-b-xl">
+                        {editItemError && (
+                          <div className="mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+                            ⚠️ {editItemError}
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
                           <button
                             type="button"
-                            onClick={closeEditItemModal}
-                            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100"
+                            onClick={deleteFromEditModal}
+                            disabled={savingEditItem}
+                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Annuler (Esc)
+                            🗑️ Supprimer
                           </button>
-                          <button
-                            type="button"
-                            onClick={saveEditItemModal}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                          >
-                            Sauvegarder (Enter)
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={closeEditItemModal}
+                              disabled={savingEditItem}
+                              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Annuler (Esc)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={saveEditItemModal}
+                              disabled={savingEditItem}
+                              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                              {savingEditItem && (
+                                <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                              )}
+                              {savingEditItem ? 'Enregistrement…' : 'Sauvegarder (Enter)'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
