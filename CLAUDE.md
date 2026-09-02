@@ -541,8 +541,11 @@ total_materials, total_labor, total_transport,
 status, is_prix_jobe, notes, pdf_url,
 sent_at, paid_at, user_id, created_at, updated_at
 ```
-**Statuts:** draft, sent, paid
+**Statuts:** draft, sent, partial, paid
 **Line items types:** labor, transport, material, forfait, other
+**Facture de crédit (avoir):** `total < 0` (quantités/prix négatifs). Elle apparaît à l'état de compte
+et réduit le solde du client tant qu'elle n'est pas réglée; son règlement est un `invoice_payments`
+de montant **négatif** (remboursement au client ou application sur une autre facture).
 
 ### notes (Notes)
 ```sql
@@ -907,6 +910,13 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/(protected)/parametres/page.js` v2.6.0 — section « Change USD → CAD »: frais bancaires + taux du jour + taux effectif, avec la méthode pour calibrer son vrai % BMO
     - **Reste:** exécuter la migration SQL `20260827_add_usd_purchase_currency.sql` dans Supabase Dashboard (avant, la saisie USD convertit correctement mais l'origine USD n'est pas mémorisée)
 
+31. ~~**Factures de crédit (avoirs) dans l'état de compte**~~ - ✅ COMPLÉTÉ (2026-09-02)
+    - Une facture à total négatif (retour de matériel, correction) est désormais un **crédit ouvert**: elle figure au relevé (écran, PDF, courriel) et **réduit** le solde dû du client
+    - Ni retard ni intérêts sur un crédit (tranche « Courant »); aucun intérêt facturé si le solde net est nul ou créditeur
+    - Un crédit se règle par un « paiement » de montant **négatif** (remboursement au client ou application sur une autre facture) — il disparaît alors du relevé
+    - `lib/services/statement-data.js` v1.2.0 · `app/api/statements/route.js` v1.1.0 · `lib/services/invoice-payments.js` v1.1.0 · `app/api/invoice-payments/route.js` v1.2.0 · `app/api/statements/[clientId]/send-email/route.js` v1.5.0 · `components/invoices/ClientStatementView.js` v1.7.0 · `components/invoices/StatementManager.js` v1.1.0
+    - Aucune migration SQL requise
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
@@ -914,6 +924,11 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Factures de crédit (négatives) absentes de l'état de compte~~ → Corrigé (2026-09-02)
+  - Symptôme: une facture négative (avoir au client, ex. 23044 / BL-2607-007 à −1 379,71 $) n'apparaissait nulle part dans l'état de compte et ne réduisait pas le solde. Le relevé réclamait 2 511,94 $ au lieu de 1 132,23 $.
+  - Cause: `statement-data.js` écartait toute facture au solde non strictement positif (`if (balance <= EPSILON) continue;`) — test pensé pour les factures réglées, qui éliminait aussi les crédits. Même filtre dans `app/api/statements/route.js` (`isOpen = balance > EPSILON`).
+  - Correctif: un crédit est une ligne **ouverte** tant qu'il n'est pas remboursé/appliqué; il figure au relevé et réduit le solde. Ni retard ni intérêts sur un crédit (tranche « Courant »), et aucun intérêt facturé si le solde net est nul ou créditeur. Un crédit se règle par un « paiement » de montant **négatif** (remboursement ou application), ce qui le retire du relevé.
+  - Fichiers: `lib/services/statement-data.js` v1.2.0, `app/api/statements/route.js` v1.1.0, `lib/services/invoice-payments.js` v1.1.0, `app/api/invoice-payments/route.js` v1.2.0, `app/api/statements/[clientId]/send-email/route.js` v1.5.0, `components/invoices/ClientStatementView.js` v1.7.0, `components/invoices/StatementManager.js` v1.1.0. Aucune migration requise.
 - ~~Prix vendant modifié dans une Soumission: aucun effet sur l'Inventaire ni sur « Hist. Prix »~~ → Corrigé (2026-08-27)
   - Symptôme: changer le vendant (ou le coûtant) d'un article dans le modal « Modifier l'article » d'une soumission ne changeait que la ligne de la soumission. L'inventaire gardait l'ancien prix et l'onglet « Hist. Prix » restait muet.
   - Cause: `SoumissionsManager` n'écrivait jamais dans `products`/`non_inventory_items` — les prix n'existaient que dans le JSON `submissions.items`.

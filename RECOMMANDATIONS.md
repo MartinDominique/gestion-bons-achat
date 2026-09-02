@@ -1964,4 +1964,49 @@ mais l'origine USD n'est pas mémorisée et le bouton « Recalculer USD » ne tr
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-08-27 par Claude AI*
+## Factures de crédit (avoirs) dans l'état de compte ✅ COMPLETE (2026-09-02)
+
+**Problème signalé (Martin, 2026-09-02):** une facture négative (crédit au client — ex. facture
+23044 / BL-2607-007, −1 379,71 $, retour de matériel usagé transfo) **n'apparaissait pas** dans
+l'état de compte du client. Le relevé de Tapis Venture U1 affichait un solde dû de 2 511,94 $ alors
+que le vrai solde net était de 1 132,23 $. Le client se serait fait réclamer un montant déjà crédité.
+
+**Cause:** `lib/services/statement-data.js` écartait toute facture dont le solde n'était pas
+strictement positif (`if (balance <= EPSILON) continue;`) — un test pensé pour les factures réglées,
+qui éliminait aussi les crédits (solde négatif). Même logique dans la liste des états de compte
+(`app/api/statements/route.js`: `isOpen = balance > EPSILON`), donc le crédit ne réduisait le solde
+d'aucun écran. Rien n'empêchait par ailleurs de créer la facture négative — elle existait bien,
+elle était simplement invisible côté relevé.
+
+**Règles retenues (norme d'un relevé « open item »):**
+- Une facture à total négatif est un **crédit ouvert**: elle figure au relevé et **réduit** le solde
+  tant qu'elle n'est pas remboursée ou appliquée.
+- Un crédit n'a **ni retard ni intérêts**, et se présente dans la tranche « Courant » du vieillissement.
+- Si le solde net est nul ou créditeur, **aucun intérêt de retard n'est facturé** (on ne réclame pas
+  d'intérêts à un client qui ne doit rien).
+- Le crédit disparaît du relevé une fois **réglé**: un « paiement » de montant **négatif** sur la note
+  de crédit (remboursement au client, ou application du crédit sur une autre facture).
+
+**Fichiers modifiés:**
+- `lib/services/statement-data.js` v1.2.0 — crédits inclus (`Math.abs(balance) > EPSILON`), drapeau
+  `is_credit` par ligne, ni retard ni intérêts sur un crédit, totaux enrichis (`charges`, `credits`,
+  `credit_count`), intérêts annulés si le solde net ≤ 0
+- `app/api/statements/route.js` v1.1.0 — solde **net** par client, `credit_balance`, un client au
+  compte créditeur reste listé, aucun intérêt sur un compte soldé/créditeur
+- `lib/services/invoice-payments.js` v1.1.0 — statut d'une note de crédit: « payée » quand son solde
+  créditeur revient à zéro, « partielle » s'il est entamé
+- `app/api/invoice-payments/route.js` v1.2.0 — montant **négatif** accepté sur une note de crédit
+  (refusé sur une facture ordinaire), montant nul refusé
+- `app/api/statements/[clientId]/send-email/route.js` v1.5.0 — PDF: ligne marquée « CRÉDIT »,
+  montants négatifs lisibles (`-$1 379,71`), sommaire Total des factures / Crédits / Solde dû,
+  libellé « CRÉDIT À VOTRE COMPTE » si le compte est créditeur; courriel adapté
+- `components/invoices/ClientStatementView.js` v1.7.0 — tuile « Crédits au dossier », solde net en
+  vert si créditeur, badge « Crédit au client » par ligne, escompte 2 % masqué sur un crédit,
+  saisie d'un règlement de crédit (montant négatif)
+- `components/invoices/StatementManager.js` v1.1.0 — pastille « X $ en crédit » et solde net coloré
+
+Aucune migration SQL requise (`invoice_payments.amount` est un `NUMERIC` sans contrainte de signe).
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-09-02 par Claude AI*

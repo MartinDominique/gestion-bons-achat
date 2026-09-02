@@ -5,10 +5,13 @@
  *              - Recherche par nom de client + bascule "impayés / tous"
  *              - Bandeau résumé (total dû, en retard, intérêts)
  *              - Clic sur un client → vue détaillée (ClientStatementView)
+ *              - Notes de crédit (factures négatives): pastille « crédit » et solde net
  *              - Mobile-first (cartes) + tableau desktop
- * @version 1.0.0
- * @date 2026-06-14
+ * @version 1.1.0
+ * @date 2026-09-02
  * @changelog
+ *   1.1.0 - Crédits au dossier affichés (pastille « X $ en crédit ») et solde créditeur
+ *           en vert; un client au solde nul mais avec crédit reste listé
  *   1.0.0 - Version initiale (module État de compte client)
  */
 
@@ -20,6 +23,12 @@ import ClientStatementView from './ClientStatementView';
 
 const fmtCurrency = (amount) =>
   new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(amount || 0);
+
+// Solde créditeur (crédits > factures dues): affiché en vert, jamais en « dû »
+const balanceClass = (balance) =>
+  (balance || 0) < -0.005
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : 'text-gray-900 dark:text-gray-100';
 
 export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed }) {
   const [clients, setClients] = useState([]);
@@ -170,10 +179,15 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900 dark:text-gray-100">{c.client_name}</span>
-                  <span className="font-bold text-gray-900 dark:text-gray-100">{fmtCurrency(c.balance)}</span>
+                  <span className={`font-bold ${balanceClass(c.balance)}`}>{fmtCurrency(c.balance)}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
                   <span>{c.open_count} facture(s)</span>
+                  {c.credit_balance > 0 && (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      − {fmtCurrency(c.credit_balance)} en crédit
+                    </span>
+                  )}
                   {c.overdue_balance > 0 && (
                     <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
                       <Clock className="w-3 h-3" /> {fmtCurrency(c.overdue_balance)} en retard
@@ -207,7 +221,14 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
                       index % 2 === 0 ? 'bg-white/50 dark:bg-gray-800/50' : 'bg-gray-50/50 dark:bg-gray-900/30'
                     }`}
                   >
-                    <td className="px-6 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{c.client_name}</td>
+                    <td className="px-6 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {c.client_name}
+                      {c.credit_balance > 0 && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs px-2 py-0.5">
+                          {fmtCurrency(c.credit_balance)} en crédit
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-3 text-center text-sm text-gray-600 dark:text-gray-400">{c.open_count}</td>
                     <td className="px-6 py-3 text-right text-sm">
                       {c.overdue_balance > 0
@@ -219,7 +240,7 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
                         ? <span className="text-amber-600 dark:text-amber-400">{fmtCurrency(c.interest)}</span>
                         : <span className="text-gray-400">—</span>}
                     </td>
-                    <td className="px-6 py-3 text-right text-sm font-bold text-gray-900 dark:text-gray-100">{fmtCurrency(c.balance)}</td>
+                    <td className={`px-6 py-3 text-right text-sm font-bold ${balanceClass(c.balance)}`}>{fmtCurrency(c.balance)}</td>
                     <td className="px-6 py-3 text-right">
                       <ChevronRight className="w-4 h-4 text-gray-400 inline" />
                     </td>

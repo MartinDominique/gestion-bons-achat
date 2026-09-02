@@ -4,9 +4,12 @@
  *              - GET: liste les paiements (filtre invoice_id ou client_id)
  *              - POST: enregistre un paiement (partiel/complet) + recalcule le statut
  *                de la facture (amount_paid, paid/partial/sent)
- * @version 1.1.0
- * @date 2026-08-20
+ * @version 1.2.0
+ * @date 2026-09-02
  * @changelog
+ *   1.2.0 - Note de crédit (facture à total négatif): montant négatif accepté
+ *           (remboursement au client ou application du crédit), refusé sur une
+ *           facture ordinaire
  *   1.1.0 - Modes de paiement validés via la liste partagée (ajout d'Interac)
  *   1.0.0 - Version initiale (module État de compte client)
  */
@@ -79,13 +82,6 @@ export async function POST(request) {
     const amountNum = parseFloat(amount) || 0;
     const discountNum = parseFloat(discount_applied) || 0;
 
-    if (amountNum <= 0 && discountNum <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Le montant du paiement doit être supérieur à 0' },
-        { status: 400 }
-      );
-    }
-
     if (!PAYMENT_METHOD_VALUES.includes(method)) {
       return NextResponse.json(
         { success: false, error: 'Méthode de paiement invalide' },
@@ -104,6 +100,34 @@ export async function POST(request) {
       return NextResponse.json(
         { success: false, error: 'Facture non trouvée' },
         { status: 404 }
+      );
+    }
+
+    // Sens du montant: une facture ordinaire s'encaisse (montant positif); une note de
+    // crédit (total négatif) se règle par un montant négatif (remboursement au client
+    // ou application du crédit sur une autre facture).
+    const isCreditNote = (Number(invoice.total) || 0) < -0.005;
+    const signed = amountNum + discountNum;
+
+    if (Math.abs(signed) < 0.005) {
+      return NextResponse.json(
+        { success: false, error: 'Le montant du paiement ne peut pas être 0' },
+        { status: 400 }
+      );
+    }
+    if (!isCreditNote && signed < 0) {
+      return NextResponse.json(
+        { success: false, error: 'Le montant du paiement doit être supérieur à 0' },
+        { status: 400 }
+      );
+    }
+    if (isCreditNote && signed > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `La facture ${invoice.invoice_number} est une note de crédit: le montant doit être négatif (remboursement ou application du crédit)`,
+        },
+        { status: 400 }
       );
     }
 

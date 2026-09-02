@@ -5,9 +5,13 @@
  *                nb de factures ouvertes, montant en retard, intérêts estimés.
  *                Param ?all=true pour inclure les clients sans solde.
  *                Param ?search= pour filtrer par nom de client.
- * @version 1.0.0
- * @date 2026-06-14
+ *              - Les notes de crédit (factures à total négatif) réduisent le solde du
+ *                client; un client dont le compte est créditeur reste listé.
+ * @version 1.1.0
+ * @date 2026-09-02
  * @changelog
+ *   1.1.0 - Notes de crédit prises en compte: solde net (charges - crédits), champ
+ *           credit_balance par client, clients au solde créditeur listés
  *   1.0.0 - Version initiale (module État de compte client)
  */
 
@@ -50,8 +54,12 @@ export async function GET(request) {
     const byClient = new Map();
 
     for (const inv of invoices || []) {
-      const balance = (Number(inv.total) || 0) - (Number(inv.amount_paid) || 0);
-      const isOpen = balance > EPSILON;
+      const total = Number(inv.total) || 0;
+      const balance = total - (Number(inv.amount_paid) || 0);
+      // Note de crédit (facture à total négatif): son solde créditeur reste ouvert
+      // tant qu'il n'est pas remboursé/appliqué, et vient réduire le solde du client.
+      const isCredit = total < -EPSILON;
+      const isOpen = Math.abs(balance) > EPSILON;
 
       const key = inv.client_id ?? `name:${inv.client_name}`;
       if (!byClient.has(key)) {
@@ -59,8 +67,10 @@ export async function GET(request) {
           client_id: inv.client_id || null,
           client_name: inv.client_name || 'Client inconnu',
           open_count: 0,
+          credit_count: 0,
           total_invoices: 0,
           balance: 0,
+          credit_balance: 0,
           overdue_balance: 0,
           interest: 0,
           oldest_due_date: null,
@@ -71,29 +81,42 @@ export async function GET(request) {
       agg.total_invoices += 1;
 
       if (isOpen) {
-        agg.open_count += 1;
         agg.balance += balance;
-        const od = daysOverdue(inv.due_date, now);
-        if (od > 0) {
-          agg.overdue_balance += balance;
-          agg.interest += computeInterest(balance, inv.due_date, interestRate, now);
-          if (od > agg.max_days_overdue) agg.max_days_overdue = od;
-          if (!agg.oldest_due_date || inv.due_date < agg.oldest_due_date) {
-            agg.oldest_due_date = inv.due_date;
+        if (isCredit) {
+          // Ni retard ni intérêts sur un crédit
+          agg.credit_count += 1;
+          agg.credit_balance += Math.abs(balance);
+        } else {
+          agg.open_count += 1;
+          const od = daysOverdue(inv.due_date, now);
+          if (od > 0) {
+            agg.overdue_balance += balance;
+            agg.interest += computeInterest(balance, inv.due_date, interestRate, now);
+            if (od > agg.max_days_overdue) agg.max_days_overdue = od;
+            if (!agg.oldest_due_date || inv.due_date < agg.oldest_due_date) {
+              agg.oldest_due_date = inv.due_date;
+            }
           }
         }
       }
     }
 
-    let list = Array.from(byClient.values()).map(c => ({
-      ...c,
-      balance: Math.round(c.balance * 100) / 100,
-      overdue_balance: Math.round(c.overdue_balance * 100) / 100,
-      interest: Math.round(c.interest * 100) / 100,
-    }));
+    let list = Array.from(byClient.values()).map(c => {
+      const balance = Math.round(c.balance * 100) / 100;
+      // Compte soldé ou créditeur: aucun intérêt de retard à réclamer
+      const interest = balance > EPSILON ? Math.round(c.interest * 100) / 100 : 0;
+      return {
+        ...c,
+        balance,
+        credit_balance: Math.round(c.credit_balance * 100) / 100,
+        overdue_balance: Math.round(c.overdue_balance * 100) / 100,
+        interest,
+      };
+    });
 
     if (!includeAll) {
-      list = list.filter(c => c.balance > EPSILON);
+      // Solde créditeur inclus: un crédit à appliquer doit rester visible
+      list = list.filter(c => Math.abs(c.balance) > EPSILON || c.credit_balance > EPSILON);
     }
 
     if (search) {
