@@ -1,7 +1,7 @@
 /**
  * @file app/api/statements/[clientId]/send-email/route.js
  * @description Génère et envoie l'état de compte d'un client (PDF) par courriel.
- *              - Construit le relevé (factures impayées, paiements, intérêts, aging)
+ *              - Construit le relevé (factures impayées, crédits, paiements, intérêts, aging)
  *              - Génère le PDF via jsPDF + pdf-common.js
  *              - Upload dans Supabase Storage (bucket 'invoices', préfixe statements/)
  *              - print_only: retourne l'URL du PDF sans envoyer de courriel (aperçu)
@@ -13,9 +13,12 @@
  *              - Body save_to_client (défaut true): une adresse saisie à la volée est
  *                enregistrée au dossier client (email_admin s'il est vide, sinon
  *                additional_emails) pour être proposée aux prochains envois
- * @version 1.4.0
- * @date 2026-08-20
+ * @version 1.5.0
+ * @date 2026-09-02
  * @changelog
+ *   1.5.0 - Notes de crédit (factures à total négatif) portées au relevé: ligne marquée
+ *           « CRÉDIT », montants négatifs lisibles (-$X), sommaire Factures/Crédits,
+ *           et courriel adapté quand le compte est soldé ou créditeur
  *   1.4.0 - Enregistrement au dossier client des adresses ajoutées à la volée
  *           (save_to_client) + retour de la liste des adresses ajoutées
  *   1.3.0 - Intérêts de retard optionnels (include_interest): total = solde des factures,
@@ -47,6 +50,16 @@ try {
   LOGO_BASE64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
 } catch (error) {
   console.warn('Logo non trouvé:', error.message);
+}
+
+/**
+ * Montant pour le PDF: le signe précède le symbole ($-1200.00 est illisible sur un relevé).
+ * @param {number} amount
+ * @returns {string} ex: '$1200.00' ou '-$1200.00'
+ */
+function money(amount) {
+  const n = parseFloat(amount) || 0;
+  return (n < 0 ? '-' : '') + pdfCommon.formatCurrency(Math.abs(n));
 }
 
 const MONTHS_FR = ['', 'jan.', 'fév.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
@@ -128,7 +141,10 @@ function generateStatementPDF(statement) {
     title: 'ÉTAT DE COMPTE',
     fields: [
       { label: 'Date du relevé:', value: pdfCommon.formatDate(statementDate) },
-      { label: 'Factures dues:', value: String(lines.length) },
+      { label: 'Factures dues:', value: String(totals.open_count ?? lines.length) },
+      ...(totals.credit_count > 0
+        ? [{ label: 'Crédits:', value: String(totals.credit_count) }]
+        : []),
     ],
   });
 
@@ -161,11 +177,12 @@ function generateStatementPDF(statement) {
     number: l.invoice_number,
     ref: l.source_number || '',
     date: pdfCommon.formatDate(l.invoice_date),
-    due: pdfCommon.formatDate(l.due_date),
-    overdue: l.days_overdue > 0 ? `${l.days_overdue} j` : '-',
-    total: pdfCommon.formatCurrency(l.total),
-    paid: pdfCommon.formatCurrency(l.amount_paid),
-    balance: pdfCommon.formatCurrency(l.balance),
+    // Une note de crédit n'a ni échéance à réclamer ni retard: elle réduit le solde
+    due: l.is_credit ? '-' : pdfCommon.formatDate(l.due_date),
+    overdue: l.is_credit ? 'CRÉDIT' : (l.days_overdue > 0 ? `${l.days_overdue} j` : '-'),
+    total: money(l.total),
+    paid: money(l.amount_paid),
+    balance: money(l.balance),
   }));
 
   body.push({
@@ -176,7 +193,7 @@ function generateStatementPDF(statement) {
     overdue: 'TOTAL',
     total: '',
     paid: '',
-    balance: pdfCommon.formatCurrency(totals.balance),
+    balance: money(totals.balance),
   });
 
   doc.autoTable({
@@ -237,11 +254,11 @@ function generateStatementPDF(statement) {
     startY: y,
     columns: agingCols,
     body: [{
-      current: pdfCommon.formatCurrency(aging.current),
-      d1_30: pdfCommon.formatCurrency(aging.d1_30),
-      d31_60: pdfCommon.formatCurrency(aging.d31_60),
-      d61_90: pdfCommon.formatCurrency(aging.d61_90),
-      d90_plus: pdfCommon.formatCurrency(aging.d90_plus),
+      current: money(aging.current),
+      d1_30: money(aging.d1_30),
+      d31_60: money(aging.d31_60),
+      d61_90: money(aging.d61_90),
+      d90_plus: money(aging.d90_plus),
     }],
     theme: 'grid',
     tableWidth: pdfCommon.CONTENT_WIDTH,
@@ -268,13 +285,22 @@ function generateStatementPDF(statement) {
   doc.setFontSize(pdfCommon.FONT.body);
   doc.setTextColor(0, 0, 0);
 
+  if (totals.credit_count > 0) {
+    doc.text('Total des factures:', labelX, y);
+    doc.text(money(totals.charges), rightX, y, { align: 'right' });
+    y += 6;
+    doc.text(`Crédits (${totals.credit_count}):`, labelX, y);
+    doc.text(money(-Math.abs(totals.credits)), rightX, y, { align: 'right' });
+    y += 6;
+  }
+
   doc.text('Solde dû:', labelX, y);
-  doc.text(pdfCommon.formatCurrency(totals.balance), rightX, y, { align: 'right' });
+  doc.text(money(totals.balance), rightX, y, { align: 'right' });
   y += 6;
 
   if (chargeInterest && totals.interest > 0) {
     doc.text(`Intérêts de retard (${interestRate}%/an):`, labelX, y);
-    doc.text(pdfCommon.formatCurrency(totals.interest), rightX, y, { align: 'right' });
+    doc.text(money(totals.interest), rightX, y, { align: 'right' });
     y += 6;
   }
 
@@ -282,13 +308,12 @@ function generateStatementPDF(statement) {
   doc.line(labelX, y, rightX, y);
   y += 6;
 
+  const netDue = chargeInterest ? totals.total_with_interest : totals.balance;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
-  doc.text('TOTAL À PAYER:', labelX, y);
-  doc.text(
-    pdfCommon.formatCurrency(chargeInterest ? totals.total_with_interest : totals.balance),
-    rightX, y, { align: 'right' }
-  );
+  // Compte créditeur: rien à payer, c'est un crédit en faveur du client
+  doc.text(netDue < -0.005 ? 'CRÉDIT À VOTRE COMPTE:' : 'TOTAL À PAYER:', labelX, y);
+  doc.text(money(netDue), rightX, y, { align: 'right' });
   y += 12;
 
   // ---- NOTE DE PIED ----
@@ -346,7 +371,7 @@ export async function POST(request, { params }) {
       return NextResponse.json(
         {
           success: false,
-          error: `Aucune facture impayée pour ce client au ${formatDateFr(statement.statementDate)}`,
+          error: `Aucune facture impayée ni crédit pour ce client au ${formatDateFr(statement.statementDate)}`,
         },
         { status: 400 }
       );
@@ -419,11 +444,19 @@ export async function POST(request, { params }) {
             <h2 style="color: #333; margin-bottom: 20px;">État de compte</h2>
             <p>Bonjour,</p>
             <p>Veuillez trouver ci-joint votre état de compte au <strong>${formatDateFr(statement.statementDate)}</strong>.</p>
-            <p>Nombre de factures impayées: <strong>${statement.invoices.length}</strong><br>
-               Solde dû: <strong>${Number(t.balance).toFixed(2)} $</strong>${
-                 chargeInterest && t.interest > 0
-                   ? `<br>Intérêts de retard: <strong>${Number(t.interest).toFixed(2)} $</strong><br>Total à payer: <strong>${Number(t.total_with_interest).toFixed(2)} $</strong>`
+            <p>Nombre de factures impayées: <strong>${t.open_count}</strong>${
+                 t.credit_count > 0
+                   ? `<br>Crédits à votre compte: <strong>${t.credit_count}</strong> (${Number(t.credits).toFixed(2)} $)`
                    : ''
+               }<br>
+               ${
+                 t.balance < -0.005
+                   ? `Crédit à votre compte: <strong>${Math.abs(Number(t.balance)).toFixed(2)} $</strong> — aucun montant n'est dû.`
+                   : `Solde dû: <strong>${Number(t.balance).toFixed(2)} $</strong>${
+                       chargeInterest && t.interest > 0
+                         ? `<br>Intérêts de retard: <strong>${Number(t.interest).toFixed(2)} $</strong><br>Total à payer: <strong>${Number(t.total_with_interest).toFixed(2)} $</strong>`
+                         : ''
+                     }`
                }</p>
             <p>N'hésitez pas à nous contacter pour toute question.</p>
             <p style="color: #999; font-size: 13px; font-style: italic; margin: 20px 0 0;">

@@ -13,10 +13,16 @@
  *                le courriel montrent alors le compte tel qu'il était à cette date
  *              - Case « Facturer les intérêts de retard »: décochée = relevé sans intérêts
  *                (geste commercial pour un bon client en léger retard)
+ *              - Notes de crédit (factures à total négatif): affichées en vert avec le
+ *                badge « Crédit », déduites du solde, réglables par un remboursement ou
+ *                l'application du crédit (montant négatif)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.6.0
- * @date 2026-08-20
+ * @version 1.7.0
+ * @date 2026-09-02
  * @changelog
+ *   1.7.0 - Factures de crédit visibles au relevé: tuile « Crédits au dossier », solde net
+ *           (vert si créditeur), badge « Crédit » par ligne, escompte masqué sur un crédit
+ *           et saisie d'un règlement de crédit (montant négatif)
  *   1.6.0 - Destinataire visible sans ouvrir la fenêtre: ligne « Envoi à … — modifier » dans
  *           la barre du bas (cliquable, ouvre le choix des destinataires); bouton renommé
  *           « Envoyer le relevé… » pour signaler qu'une fenêtre s'ouvre avant tout envoi
@@ -162,8 +168,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
     }
   }, [success]);
 
-  // Escompte 2% = 2% du sous-total (avant taxes) de la facture
-  const discountFor = (inv) => Math.round((Number(inv.subtotal) || 0) * 0.02 * 100) / 100;
+  // Escompte 2% = 2% du sous-total (avant taxes) de la facture (jamais sur un crédit)
+  const discountFor = (inv) =>
+    inv.is_credit ? 0 : Math.round((Number(inv.subtotal) || 0) * 0.02 * 100) / 100;
 
   const toggleSelect = (inv) => {
     setAlloc(prev => {
@@ -214,7 +221,8 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
         const a = alloc[inv.id];
         const amount = parseFloat(a.amount) || 0;
         const discount = a.escompte ? discountFor(inv) : 0;
-        if (amount <= 0 && discount <= 0) continue;
+        // Un crédit se règle par un montant négatif (remboursement / application)
+        if (Math.abs(amount) < 0.005 && discount <= 0) continue;
         const res = await fetch('/api/invoice-payments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -416,7 +424,13 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
     a => a.email.trim().toLowerCase() === e.toLowerCase()
   ));
 
-  const rawTotals = data?.totals || { balance: 0, interest: 0, total_with_interest: 0, open_count: 0 };
+  const rawTotals = data?.totals || {
+    balance: 0, charges: 0, credits: 0, interest: 0,
+    total_with_interest: 0, open_count: 0, credit_count: 0,
+  };
+  // Notes de crédit au dossier (factures à total négatif encore ouvertes)
+  const hasCredits = (rawTotals.credit_count || 0) > 0;
+  const isCreditBalance = (rawTotals.balance || 0) < -0.005;
   // Intérêts non facturés: le total à payer se limite au solde des factures
   const totals = chargeInterest
     ? rawTotals
@@ -565,7 +579,7 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
             <div className="p-8 text-center">
               <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-3" />
               <p className="text-gray-700 dark:text-gray-300 text-lg">
-                Aucune facture impayée{isPastStatement ? ` au ${fmtDate(asOf)}` : ''}
+                Aucune facture impayée ni crédit{isPastStatement ? ` au ${fmtDate(asOf)}` : ''}
               </p>
               <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">
                 {isPastStatement
@@ -576,11 +590,27 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
           ) : (
             <>
               {/* Bandeau résumé */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className={`grid grid-cols-2 gap-3 ${hasCredits ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
                   <div className="text-xs text-gray-500 dark:text-gray-400">Solde dû</div>
-                  <div className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmtCurrency(totals.balance)}</div>
+                  <div className={`text-lg font-bold ${
+                    isCreditBalance ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-gray-100'
+                  }`}>{fmtCurrency(totals.balance)}</div>
+                  {isCreditBalance && (
+                    <div className="text-[10px] text-emerald-700 dark:text-emerald-400">crédit en faveur du client</div>
+                  )}
                 </div>
+                {hasCredits && (
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3">
+                    <div className="text-xs text-emerald-700 dark:text-emerald-400">Crédits au dossier</div>
+                    <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                      − {fmtCurrency(rawTotals.credits)}
+                    </div>
+                    <div className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                      {rawTotals.credit_count} note(s) de crédit
+                    </div>
+                  </div>
+                )}
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
                   <div className="text-xs text-gray-500 dark:text-gray-400">Intérêts ({data.interest_rate}%/an)</div>
                   <div className={`text-lg font-bold ${
@@ -686,13 +716,16 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                   const a = alloc[inv.id] || {};
                   const disc = discountFor(inv);
                   const dSince = daysSince(inv.invoice_date);
+                  const isCredit = !!inv.is_credit;
                   return (
                     <div
                       key={inv.id}
                       className={`rounded-xl border p-3 transition-colors ${
                         a.selected
                           ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50/60 dark:bg-emerald-900/15'
-                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                          : isCredit
+                            ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-900/10'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -704,11 +737,17 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span className="font-mono font-bold text-gray-900 dark:text-gray-100">Facture {inv.invoice_number}</span>
+                            <span className="font-mono font-bold text-gray-900 dark:text-gray-100">
+                              {isCredit ? 'Crédit' : 'Facture'} {inv.invoice_number}
+                            </span>
                             {inv.source_number && (
                               <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{inv.source_number}</span>
                             )}
-                            {inv.days_overdue > 0 ? (
+                            {isCredit ? (
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-medium px-2 py-0.5">
+                                Crédit au client
+                              </span>
+                            ) : inv.days_overdue > 0 ? (
                               <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
                                 <Clock className="w-3 h-3" /> {inv.days_overdue} j de retard
                               </span>
@@ -719,8 +758,12 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                           <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 text-xs text-gray-600 dark:text-gray-400">
                             <span>Date: {fmtDate(inv.invoice_date)}</span>
                             <span>Total: {fmtCurrency(inv.total)}</span>
-                            {inv.amount_paid > 0 && <span>Déjà payé: {fmtCurrency(inv.amount_paid)}</span>}
-                            <span className="font-semibold text-gray-900 dark:text-gray-100">Solde: {fmtCurrency(inv.balance)}</span>
+                            {Math.abs(inv.amount_paid) > 0.005 && (
+                              <span>{isCredit ? 'Déjà appliqué' : 'Déjà payé'}: {fmtCurrency(inv.amount_paid)}</span>
+                            )}
+                            <span className={`font-semibold ${
+                              isCredit ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-900 dark:text-gray-100'
+                            }`}>Solde: {fmtCurrency(inv.balance)}</span>
                             {inv.interest > 0 && (
                               <span className={chargeInterest
                                 ? 'text-amber-600 dark:text-amber-400'
@@ -759,13 +802,15 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                           {a.selected && (
                             <div className="mt-2 flex flex-wrap items-end gap-3">
                               <div>
-                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Montant appliqué</label>
+                                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                  {isCredit ? 'Montant du crédit réglé (négatif)' : 'Montant appliqué'}
+                                </label>
                                 <div className="relative">
                                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
                                   <input
                                     type="number"
                                     step="0.01"
-                                    min="0"
+                                    {...(isCredit ? { max: 0 } : { min: 0 })}
                                     value={a.amount}
                                     onChange={(e) => setAmount(inv.id, e.target.value)}
                                     onFocus={(e) => e.target.select()}
@@ -773,19 +818,27 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                                     className="w-32 pl-5 pr-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
                                   />
                                 </div>
+                                {isCredit && (
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 max-w-[16rem]">
+                                    Crédit remboursé au client ou appliqué à une autre facture: le crédit
+                                    disparaît alors du relevé.
+                                  </p>
+                                )}
                               </div>
-                              <label className="flex items-center gap-2 cursor-pointer py-2">
-                                <input
-                                  type="checkbox"
-                                  checked={!!a.escompte}
-                                  onChange={() => toggleEscompte(inv)}
-                                  className="w-4 h-4 rounded accent-emerald-600"
-                                />
-                                <span className="text-xs text-gray-700 dark:text-gray-300">
-                                  Escompte 2% ({fmtCurrency(disc)})
-                                  <span className="text-gray-400"> · {dSince} j depuis facturation</span>
-                                </span>
-                              </label>
+                              {!isCredit && (
+                                <label className="flex items-center gap-2 cursor-pointer py-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!a.escompte}
+                                    onChange={() => toggleEscompte(inv)}
+                                    className="w-4 h-4 rounded accent-emerald-600"
+                                  />
+                                  <span className="text-xs text-gray-700 dark:text-gray-300">
+                                    Escompte 2% ({fmtCurrency(disc)})
+                                    <span className="text-gray-400"> · {dSince} j depuis facturation</span>
+                                  </span>
+                                </label>
+                              )}
                             </div>
                           )}
                         </div>
@@ -878,7 +931,8 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
             <div className="mb-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 px-3 py-2 text-sm text-indigo-800 dark:text-indigo-300 flex items-center gap-2">
               <Calendar className="w-4 h-4 flex-shrink-0" />
               <span>
-                Relevé au <strong>{fmtDate(asOf)}</strong> · {data?.totals?.open_count || 0} facture(s) ·{' '}
+                Relevé au <strong>{fmtDate(asOf)}</strong> · {rawTotals.open_count || 0} facture(s)
+                {hasCredits && <> · {rawTotals.credit_count} crédit(s) (− {fmtCurrency(rawTotals.credits)})</>} ·{' '}
                 {fmtCurrency(totals.total_with_interest)}
                 {!chargeInterest && rawTotals.interest > 0 && (
                   <span className="block text-xs mt-0.5">
