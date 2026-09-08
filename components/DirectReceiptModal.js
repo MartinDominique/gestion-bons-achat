@@ -7,9 +7,11 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.8.0
- * @date 2026-08-27
+ * @version 1.8.1
+ * @date 2026-09-08
  * @changelog
+ *   1.8.1 - Bascule « CAD | USD » à deux segments (CurrencyToggle partagé) au lieu du
+ *           bouton « USD » seul: la devise active du coûtant est visible d'un coup d'œil.
  *   1.8.0 - Achats en USD: bascule CAD/USD sur le coûtant de chaque ligne. Le montant
  *           saisi en USD est converti (taux + frais bancaires) et c'est le CAD qui est
  *           enregistré dans cost_price; l'origine USD est conservée sur la fiche produit.
@@ -34,7 +36,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
-import { useExchangeRate } from './currency/CostPriceField';
+import { useExchangeRate, CurrencyToggle } from './currency/CostPriceField';
 import {
   CURRENCY_CAD,
   CURRENCY_USD,
@@ -901,22 +903,11 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                       <div className="w-[110px]">
                         <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5 flex items-center justify-between gap-1">
                           <span>Coûtant</span>
-                          <button
-                            type="button"
-                            onClick={() => toggleItemCurrency(item.product_id)}
-                            className={`px-1 rounded text-[10px] font-bold ${
-                              item.purchase_currency === CURRENCY_USD
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 dark:bg-gray-700 dark:text-gray-300'
-                            }`}
-                            title={
-                              item.purchase_currency === CURRENCY_USD
-                                ? 'Revenir à une saisie en dollars canadiens'
-                                : 'Saisir ce coûtant en dollars américains'
-                            }
-                          >
-                            USD
-                          </button>
+                          <CurrencyToggle
+                            size="xs"
+                            value={item.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD}
+                            onChange={() => toggleItemCurrency(item.product_id)}
+                          />
                         </label>
                         {item.purchase_currency === CURRENCY_USD ? (
                           <>

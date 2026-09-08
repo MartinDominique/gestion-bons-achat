@@ -909,6 +909,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - Les anciens mini-calculateurs USD locaux (Soumissions + AF) sont remplacés: ils utilisaient un taux non officiel, sans frais bancaires, et n'étaient jamais mémorisés
     - `app/(protected)/parametres/page.js` v2.6.0 — section « Change USD → CAD »: frais bancaires + taux du jour + taux effectif, avec la méthode pour calibrer son vrai % BMO
     - **Reste:** exécuter la migration SQL `20260827_add_usd_purchase_currency.sql` dans Supabase Dashboard (avant, la saisie USD convertit correctement mais l'origine USD n'est pas mémorisée)
+    - **Amélioration (2026-09-08):** devise du coûtant explicite dans les tableaux de lignes — `CurrencyToggle` (bascule **CAD | USD** à deux segments, exporté de `CostPriceField.js` v1.1.0) remplace le bouton « USD » seul dans le tableau AF (`SupplierPurchaseForms.js` v1.7.0: en-tête « Prix Coût (CAD) », suffixe « $ CAD »/« $ US », « Total (CAD) ») et dans la Réception directe (`DirectReceiptModal.js` v1.8.1). Passer une ligne d'AF en USD conserve le coûtant CAD déjà saisi (`SupplierPurchaseHooks.js`). Aucune migration requise
 
 31. ~~**Factures de crédit (avoirs) dans l'état de compte**~~ - ✅ COMPLÉTÉ (2026-09-02)
     - Une facture à total négatif (retour de matériel, correction) est désormais un **crédit ouvert**: elle figure au relevé (écran, PDF, courriel) et **réduit** le solde dû du client

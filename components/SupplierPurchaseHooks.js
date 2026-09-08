@@ -7,6 +7,7 @@ import {
   DEFAULT_FX_FEE_PERCENT,
   safeCurrencyUpdates,
   convertUsdToCad,
+  convertCadToUsd,
 } from '../lib/utils/currency';
 import { 
   // API Functions
@@ -700,7 +701,13 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     setSelectedItems(prev => prev.map(item => {
       if (item.product_id !== productId) return item;
       if (currency === CURRENCY_USD) {
-        const usd = item.cost_price_usd ?? '';
+        // Ne jamais perdre un coûtant CAD déjà saisi: on le repasse en USD à l'envers
+        // (même comportement que CostPriceField) plutôt que de repartir de zéro.
+        let usd = item.cost_price_usd ?? '';
+        if (!usd && parseFloat(item.cost_price) > 0) {
+          const reversed = convertCadToUsd(item.cost_price, usdToCadRate, usdFxFeePercent);
+          if (reversed !== null) usd = reversed.toFixed(2);
+        }
         return {
           ...item,
           purchase_currency: CURRENCY_USD,

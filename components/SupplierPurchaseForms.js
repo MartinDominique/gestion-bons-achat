@@ -9,9 +9,14 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.6.0
- * @date 2026-08-27
+ * @version 1.7.0
+ * @date 2026-09-08
  * @changelog
+ *   1.7.0 - Produits sélectionnés: la devise du coûtant est maintenant explicite.
+ *           Bascule « CAD | USD » à deux segments (devise active mise en évidence)
+ *           au lieu du bouton « USD » seul, en-tête de colonne « Prix Coût (CAD) »
+ *           avec rappel « Cliquer USD pour saisir en $ US », suffixe « $ CAD » à côté
+ *           du montant en mode CAD; l'en-tête « Total (CAD) » précise la devise des totaux.
  *   1.6.0 - Achats en USD: bascule CAD/USD sur le coûtant de chaque ligne d'AF
  *           (conversion immédiate en CAD, taux + frais bancaires) et sur le coûtant
  *           du modal « Produit non-inventaire » (CostPriceField partagé, qui remplace
@@ -36,7 +41,7 @@ import {
   MapPin, Calendar, Package, DollarSign, Printer, Wrench, MessageSquare, Calculator
 } from 'lucide-react';
 import { useSplitView } from './SplitView/SplitViewContext';
-import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
+import CostPriceField, { useExchangeRate, UsdBadge, CurrencyToggle } from './currency/CostPriceField';
 import { CURRENCY_CAD, CURRENCY_USD, formatRate } from '../lib/utils/currency';
 
 import { 
@@ -1289,8 +1294,13 @@ export const SelectedItemsTable = ({
               <th className="text-left p-2 dark:text-yellow-200">Code</th>
               <th className="text-left p-2 dark:text-yellow-200">Description</th>
               <th className="text-center p-2 dark:text-yellow-200">Qté</th>
-              <th className="text-right p-2 dark:text-yellow-200">Prix Coût</th>
-              <th className="text-right p-2 dark:text-yellow-200">Total</th>
+              <th className="text-right p-2 dark:text-yellow-200">
+                Prix Coût <span className="whitespace-nowrap">(CAD)</span>
+                <span className="block text-[10px] font-normal text-yellow-700 dark:text-yellow-300/80 whitespace-nowrap">
+                  Cliquer USD pour saisir en $ US
+                </span>
+              </th>
+              <th className="text-right p-2 dark:text-yellow-200 whitespace-nowrap">Total (CAD)</th>
               <th className="text-left p-2 dark:text-yellow-200">Notes</th>
               <th className="text-center p-2 dark:text-yellow-200">Actions</th>
             </tr>
@@ -1330,15 +1340,16 @@ export const SelectedItemsTable = ({
                           onBlur={() => handlePriceBlur && handlePriceBlur(item.product_id, item.cost_price)}
                           className="w-20 text-right rounded border-blue-300 dark:border-blue-700 dark:bg-gray-800"
                           title="Coûtant en dollars américains"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                         />
-                        <button
-                          type="button"
-                          onClick={() => updateItemCostCurrency(item.product_id, CURRENCY_CAD)}
-                          className="px-1.5 py-1 rounded text-[10px] font-bold bg-blue-600 text-white"
-                          title="Revenir à une saisie en dollars canadiens"
-                        >
-                          USD
-                        </button>
+                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 whitespace-nowrap">$ US</span>
+                        <CurrencyToggle
+                          size="sm"
+                          value={CURRENCY_USD}
+                          onChange={(code) => updateItemCostCurrency(item.product_id, code)}
+                        />
                       </div>
                       <span className="text-[11px] text-green-700 dark:text-green-400 font-medium">
                         = {formatCurrency(item.cost_price)} CAD
@@ -1357,16 +1368,18 @@ export const SelectedItemsTable = ({
                         onChange={(e) => updateItemPrice(item.product_id, e.target.value)}
                         onFocus={(e) => e.target.select()}
                         onBlur={(e) => handlePriceBlur && handlePriceBlur(item.product_id, e.target.value)}
-                        className="w-24 text-right rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                        className="w-20 text-right rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                        title="Coûtant en dollars canadiens"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                       />
-                      <button
-                        type="button"
-                        onClick={() => updateItemCostCurrency(item.product_id, CURRENCY_USD)}
-                        className="px-1.5 py-1 rounded text-[10px] font-bold bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 dark:bg-gray-700 dark:text-gray-300"
-                        title="Saisir ce coûtant en dollars américains"
-                      >
-                        USD
-                      </button>
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">$ CAD</span>
+                      <CurrencyToggle
+                        size="sm"
+                        value={CURRENCY_CAD}
+                        onChange={(code) => updateItemCostCurrency(item.product_id, code)}
+                      />
                     </div>
                   )}
                 </td>

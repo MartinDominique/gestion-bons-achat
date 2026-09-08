@@ -1962,6 +1962,22 @@ de 2 à 3,5 % sur chaque achat US) et ne gardaient aucune trace du prix USD.
 Dashboard. Avant cela, la saisie en USD convertit correctement (le bon coûtant CAD est enregistré),
 mais l'origine USD n'est pas mémorisée et le bouton « Recalculer USD » ne trouve aucun article.
 
+**Amélioration (2026-09-08) — devise du coûtant explicite dans les tableaux de lignes.**
+Dans « Produits sélectionnés » de l'AF, le petit bouton « USD » seul à côté du coûtant portait
+à confusion: rien n'indiquait que le montant était en CAD ni que le bouton servait à changer de
+devise. Correctif:
+- `components/currency/CostPriceField.js` v1.1.0 — nouvel export `CurrencyToggle`: bascule
+  **CAD | USD** à deux segments (devise active mise en évidence: CAD foncé, USD bleu; l'autre
+  reste cliquable), infobulles explicites, `aria-pressed`. `CostPriceField` l'utilise aussi.
+- `components/SupplierPurchaseForms.js` v1.7.0 — tableau AF: en-tête **« Prix Coût (CAD) »** avec
+  rappel « Cliquer USD pour saisir en $ US », suffixe **« $ CAD »** (ou « $ US ») à côté du
+  montant, bascule CAD | USD par ligne, en-tête « Total (CAD) ».
+- `components/SupplierPurchaseHooks.js` — passer une ligne d'AF en USD ne perd plus le coûtant
+  CAD déjà saisi (conversion inverse, comme `CostPriceField`).
+- `components/DirectReceiptModal.js` v1.8.1 — même bascule CAD | USD sur les lignes de la
+  Réception directe (même page Achat, même ambiguïté).
+Aucune migration SQL requise.
+
 ---
 
 ## Factures de crédit (avoirs) dans l'état de compte ✅ COMPLETE (2026-09-02)
@@ -2009,4 +2025,4 @@ Aucune migration SQL requise (`invoice_payments.amount` est un `NUMERIC` sans co
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-09-02 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-09-08 par Claude AI*

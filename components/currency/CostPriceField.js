@@ -9,9 +9,12 @@
  *
  *              Exporte aussi useExchangeRate(), le hook qui va chercher le taux
  *              via /api/exchange-rate (Banque du Canada, avec replis).
- * @version 1.0.0
- * @date 2026-08-27
+ * @version 1.1.0
+ * @date 2026-09-08
  * @changelog
+ *   1.1.0 - Export de CurrencyToggle (bascule CAD | USD à deux segments) pour que les
+ *           tableaux de lignes (AF, Réception directe) montrent clairement la devise
+ *           active — un bouton « USD » seul ne disait pas que le coûtant était en CAD.
  *   1.0.0 - Version initiale (achats en USD)
  */
 
@@ -194,25 +197,7 @@ export default function CostPriceField({
           {label}
         </label>
         {/* Bascule CAD / USD */}
-        <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-          {[CURRENCY_CAD, CURRENCY_USD].map((code) => (
-            <button
-              key={code}
-              type="button"
-              disabled={disabled}
-              onClick={() => switchCurrency(code)}
-              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
-                currency === code
-                  ? code === CURRENCY_USD
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-white dark:bg-gray-600'
-                  : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-              } disabled:opacity-50`}
-            >
-              {code}
-            </button>
-          ))}
-        </div>
+        <CurrencyToggle value={currency} onChange={switchCurrency} disabled={disabled} />
       </div>
 
       {!isUsd && (
@@ -333,6 +318,71 @@ export default function CostPriceField({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const TOGGLE_SIZES = {
+  xs: 'px-1.5 py-0.5 text-[10px]',
+  sm: 'px-2 py-1 text-[11px]',
+  md: 'px-3 py-1.5 text-xs',
+};
+
+const TOGGLE_TITLES = {
+  [CURRENCY_CAD]: {
+    active: 'Coûtant saisi en dollars canadiens',
+    inactive: 'Revenir à une saisie en dollars canadiens',
+  },
+  [CURRENCY_USD]: {
+    active: 'Coûtant saisi en dollars américains (converti en CAD)',
+    inactive: 'Saisir ce coûtant en dollars américains',
+  },
+};
+
+/**
+ * Bascule « CAD | USD » à deux segments: la devise active est toujours visible
+ * (CAD sur fond foncé, USD sur fond bleu) et l'autre reste cliquable.
+ * À utiliser partout où un coûtant peut se saisir dans l'une ou l'autre devise,
+ * plutôt qu'un bouton « USD » seul qui ne dit pas dans quelle devise on est.
+ */
+export function CurrencyToggle({
+  value = CURRENCY_CAD,
+  onChange,
+  disabled = false,
+  size = 'md',
+  className = '',
+}) {
+  const pad = TOGGLE_SIZES[size] || TOGGLE_SIZES.md;
+  return (
+    <div
+      role="group"
+      aria-label="Devise du coûtant"
+      className={`inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden ${className}`}
+    >
+      {[CURRENCY_CAD, CURRENCY_USD].map((code) => {
+        const active = value === code;
+        return (
+          <button
+            key={code}
+            type="button"
+            disabled={disabled}
+            aria-pressed={active}
+            onClick={() => {
+              if (!active) onChange?.(code);
+            }}
+            title={TOGGLE_TITLES[code][active ? 'active' : 'inactive']}
+            className={`${pad} font-semibold transition-colors ${
+              active
+                ? code === CURRENCY_USD
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-white dark:bg-gray-600'
+                : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+            } disabled:opacity-50`}
+          >
+            {code}
+          </button>
+        );
+      })}
     </div>
   );
 }
