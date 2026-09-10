@@ -9,9 +9,13 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.7.0
- * @date 2026-09-08
+ * @version 1.8.0
+ * @date 2026-09-10
  * @changelog
+ *   1.8.0 - Items associés: colonne « As » dans le tableau des produits sélectionnés (AF).
+ *           Un tap ouvre la liste des associés (cases décochées par défaut, qté = défaut ×
+ *           qté de la ligne, modifiable); les items cochés s'ajoutent à l'AF (fusion si déjà
+ *           présents). Permet aussi d'associer un produit sur place.
  *   1.7.0 - Produits sélectionnés: la devise du coûtant est maintenant explicite.
  *           Bascule « CAD | USD » à deux segments (devise active mise en évidence)
  *           au lieu du bouton « USD » seul, en-tête de colonne « Prix Coût (CAD) »
@@ -43,6 +47,7 @@ import {
 import { useSplitView } from './SplitView/SplitViewContext';
 import CostPriceField, { useExchangeRate, UsdBadge, CurrencyToggle } from './currency/CostPriceField';
 import { CURRENCY_CAD, CURRENCY_USD, formatRate } from '../lib/utils/currency';
+import AssociatedItemsButton from './associations/AssociatedItemsButton';
 
 import { 
   CARRIERS,
@@ -121,6 +126,7 @@ export const PurchaseForm = ({
   handleQuantityKeyDown,
   selectProductForQuantity,
   addItemToPurchase,
+  addAssociatedItemsToPurchase,
   updateItemQuantity,
   updateItemPrice,
   updateItemCostCurrency,
@@ -779,6 +785,7 @@ Merci!`;
               {/* Items sélectionnés */}
               <SelectedItemsTable 
                 selectedItems={selectedItems}
+                addAssociatedItemsToPurchase={addAssociatedItemsToPurchase}
                 updateItemQuantity={updateItemQuantity}
                 updateItemPrice={updateItemPrice}
                 updateItemNotes={updateItemNotes}
@@ -1268,6 +1275,7 @@ export const NonInventoryModal = ({
 // ===== TABLEAU ITEMS SÉLECTIONNÉS =====
 export const SelectedItemsTable = ({
   selectedItems,
+  addAssociatedItemsToPurchase,
   updateItemQuantity,
   updateItemPrice,
   updateItemNotes,
@@ -1302,6 +1310,7 @@ export const SelectedItemsTable = ({
               </th>
               <th className="text-right p-2 dark:text-yellow-200 whitespace-nowrap">Total (CAD)</th>
               <th className="text-left p-2 dark:text-yellow-200">Notes</th>
+              <th className="text-center p-2 dark:text-yellow-200" title="Items associés">As</th>
               <th className="text-center p-2 dark:text-yellow-200">Actions</th>
             </tr>
           </thead>
@@ -1396,6 +1405,15 @@ export const SelectedItemsTable = ({
                     autoCorrect="on"
                     autoCapitalize="sentences"
                     spellCheck={true}
+                  />
+                </td>
+                <td className="p-2 text-center">
+                  <AssociatedItemsButton
+                    code={item.product_id}
+                    description={item.description || ''}
+                    parentQuantity={Math.abs(parseFloat(item.quantity) || 1)}
+                    existingCodes={selectedItems.map((i) => i.product_id)}
+                    onAddItems={addAssociatedItemsToPurchase}
                   />
                 </td>
                 <td className="p-2 text-center">

@@ -425,6 +425,8 @@ const total = subtotal + tps + tvq;
 /api/reports/sales/send-email          → Envoi rapport de ventes PDF au comptable (CC bureau)
 /api/reports/payments                  → Rapport de paiements comptable (GET: mois/année/plage)
 /api/reports/payments/send-email       → Envoi rapport de paiements PDF au comptable (CC bureau)
+/api/product-associations              → Items associés « As » (GET ?parent= / ?child= / ?codes=&mode=counts, POST création)
+/api/product-associations/[id]         → PUT (quantité par défaut, note) / DELETE lien associé
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -438,6 +440,8 @@ lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique
 lib/utils/priceShift.js             → Décalage historique prix (3 niveaux)
 lib/utils/currency.js               → Conversion USD→CAD (taux + frais bancaires), cost_price toujours en CAD
 lib/utils/productSearch.js          → Recherche produits tolérante (tirets/accents ignorés)
+lib/services/product-associations.js → Helpers serveur items associés (lookupProducts par code, normalizeCode)
+lib/utils/associationsCache.js      → Cache client des compteurs « As » (1 requête groupée par écran) + hook useAssociationCount
 lib/supabase.js                     → Client Supabase (browser)
 lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
 ```
@@ -475,6 +479,9 @@ components/invoices/AccountingReports.js      → Onglet Rapports compta (ventes
 components/notes/NotesManager.js              → Tableau de bord Notes (page d'ouverture, recherche, filtre, CRUD)
 components/notes/NoteCard.js                  → Carte note (couleur urgence, checkbox, badge projet cliquable)
 components/notes/NoteForm.js                  → Modal créer/éditer note + sélecteur document (BT/BL/BA/Soum.)
+components/associations/AssociatedItemsButton.js → Carré « As » (items associés) sur une ligne produit (BT/BL/Soum./AF/Inventaire)
+components/associations/AssociatedItemsModal.js  → Fenêtre « As »: cocher les associés à ajouter (portail, 44 px)
+components/associations/ProductAssociationsPanel.js → Panneau partagé: liste des associés, sélection, ajout/retrait de liens, « Suggéré par »
 ```
 
 ---
@@ -577,6 +584,25 @@ user_id, created_at, updated_at
 **Flux commande:** sélection → « Créer l'AF » (sessionStorage `af-prefill`) → onglet AF pré-rempli → à la sauvegarde, items passés en `ordered` + lien `supplier_purchase_id/number`.
 **Marquage robuste (2026-08-06):** à la sauvegarde d'un AF, les items en attente sont marqués `ordered` par leur `id` explicite (flux « Créer l'AF ») ET, pour un **nouvel** AF, par correspondance de `product_code` avec les articles de l'AF — donc un AF construit **manuellement** vide aussi la liste. Voir `mark-ordered` v1.1.0 + `markOrderedForPurchase` (SupplierPurchaseHooks).
 **RLS:** authenticated (liste partagée, comme notes/factures).
+
+### product_associations (Items associés « As »)
+```sql
+id (UUID), parent_code, child_code,      -- codes produits TEXTE (products / non_inventory_items), sans FK
+default_quantity,                        -- qté suggérée PAR UNITÉ du parent (× qté du parent au moment de la suggestion)
+notes, user_id, created_at, updated_at
+UNIQUE (parent_code, child_code), CHECK (parent_code <> child_code)
+```
+**But:** « quand j'ajoute A, propose-moi aussi B ». Lien à **sens unique** (parent → enfant): ajouter le
+disjoncteur propose le rail DIN, pas l'inverse (créer le 2e lien si voulu).
+**Carré « As »:** sur chaque ligne de BT/BL (MaterialSelector), Soumission, AF: violet + compteur si le produit
+a des associés, contour gris pointillé sinon. **Sans tap, rien ne change.** Un tap ouvre la fenêtre:
+cases **décochées par défaut**, quantité = `default_quantity × qté du parent` (modifiable), bouton
+« Ajouter (n) » → fusion des quantités si l'article est déjà dans le document. Aucun ajout automatique.
+**Gestion des liens:** Inventaire → fiche → onglet « Associés » (associés + « Suggéré par »), OU directement
+dans la fenêtre « As » d'un module (« Associer un produit à … », retrait avec confirmation).
+**Pas de champ contexte vente/achat** (décision 2026-09-10): mêmes liens partout, l'utilisateur coche.
+**Renommage de code:** `/api/products/rename` cascade `parent_code` + `child_code`.
+**RLS:** authenticated (liste partagée). **Backup:** table dans `app/api/cron/backup/route.ts`.
 
 ### products / non_inventory_items
 ```sql
@@ -917,6 +943,24 @@ CRON_SECRET                   # Auth pour cron jobs
     - Un crédit se règle par un « paiement » de montant **négatif** (remboursement au client ou application sur une autre facture) — il disparaît alors du relevé
     - `lib/services/statement-data.js` v1.2.0 · `app/api/statements/route.js` v1.1.0 · `lib/services/invoice-payments.js` v1.1.0 · `app/api/invoice-payments/route.js` v1.2.0 · `app/api/statements/[clientId]/send-email/route.js` v1.5.0 · `components/invoices/ClientStatementView.js` v1.7.0 · `components/invoices/StatementManager.js` v1.1.0
     - Aucune migration SQL requise
+
+32. ~~**Items associés « As » (BT/BL, Soumissions, AF, Inventaire)**~~ - ✅ COMPLÉTÉ (2026-09-10)
+    - `supabase/migrations/20260910_create_product_associations.sql` (nouveau) — table `product_associations` (sens unique parent → enfant, `default_quantity` par unité du parent, UNIQUE + CHECK, RLS authenticated, index, trigger `updated_at`)
+    - `app/api/product-associations/route.js` + `[id]/route.js` (nouveaux) — GET enfants/parents enrichis (fiche produit) + compteurs groupés (`?codes=&mode=counts` → `counts` + `parent_counts`), POST (création ou mise à jour si le lien existe), PUT/DELETE
+    - `lib/services/product-associations.js` (nouveau) — `lookupProducts()` (products puis non_inventory_items, 2 requêtes `.in()`), `normalizeCode()`
+    - `lib/utils/associationsCache.js` (nouveau) — cache client + batching 30 ms (1 requête par écran) + hook `useAssociationCount(code)` → `{ children, parents }`
+    - `components/associations/AssociatedItemsButton.js` (nouveau) — carré « As » 44 px: violet + compteur si associés, contour violet si seulement « suggéré par » (`showParentLinks`), pointillé gris sinon; `onClick` optionnel (Inventaire), `hideWhenEmpty`
+    - `components/associations/AssociatedItemsModal.js` (nouveau) — fenêtre via portail (z-80), Échap/fond/X, tablette (feuille en bas)
+    - `components/associations/ProductAssociationsPanel.js` (nouveau) — liste enrichie (code, description, En main, vendant, note), cases **décochées par défaut**, qté = défaut × qté parent (auto-select), « Tout cocher », badge « déjà dans la liste », « Ajouter (n) »; « Associer un produit » (recherche tolérante `/api/products/search`, exclut soi-même + déjà liés) + retrait avec `confirm`; section « Suggéré par »
+    - `components/work-orders/MaterialSelector.js` v1.9.0 — carré « As » par matériau (BT + BL); `addAssociatedMaterials()` (objet produit du cache si connu, fusion des quantités)
+    - `components/SoumissionsManager.js` v2.5.0 — colonne « As » (table desktop) + carré dans les cartes mobile; `addAssociatedItemsToSubmission()` (setState fonctionnel, fusion)
+    - `components/SupplierPurchaseForms.js` v1.8.0 + `SupplierPurchaseHooks.js` v1.1.0 (en-tête ajouté) + `SupplierPurchaseManager.js` v1.4.0 — colonne « As » dans « Produits sélectionnés »; `addAssociatedItemsToPurchase()` (devise CAD par défaut, `original_cost_price`)
+    - `components/InventoryManager.js` v3.14.0 — carré « As » sur la ligne (masqué si aucun lien, contour si « suggéré par ») → ouvre la fiche sur le nouvel onglet **« Associés »** (gestion + « Suggéré par »)
+    - `app/api/products/rename/route.js` v1.1.0 — cascade `parent_code`/`child_code`
+    - `app/api/cron/backup/route.ts` v2.2.0 — table `product_associations` ajoutée au backup
+    - Décisions (Martin, 2026-09-10): sens unique; suggestion seulement (jamais d'ajout automatique); cases décochées par défaut (1-2 items utilisés sur 10); quantité multipliée par celle du parent et modifiable; pas de champ contexte vente/achat; nombre d'associés illimité; badge visible dans l'Inventaire
+    - Non couvert (v1): le tableau compact B/O d'un BL (items importés d'un BA) n'a pas de carré « As »; les items manuels (MaterialSelector) en ont un
+    - **Reste:** exécuter la migration SQL `20260910_create_product_associations.sql` dans Supabase Dashboard (sinon: carrés « As » gris, fenêtre en erreur « relation does not exist »)
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

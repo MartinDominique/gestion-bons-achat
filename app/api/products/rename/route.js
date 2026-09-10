@@ -7,9 +7,10 @@
  *              orphelinerait l'historique. Cet endpoint met donc à jour en cascade
  *              toutes les références connues, via supabaseAdmin (bypass RLS —
  *              notamment work_order_materials qui bloque les lectures/écritures client).
- * @version 1.0.0
- * @date 2026-07-14
+ * @version 1.1.0
+ * @date 2026-09-10
  * @changelog
+ *   1.1.0 - Cascade aussi sur product_associations (parent_code + child_code) — items associés
  *   1.0.0 - Version initiale
  *           - Vérifie l'unicité du nouveau code (products + non_inventory_items)
  *           - Met à jour la ligne produit puis cascade sur inventory_movements,
@@ -102,6 +103,19 @@ export async function POST(request) {
         } catch (e) {
           console.error(`Cascade ${tbl}.${col} (exception):`, e);
         }
+      }
+    }
+
+    // product_associations: parent_code ET child_code (items associés, référence texte)
+    for (const col of ['parent_code', 'child_code']) {
+      try {
+        const { error } = await supabaseAdmin
+          .from('product_associations')
+          .update({ [col]: newCode })
+          .eq(col, oldCode);
+        if (error) console.error(`Cascade product_associations.${col}:`, error.message);
+      } catch (e) {
+        console.error(`Cascade product_associations.${col} (exception):`, e);
       }
     }
 

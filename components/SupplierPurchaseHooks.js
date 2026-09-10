@@ -1,3 +1,15 @@
+/**
+ * @file components/SupplierPurchaseHooks.js
+ * @description Hook principal de la gestion des achats fournisseurs (AF): états, chargement,
+ *              recherche produits, lignes d'AF (ajout/quantité/prix/devise), sauvegarde,
+ *              marquage « À commander », réception, fournisseurs et adresses.
+ * @version 1.1.0
+ * @date 2026-09-10
+ * @changelog
+ *   1.1.0 - Items associés: addAssociatedItemsToPurchase() ajoute en lot les associés cochés
+ *           dans la fenêtre « As » (fusion des quantités si la ligne existe déjà)
+ *   1.0.0 - Version initiale (en-tête ajouté rétroactivement)
+ */
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
@@ -675,6 +687,42 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         original_cost_price: product.cost_price
       }, ...selectedItems]);
     }
+  };
+
+  // Items associés (« As »): ajoute en une seule fois les associés cochés.
+  // Un article déjà présent voit sa quantité augmentée (pas de doublon).
+  const addAssociatedItemsToPurchase = (entries) => {
+    if (!Array.isArray(entries) || entries.length === 0) return;
+    setSelectedItems((prev) => {
+      const next = [...prev];
+      const fresh = [];
+      entries.forEach(({ product, quantity }) => {
+        const qty = parseFloat(quantity);
+        if (!product?.product_id || !(qty > 0)) return;
+        const idx = next.findIndex((i) => i.product_id === product.product_id);
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], quantity: (parseFloat(next[idx].quantity) || 0) + qty };
+        } else {
+          fresh.push({
+            product_id: product.product_id,
+            description: product.description || '',
+            unit: product.unit || 'UN',
+            cost_price: product.cost_price || 0,
+            selling_price: product.selling_price || 0,
+            stock_qty: product.stock_qty ?? 0,
+            product_group: product.product_group || null,
+            supplier: product.supplier || null,
+            purchase_currency: product.purchase_currency || CURRENCY_CAD,
+            cost_price_usd: product.cost_price_usd ?? null,
+            is_non_inventory: !!product.is_non_inventory,
+            quantity: qty,
+            notes: '',
+            original_cost_price: product.cost_price || 0
+          });
+        }
+      });
+      return [...fresh, ...next];
+    });
   };
 
   const updateItemQuantity = (productId, quantity) => {
@@ -1616,6 +1664,7 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
     handleQuantityKeyDown,
     selectProductForQuantity,
     addItemToPurchase,
+    addAssociatedItemsToPurchase,
     updateItemQuantity,
     updateItemPrice,
     updateItemCostCurrency,

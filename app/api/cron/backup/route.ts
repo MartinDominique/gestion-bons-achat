@@ -5,9 +5,10 @@
  *              - IMPORTANT: toute nouvelle table Supabase DOIT être ajoutée à `tables`
  *                (voir CLAUDE.md > "Backup base de données")
  *              - Tri par created_at avec repli automatique pour les tables sans cette colonne (ex: settings)
- * @version 2.1.0
- * @date 2026-07-21
+ * @version 2.2.0
+ * @date 2026-09-10
  * @changelog
+ *   2.2.0 - Ajout de la table product_associations (items associés « As »)
  *   2.1.0 - Ajout de la table items_to_order (liste À Commander)
  *   2.0.0 - Ajout des tables manquantes (products, inventory_movements, delivery_notes,
  *           delivery_note_materials, invoices, invoice_payments, notes, settings,
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
       'invoices',                  // Factures
       'non_inventory_items',
       'notes',                     // Système de notes (page d'ouverture)
+      'product_associations',      // Items associés (« As »), sens unique parent → enfant
       'products',                  // Inventaire (produits)
       'purchase_order_files',
       'purchase_orders',

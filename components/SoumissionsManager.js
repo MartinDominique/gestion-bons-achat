@@ -6,9 +6,14 @@
  *              - Recherche produits (tolérante aux tirets/accents), calcul taxes QC, gestion fichiers
  *              - Modal « Modifier l'article »: calculateur de marge, ajustement du stock
  *                et répercussion des prix dans la fiche inventaire
- * @version 2.4.0
- * @date 2026-08-27
+ * @version 2.5.0
+ * @date 2026-09-10
  * @changelog
+ *   2.5.0 - Items associés: carré « As » sur chaque article de la soumission (table desktop +
+ *           cartes mobile). Un tap ouvre la liste des associés (cases décochées par défaut,
+ *           qté = défaut × qté de l'article, modifiable); les items cochés s'ajoutent à la
+ *           soumission (fusion des quantités si déjà présents). Permet aussi d'associer un
+ *           produit sur place. Sans tap: comportement inchangé.
  *   2.4.0 - Achats en USD: le prix coûtant du modal « Modifier l'article » et du formulaire
  *           « Ajout rapide » se saisit en CAD ou en USD (CostPriceField partagé, taux officiel
  *           Banque du Canada + frais bancaires configurables). Remplace l'ancien mini-calculateur
@@ -46,6 +51,7 @@ import {
   formatDate as pdfFormatDate, formatCurrency as pdfFormatCurrency, PAGE
 } from '../lib/services/pdf-common';
 import AddToOrderButton from './order-list/AddToOrderButton';
+import AssociatedItemsButton from './associations/AssociatedItemsButton';
 import { searchWithFallback } from '../lib/utils/productSearch';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
@@ -1265,6 +1271,38 @@ export default function SoumissionsManager() {
         comment: ''
       }]);
     }
+  };
+
+  // Items associés (« As »): ajoute en une seule fois les associés cochés.
+  // Un article déjà présent voit sa quantité augmentée (pas de doublon).
+  const addAssociatedItemsToSubmission = (entries) => {
+    if (!Array.isArray(entries) || entries.length === 0) return;
+    setSelectedItems((prev) => {
+      const next = [...prev];
+      entries.forEach(({ product, quantity }) => {
+        const qty = parseFloat(quantity);
+        if (!product?.product_id || !(qty > 0)) return;
+        const idx = next.findIndex((i) => i.product_id === product.product_id);
+        if (idx >= 0) {
+          next[idx] = { ...next[idx], quantity: (parseFloat(next[idx].quantity) || 0) + qty };
+        } else {
+          next.push({
+            product_id: product.product_id,
+            description: product.description || '',
+            unit: product.unit || 'UN',
+            cost_price: product.cost_price || 0,
+            selling_price: product.selling_price || 0,
+            stock_qty: product.stock_qty ?? 0,
+            product_group: product.product_group || null,
+            supplier: product.supplier || null,
+            is_non_inventory: !!product.is_non_inventory,
+            quantity: qty,
+            comment: ''
+          });
+        }
+      });
+      return next;
+    });
   };
 
   const removeItemFromSubmission = (productId) => {
@@ -3197,6 +3235,7 @@ const cleanupFilesForSubmission = async (files) => {
                             <th className="text-right p-2 font-semibold">Total Vente</th>
                             <th className="text-right p-2 font-semibold">Total Coût</th>
                             <th className="text-center p-2 font-semibold">💬</th>
+                            <th className="text-center p-2 font-semibold" title="Items associés">As</th>
                             <th className="text-center p-2 font-semibold">🛒</th>
                             <th className="text-center p-2 font-semibold">Actions</th>
                           </tr>
@@ -3250,6 +3289,15 @@ const cleanupFilesForSubmission = async (files) => {
                                   >
                                     <MessageSquare className="w-3 h-3" />
                                   </button>
+                                </td>
+                                <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                  <AssociatedItemsButton
+                                    code={item.product_id}
+                                    description={item.description || ''}
+                                    parentQuantity={Math.abs(parseFloat(item.quantity) || 1)}
+                                    existingCodes={selectedItems.map((i) => i.product_id)}
+                                    onAddItems={addAssociatedItemsToSubmission}
+                                  />
                                 </td>
                                 <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
                                   <AddToOrderButton
@@ -3312,7 +3360,14 @@ const cleanupFilesForSubmission = async (files) => {
                               </div>
                             </div>
                           </div>
-                          <div onClick={(e) => e.stopPropagation()} className="mt-1">
+                          <div onClick={(e) => e.stopPropagation()} className="mt-1 flex items-center gap-2">
+                            <AssociatedItemsButton
+                              code={item.product_id}
+                              description={item.description || ''}
+                              parentQuantity={Math.abs(parseFloat(item.quantity) || 1)}
+                              existingCodes={selectedItems.map((i) => i.product_id)}
+                              onAddItems={addAssociatedItemsToSubmission}
+                            />
                             <AddToOrderButton
                               variant="chip"
                               item={{

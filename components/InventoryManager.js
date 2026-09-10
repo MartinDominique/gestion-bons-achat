@@ -8,9 +8,12 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.13.0
- * @date 2026-08-27
+ * @version 3.14.0
+ * @date 2026-09-10
  * @changelog
+ *   3.14.0 - Items associés: carré « As » sur chaque ligne de la liste (violet + compteur si
+ *            le produit a des associés) → ouvre la fiche sur le nouvel onglet « Associés »
+ *            (liste des associés, ajout/retrait de liens, section « Suggéré par »)
  *   3.12.0 - « Hist. Prix »: affiche aussi la date de chaque prix précédent
  *            (n-1/n-2/n-3) via price_updated_at_1st/2nd/3rd.
  *   3.11.0 - Affiche la date du dernier changement de prix (price_updated_at)
@@ -88,13 +91,15 @@ import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import { unitOptionsWith } from '../lib/constants/units';
 import AddToOrderButton from './order-list/AddToOrderButton';
+import AssociatedItemsButton from './associations/AssociatedItemsButton';
+import ProductAssociationsPanel from './associations/ProductAssociationsPanel';
 import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
 import { CURRENCY_CAD, CURRENCY_USD, safeCurrencyUpdates, formatRate, formatRateDate } from '../lib/utils/currency';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
   Eye, Plus, Trash2, RotateCcw, Upload, ShoppingCart, Clock,
-  History, ArrowDownCircle, ArrowUpCircle, Loader2, FolderOpen, List
+  History, ArrowDownCircle, ArrowUpCircle, Loader2, FolderOpen, List, Link2
 } from 'lucide-react';
 
 export default function InventoryManager() {
@@ -148,7 +153,7 @@ export default function InventoryManager() {
   const exchange = useExchangeRate();
   const [saving, setSaving] = useState(false);
   const [marginPercent, setMarginPercent] = useState('');
-  const [modalTab, setModalTab] = useState('edit'); // 'edit', 'history', 'prices'
+  const [modalTab, setModalTab] = useState('edit'); // 'edit', 'history', 'prices', 'associations'
 
   // États pour l'upload d'inventaire
   const [showInventoryUpload, setShowInventoryUpload] = useState(false);
@@ -1006,6 +1011,13 @@ export default function InventoryManager() {
                             {isProduct ? 'Inventaire' : 'Non-inv.'}
                           </span>
                           <UsdBadge currency={item.purchase_currency} costPriceUsd={item.cost_price_usd} />
+                          <AssociatedItemsButton
+                            code={item.product_id}
+                            hideWhenEmpty
+                            showParentLinks
+                            className="-my-2"
+                            onClick={() => openEditModal(item, 'associations')}
+                          />
                           {stockQty < 10 && isProduct && (
                             <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
                               Stock faible
@@ -1135,6 +1147,17 @@ export default function InventoryManager() {
               >
                 <DollarSign className="w-4 h-4 inline mr-1" />
                 Hist. Prix
+              </button>
+              <button
+                onClick={() => setModalTab('associations')}
+                className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  modalTab === 'associations'
+                    ? 'border-purple-500 text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <Link2 className="w-4 h-4 inline mr-1" />
+                Associés
               </button>
             </div>
 
@@ -1384,6 +1407,16 @@ export default function InventoryManager() {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* === ONGLET ITEMS ASSOCIÉS === */}
+              {modalTab === 'associations' && (
+                <ProductAssociationsPanel
+                  parentCode={editingItem.product_id}
+                  parentDescription={editingItem.description || ''}
+                  manage
+                  showParents
+                />
               )}
 
               {/* === ONGLET HISTORIQUE MOUVEMENTS === */}
