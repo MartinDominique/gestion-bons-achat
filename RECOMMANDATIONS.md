@@ -2025,4 +2025,46 @@ Aucune migration SQL requise (`invoice_payments.amount` est un `NUMERIC` sans co
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-09-08 par Claude AI*
+## Items associés « As » (BT/BL, Soumissions, AF, Inventaire) ✅ COMPLETE (2026-09-10)
+
+**Demande (Martin, 2026-09-10):** pouvoir associer des items entre eux dans l'inventaire pour se les
+faire proposer lors d'une soumission, d'un achat fournisseur ou d'un BT/BL (ex. un disjoncteur suggère
+son rail DIN; un panneau suggère ses presse-étoupes). Les liens doivent pouvoir se créer depuis
+l'Inventaire **ou** directement depuis les modules. Le compte Supabase gratuit suffit (0,059 / 0,5 Go
+utilisés; un lien pèse ~100 octets).
+
+**Décisions confirmées:**
+- Lien à **sens unique** (parent → enfant). Le lien inverse se crée séparément si voulu.
+- **Suggestion seulement**, jamais d'ajout automatique — un carré « As » sur la ligne, c'est
+  l'utilisateur qui appuie dessus. **Sans tap: comportement inchangé.**
+- Cases **décochées par défaut** (Martin utilise 1 ou 2 associés sur 10).
+- Quantité = quantité par défaut **× quantité du parent**, modifiable avant l'ajout.
+- **Pas de champ contexte** vente/achat (mêmes liens partout; on coche ce qui s'applique). Pourra être
+  ajouté plus tard sans casser les liens existants (colonne + valeur « Les deux » par défaut).
+- Nombre d'associés **illimité**. Badge « As » visible dans l'Inventaire (liste + fiche).
+
+**Implementation completee (2026-09-10):**
+- [x] `supabase/migrations/20260910_create_product_associations.sql` — table `product_associations`
+      (parent_code, child_code, default_quantity, notes; UNIQUE + CHECK; RLS authenticated; trigger updated_at)
+- [x] `app/api/product-associations/route.js` — GET `?parent=` (associés enrichis), `?child=` (« Suggéré par »),
+      `?codes=A,B&mode=counts` (compteurs groupés `counts` + `parent_counts`); POST (crée ou met à jour)
+- [x] `app/api/product-associations/[id]/route.js` — PUT (quantité/note) + DELETE
+- [x] `lib/services/product-associations.js` — `lookupProducts()` (products puis non_inventory_items), `normalizeCode()`
+- [x] `lib/utils/associationsCache.js` — cache client + batching (1 requête par écran) + `useAssociationCount()`
+- [x] `components/associations/AssociatedItemsButton.js` — carré « As » (violet + compteur / contour / pointillé), 44 px
+- [x] `components/associations/AssociatedItemsModal.js` — fenêtre (portail, z-80, Échap, feuille mobile)
+- [x] `components/associations/ProductAssociationsPanel.js` — liste + sélection + « Associer un produit » + retrait + « Suggéré par »
+- [x] `components/work-orders/MaterialSelector.js` v1.9.0 — « As » par matériau (BT + BL)
+- [x] `components/SoumissionsManager.js` v2.5.0 — colonne « As » desktop + cartes mobile
+- [x] `components/SupplierPurchaseForms.js` v1.8.0 / `SupplierPurchaseHooks.js` v1.1.0 / `SupplierPurchaseManager.js` v1.4.0 — colonne « As » AF
+- [x] `components/InventoryManager.js` v3.14.0 — « As » sur la ligne → onglet « Associés » de la fiche
+- [x] `app/api/products/rename/route.js` v1.1.0 — cascade du renommage de code
+- [x] `app/api/cron/backup/route.ts` v2.2.0 — table ajoutée au backup
+- [ ] **Migration SQL `20260910_create_product_associations.sql` à exécuter dans Supabase Dashboard**
+- [ ] Tester sur tablette (BT/BL): carré « As », fenêtre, cases, quantités, ajout
+
+**Non couvert (v1):** le tableau compact B/O d'un BL (articles importés d'un BA) n'a pas de carré « As ».
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-09-10 par Claude AI*

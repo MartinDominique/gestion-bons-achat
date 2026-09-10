@@ -8,9 +8,13 @@
  *              - Affichage stock en main + quantité en commande (AF) dans la recherche
  *              - Affichage "En main" (stock) dans le modal d'ajout, le modal d'édition
  *                et la liste des matériaux ajoutés (BT + BL)
- * @version 1.8.0
- * @date 2026-08-27
+ * @version 1.9.0
+ * @date 2026-09-10
  * @changelog
+ *   1.9.0 - Items associés: carré « As » sur chaque ligne de matériau (BT + BL). Un tap ouvre
+ *           la liste des associés (cases décochées par défaut, qté = défaut × qté du parent,
+ *           modifiable); les items cochés s'ajoutent à la liste (fusion si déjà présents).
+ *           Permet aussi d'associer un produit sur place. Sans tap: comportement inchangé.
  *   1.8.0 - Recherche tolérante: « p1540 » trouve « P1-540 » (tirets, accents et casse ignorés)
  *   1.7.0 - Affiche la quantité "En main" (stock) au moment d'ajouter un article:
  *           dans le modal d'ajout (quantité), dans le modal d'édition et sur chaque
@@ -36,6 +40,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import AddToOrderButton from '../order-list/AddToOrderButton';
+import AssociatedItemsButton from '../associations/AssociatedItemsButton';
 import { matchesNormalized } from '../../lib/utils/productSearch';
 
 // Composant clavier numérique personnalisé
@@ -507,6 +512,67 @@ const deleteMaterialFromModal = () => {
     return found.stock_qty ?? 0;
   };
 
+  // ===== Items associés (« As ») =====
+  // Ajoute en une seule fois les associés cochés dans la fenêtre « As ».
+  // Un produit déjà présent voit sa quantité augmentée (pas de doublon).
+  const materialCode = (m) =>
+    String(m?.product?.product_id || m?.product_code || m?.product_id || '').trim().toUpperCase();
+
+  const addAssociatedMaterials = (entries) => {
+    if (!Array.isArray(entries) || entries.length === 0) return;
+    const safeMaterials = [...(materials || [])];
+    const added = [];
+    let merged = 0;
+
+    entries.forEach(({ product, quantity }, idx) => {
+      const qty = parseFloat(quantity);
+      if (!product || !(qty > 0)) return;
+      const code = String(product.product_id || '').trim().toUpperCase();
+      if (!code) return;
+
+      const existingIdx = safeMaterials.findIndex((m) => materialCode(m) === code);
+      if (existingIdx >= 0) {
+        const cur = safeMaterials[existingIdx];
+        safeMaterials[existingIdx] = { ...cur, quantity: (parseFloat(cur.quantity) || 0) + qty };
+        merged++;
+        return;
+      }
+
+      // Priorité à l'objet produit déjà chargé (même forme que la recherche),
+      // sinon la fiche renvoyée par l'API des associations (même champs utiles).
+      const known = (products || []).find(
+        (p) => String(p.product_id || '').toUpperCase() === code || String(p.id || '').toUpperCase() === code
+      );
+      const prod = known || {
+        id: code,
+        product_id: code,
+        name: product.description || '',
+        description: product.description || '',
+        category: product.product_group || (product.is_inventory ? 'Divers' : 'Non-Inventaire'),
+        product_group: product.product_group || (product.is_inventory ? null : 'Non-Inventaire'),
+        unit: product.unit || 'unité',
+        price: product.selling_price || 0,
+        cost_price: product.cost_price || 0,
+        selling_price: product.selling_price || 0,
+        stock_qty: product.stock_qty || 0,
+        is_inventory: !!product.is_inventory,
+      };
+
+      added.push({
+        id: `${Date.now()}-${idx}`,
+        product_id: prod.id,
+        product: prod,
+        quantity: qty,
+        unit: prod.unit || 'pcs',
+        notes: '',
+        showPrice: false,
+      });
+    });
+
+    if (added.length === 0 && merged === 0) return;
+    onMaterialsChange([...added, ...safeMaterials]);
+  };
+
   // 🆕 NOUVELLE FONCTION - AJOUT RAPIDE PRODUIT NON-INVENTAIRE
       const saveQuickAddProduct = async () => {
         // Validation
@@ -712,8 +778,15 @@ const deleteMaterialFromModal = () => {
                   )}
                 </div>
                 
-                {/* Bouton « À commander » + icône de menu */}
+                {/* Carré « As » (items associés) + bouton « À commander » + icône de menu */}
                 <div className="flex items-center gap-1 mt-0.5 flex-shrink-0">
+                  <AssociatedItemsButton
+                    code={materialCode(material)}
+                    description={material.product?.description || ''}
+                    parentQuantity={Math.abs(parseFloat(material.quantity) || 1)}
+                    existingCodes={(materials || []).map(materialCode)}
+                    onAddItems={addAssociatedMaterials}
+                  />
                   <AddToOrderButton
                     variant="icon"
                     item={{

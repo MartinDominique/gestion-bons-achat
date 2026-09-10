@@ -4,9 +4,10 @@
  *              - Liste, création, modification, suppression des AF
  *              - Réception directe et réception AF
  *              - Gestion des adresses de livraison fournisseur
- * @version 1.3.0
- * @date 2026-08-27
+ * @version 1.4.0
+ * @date 2026-09-10
  * @changelog
+ *   1.4.0 - Items associés: transmission de addAssociatedItemsToPurchase au formulaire AF
  *   1.3.0 - Achats en USD: transmission des handlers de devise aux lignes d'AF
  *   1.2.1 - Desktop: retrait du collage (sticky) qui recouvrait la colonne « Statut ». Table compactée
  *           (espacements px-2, colonnes Client/Fournisseur tronquées, cellules non sécables) pour que
@@ -142,6 +143,7 @@ export default function SupplierPurchaseManager() {
     handleQuantityKeyDown,
     selectProductForQuantity,
     addItemToPurchase,
+    addAssociatedItemsToPurchase,
     updateItemQuantity,
     updateItemPrice,
     updateItemCostCurrency,
@@ -254,6 +256,7 @@ export default function SupplierPurchaseManager() {
           handleQuantityKeyDown={handleQuantityKeyDown}
           selectProductForQuantity={selectProductForQuantity}
           addItemToPurchase={addItemToPurchase}
+          addAssociatedItemsToPurchase={addAssociatedItemsToPurchase}
           updateItemQuantity={updateItemQuantity}
           updateItemPrice={updateItemPrice}
           updateItemCostCurrency={updateItemCostCurrency}
