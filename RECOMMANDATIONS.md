@@ -2067,6 +2067,18 @@ utilisés; un lien pèse ~100 octets).
 
 ---
 
+### Bug: BL facturée mais toujours dans « À facturer » (lien invoice_id perdu) ✅ CORRIGÉ (2026-09-14)
+
+**Symptôme (Martin, 14 sept.):** BL-2609-005 facturée (23073, envoyée) mais encore listée avec « Créer facture ».
+Le lien `invoice_id` n'a pas été écrit pendant le raté de la base (écriture non vérifiée).
+
+**Implementation completee (2026-09-14):**
+- `app/api/invoices/route.js` v1.2.0 — lien BT/BL et incrément du numéro vérifiés + retentés; warning si échec
+- `app/api/invoices/relink/route.js` (nouveau) — GET aperçu / POST réparation des liens manquants
+- `components/invoices/InvoiceManager.js` v2.5.0 — auto-réparation au chargement de « À facturer » + message
+- `components/invoices/InvoiceEditor.js` v2.11.2 — alerte du warning à la création
+- `CLAUDE.md` — Ajout du bug corrigé dans la section « Bugs connus » + route dans l'architecture
+
 ### Bug: base de données lente → 500 en cascade, liste « À facturer » vide, facture envoyée mais « brouillon » ✅ CORRIGÉ (2026-09-14)
 
 **Symptôme (Martin, 14 sept.):** création de facture très lente, BT disparus de « À facturer » puis revenus

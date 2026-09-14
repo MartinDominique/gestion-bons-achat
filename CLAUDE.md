@@ -419,6 +419,7 @@ const total = subtotal + tps + tvq;
 /api/invoices                          → CRUD Factures (GET liste + POST création)
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
+/api/invoices/relink                   → Réparation liens BT/BL ↔ facture manquants (GET aperçu / POST appliquer; auto au chargement « À facturer »)
 /api/statements/[clientId]              → État de compte client (GET, ?as_of=YYYY-MM-DD)
 /api/statements/[clientId]/send-email   → Aperçu/envoi PDF de l'état de compte (body as_of)
 /api/reports/sales                     → Rapport de ventes comptable (GET: mois/année/plage)
@@ -971,6 +972,11 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~BL facturée (23073) mais toujours dans « À facturer » (BL-2609-005)~~ → Corrigé (2026-09-14)
+  - Symptôme: la facture existe et est envoyée, mais le BL garde `invoice_id NULL` → bouton « Créer facture » encore affiché (le garde 409 « une facture existe déjà » empêchait toutefois un doublon).
+  - Cause: `POST /api/invoices` écrivait le lien `invoice_id` sur le BT/BL (et l'incrément de `settings.invoice_next_number`) **sans vérifier l'erreur** → raté passager de Supabase = lien perdu en silence.
+  - Correctif: `app/api/invoices/route.js` v1.2.0 — lien + compteur vérifiés (`.select`) et retentés 2×; sinon `link_updated:false` / `number_incremented:false` + `warning`. `app/api/invoices/relink/route.js` (nouveau) — GET aperçu / POST répare tous les documents dont la facture existe mais `invoice_id` est NULL (ne touche jamais un lien existant ni `-1` Acomba). `components/invoices/InvoiceManager.js` v2.5.0 — appelle la réparation automatiquement avant de charger « À facturer » (message vert si quelque chose a été réparé). `components/invoices/InvoiceEditor.js` v2.11.2 — `alert` du warning à la création.
+  - Sans passer par la base: ouvrir l'onglet « À facturer » après déploiement suffit. Aucune migration requise.
 - ~~Base de données lente/indisponible: 500 en cascade, BT « disparus » de « À facturer », facture reçue par courriel mais affichée non envoyée~~ → Corrigé (2026-09-14)
   - Symptôme (14 sept. matin): plusieurs routes sans lien (`/api/notes`, `/api/work-orders`, `/api/items-to-order`) en 500 simultanément → cause serveur (Supabase lent/indisponible), pas l'appareil. Effets: (1) l'onglet « À facturer » ignorait silencieusement un `res.ok` faux → liste vide sans message, « revenue » 2-3 min plus tard; (2) `send-email` facture envoyait le courriel via Resend puis faisait l'`update` du statut **sans vérifier l'erreur** → courriel reçu (client + bureau) mais facture toujours « brouillon », réponse « envoyée » → risque de renvoi en double.
   - Correctif: `app/api/health/route.js` (nouveau, ping `settings` chronométré, `ok`/`slow` > 1,5 s/`down` avec délai 8 s) + `components/DbStatusBadge.js` (nouveau, voyant dans `Navigation.js` v2.3.0: poll 60 s, retour en avant-plan, tap = revérifier + détail). `app/api/invoices/[id]/send-email/route.js` v1.7.0 — `update` vérifié (`.select`) et retenté 2×; sinon `success:true` + `status_updated:false` + `warning` « NE PAS renvoyer ». `components/invoices/InvoiceManager.js` v2.4.0 — message explicite quand BT/BL/factures répondent en erreur (liste conservée), avertissement rouge à l'envoi/impression. `components/invoices/InvoiceEditor.js` v2.11.1 — `alert` du même avertissement.

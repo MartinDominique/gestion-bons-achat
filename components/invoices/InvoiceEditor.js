@@ -19,9 +19,11 @@
  *                libellé (confirmation de la date des travaux du BT), suivie de la
  *                description de session si elle est saisie, le tout sur une seule ligne
  *                (« Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »).
- * @version 2.11.1
+ * @version 2.11.2
  * @date 2026-09-14
  * @changelog
+ *   2.11.2 - Création: alerte si le lien BT/BL ↔ facture ou le prochain numéro n'a pas pu
+ *            être écrit (warning renvoyé par POST /api/invoices)
  *   2.11.1 - Envoi/Impression: alerte « courriel envoyé mais statut non enregistré »
  *            (status_updated:false renvoyé par send-email quand la base ne répond pas)
  *   2.11.0 - Date du TimeTracker TOUJOURS affichée sur les lignes de main d'oeuvre, y compris
@@ -786,6 +788,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           return;
         }
         invoiceId = data.data.id;
+        if (data.warning) alert(data.warning);
       }
 
       if (andSend && invoiceId) {
@@ -895,6 +898,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           return;
         }
         invoiceId = data.data.id;
+        if (data.warning) alert(data.warning);
       }
 
       // Appeler send-email en mode print_only
