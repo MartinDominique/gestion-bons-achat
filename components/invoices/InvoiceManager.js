@@ -7,9 +7,14 @@
  *              - Numéros de référence cliquables (SplitView)
  *              - Onglet "État de compte": soldes clients, paiements, relevés
  *              - Onglet "Rapports compta": ventes + paiements (PDF + envoi au comptable)
- * @version 2.3.0
- * @date 2026-06-30
+ * @version 2.4.0
+ * @date 2026-09-14
  * @changelog
+ *   2.4.0 - Onglet « À facturer »/« Factures »: une réponse serveur en erreur (500, base
+ *           de données lente/indisponible) affiche un message explicite au lieu d'une
+ *           liste vide silencieuse; les données déjà affichées sont conservées.
+ *           Envoi/Impression: avertissement « courriel envoyé mais statut non enregistré »
+ *           (status_updated:false) affiché en rouge — ne pas renvoyer
  *   2.3.0 - Retrait boutons "Acomba" (mark-external individuel + bulk) de l'onglet "À facturer"
  *           (facturation désormais 100% dans l'app)
  *   2.2.0 - Retrait du bloc "Rapport Acomba" (PDF + CSV mensuel) de l'onglet Factures
@@ -138,6 +143,8 @@ export default function InvoiceManager() {
           fetch('/api/delivery-notes?limit=10000'),
         ]);
 
+        const failed = [];
+
         if (btRes.ok) {
           const data = await btRes.json();
           const items = data.data || data || [];
@@ -146,6 +153,8 @@ export default function InvoiceManager() {
             ['signed', 'completed', 'sent'].includes(wo.status) && !wo.invoice_id
           );
           setUninvoicedBT(uninvoiced);
+        } else {
+          failed.push('BT');
         }
 
         if (blRes.ok) {
@@ -155,6 +164,14 @@ export default function InvoiceManager() {
             ['signed', 'sent'].includes(bl.status) && !bl.invoice_id
           );
           setUninvoicedBL(uninvoiced);
+        } else {
+          failed.push('BL');
+        }
+
+        // Une liste vide à cause d'un 500 n'est PAS « rien à facturer »: le dire
+        // clairement (base de données lente/indisponible) et garder ce qui est affiché.
+        if (failed.length > 0) {
+          setError(`La base de données n'a pas répondu pour les ${failed.join(' et ')} (erreur serveur). La liste « À facturer » peut être incomplète — attendez que le voyant BD soit vert, puis « Actualiser ».`);
         }
       } else {
         // Charger les factures
@@ -177,12 +194,12 @@ export default function InvoiceManager() {
         }
 
         const res = await fetch(`/api/invoices?${params.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setInvoices(data.data || []);
-            setInvoicePagination(data.pagination);
-          }
+        const data = res.ok ? await res.json() : null;
+        if (data?.success) {
+          setInvoices(data.data || []);
+          setInvoicePagination(data.pagination);
+        } else {
+          setError(`La base de données n'a pas répondu (erreur serveur). La liste des factures affichée peut être périmée — attendez que le voyant BD soit vert, puis « Actualiser ».`);
         }
       }
     } catch (err) {
@@ -271,7 +288,8 @@ export default function InvoiceManager() {
         if (data.pdf_url) {
           window.open(data.pdf_url, '_blank');
         }
-        setSuccess(data.message || 'PDF généré');
+        if (data.status_updated === false && data.warning) setError(data.warning);
+        else setSuccess(data.message || 'PDF généré');
         fetchData();
       } else {
         setError(data.error || 'Erreur génération PDF');
@@ -300,7 +318,9 @@ export default function InvoiceManager() {
       });
       const data = await res.json();
       if (data.success) {
-        setSuccess(data.message || 'Facture envoyée');
+        // Courriel parti mais statut non enregistré (base lente): avertir, ne pas renvoyer
+        if (data.status_updated === false && data.warning) setError(data.warning);
+        else setSuccess(data.message || 'Facture envoyée');
         fetchData();
       } else {
         setError(data.error || 'Erreur envoi');

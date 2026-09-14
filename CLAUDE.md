@@ -427,6 +427,7 @@ const total = subtotal + tps + tvq;
 /api/reports/payments/send-email       → Envoi rapport de paiements PDF au comptable (CC bureau)
 /api/product-associations              → Items associés « As » (GET ?parent= / ?child= / ?codes=&mode=counts, POST création)
 /api/product-associations/[id]         → PUT (quantité par défaut, note) / DELETE lien associé
+/api/health                            → Ping base de données (ok/slow/down + latence) — voyant BD de la navigation
 /api/cron/backup                       → Backup quotidien
 ```
 
@@ -464,6 +465,7 @@ components/currency/CostPriceField.js         → Champ coûtant partagé CAD/US
 components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation commande client)
 components/SplitView/                         → Panneau latéral (BA/AF/Soumission/BT/BL inline)
 components/ClientManager.js                   → Gestion clients
+components/DbStatusBadge.js                   → Voyant état base de données (vert/orange/rouge) dans Navigation, poll /api/health
 components/statistics/StatisticsManager.js    → Composant principal Statistiques (2 sous-onglets: Opérationnel + Financier)
 components/statistics/StatisticsFilters.js    → Filtres de recherche opérationnel (type, dates, client, etc.)
 components/statistics/SalesReport.js          → Tableau ventes + bandeau résumé + pagination
@@ -969,6 +971,15 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Base de données lente/indisponible: 500 en cascade, BT « disparus » de « À facturer », facture reçue par courriel mais affichée non envoyée~~ → Corrigé (2026-09-14)
+  - Symptôme (14 sept. matin): plusieurs routes sans lien (`/api/notes`, `/api/work-orders`, `/api/items-to-order`) en 500 simultanément → cause serveur (Supabase lent/indisponible), pas l'appareil. Effets: (1) l'onglet « À facturer » ignorait silencieusement un `res.ok` faux → liste vide sans message, « revenue » 2-3 min plus tard; (2) `send-email` facture envoyait le courriel via Resend puis faisait l'`update` du statut **sans vérifier l'erreur** → courriel reçu (client + bureau) mais facture toujours « brouillon », réponse « envoyée » → risque de renvoi en double.
+  - Correctif: `app/api/health/route.js` (nouveau, ping `settings` chronométré, `ok`/`slow` > 1,5 s/`down` avec délai 8 s) + `components/DbStatusBadge.js` (nouveau, voyant dans `Navigation.js` v2.3.0: poll 60 s, retour en avant-plan, tap = revérifier + détail). `app/api/invoices/[id]/send-email/route.js` v1.7.0 — `update` vérifié (`.select`) et retenté 2×; sinon `success:true` + `status_updated:false` + `warning` « NE PAS renvoyer ». `components/invoices/InvoiceManager.js` v2.4.0 — message explicite quand BT/BL/factures répondent en erreur (liste conservée), avertissement rouge à l'envoi/impression. `components/invoices/InvoiceEditor.js` v2.11.1 — `alert` du même avertissement.
+  - Consigne d'usage: si le voyant BD est orange/rouge, attendre qu'il soit vert avant de refaire une action (paiement, envoi de facture), puis « Actualiser ». Aucune migration requise.
+- ~~État de compte: paiement enregistré en double après une erreur « Facture … » (client en crédit du montant de la facture)~~ → Corrigé (2026-09-14)
+  - Symptôme (Fabrication SBL, 14 sept.): saisie d'un paiement daté du 20 août → erreur affichée; nouvelle saisie datée du 1er août → « OK », mais le client se retrouve avec un **crédit** égal au montant de la facture (−114,61 $). La date n'y est pour rien: le 1er appel a **bel et bien inséré** le paiement, puis a échoué juste après (raté passager de Supabase dans `recomputeInvoiceStatus`, dont le message est « Facture introuvable pour recalcul du paiement »). L'écran ne se rechargeait pas après une erreur → la facture restait affichée « impayée », toujours cochée → 2e saisie = 2e ligne `invoice_payments` → `amount_paid` = 2 × total → solde négatif.
+  - Causes: (1) `POST /api/invoice-payments` non atomique (insertion puis recalcul, sans compensation); (2) aucun garde-fou contre un paiement supérieur au solde restant; (3) `ClientStatementView` ne rechargeait pas l'état de compte après une erreur.
+  - Correctif: `app/api/invoice-payments/route.js` v1.3.0 — solde restant calculé depuis les **lignes de paiement** (fiable même si `amount_paid` n'a pas été recalculé), refus **409** « déjà réglée » et **400** « dépasse le solde restant »; recalcul en 2 tentatives puis **retrait de la ligne insérée** si ça échoue encore (l'erreur dit alors vraiment « aucun paiement enregistré »); détail DB renvoyé dans `details`. `lib/services/invoice-payments.js` v1.2.0 — `loadInvoiceBalance()` + `sumCredited()`, lecture via `maybeSingle`. `components/invoices/ClientStatementView.js` v1.8.0 — rechargement de l'état de compte **après une erreur**, message avec détail serveur, refus local d'un montant > solde.
+  - Réparation des données: dans l'état de compte du client, la facture surpayée liste ses 2 paiements → supprimer celui en trop (icône poubelle) → `amount_paid` recalculé, solde 0. Aucune migration requise.
 - ~~Factures de crédit (négatives) absentes de l'état de compte~~ → Corrigé (2026-09-02)
   - Symptôme: une facture négative (avoir au client, ex. 23044 / BL-2607-007 à −1 379,71 $) n'apparaissait nulle part dans l'état de compte et ne réduisait pas le solde. Le relevé réclamait 2 511,94 $ au lieu de 1 132,23 $.
   - Cause: `statement-data.js` écartait toute facture au solde non strictement positif (`if (balance <= EPSILON) continue;`) — test pensé pour les factures réglées, qui éliminait aussi les crédits. Même filtre dans `app/api/statements/route.js` (`isOpen = balance > EPSILON`).

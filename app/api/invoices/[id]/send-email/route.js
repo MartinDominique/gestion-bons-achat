@@ -6,9 +6,14 @@
  *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.6.0
- * @date 2026-06-30
+ * @version 1.7.0
+ * @date 2026-09-14
  * @changelog
+ *   1.7.0 - La mise à jour du statut (sent/sent_at/pdf_url) après l'envoi est vérifiée
+ *           et retentée (2 tentatives). Si elle échoue encore, la réponse reste
+ *           success:true (le courriel EST parti) mais porte status_updated:false +
+ *           warning « ne pas renvoyer » (avant: échec DB avalé → facture affichée
+ *           « brouillon » alors que le client et le bureau l'ont reçue)
  *   1.6.0 - Affichage signataire + date de signature sur le PDF (si disponible)
  *   1.5.0 - Message de confirmation explicite incluant la copie au bureau (CC COMPANY_EMAIL)
  *   1.4.0 - Ajout avis no-reply Resend (sous "N'hésitez pas à nous contacter")
@@ -447,10 +452,29 @@ export async function POST(request, { params }) {
       updateData.pdf_url = pdfUrl;
     }
 
-    await supabaseAdmin
-      .from('invoices')
-      .update(updateData)
-      .eq('id', parseInt(id));
+    // Le courriel est déjà parti: cette écriture doit être vérifiée, sinon la facture
+    // reste « brouillon » à l'écran alors que le client l'a reçue (→ risque de renvoi).
+    let statusUpdated = false;
+    let updateErrMsg = null;
+    for (let attempt = 1; attempt <= 2 && !statusUpdated; attempt++) {
+      const { data: updated, error: updErr } = await supabaseAdmin
+        .from('invoices')
+        .update(updateData)
+        .eq('id', parseInt(id))
+        .select('id');
+      if (updErr) {
+        updateErrMsg = updErr.message;
+        console.error(`Mise à jour statut facture ${invoice.invoice_number} (tentative ${attempt}):`, updErr);
+      } else if (!updated || updated.length === 0) {
+        updateErrMsg = 'aucune ligne modifiée';
+      } else {
+        statusUpdated = true;
+      }
+    }
+
+    const warning = statusUpdated
+      ? null
+      : `Le courriel de la facture ${invoice.invoice_number} a bien été ENVOYÉ, mais la base de données n'a pas enregistré le statut « envoyée » (${updateErrMsg || 'erreur inconnue'}). NE PAS renvoyer la facture: attendez que la base réponde, puis utilisez « Actualiser » (le statut sera corrigé à la prochaine sauvegarde/impression).`;
 
     if (print_only) {
       return NextResponse.json({
@@ -458,6 +482,8 @@ export async function POST(request, { params }) {
         message: `Facture ${invoice.invoice_number} prête pour impression`,
         pdf_url: pdfUrl,
         print_only: true,
+        status_updated: statusUpdated,
+        warning: statusUpdated ? null : `PDF généré, mais la base de données n'a pas enregistré le statut « envoyée » (${updateErrMsg || 'erreur inconnue'}). Réessayez « Imprimer » quand la base répond.`,
       });
     }
 
@@ -467,6 +493,8 @@ export async function POST(request, { params }) {
       message: `Facture ${invoice.invoice_number} envoyée à ${emailAddresses.join(', ')}${ccNote}`,
       sentTo: emailAddresses,
       cc: process.env.COMPANY_EMAIL || null,
+      status_updated: statusUpdated,
+      warning,
     });
 
   } catch (error) {

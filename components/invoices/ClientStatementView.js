@@ -17,9 +17,13 @@
  *                badge « Crédit », déduites du solde, réglables par un remboursement ou
  *                l'application du crédit (montant négatif)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.7.0
- * @date 2026-09-02
+ * @version 1.8.0
+ * @date 2026-09-14
  * @changelog
+ *   1.8.0 - Anti-double paiement: après une ERREUR d'enregistrement, l'état de compte est
+ *           rechargé (l'écran ne montre plus une facture « impayée » alors que le paiement
+ *           est passé côté serveur → plus de 2e saisie en double); message d'erreur avec
+ *           le détail serveur; refus local d'un montant supérieur au solde de la facture
  *   1.7.0 - Factures de crédit visibles au relevé: tuile « Crédits au dossier », solde net
  *           (vert si créditeur), badge « Crédit » par ligne, escompte masqué sur un crédit
  *           et saisie d'un règlement de crédit (montant négatif)
@@ -214,8 +218,21 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
       setError('Sélectionnez au moins une facture à payer');
       return;
     }
+    // Vérification locale avant tout appel: un paiement ne peut pas dépasser le solde
+    // (une facture ordinaire s'encaisse au plus jusqu'à son solde; un crédit se règle
+    // au plus jusqu'à son montant). Évite un surpaiement qui deviendrait un « crédit ».
+    for (const inv of selectedInvoices) {
+      const a = alloc[inv.id];
+      const signed = (parseFloat(a.amount) || 0) + (a.escompte ? discountFor(inv) : 0);
+      const over = inv.is_credit ? signed < inv.balance - 0.01 : signed > inv.balance + 0.01;
+      if (over) {
+        setError(`Facture ${inv.invoice_number}: le montant (${fmtCurrency(signed)}) dépasse le solde restant (${fmtCurrency(inv.balance)}).`);
+        return;
+      }
+    }
     setBusy(true);
     setError(null);
+    let recordedCount = 0;
     try {
       for (const inv of selectedInvoices) {
         const a = alloc[inv.id];
@@ -223,25 +240,42 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
         const discount = a.escompte ? discountFor(inv) : 0;
         // Un crédit se règle par un montant négatif (remboursement / application)
         if (Math.abs(amount) < 0.005 && discount <= 0) continue;
-        const res = await fetch('/api/invoice-payments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            invoice_id: inv.id,
-            amount,
-            discount_applied: discount,
-            payment_date: pay.payment_date,
-            method: pay.method,
-            reference: pay.reference,
-            notes: pay.notes,
-          }),
-        });
-        const json = await res.json();
+        let json;
+        try {
+          const res = await fetch('/api/invoice-payments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              invoice_id: inv.id,
+              amount,
+              discount_applied: discount,
+              payment_date: pay.payment_date,
+              method: pay.method,
+              reference: pay.reference,
+              notes: pay.notes,
+            }),
+          });
+          json = await res.json();
+        } catch (netErr) {
+          // Réponse jamais reçue: le serveur a peut-être quand même enregistré le paiement.
+          json = { success: false, error: 'Erreur de connexion — vérifiez ci-dessous si le paiement est passé avant de le ressaisir' };
+        }
         if (!json.success) {
-          setError(`Facture ${inv.invoice_number}: ${json.error || 'erreur'}`);
+          const detail = json.details ? ` (${json.details})` : '';
+          const before = recordedCount > 0
+            ? ` Les ${recordedCount} paiement(s) précédent(s) de cette saisie ont été enregistrés.`
+            : '';
+          const message = `Facture ${inv.invoice_number}: ${json.error || 'erreur'}${detail}${before}`;
+          // Recharger pour afficher l'état RÉEL du compte (un paiement passé côté serveur
+          // malgré l'erreur disparaît de la liste: impossible de le saisir une 2e fois).
+          // load() efface l'erreur: le message est posé APRÈS le rechargement.
+          await load();
+          onChanged?.();
+          setError(message);
           setBusy(false);
           return;
         }
+        recordedCount += 1;
       }
       setSuccess('Paiement(s) enregistré(s)');
       setPay({

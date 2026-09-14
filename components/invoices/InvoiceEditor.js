@@ -19,9 +19,11 @@
  *                libellé (confirmation de la date des travaux du BT), suivie de la
  *                description de session si elle est saisie, le tout sur une seule ligne
  *                (« Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »).
- * @version 2.11.0
- * @date 2026-08-20
+ * @version 2.11.1
+ * @date 2026-09-14
  * @changelog
+ *   2.11.1 - Envoi/Impression: alerte « courriel envoyé mais statut non enregistré »
+ *            (status_updated:false renvoyé par send-email quand la base ne répond pas)
  *   2.11.0 - Date du TimeTracker TOUJOURS affichée sur les lignes de main d'oeuvre, y compris
  *            sur un BT à session unique (nécessaire pour confirmer la date des travaux)
  *   2.10.0 - Libellé main d'oeuvre enrichi de la date + description du TimeTracker quand le BT
@@ -801,6 +803,11 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           setSaving(false); setSending(false);
           return;
         }
+        if (sendData.status_updated === false && sendData.warning) {
+          // Le courriel est parti, mais la base n'a pas enregistré le statut: l'éditeur
+          // se ferme, donc un alert (bloquant, visible sur tablette) évite un renvoi.
+          alert(sendData.warning);
+        }
         setSuccess(sendData.message || 'Facture envoyée');
       }
 
@@ -901,6 +908,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         setError(`Facture sauvegardée, mais erreur génération PDF: ${sendData.error}`);
         setPrinting(false);
         return;
+      }
+      if (sendData.status_updated === false && sendData.warning) {
+        alert(sendData.warning);
       }
 
       // Ouvrir le PDF pour impression
