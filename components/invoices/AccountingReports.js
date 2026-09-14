@@ -4,16 +4,19 @@
  *              - Période: Mois / Année / Personnalisé (du-au)
  *              - Rapport de ventes (factures émises) + Rapport de paiements (encaissements)
  *              - Aperçu/téléchargement PDF (client) + Envoi au comptable (CC bureau)
- * @version 1.0.0
- * @date 2026-06-14
+ * @version 1.1.0
+ * @date 2026-09-14
  * @changelog
+ *   1.1.0 - Messages succès/erreur en toast flottant (components/Toast.js) au lieu d'une bande
+ *           en haut de l'onglet (le contenu ne bouge plus)
  *   1.0.0 - Version initiale (rapports comptables ventes/paiements)
  */
 
 'use client';
 
-import { useState } from 'react';
-import { BarChart3, Wallet, Download, Send, RefreshCw, AlertCircle, CheckCircle, Mail } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { BarChart3, Wallet, Download, Send, RefreshCw, Mail } from 'lucide-react';
+import Toast from '../Toast';
 import { loadLogoBase64Client } from '../../lib/services/pdf-common';
 import { buildSalesReportDoc, buildPaymentsReportDoc } from '../../lib/services/report-pdf';
 
@@ -28,6 +31,8 @@ export default function AccountingReports({ settings }) {
   const [loadingKey, setLoadingKey] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const clearSuccess = useCallback(() => setSuccess(null), []);
+  const clearError = useCallback(() => setError(null), []);
 
   const accountantEmail = settings?.accountant_email || '';
 
@@ -169,17 +174,9 @@ export default function AccountingReports({ settings }) {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      {/* Messages */}
-      {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 flex-shrink-0" /> {success}
-        </div>
-      )}
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
-        </div>
-      )}
+      {/* Messages: toasts flottants (aucune place prise dans l'onglet → rien ne bouge) */}
+      <Toast message={success} type="success" onClose={clearSuccess} />
+      <Toast message={error} type="error" onClose={clearError} />
 
       {/* Destinataire comptable */}
       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">

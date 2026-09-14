@@ -467,6 +467,7 @@ components/PurchaseOrder/BCCConfirmationModal.js → Modal BCC (confirmation com
 components/SplitView/                         → Panneau latéral (BA/AF/Soumission/BT/BL inline)
 components/ClientManager.js                   → Gestion clients
 components/DbStatusBadge.js                   → Voyant état base de données (vert/orange/rouge) dans Navigation, poll /api/health
+components/Toast.js                           → Notification flottante succès/erreur (portail, bas d'écran, ne déplace jamais la page) — Facturation, État de compte, Rapports compta
 components/statistics/StatisticsManager.js    → Composant principal Statistiques (2 sous-onglets: Opérationnel + Financier)
 components/statistics/StatisticsFilters.js    → Filtres de recherche opérationnel (type, dates, client, etc.)
 components/statistics/SalesReport.js          → Tableau ventes + bandeau résumé + pagination
@@ -972,6 +973,9 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Facturation: la bande « Facture sauvegardée » fait sauter la liste « À facturer » → tap manqué sur « Créer facture »~~ → Corrigé (2026-09-14)
+  - Symptôme: la bande verte poussait la liste vers le bas; à sa disparition (4 s), la liste remontait et le tap tombait sur la mauvaise ligne. Même bande dans l'État de compte et les Rapports compta.
+  - Correctif: `components/Toast.js` (nouveau) — message flottant fixé au bas de l'écran (portail, z-[90]), donc aucun décalage de la page; fermeture auto 3 s (succès) / 7 s (erreur), au tap ou via X. Utilisé par `InvoiceManager.js` v2.6.0, `ClientStatementView.js` v1.9.0, `AccountingReports.js` v1.1.0. Animation `toast-in` dans `tailwind.config.js`. Aucune migration requise.
 - ~~« Erreur création facture » en boucle (voyant BD vert) — numéro de facture en double~~ → Corrigé (2026-09-14)
   - Symptôme: toute nouvelle facture (ex. BL-2609-006) refusée avec « Erreur création facture », base saine.
   - Cause: la facture 23073 avait été créée pendant le raté de la base, mais l'incrément de `settings.invoice_next_number` avait échoué en silence → le compteur proposait encore 23073 → violation `UNIQUE(invoice_number)` → insertion refusée. Le détail (`duplicate key`) n'était pas affiché à l'écran.

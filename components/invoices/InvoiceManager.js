@@ -7,9 +7,12 @@
  *              - Numéros de référence cliquables (SplitView)
  *              - Onglet "État de compte": soldes clients, paiements, relevés
  *              - Onglet "Rapports compta": ventes + paiements (PDF + envoi au comptable)
- * @version 2.5.0
+ * @version 2.6.0
  * @date 2026-09-14
  * @changelog
+ *   2.6.0 - Messages succès/erreur en toast flottant (components/Toast.js) au lieu d'une
+ *           bande en haut de la liste: la liste ne bouge plus quand le message apparaît
+ *           ou disparaît (tap manqué sur « Créer facture » au retrait de la bande)
  *   2.5.0 - Onglet « À facturer »: auto-réparation des liens manquants (POST
  *           /api/invoices/relink) avant le chargement — un BT/BL dont la facture existe
  *           mais dont invoice_id n'a pas été écrit disparaît de la liste, avec message
@@ -41,8 +44,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, AlertCircle, Download, Printer, Package, Search, X, Wallet, BarChart3 } from 'lucide-react';
+import { Receipt, FileText, Truck, DollarSign, RefreshCw, CheckCircle, Send, Eye, Clock, Download, Printer, Package, Search, X, Wallet, BarChart3 } from 'lucide-react';
 import InvoiceEditor from './InvoiceEditor';
+import Toast from '../Toast';
 import StatementManager from './StatementManager';
 import AccountingReports from './AccountingReports';
 import { ReferenceLink } from '../SplitView';
@@ -102,20 +106,9 @@ export default function InvoiceManager() {
   // Settings
   const [settings, setSettings] = useState(null);
 
-  // Auto-hide messages
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => setSuccess(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [success]);
-
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(null), 6000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
+  // Messages succès/erreur: affichés en toast flottant (fermeture auto gérée par <Toast>)
+  const clearSuccess = useCallback(() => setSuccess(null), []);
+  const clearError = useCallback(() => setError(null), []);
 
   // Load settings
   useEffect(() => {
@@ -530,19 +523,9 @@ export default function InvoiceManager() {
           </div>
         </div>
 
-        {/* Messages */}
-        {success && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4 text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 flex-shrink-0" />
-            {success}
-          </div>
-        )}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            {error}
-          </div>
-        )}
+        {/* Messages: toasts flottants (n'occupent aucune place dans la page → la liste ne bouge pas) */}
+        <Toast message={success} type="success" onClose={clearSuccess} />
+        <Toast message={error} type="error" onClose={clearError} />
 
         {/* Onglets */}
         <div className="flex gap-2 mb-4">

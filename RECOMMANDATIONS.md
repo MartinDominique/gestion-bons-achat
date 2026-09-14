@@ -2128,6 +2128,26 @@ l'écran, non rechargé, montrait toujours la facture impayée → 2e paiement i
 
 **Réparation manuelle:** supprimer le paiement en trop (poubelle) sur la ligne de la facture dans l'état de compte.
 
+### Bug: bande « Facture sauvegardée » qui fait sauter la liste « À facturer » (tap manqué) ✅ CORRIGÉ (2026-09-14)
+
+**Symptôme (Martin, 14 sept.):** après l'envoi d'une facture, retour à « À facturer » avec la bande verte
+« Facture sauvegardée avec succès » au-dessus de la liste; quand la bande disparaît (4 s), la liste remonte
+et le tap sur « Créer facture » atterrit sur la mauvaise ligne (ou dans le vide). Même bande sous l'en-tête
+de l'état de compte (« Paiement(s) enregistré(s) », « État de compte envoyé ») et dans « Rapports compta ».
+
+**Implementation completee (2026-09-14):**
+- `components/Toast.js` v1.0.0 (nouveau) — notification flottante via portail, fixée au bas de l'écran
+  (z-[90], safe-area iOS), n'occupe aucune place dans la page → rien ne bouge à l'apparition ni à la
+  disparition; fermeture auto (3 s succès / 7 s erreur), au tap ou via un X de 44 px; animation `toast-in`
+- `tailwind.config.js` — keyframe + animation `toast-in`
+- `components/invoices/InvoiceManager.js` v2.6.0 — succès/erreur en `<Toast>` (bande retirée)
+- `components/invoices/ClientStatementView.js` v1.9.0 — idem (bande sous l'en-tête retirée)
+- `components/invoices/AccountingReports.js` v1.1.0 — idem
+- `CLAUDE.md` — Ajout du bug corrigé + composant Toast dans la liste des composants
+
+**Non touché:** la bande de `InvoiceEditor.js` (« Facture envoyée ») reste en place — l'éditeur se ferme
+0,5 s après, donc aucun tap n'est possible pendant son affichage.
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-09-14 par Claude AI*
