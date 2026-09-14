@@ -973,6 +973,10 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~BCC: le contact #3 et les adresses supplémentaires du dossier client n'apparaissent pas dans les destinataires~~ → Corrigé (2026-09-14)
+  - Symptôme: 3 contacts + admin au dossier, mais la fenêtre BCC ne proposait que Principal / #2 / Administration (contact #3 et `additional_emails` jamais branchés).
+  - Correctif: `BCCConfirmationModal.js` v1.7.0 — liste complète alignée sur l'état de compte (Principal, #2, #3, Administration, Facturation, adresses supplémentaires, courriel du BA). Même correction dans l'éditeur de facture (`InvoiceEditor.js` v2.12.0 + `app/api/invoices/[id]/route.js` v1.2.0). Aucune migration requise.
+  - **Reste:** BT (`WorkOrderForm.js`) et BL (`DeliveryNoteForm.js`) ne proposent toujours que Principal / Secondaire / Administration à l'envoi.
 - ~~Facturation: la bande « Facture sauvegardée » fait sauter la liste « À facturer » → tap manqué sur « Créer facture »~~ → Corrigé (2026-09-14)
   - Symptôme: la bande verte poussait la liste vers le bas; à sa disparition (4 s), la liste remontait et le tap tombait sur la mauvaise ligne. Même bande dans l'État de compte et les Rapports compta.
   - Correctif: `components/Toast.js` (nouveau) — message flottant fixé au bas de l'écran (portail, z-[90]), donc aucun décalage de la page; fermeture auto 3 s (succès) / 7 s (erreur), au tap ou via X. Utilisé par `InvoiceManager.js` v2.6.0, `ClientStatementView.js` v1.9.0, `AccountingReports.js` v1.1.0. Animation `toast-in` dans `tailwind.config.js`. Aucune migration requise.

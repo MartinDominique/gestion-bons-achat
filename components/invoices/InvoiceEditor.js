@@ -19,9 +19,11 @@
  *                libellé (confirmation de la date des travaux du BT), suivie de la
  *                description de session si elle est saisie, le tout sur une seule ligne
  *                (« Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »).
- * @version 2.11.3
+ * @version 2.12.0
  * @date 2026-09-14
  * @changelog
+ *   2.12.0 - Destinataires: ajout du Contact #3 et des adresses supplémentaires du dossier client
+ *           (même liste complète que l'état de compte et le BCC)
  *   2.11.3 - « Erreur création facture »: le détail serveur (ex. numéro en double) est
  *            affiché dans le message au lieu d'un libellé opaque
  *   2.11.2 - Création: alerte si le lien BT/BL ↔ facture ou le prochain numéro n'a pas pu
@@ -451,8 +453,13 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       { email: client.email_billing, label: 'Facturation' },
       { email: client.email_admin, label: 'Administration' },
       { email: client.email, label: 'Principal' },
-      { email: client.email_2, label: 'Secondaire' },
-    ].filter(c => c.email && c.email.trim());
+      { email: client.email_2, label: 'Contact #2' },
+      { email: client.email_3, label: 'Contact #3' },
+      ...(Array.isArray(client.additional_emails) ? client.additional_emails : []).map(a => ({
+        email: a?.email,
+        label: a?.label || 'Supplémentaire',
+      })),
+    ].filter(c => c.email && String(c.email).trim());
 
     const seen = new Set();
     const unique = [];

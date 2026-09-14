@@ -5,9 +5,12 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.6.1
- * @date 2026-06-05
+ * @version 1.7.0
+ * @date 2026-09-14
  * @changelog
+ *   1.7.0 - Destinataires: TOUS les courriels du dossier client sont proposés (Facturation,
+ *           Principal, Contact #2, Contact #3, Administration, adresses supplémentaires) —
+ *           le contact #3 et les adresses supplémentaires n'apparaissaient pas
  *   1.6.1 - Fix B/O: plafonne la quantité B/O affichée au client à la quantité commandée par le client
  *           (évite d'afficher les unités commandées en surplus au fournisseur pour l'inventaire)
  *   1.6.0 - Quantité éditable dans BCC: modifie aussi la quantité dans l'onglet Articles du BA
@@ -386,11 +389,16 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
       }
     };
 
-    // Emails du dossier client
+    // Emails du dossier client — même liste complète que l'état de compte
     if (clientData) {
       addEmail(clientData.email, clientData.contact_name || 'Contact principal');
-      addEmail(clientData.email_2, clientData.contact_name_2 || 'Contact 2');
-      addEmail(clientData.email_admin, clientData.contact_name_admin || 'Admin/Facturation');
+      addEmail(clientData.email_2, clientData.contact_name_2 || 'Contact #2');
+      addEmail(clientData.email_3, clientData.contact_name_3 || 'Contact #3');
+      addEmail(clientData.email_admin, clientData.contact_name_admin || 'Administration');
+      addEmail(clientData.email_billing, 'Facturation');
+      (Array.isArray(clientData.additional_emails) ? clientData.additional_emails : []).forEach(a => {
+        addEmail(a?.email, a?.label || 'Supplémentaire');
+      });
     }
 
     // Email du formulaire BA (si different)
