@@ -3,9 +3,14 @@
  * @description API CRUD pour les Factures (Phase B — Facturation MVP)
  *              - POST: Créer une nouvelle facture à partir d'un BT ou BL
  *              - GET: Lister les factures avec filtres, tri et pagination
- * @version 1.2.0
+ * @version 1.3.0
  * @date 2026-09-14
  * @changelog
+ *   1.3.0 - Numérotation auto-correctrice: le numéro attribué = max(prochain numéro des
+ *           paramètres, plus grand numéro déjà émis + 1). Si l'insertion échoue quand même
+ *           sur un doublon de numéro (23505), nouvelle tentative avec le numéro suivant.
+ *           Le compteur des paramètres est réaligné. Corrige « Erreur création facture »
+ *           quand l'incrément du compteur avait échoué (23073 créée, compteur resté à 23073)
  *   1.2.0 - POST: l'écriture du lien invoice_id sur le BT/BL et l'incrément du prochain
  *           numéro de facture sont VÉRIFIÉS et retentés (2×). En cas d'échec persistant
  *           la facture est quand même créée mais la réponse porte link_updated:false /
@@ -96,7 +101,20 @@ export async function POST(request) {
       );
     }
 
-    const invoiceNumber = String(settings.invoice_next_number || 1);
+    // Numéro = max(compteur des paramètres, plus grand numéro déjà émis + 1). Si un
+    // incrément du compteur a échoué (base qui répondait mal), on ne retombe pas sur un
+    // numéro déjà pris (UNIQUE) → plus de « Erreur création facture » en boucle.
+    const { data: recentInvoices } = await supabaseAdmin
+      .from('invoices')
+      .select('invoice_number')
+      .order('id', { ascending: false })
+      .limit(50);
+    const highestIssued = (recentInvoices || [])
+      .map(i => parseInt(i.invoice_number, 10))
+      .filter(n => Number.isFinite(n))
+      .reduce((m, n) => (n > m ? n : m), 0);
+    let nextNumber = Math.max(parseInt(settings.invoice_next_number, 10) || 1, highestIssued + 1);
+    let invoiceNumber = String(nextNumber);
 
     // Calculer la date d'échéance
     let due_date = null;
@@ -135,11 +153,24 @@ export async function POST(request) {
       status: 'draft',
     };
 
-    const { data: invoice, error: invoiceError } = await supabaseAdmin
+    let { data: invoice, error: invoiceError } = await supabaseAdmin
       .from('invoices')
       .insert([invoiceData])
       .select()
       .single();
+
+    // Doublon de numéro malgré tout (course entre deux créations, ou numéro non numérique
+    // dans l'historique): une seule nouvelle tentative avec le numéro suivant.
+    if (invoiceError && invoiceError.code === '23505' && /invoice_number/.test(invoiceError.message || '')) {
+      nextNumber += 1;
+      invoiceNumber = String(nextNumber);
+      console.warn(`Numéro de facture déjà utilisé, nouvelle tentative avec ${invoiceNumber}`);
+      ({ data: invoice, error: invoiceError } = await supabaseAdmin
+        .from('invoices')
+        .insert([{ ...invoiceData, invoice_number: invoiceNumber }])
+        .select()
+        .single());
+    }
 
     if (invoiceError) {
       console.error('Erreur création facture:', invoiceError);
@@ -170,7 +201,7 @@ export async function POST(request) {
     // Incrémenter le numéro de facture dans settings
     const numberErr = await verifiedUpdate(
       'settings',
-      { invoice_next_number: (settings.invoice_next_number || 1) + 1, updated_at: new Date().toISOString() },
+      { invoice_next_number: nextNumber + 1, updated_at: new Date().toISOString() },
       'id', 1
     );
 

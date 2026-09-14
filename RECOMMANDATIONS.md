@@ -2067,6 +2067,18 @@ utilisés; un lien pèse ~100 octets).
 
 ---
 
+### Bug: « Erreur création facture » en boucle — numéro en double après un raté de la base ✅ CORRIGÉ (2026-09-14)
+
+**Symptôme (Martin, 14 sept.):** création de la facture de BL-2609-006 refusée (« Erreur création facture »)
+alors que le voyant BD est vert. Cause: 23073 créée le matin, mais compteur `invoice_next_number` non incrémenté
+(écriture non vérifiée à l'époque) → numéro 23073 proposé à nouveau → contrainte UNIQUE.
+
+**Implementation completee (2026-09-14):**
+- `app/api/invoices/route.js` v1.3.0 — numéro = max(compteur, plus grand numéro émis + 1); retry sur doublon (23505);
+  compteur réaligné
+- `components/invoices/InvoiceEditor.js` v2.11.3 — détail serveur affiché dans l'erreur
+- `CLAUDE.md` — Ajout du bug corrigé dans la section « Bugs connus »
+
 ### Bug: BL facturée mais toujours dans « À facturer » (lien invoice_id perdu) ✅ CORRIGÉ (2026-09-14)
 
 **Symptôme (Martin, 14 sept.):** BL-2609-005 facturée (23073, envoyée) mais encore listée avec « Créer facture ».

@@ -972,6 +972,11 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~« Erreur création facture » en boucle (voyant BD vert) — numéro de facture en double~~ → Corrigé (2026-09-14)
+  - Symptôme: toute nouvelle facture (ex. BL-2609-006) refusée avec « Erreur création facture », base saine.
+  - Cause: la facture 23073 avait été créée pendant le raté de la base, mais l'incrément de `settings.invoice_next_number` avait échoué en silence → le compteur proposait encore 23073 → violation `UNIQUE(invoice_number)` → insertion refusée. Le détail (`duplicate key`) n'était pas affiché à l'écran.
+  - Correctif: `app/api/invoices/route.js` v1.3.0 — numéro attribué = max(compteur des paramètres, plus grand numéro déjà émis + 1); sur un doublon malgré tout (code 23505), une nouvelle tentative avec le numéro suivant; compteur réaligné (`nextNumber + 1`). `components/invoices/InvoiceEditor.js` v2.11.3 — le détail serveur est affiché dans le message d'erreur.
+  - Aucune migration, aucune correction manuelle: la prochaine facture prend 23074 automatiquement.
 - ~~BL facturée (23073) mais toujours dans « À facturer » (BL-2609-005)~~ → Corrigé (2026-09-14)
   - Symptôme: la facture existe et est envoyée, mais le BL garde `invoice_id NULL` → bouton « Créer facture » encore affiché (le garde 409 « une facture existe déjà » empêchait toutefois un doublon).
   - Cause: `POST /api/invoices` écrivait le lien `invoice_id` sur le BT/BL (et l'incrément de `settings.invoice_next_number`) **sans vérifier l'erreur** → raté passager de Supabase = lien perdu en silence.
