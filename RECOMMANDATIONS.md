@@ -2067,4 +2067,24 @@ utilisés; un lien pèse ~100 octets).
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-09-10 par Claude AI*
+### Bug: paiement d'état de compte enregistré en double (client en crédit) ✅ CORRIGÉ (2026-09-14)
+
+**Symptôme (Martin, 14 sept.):** paiement daté du 20 août refusé avec une erreur « Facture … », re-saisi
+au 1er août avec succès, mais le client (Fabrication SBL) se retrouve en crédit de −114,61 $ (le montant
+de la facture). Le premier appel avait en fait inséré le paiement avant d'échouer sur le recalcul du statut;
+l'écran, non rechargé, montrait toujours la facture impayée → 2e paiement identique.
+
+**Implementation completee (2026-09-14):**
+- `app/api/invoice-payments/route.js` v1.3.0 — garde-fou anti-double paiement (solde restant calculé depuis
+  les lignes de paiement; refus « déjà réglée » / « dépasse le solde restant »), recalcul en 2 tentatives puis
+  retrait de la ligne insérée en cas d'échec (plus de paiement « à moitié enregistré »), détail DB dans `details`
+- `lib/services/invoice-payments.js` v1.2.0 — `loadInvoiceBalance()` + `sumCredited()`, lecture `maybeSingle`
+- `components/invoices/ClientStatementView.js` v1.8.0 — rechargement de l'état de compte après une erreur,
+  message avec détail serveur, refus local d'un montant supérieur au solde
+- `CLAUDE.md` — Ajout du bug corrigé dans la section « Bugs connus »
+
+**Réparation manuelle:** supprimer le paiement en trop (poubelle) sur la ligne de la facture dans l'état de compte.
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-09-14 par Claude AI*

@@ -4,9 +4,15 @@
  *              - GET: liste les paiements (filtre invoice_id ou client_id)
  *              - POST: enregistre un paiement (partiel/complet) + recalcule le statut
  *                de la facture (amount_paid, paid/partial/sent)
- * @version 1.2.0
- * @date 2026-09-02
+ * @version 1.3.0
+ * @date 2026-09-14
  * @changelog
+ *   1.3.0 - Anti-double paiement: le montant ne peut pas dépasser le solde RESTANT de la
+ *           facture (calculé depuis les lignes de paiement, fiable même si un recalcul
+ *           précédent a échoué); refus explicite « déjà réglée ». Le paiement n'est plus
+ *           laissé en base « à moitié enregistré »: si le recalcul du statut échoue après
+ *           l'insertion (2 tentatives), la ligne insérée est retirée et l'erreur renvoyée
+ *           dit clairement que rien n'a été enregistré. Détail DB dans `details`.
  *   1.2.0 - Note de crédit (facture à total négatif): montant négatif accepté
  *           (remboursement au client ou application du crédit), refusé sur une
  *           facture ordinaire
@@ -17,7 +23,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { PAYMENT_METHOD_VALUES } from '../../../lib/constants/paymentMethods';
-import { recomputeInvoiceStatus } from '../../../lib/services/invoice-payments';
+import { recomputeInvoiceStatus, loadInvoiceBalance } from '../../../lib/services/invoice-payments';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -89,24 +95,31 @@ export async function POST(request) {
       );
     }
 
-    // Récupérer la facture pour client_id et validation du solde
-    const { data: invoice, error: invErr } = await supabaseAdmin
-      .from('invoices')
-      .select('id, client_id, total, amount_paid, invoice_number')
-      .eq('id', parseInt(invoice_id))
-      .single();
+    // Récupérer la facture + son solde restant réel (lignes de paiement + crédit
+    // historique) pour client_id et validation du montant
+    let loaded;
+    try {
+      loaded = await loadInvoiceBalance(supabaseAdmin, invoice_id);
+    } catch (readErr) {
+      console.error('Lecture facture pour paiement:', readErr);
+      return NextResponse.json(
+        { success: false, error: 'Lecture de la facture impossible — aucun paiement enregistré, réessayez', details: readErr.message },
+        { status: 500 }
+      );
+    }
 
-    if (invErr || !invoice) {
+    if (!loaded) {
       return NextResponse.json(
         { success: false, error: 'Facture non trouvée' },
         { status: 404 }
       );
     }
 
+    const { invoice, balance: remaining, isCredit: isCreditNote } = loaded;
+
     // Sens du montant: une facture ordinaire s'encaisse (montant positif); une note de
     // crédit (total négatif) se règle par un montant négatif (remboursement au client
     // ou application du crédit sur une autre facture).
-    const isCreditNote = (Number(invoice.total) || 0) < -0.005;
     const signed = amountNum + discountNum;
 
     if (Math.abs(signed) < 0.005) {
@@ -126,6 +139,39 @@ export async function POST(request) {
         {
           success: false,
           error: `La facture ${invoice.invoice_number} est une note de crédit: le montant doit être négatif (remboursement ou application du crédit)`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Garde-fou anti-double enregistrement: une facture déjà réglée refuse tout nouveau
+    // paiement, et un paiement ne peut pas dépasser le solde restant (tolérance 1 cent
+    // d'arrondi). Un client qui paie trop se traite par une note de crédit, pas par un
+    // surpaiement invisible.
+    const fmt = (n) => `${(Number(n) || 0).toFixed(2).replace('.', ',')} $`;
+    if (Math.abs(remaining) <= 0.005) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `La facture ${invoice.invoice_number} est déjà réglée (solde 0,00 $) — paiement refusé pour éviter un double enregistrement. Rechargez l'état de compte.`,
+        },
+        { status: 409 }
+      );
+    }
+    if (!isCreditNote && signed > remaining + 0.01) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Le paiement (${fmt(signed)}) dépasse le solde restant de la facture ${invoice.invoice_number} (${fmt(remaining)}). Déjà crédité: ${fmt(loaded.credited)}.`,
+        },
+        { status: 400 }
+      );
+    }
+    if (isCreditNote && signed < remaining - 0.01) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Le règlement (${fmt(signed)}) dépasse le crédit restant de la note ${invoice.invoice_number} (${fmt(remaining)}).`,
         },
         { status: 400 }
       );
@@ -156,8 +202,50 @@ export async function POST(request) {
       );
     }
 
-    // Recalculer amount_paid + statut de la facture
-    const result = await recomputeInvoiceStatus(supabaseAdmin, invoice_id);
+    // Recalculer amount_paid + statut de la facture (2 tentatives: un raté passager de
+    // Supabase ne doit pas laisser un paiement enregistré sans que la facture le sache)
+    let result = null;
+    let recomputeErr = null;
+    for (let attempt = 1; attempt <= 2 && !result; attempt++) {
+      try {
+        result = await recomputeInvoiceStatus(supabaseAdmin, invoice_id);
+      } catch (err) {
+        recomputeErr = err;
+        console.error(`Recalcul statut facture (tentative ${attempt}):`, err);
+      }
+    }
+
+    if (!result) {
+      // Compensation: retirer la ligne insérée pour que l'erreur renvoyée soit vraie
+      // (« rien n'a été enregistré ») et que l'utilisateur puisse réessayer sans doublon.
+      const { error: rollbackErr } = await supabaseAdmin
+        .from('invoice_payments')
+        .delete()
+        .eq('id', payment.id);
+
+      if (rollbackErr) {
+        console.error('Annulation du paiement impossible après échec du recalcul:', rollbackErr);
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Le paiement sur la facture ${invoice.invoice_number} a été enregistré, mais le statut de la facture n'a pas pu être mis à jour. NE PAS le ressaisir: rechargez l'état de compte.`,
+            details: recomputeErr?.message,
+            payment_recorded: true,
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Erreur lors de la mise à jour de la facture ${invoice.invoice_number} — aucun paiement enregistré, réessayez.`,
+          details: recomputeErr?.message,
+          payment_recorded: false,
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
