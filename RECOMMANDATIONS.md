@@ -2148,6 +2148,26 @@ de l'état de compte (« Paiement(s) enregistré(s) », « État de compte envoy
 **Non touché:** la bande de `InvoiceEditor.js` (« Facture envoyée ») reste en place — l'éditeur se ferme
 0,5 s après, donc aucun tap n'est possible pendant son affichage.
 
+### Bug: BCC — le contact #3 (et les adresses supplémentaires) du dossier client n'apparaissent pas dans les destinataires ✅ CORRIGÉ (2026-09-14)
+
+**Symptôme (Martin, 14 sept., Métal Sartigan):** 3 contacts + 1 admin au dossier client, mais la fenêtre
+« Confirmation de Commande (BCC) » ne propose que Principal, Contact #2 et Administration. Le contact #3
+(ajouté en juillet) et les « Courriels supplémentaires » (août) n'ont jamais été branchés dans cette liste.
+
+**Implementation completee (2026-09-14):**
+- `components/PurchaseOrder/BCCConfirmationModal.js` v1.7.0 — liste des courriels du dossier alignée sur
+  l'état de compte: Principal, Contact #2, **Contact #3**, Administration, **Facturation**, **adresses
+  supplémentaires** (+ courriel du BA s'il diffère), dédoublonnage insensible à la casse
+- `components/invoices/InvoiceEditor.js` v2.12.0 — même lacune dans le choix des destinataires d'une
+  facture: ajout Contact #3 + adresses supplémentaires
+- `app/api/invoices/[id]/route.js` v1.2.0 — `email_3` + `additional_emails` ajoutés au SELECT client
+- `CLAUDE.md` — Ajout du bug corrigé dans la section « Bugs connus »
+
+**Reste (même lacune, non corrigé ici):** les formulaires BT (`WorkOrderForm.js`) et BL
+(`DeliveryNoteForm.js`) ne proposent que Principal / Secondaire / Administration à l'envoi (pas de
+Contact #3, Facturation ni adresses supplémentaires). Leur sélection est persistée par nom de champ
+(`selectedEmails`), donc à faire dans un changement dédié et à tester sur tablette.
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-09-14 par Claude AI*
