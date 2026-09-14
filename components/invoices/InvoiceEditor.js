@@ -19,9 +19,11 @@
  *                libellé (confirmation de la date des travaux du BT), suivie de la
  *                description de session si elle est saisie, le tout sur une seule ligne
  *                (« Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »).
- * @version 2.11.2
+ * @version 2.11.3
  * @date 2026-09-14
  * @changelog
+ *   2.11.3 - « Erreur création facture »: le détail serveur (ex. numéro en double) est
+ *            affiché dans le message au lieu d'un libellé opaque
  *   2.11.2 - Création: alerte si le lien BT/BL ↔ facture ou le prochain numéro n'a pas pu
  *            être écrit (warning renvoyé par POST /api/invoices)
  *   2.11.1 - Envoi/Impression: alerte « courriel envoyé mais statut non enregistré »
@@ -783,7 +785,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         });
         const data = await res.json();
         if (!data.success) {
-          setError(data.error || 'Erreur création');
+          setError(`${data.error || 'Erreur création'}${data.details ? ` — ${data.details}` : ''}`);
           setSaving(false); setSending(false);
           return;
         }
@@ -893,7 +895,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         });
         const data = await res.json();
         if (!data.success) {
-          setError(data.error || 'Erreur création');
+          setError(`${data.error || 'Erreur création'}${data.details ? ` — ${data.details}` : ''}`);
           setPrinting(false);
           return;
         }
