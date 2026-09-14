@@ -2067,6 +2067,25 @@ utilisés; un lien pèse ~100 octets).
 
 ---
 
+### Bug: base de données lente → 500 en cascade, liste « À facturer » vide, facture envoyée mais « brouillon » ✅ CORRIGÉ (2026-09-14)
+
+**Symptôme (Martin, 14 sept.):** création de facture très lente, BT disparus de « À facturer » puis revenus
+2-3 min plus tard, facture 23073 reçue par courriel (client + bureau) mais affichée non envoyée. Console: 500 sur
+notes, work-orders, items-to-order en même temps → Supabase lent/indisponible, pas l'ordinateur.
+
+**Implementation completee (2026-09-14):**
+- `app/api/health/route.js` (nouveau) — ping DB chronométré: `ok` / `slow` (> 1,5 s) / `down` (délai 8 s)
+- `components/DbStatusBadge.js` (nouveau) + `components/Navigation.js` v2.3.0 — voyant vert/orange/rouge à côté du
+  logo (poll 60 s, retour en avant-plan, tap = revérifier + détail latence/erreur)
+- `app/api/invoices/[id]/send-email/route.js` v1.7.0 — mise à jour du statut vérifiée + retentée; sinon
+  `status_updated:false` + avertissement « courriel envoyé, NE PAS renvoyer »
+- `components/invoices/InvoiceManager.js` v2.4.0 — erreur explicite quand les listes ne répondent pas (au lieu
+  d'une liste vide), avertissement d'envoi affiché en rouge
+- `components/invoices/InvoiceEditor.js` v2.11.1 — alerte du même avertissement
+- `CLAUDE.md` — Ajout du bug corrigé dans la section « Bugs connus » + route/composant dans l'architecture
+
+**Consigne:** voyant orange/rouge → attendre le vert avant de refaire une action, puis « Actualiser ».
+
 ### Bug: paiement d'état de compte enregistré en double (client en crédit) ✅ CORRIGÉ (2026-09-14)
 
 **Symptôme (Martin, 14 sept.):** paiement daté du 20 août refusé avec une erreur « Facture … », re-saisi

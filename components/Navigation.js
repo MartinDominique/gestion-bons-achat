@@ -4,9 +4,10 @@
  *              - Desktop: barre complète avec tous les modules
  *              - Tablette/Mobile: modules principaux (BA, BT, Clients) + menu "Plus"
  *              - Menu Plus (bottom sheet): Soumissions, Inventaire, Achat, Stats, Facturation, Paramètres
- * @version 2.2.0
- * @date 2026-07-21
+ * @version 2.3.0
+ * @date 2026-09-14
  * @changelog
+ *   2.3.0 - Voyant d'état de la base de données (DbStatusBadge) à côté du logo
  *   2.2.0 - Pastille compteur « À commander » sur l'onglet Achat (desktop + menu Plus)
  *   2.1.0 - Ajout onglet Notes (1er) + badge notes urgentes + route /notes protégée
  *   2.0.0 - Navigation mobile Option A: menu "Plus" pour modules bureau
@@ -22,6 +23,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 import InventoryManager from './InventoryManager.js';
+import DbStatusBadge from './DbStatusBadge';
 import ClientManager from './ClientManager';
 import { countUrgent } from '../lib/utils/notes';
 
@@ -205,6 +207,10 @@ return (
                   className="w-20 h-auto md:w-32 rounded-lg object-contain -ml-2 md:-ml-4"
                   priority
                 />
+              </div>
+              {/* Voyant base de données: vert OK / orange lente / rouge hors ligne */}
+              <div className="ml-1 md:ml-3">
+                <DbStatusBadge />
               </div>
             </div>
 
