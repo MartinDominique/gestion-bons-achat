@@ -7,9 +7,12 @@
  *              - Numéros de référence cliquables (SplitView)
  *              - Onglet "État de compte": soldes clients, paiements, relevés
  *              - Onglet "Rapports compta": ventes + paiements (PDF + envoi au comptable)
- * @version 2.4.0
+ * @version 2.5.0
  * @date 2026-09-14
  * @changelog
+ *   2.5.0 - Onglet « À facturer »: auto-réparation des liens manquants (POST
+ *           /api/invoices/relink) avant le chargement — un BT/BL dont la facture existe
+ *           mais dont invoice_id n'a pas été écrit disparaît de la liste, avec message
  *   2.4.0 - Onglet « À facturer »/« Factures »: une réponse serveur en erreur (500, base
  *           de données lente/indisponible) affiche un message explicite au lieu d'une
  *           liste vide silencieuse; les données déjà affichées sont conservées.
@@ -137,6 +140,18 @@ export default function InvoiceManager() {
 
     try {
       if (activeTab === 'to_invoice') {
+        // Auto-réparation: une facture créée pendant un raté de la base peut avoir laissé
+        // le BT/BL sans invoice_id (donc encore listé ici). Best-effort, silencieux si rien.
+        try {
+          const relink = await fetch('/api/invoices/relink', { method: 'POST' });
+          const rj = relink.ok ? await relink.json() : null;
+          if (rj?.success && rj.count > 0) {
+            setSuccess(`Lien(s) facture réparé(s): ${rj.repaired.map(r => `${r.source_number} → ${r.invoice_number}`).join(', ')}`);
+          }
+        } catch (relinkErr) {
+          console.warn('Réparation des liens facture ignorée:', relinkErr);
+        }
+
         // Charger les BT et BL signés/complétés sans facture
         const [btRes, blRes] = await Promise.all([
           fetch('/api/work-orders?limit=10000'),

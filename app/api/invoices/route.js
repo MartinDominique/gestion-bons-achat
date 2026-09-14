@@ -3,9 +3,14 @@
  * @description API CRUD pour les Factures (Phase B — Facturation MVP)
  *              - POST: Créer une nouvelle facture à partir d'un BT ou BL
  *              - GET: Lister les factures avec filtres, tri et pagination
- * @version 1.1.0
- * @date 2026-06-02
+ * @version 1.2.0
+ * @date 2026-09-14
  * @changelog
+ *   1.2.0 - POST: l'écriture du lien invoice_id sur le BT/BL et l'incrément du prochain
+ *           numéro de facture sont VÉRIFIÉS et retentés (2×). En cas d'échec persistant
+ *           la facture est quand même créée mais la réponse porte link_updated:false /
+ *           number_incremented:false + warning (avant: échec DB avalé → BL facturée qui
+ *           restait dans « À facturer »)
  *   1.1.0 - GET: ajout filtres source_type (BT/BL) + date_from/date_to (plage de dates)
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
  */
@@ -144,26 +149,50 @@ export async function POST(request) {
       );
     }
 
+    // Écriture vérifiée + retentée: quand la base répond mal, un échec silencieux ici
+    // laisse une facture créée sans lien (BT/BL toujours « à facturer ») ou un compteur
+    // non incrémenté (prochaine facture en conflit de numéro).
+    const verifiedUpdate = async (table, values, matchCol, matchVal) => {
+      let lastErr = null;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const { data, error } = await supabaseAdmin
+          .from(table)
+          .update(values)
+          .eq(matchCol, matchVal)
+          .select(matchCol);
+        if (!error && data && data.length > 0) return null;
+        lastErr = error?.message || 'aucune ligne modifiée';
+        console.error(`Mise à jour ${table} (tentative ${attempt}):`, lastErr);
+      }
+      return lastErr;
+    };
+
     // Incrémenter le numéro de facture dans settings
-    await supabaseAdmin
-      .from('settings')
-      .update({
-        invoice_next_number: (settings.invoice_next_number || 1) + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', 1);
+    const numberErr = await verifiedUpdate(
+      'settings',
+      { invoice_next_number: (settings.invoice_next_number || 1) + 1, updated_at: new Date().toISOString() },
+      'id', 1
+    );
 
     // Lier la facture au BT ou BL source
     const sourceTable = source_type === 'work_order' ? 'work_orders' : 'delivery_notes';
-    await supabaseAdmin
-      .from(sourceTable)
-      .update({ invoice_id: invoice.id })
-      .eq('id', source_id);
+    const linkErr = await verifiedUpdate(sourceTable, { invoice_id: invoice.id }, 'id', source_id);
+
+    const warnings = [];
+    if (linkErr) {
+      warnings.push(`Le ${source_type === 'work_order' ? 'BT' : 'BL'} ${source_number} n'a pas pu être marqué facturé (${linkErr}): il restera dans « À facturer » jusqu'à la réparation automatique au prochain chargement de l'onglet.`);
+    }
+    if (numberErr) {
+      warnings.push(`Le prochain numéro de facture n'a pas pu être incrémenté (${numberErr}): vérifiez le numéro dans Paramètres avant la prochaine facture.`);
+    }
 
     return NextResponse.json({
       success: true,
       data: invoice,
       message: `Facture ${invoiceNumber} créée avec succès`,
+      link_updated: !linkErr,
+      number_incremented: !numberErr,
+      warning: warnings.length > 0 ? `Facture ${invoiceNumber} créée, MAIS: ${warnings.join(' ')}` : null,
     });
 
   } catch (error) {
