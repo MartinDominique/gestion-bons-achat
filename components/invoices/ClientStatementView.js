@@ -17,9 +17,11 @@
  *                badge « Crédit », déduites du solde, réglables par un remboursement ou
  *                l'application du crédit (montant négatif)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.8.0
+ * @version 1.9.0
  * @date 2026-09-14
  * @changelog
+ *   1.9.0 - Messages succès/erreur en toast flottant (components/Toast.js) au lieu d'une bande
+ *           sous l'en-tête: le contenu ne bouge plus quand le message apparaît/disparaît
  *   1.8.0 - Anti-double paiement: après une ERREUR d'enregistrement, l'état de compte est
  *           rechargé (l'écran ne montre plus une facture « impayée » alors que le paiement
  *           est passé côté serveur → plus de 2e saisie en double); message d'erreur avec
@@ -51,10 +53,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, RefreshCw, AlertCircle, CheckCircle, Trash2, Send, Eye,
+  X, RefreshCw, CheckCircle, Trash2, Send, Eye,
   DollarSign, Clock, Mail, Plus, CreditCard, Calendar,
 } from 'lucide-react';
 import { PAYMENT_METHODS, paymentMethodLabel } from '../../lib/constants/paymentMethods';
+import Toast from '../Toast';
 
 const METHODS = PAYMENT_METHODS;
 
@@ -165,12 +168,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    if (success) {
-      const t = setTimeout(() => setSuccess(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [success]);
+  // Messages succès/erreur: toasts flottants (fermeture auto gérée par <Toast>)
+  const clearSuccess = useCallback(() => setSuccess(null), []);
+  const clearError = useCallback(() => setError(null), []);
 
   // Escompte 2% = 2% du sous-total (avant taxes) de la facture (jamais sur un crédit)
   const discountFor = (inv) =>
@@ -588,19 +588,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
           )}
         </div>
 
-        {/* Messages */}
-        <div className="px-4 sm:px-6">
-          {success && (
-            <div className="mt-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 flex-shrink-0" /> {success}
-            </div>
-          )}
-          {error && (
-            <div className="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
-            </div>
-          )}
-        </div>
+        {/* Messages: toasts flottants (aucune place prise dans la modale → rien ne bouge) */}
+        <Toast message={success} type="success" onClose={clearSuccess} />
+        <Toast message={error} type="error" onClose={clearError} />
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-5">
