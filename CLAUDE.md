@@ -550,6 +550,7 @@ invoice_date, due_date, payment_terms,
 line_items (JSONB), subtotal, tps_rate, tvq_rate, tps_amount, tvq_amount, total,
 total_materials, total_labor, total_transport,
 status, is_prix_jobe, notes, pdf_url,
+jobe_detail_items,          -- JSONB (Prix Jobé): détail INTERNE du forfait (M.O./transport/matériaux: qté, vendant, coûtant) — jamais sur le PDF client
 sent_at, paid_at, user_id, created_at, updated_at
 ```
 **Statuts:** draft, sent, partial, paid
@@ -965,6 +966,15 @@ CRON_SECRET                   # Auth pour cron jobs
     - Décisions (Martin, 2026-09-10): sens unique; suggestion seulement (jamais d'ajout automatique); cases décochées par défaut (1-2 items utilisés sur 10); quantité multipliée par celle du parent et modifiable; pas de champ contexte vente/achat; nombre d'associés illimité; badge visible dans l'Inventaire
     - Non couvert (v1): le tableau compact B/O d'un BL (items importés d'un BA) n'a pas de carré « As »; les items manuels (MaterialSelector) en ont un
     - **Reste:** exécuter la migration SQL `20260910_create_product_associations.sql` dans Supabase Dashboard (sinon: carrés « As » gris, fenêtre en erreur « relation does not exist »)
+
+33. ~~**Facturation Prix Jobé: détail interne du forfait (composantes, coûtant, prix forfaitaire)**~~ - ✅ COMPLÉTÉ (2026-09-17)
+    - Problème: une facture créée depuis un BT « Prix Jobé » arrivait avec **une seule ligne forfait à 0 $**, sans aucune composante visible → impossible de vérifier les matériaux/heures ni de fixer le prix (cas des petites jobs faites sans soumission)
+    - `supabase/migrations/20260917_add_invoice_jobe_detail.sql` (nouveau) — colonne `invoices.jobe_detail_items` JSONB (détail interne, nullable)
+    - `components/invoices/InvoiceEditor.js` v2.13.0 — section **« Détail du forfait (interne) »** visible dès que « Prix forfaitaire (Jobe) » est coché: toutes les composantes du BT/BL (M.O. heures × taux + surcharges, transport, matériaux avec code cliquable, qté, vendant, coûtant, marge, En main), lignes modifiables/retirables, « Ajouter ligne », « Depuis le BT/BL » (régénération); sommaire M.O./Transport/Matériaux/Coûtant matériaux, **Total du détail vs Prix facturé** avec écart $ et %, alerte rouge si prix facturé < coûtant matériaux; bouton **« Utiliser ce total comme prix forfaitaire »**. À la création, le prix forfaitaire est **pré-rempli** avec le total du détail (modifiable). Le bandeau « marge faible » couvre aussi les lignes du détail
+    - `app/api/invoices/route.js` v1.4.0 + `app/api/invoices/[id]/route.js` v1.3.0 — acceptent `jobe_detail_items`; si la migration n'est pas passée, la facture est quand même créée/mise à jour **sans** le détail + `warning` affiché (le prix forfaitaire est toujours sauvegardé)
+    - **Rien d'autre ne change**: la facture client (PDF/courriel) ne montre toujours que la ligne forfait; rapports compta, statistiques financières et état de compte lisent `line_items` uniquement (le détail n'y entre jamais); les factures non-Jobé sont intactes
+    - Réouverture d'une facture Jobé: détail relu depuis `jobe_detail_items`, sinon reconstruit depuis le BT/BL source (anciennes factures Jobé)
+    - **Reste:** exécuter la migration SQL `20260917_add_invoice_jobe_detail.sql` dans Supabase Dashboard (sans elle: tout fonctionne, mais le détail est reconstruit depuis le BT à chaque ouverture au lieu d'être conservé)
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

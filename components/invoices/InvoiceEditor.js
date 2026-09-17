@@ -19,9 +19,21 @@
  *                libellé (confirmation de la date des travaux du BT), suivie de la
  *                description de session si elle est saisie, le tout sur une seule ligne
  *                (« Main d'oeuvre — Régulier — 15 août 2026 — Panneau #3 »).
- * @version 2.12.0
- * @date 2026-09-14
+ *              - Prix Jobé (forfait): section « Détail du forfait » 100 % INTERNE listant les
+ *                composantes du BT/BL (M.O. heures × taux, transport, matériaux qté/vendant/
+ *                coûtant/marge). Le prix forfaitaire est pré-rempli avec le total du détail
+ *                et reste modifiable; la facture client ne montre que la ligne forfait.
+ *                Le détail est conservé dans invoices.jobe_detail_items (jamais sur le PDF).
+ * @version 2.13.0
+ * @date 2026-09-17
  * @changelog
+ *   2.13.0 - Prix Jobé: la facture n'arrivait plus avec AUCUN prix (ligne forfait à 0 $, sans
+ *            aucune composante visible). Ajout du « Détail du forfait » interne (toutes les
+ *            composantes du BT/BL avec qté, vendant, coûtant, marge, total), pré-remplissage
+ *            du prix forfaitaire avec le total du détail, comparaison prix facturé vs détail
+ *            vs coûtant matériaux, bouton « Utiliser ce total », régénération depuis le BT/BL.
+ *            Le détail est sauvegardé (jobe_detail_items) et relu à la réouverture; PDF client,
+ *            rapports et état de compte inchangés (ils ne lisent que line_items).
  *   2.12.0 - Destinataires: ajout du Contact #3 et des adresses supplémentaires du dossier client
  *           (même liste complète que l'état de compte et le BCC)
  *   2.11.3 - « Erreur création facture »: le détail serveur (ex. numéro en double) est
@@ -69,7 +81,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTriangle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer, Mail, ShoppingCart } from 'lucide-react';
+import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTriangle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer, Mail, ShoppingCart, EyeOff, RefreshCw, Calculator } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
 import InvoiceReferencePanel from './InvoiceReferencePanel';
@@ -308,6 +320,19 @@ function generateBLLines(bl) {
   return lines;
 }
 
+/**
+ * Lignes détaillées d'un document source (BT ou BL), sans distinction Jobé ou non.
+ * Sert au pré-remplissage normal ET au « Détail du forfait » interne d'une facture Prix Jobé.
+ */
+function generateSourceLines(type, btOrBl, settings) {
+  if (!btOrBl) return [];
+  return type === 'bt' ? generateBTLines(btOrBl, settings) : generateBLLines(btOrBl);
+}
+
+const round2 = (n) => Math.round((parseFloat(n) || 0) * 100) / 100;
+
+const sumTotals = (lines) => round2(lines.reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0));
+
 export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const isEditing = !!invoice;
   const sourceType = source?.type || (invoice?.source_type === 'work_order' ? 'bt' : 'bl');
@@ -319,6 +344,11 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [paymentTerms, setPaymentTerms] = useState('Net 30 jours');
   const [notes, setNotes] = useState('');
   const [isPrixJobe, setIsPrixJobe] = useState(false);
+  // Détail INTERNE du forfait (Prix Jobé): composantes M.O./transport/matériaux du BT/BL.
+  // Jamais transmis au client — sert à vérifier et à fixer le prix forfaitaire.
+  const [jobeDetail, setJobeDetail] = useState([]);
+  // Document source rechargé en mode édition (régénération du détail au besoin)
+  const [fetchedSource, setFetchedSource] = useState(null);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [printing, setPrinting] = useState(false);
@@ -372,6 +402,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       setPaymentTerms(invoice.payment_terms || 'Net 30 jours');
       setNotes(invoice.notes || '');
       setIsPrixJobe(invoice.is_prix_jobe || false);
+      const storedDetail = Array.isArray(invoice.jobe_detail_items) ? invoice.jobe_detail_items : [];
+      setJobeDetail(storedDetail);
+      setFetchedSource(null);
       // Charger la description du BT/BL source si disponible
       if (invoice.source_type && invoice.source_id) {
         const endpoint = invoice.source_type === 'work_order'
@@ -392,6 +425,13 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 baNumber: lp?.po_number || null,
                 submissionNumbers: extractSubmissionNumbers(result.data),
               });
+              setFetchedSource(result.data);
+              // Facture Jobé sans détail enregistré (créée avant 2.13.0, ou migration non
+              // passée): on reconstruit le détail depuis le BT/BL source.
+              if (invoice.is_prix_jobe && storedDetail.length === 0) {
+                const srcType = invoice.source_type === 'work_order' ? 'bt' : 'bl';
+                setJobeDetail(generateSourceLines(srcType, result.data, settings));
+              }
             }
           })
           .catch(() => {});
@@ -417,19 +457,23 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
       });
 
       if (isPJ) {
+        // Détail interne = toutes les composantes du BT/BL; le prix forfaitaire proposé
+        // est le total de ce détail (modifiable). Le client ne verra que la ligne forfait.
+        const detail = generateSourceLines(source.type, btOrBl, settings);
+        const suggested = sumTotals(detail);
+        setJobeDetail(detail);
         setLineItems([{
           id: 'forfait-1',
           type: 'forfait',
           description: btOrBl.work_description || btOrBl.delivery_description || 'Travaux forfaitaires',
           detail: '',
           quantity: 1,
-          unit_price: 0,
-          total: 0,
+          unit_price: suggested,
+          total: suggested,
         }]);
       } else {
-        const lines = source.type === 'bt'
-          ? generateBTLines(btOrBl, settings)
-          : generateBLLines(btOrBl);
+        setJobeDetail([]);
+        const lines = generateSourceLines(source.type, btOrBl, settings);
         setLineItems(lines);
       }
 
@@ -474,12 +518,14 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   }, [invoice, sourceData]);
 
   // Fetch product data (cost_price, stock_qty) for material lines
+  // (lignes de la facture + lignes du détail interne du forfait)
   useEffect(() => {
-    if (lineItems.length === 0) return;
+    const allLines = [...lineItems, ...jobeDetail];
+    if (allLines.length === 0) return;
 
     // Collect all product_ids from material lines
     const allIds = [];
-    lineItems.forEach(l => {
+    allLines.forEach(l => {
       if (l.type !== 'material') return;
       const pid = l.product_id || l.detail;
       if (pid && !allIds.includes(pid)) allIds.push(pid);
@@ -515,7 +561,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     };
 
     fetchProductData();
-  }, [lineItems]);
+  }, [lineItems, jobeDetail]);
 
   // Open product modal (same as InventoryManager)
   const handleOpenProductModal = useCallback(async (productId) => {
@@ -613,8 +659,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         setProductDataMap(prev => ({ ...prev, [editingProduct.product_id]: updatedProduct }));
 
         // Actualiser unit_price sur toutes les lignes matériaux qui utilisent ce produit
+        // (lignes de la facture + détail interne du forfait)
         const newSellingPrice = parseFloat(updatedProduct.selling_price) || 0;
-        setLineItems(prev => prev.map(line => {
+        const refreshLines = (lines) => lines.map(line => {
           if (line.type !== 'material') return line;
           const pid = line.product_id || line.detail;
           if (pid !== editingProduct.product_id) return line;
@@ -624,7 +671,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             unit_price: newSellingPrice,
             total: Math.round(qty * newSellingPrice * 100) / 100,
           };
-        }));
+        });
+        setLineItems(refreshLines);
+        setJobeDetail(refreshLines);
       }
 
       setEditingProduct(null);
@@ -687,6 +736,75 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     }]);
   }, []);
 
+  // ---- Détail interne du forfait (Prix Jobé) ----
+  const updateDetailLine = useCallback((index, field, value) => {
+    setJobeDetail(prev => {
+      const updated = [...prev];
+      const line = { ...updated[index] };
+      line[field] = value;
+      if (field === 'quantity' || field === 'unit_price') {
+        const qty = parseFloat(field === 'quantity' ? value : line.quantity) || 0;
+        const price = parseFloat(field === 'unit_price' ? value : line.unit_price) || 0;
+        line.total = Math.round(qty * price * 100) / 100;
+      }
+      updated[index] = line;
+      return updated;
+    });
+  }, []);
+
+  const removeDetailLine = useCallback((index) => {
+    setJobeDetail(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const addDetailLine = useCallback(() => {
+    setJobeDetail(prev => [...prev, {
+      id: `detail-other-${Date.now()}`,
+      type: 'other',
+      description: '',
+      detail: '',
+      quantity: 1,
+      unit_price: 0,
+      total: 0,
+    }]);
+  }, []);
+
+  // Régénère le détail depuis le BT/BL (source en création, ou rechargé en édition)
+  const regenerateDetailFromSource = useCallback(() => {
+    const src = sourceData || fetchedSource;
+    if (!src) return;
+    if (jobeDetail.length > 0 && !confirm('Remplacer le détail actuel par les composantes du document source ?')) return;
+    setJobeDetail(generateSourceLines(sourceType, src, settings));
+  }, [sourceData, fetchedSource, sourceType, settings, jobeDetail.length]);
+
+  // Cocher « Prix forfaitaire » sur une facture qui n'a pas encore de détail → on le construit
+  const handleTogglePrixJobe = useCallback((checked) => {
+    setIsPrixJobe(checked);
+    if (checked && jobeDetail.length === 0) {
+      const src = sourceData || fetchedSource;
+      if (src) setJobeDetail(generateSourceLines(sourceType, src, settings));
+    }
+  }, [jobeDetail.length, sourceData, fetchedSource, sourceType, settings]);
+
+  // Reporte le total du détail sur la ligne forfait de la facture (qté 1)
+  const applyDetailTotalToForfait = useCallback(() => {
+    const total = sumTotals(jobeDetail);
+    setLineItems(prev => {
+      const idx = prev.findIndex(l => l.type === 'forfait');
+      if (idx === -1) {
+        return [{
+          id: 'forfait-1',
+          type: 'forfait',
+          description: sourceDescription || 'Travaux forfaitaires',
+          detail: '',
+          quantity: 1,
+          unit_price: total,
+          total,
+        }, ...prev];
+      }
+      return prev.map((l, i) => i === idx ? { ...l, quantity: 1, unit_price: total, total } : l);
+    });
+  }, [jobeDetail, sourceDescription]);
+
   // Cocher/décocher un destinataire email
   const toggleRecipient = useCallback((index) => {
     setEmailRecipients(prev => prev.map((r, i) => i === index ? { ...r, checked: !r.checked } : r));
@@ -719,6 +837,19 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     [emailRecipients]
   );
 
+  // Détail du forfait à enregistrer (Prix Jobé seulement). Le coûtant est figé sur chaque
+  // ligne matériau au moment de la sauvegarde (trace de la marge à la facturation).
+  const buildJobeDetailPayload = () => {
+    if (!isPrixJobe) return null;
+    return jobeDetail.map(line => {
+      if (line.type !== 'material') return line;
+      const pid = line.product_id || line.detail;
+      const info = pid ? productDataMap[pid] : null;
+      const cost = info ? parseFloat(info.cost_price) : parseFloat(line.cost_price);
+      return { ...line, cost_price: Number.isFinite(cost) ? cost : null };
+    });
+  };
+
   // Sauvegarder facture (retirer product_id des line_items avant sauvegarde)
   const handleSave = async (andSend = false) => {
     // Si on envoie et qu'il y a des destinataires possibles mais aucun coché → bloquer
@@ -731,6 +862,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     setError(null);
 
     const cleanedLineItems = lineItems.map(({ product_id, ...rest }) => rest);
+    const jobeDetailPayload = buildJobeDetailPayload();
 
     try {
       let invoiceId = invoice?.id;
@@ -754,6 +886,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             total_transport: totals.totalTransport,
             is_prix_jobe: isPrixJobe,
             notes,
+            jobe_detail_items: jobeDetailPayload,
           }),
         });
         const data = await res.json();
@@ -762,6 +895,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           setSaving(false); setSending(false);
           return;
         }
+        if (data.warning) alert(data.warning);
       } else {
         const btOrBl = sourceData;
         const res = await fetch('/api/invoices', {
@@ -788,6 +922,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             total_transport: totals.totalTransport,
             is_prix_jobe: isPrixJobe,
             notes,
+            jobe_detail_items: jobeDetailPayload,
           }),
         });
         const data = await res.json();
@@ -840,6 +975,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     setError(null);
 
     const cleanedLineItems = lineItems.map(({ product_id, ...rest }) => rest);
+    const jobeDetailPayload = buildJobeDetailPayload();
 
     try {
       let invoiceId = invoice?.id;
@@ -864,6 +1000,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             total_transport: totals.totalTransport,
             is_prix_jobe: isPrixJobe,
             notes,
+            jobe_detail_items: jobeDetailPayload,
           }),
         });
         const data = await res.json();
@@ -872,6 +1009,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           setPrinting(false);
           return;
         }
+        if (data.warning) alert(data.warning);
       } else {
         const btOrBl = sourceData;
         const res = await fetch('/api/invoices', {
@@ -898,6 +1036,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             total_transport: totals.totalTransport,
             is_prix_jobe: isPrixJobe,
             notes,
+            jobe_detail_items: jobeDetailPayload,
           }),
         });
         const data = await res.json();
@@ -986,15 +1125,53 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   };
 
   // Nombre de lignes matériaux dont la marge est sous le seuil
+  // (lignes de la facture + détail interne du forfait quand Prix Jobé)
   const lowMarginCount = useMemo(() => {
-    return lineItems.reduce((count, line) => {
+    const lines = isPrixJobe ? [...lineItems, ...jobeDetail] : lineItems;
+    return lines.reduce((count, line) => {
       if (line.type !== 'material') return count;
       const pid = line.product_id || line.detail;
       const info = pid ? productDataMap[pid] : null;
-      if (info && isLowMargin(info.cost_price, line.unit_price)) return count + 1;
+      const cost = info ? info.cost_price : line.cost_price;
+      if (cost != null && isLowMargin(cost, line.unit_price)) return count + 1;
       return count;
     }, 0);
-  }, [lineItems, productDataMap, minMarginPercent]);
+  }, [lineItems, jobeDetail, isPrixJobe, productDataMap, minMarginPercent]);
+
+  // Coûtant unitaire d'une ligne du détail: fiche produit (vivant) sinon coûtant figé à la sauvegarde
+  const getDetailCost = (line) => {
+    if (line.type !== 'material') return null;
+    const info = getProductInfo(line);
+    const cost = info ? parseFloat(info.cost_price) : parseFloat(line.cost_price);
+    return Number.isFinite(cost) ? cost : null;
+  };
+
+  // Sommaire du détail interne du forfait (Prix Jobé) — comparaison avec le prix facturé
+  const jobeSummary = useMemo(() => {
+    const byType = (t) => sumTotals(jobeDetail.filter(l => l.type === t));
+    const labor = byType('labor');
+    const transport = byType('transport');
+    const materials = byType('material');
+    const other = sumTotals(jobeDetail.filter(l => !['labor', 'transport', 'material'].includes(l.type)));
+    const total = round2(labor + transport + materials + other);
+    let materialsCost = 0;
+    let unknownCostCount = 0;
+    jobeDetail.forEach(l => {
+      if (l.type !== 'material') return;
+      const cost = getDetailCost(l);
+      if (cost === null) { unknownCostCount++; return; }
+      materialsCost += cost * (parseFloat(l.quantity) || 0);
+    });
+    materialsCost = round2(materialsCost);
+    const billed = round2(totals.subtotal);
+    const gap = round2(billed - total);
+    const gapPercent = total > 0 ? (gap / total) * 100 : null;
+    const belowCost = materialsCost > 0 && billed < materialsCost;
+    return { labor, transport, materials, other, total, materialsCost, unknownCostCount, billed, gap, gapPercent, belowCost };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobeDetail, productDataMap, totals.subtotal]);
+
+  const canRegenerateDetail = !!(sourceData || fetchedSource);
 
   const sourceNumber = invoice?.source_number || (sourceData && (source.type === 'bt' ? sourceData.bt_number : sourceData.bl_number)) || '';
   const clientName = invoice?.client_name || sourceData?.client?.name || sourceData?.client_name || '';
@@ -1129,7 +1306,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 <input
                   type="checkbox"
                   checked={isPrixJobe}
-                  onChange={(e) => setIsPrixJobe(e.target.checked)}
+                  onChange={(e) => handleTogglePrixJobe(e.target.checked)}
                   disabled={isLocked}
                   className={`w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500 ${isLocked ? 'opacity-60' : ''}`}
                 />
@@ -1423,6 +1600,298 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               <span>Matériaux: {formatCurrency(totals.totalMaterials)}</span>
             </div>
           </div>
+
+          {/* Détail INTERNE du forfait (Prix Jobé) — jamais sur la facture client */}
+          {isPrixJobe && (
+            <div className="border-2 border-purple-200 dark:border-purple-800 rounded-lg overflow-hidden">
+              <div className="bg-purple-50 dark:bg-purple-900/20 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-purple-800 dark:text-purple-300 flex items-center gap-1.5">
+                    <Calculator className="w-4 h-4" />
+                    Détail du forfait (interne)
+                  </h3>
+                  <p className="text-xs text-purple-700/80 dark:text-purple-300/80 flex items-center gap-1 mt-0.5">
+                    <EyeOff className="w-3.5 h-3.5 flex-shrink-0" />
+                    N&apos;apparaît pas sur la facture client — sert à vérifier les composantes et à fixer le prix forfaitaire.
+                  </p>
+                </div>
+                {!isLocked && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {canRegenerateDetail && (
+                      <button
+                        type="button"
+                        onClick={regenerateDetailFromSource}
+                        className="min-h-[44px] sm:min-h-0 px-2.5 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 flex items-center gap-1"
+                        title={`Reconstruire le détail depuis le ${sourceType === 'bt' ? 'BT' : 'BL'}`}
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Depuis le {sourceType === 'bt' ? 'BT' : 'BL'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={addDetailLine}
+                      className="min-h-[44px] sm:min-h-0 px-2.5 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Ajouter ligne
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* En-tête desktop */}
+              <div className="hidden sm:grid grid-cols-12 gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase border-t border-purple-200 dark:border-purple-800">
+                <div className="col-span-4">Description</div>
+                <div className="col-span-2">Code / Détail</div>
+                <div className="col-span-1 text-center">Qté</div>
+                <div className="col-span-2 text-right">Vendant</div>
+                <div className="col-span-1 text-right">Coûtant</div>
+                <div className="col-span-1 text-right">Total</div>
+                <div className="col-span-1"></div>
+              </div>
+
+              {jobeDetail.length === 0 ? (
+                <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-purple-200 dark:border-purple-800">
+                  Aucune composante. {canRegenerateDetail ? `Utilisez « Depuis le ${sourceType === 'bt' ? 'BT' : 'BL'} » ou « Ajouter ligne ».` : 'Utilisez « Ajouter ligne ».'}
+                </div>
+              ) : (
+                jobeDetail.map((line, index) => {
+                  const cost = getDetailCost(line);
+                  const productInfo = line.type === 'material' ? getProductInfo(line) : null;
+                  const productCode = line.type === 'material' ? (line.product_id || line.detail) : null;
+                  const lowMargin = line.type === 'material' && cost !== null && isLowMargin(cost, line.unit_price);
+                  const qtyNum = parseFloat(line.quantity) || 0;
+                  const inputBase = `border rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`;
+                  const priceClass = lowMargin
+                    ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 font-semibold'
+                    : 'border-gray-300 dark:border-gray-600';
+                  const rowBg = line.type === 'labor' ? 'bg-blue-50/50 dark:bg-blue-900/10'
+                    : line.type === 'transport' ? 'bg-yellow-50/50 dark:bg-yellow-900/10'
+                    : line.type === 'material' ? 'bg-white dark:bg-gray-900'
+                    : 'bg-gray-50/50 dark:bg-gray-800/50';
+                  const typeLabel = line.type === 'labor' ? 'M.O.' : line.type === 'transport' ? 'Transport' : line.type === 'material' ? 'Matériau' : 'Autre';
+
+                  return (
+                    <div key={`${line.id || 'd'}-${index}`} className={`border-t border-purple-100 dark:border-purple-900/40 px-3 py-1.5 ${rowBg}`}>
+                      {/* Mobile */}
+                      <div className="sm:hidden space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[10px] uppercase font-semibold text-gray-500 dark:text-gray-400">{typeLabel}</span>
+                            <input
+                              type="text"
+                              value={line.description}
+                              onChange={(e) => updateDetailLine(index, 'description', e.target.value)}
+                              readOnly={isLocked}
+                              className={`w-full px-2 py-1.5 ${inputBase} border-gray-300 dark:border-gray-600`}
+                              placeholder="Description"
+                              autoCorrect="on"
+                              autoCapitalize="sentences"
+                              spellCheck={true}
+                            />
+                          </div>
+                          {!isLocked && (
+                            <button onClick={() => removeDetailLine(index)} className="p-2 mt-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded" title="Retirer">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        {productCode && (
+                          <button onClick={() => handleOpenProductModal(productCode)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-mono flex items-center gap-1">
+                            <Package className="w-3 h-3" />
+                            {productCode}
+                          </button>
+                        )}
+                        {!productCode && line.detail && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{line.detail}</div>
+                        )}
+                        <div className="grid grid-cols-4 gap-2">
+                          <div>
+                            <label className="text-[10px] text-gray-500 dark:text-gray-400">Qté</label>
+                            <input type="number" value={line.quantity} onChange={(e) => updateDetailLine(index, 'quantity', e.target.value)} onFocus={(e) => e.target.select()} readOnly={isLocked}
+                              className={`w-full px-1.5 py-1.5 text-center ${inputBase} border-gray-300 dark:border-gray-600`} inputMode="decimal" step="0.01" autoCorrect="off" autoCapitalize="off" spellCheck={false} />
+                          </div>
+                          <div>
+                            <label className={`text-[10px] ${lowMargin ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>Vendant</label>
+                            <input type="number" value={line.unit_price} onChange={(e) => updateDetailLine(index, 'unit_price', e.target.value)} onFocus={(e) => e.target.select()} readOnly={isLocked}
+                              className={`w-full px-1.5 py-1.5 text-right ${inputBase} ${priceClass}`} inputMode="decimal" step="0.01" autoCorrect="off" autoCapitalize="off" spellCheck={false} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 dark:text-gray-400">Coûtant</label>
+                            <div className="px-1.5 py-1.5 text-sm text-right text-gray-700 dark:text-gray-300">{cost !== null ? formatCurrency(cost) : '—'}</div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 dark:text-gray-400">Total</label>
+                            <div className="px-1.5 py-1.5 text-sm font-semibold text-right text-gray-900 dark:text-gray-100">{formatCurrency(line.total)}</div>
+                          </div>
+                        </div>
+                        {line.type === 'material' && cost !== null && (
+                          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                            {productInfo && <span>En main: <span className="font-medium text-gray-700 dark:text-gray-300">{parseFloat(productInfo.stock_qty) || 0}</span></span>}
+                            <span className={`font-medium flex items-center gap-1 ${lowMargin ? 'text-red-600 dark:text-red-400' : getMarginColor(cost, line.unit_price)}`}>
+                              {lowMargin && <AlertTriangle className="w-3 h-3" />}
+                              Marge: {getMarginPercentage(cost, line.unit_price)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Desktop */}
+                      <div className="hidden sm:block">
+                        <div className="grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-4">
+                            <input
+                              type="text"
+                              value={line.description}
+                              onChange={(e) => updateDetailLine(index, 'description', e.target.value)}
+                              readOnly={isLocked}
+                              className={`w-full px-2 py-1 ${inputBase} border-gray-300 dark:border-gray-600`}
+                              placeholder="Description"
+                              autoCorrect="on"
+                              autoCapitalize="sentences"
+                              spellCheck={true}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            {productCode ? (
+                              <button
+                                onClick={() => handleOpenProductModal(productCode)}
+                                className="w-full px-2 py-1 border border-blue-300 dark:border-blue-600 rounded bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-left truncate flex items-center gap-1 cursor-pointer"
+                                title="Voir la fiche produit"
+                              >
+                                <Package className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span className="truncate font-mono text-xs">{productCode}</span>
+                              </button>
+                            ) : (
+                              <input
+                                type="text"
+                                value={line.detail || ''}
+                                onChange={(e) => updateDetailLine(index, 'detail', e.target.value)}
+                                readOnly={isLocked}
+                                className={`w-full px-2 py-1 ${inputBase} border-gray-300 dark:border-gray-600`}
+                                placeholder={typeLabel}
+                                autoCorrect="on"
+                                autoCapitalize="sentences"
+                                spellCheck={true}
+                              />
+                            )}
+                          </div>
+                          <div className="col-span-1">
+                            <input type="number" value={line.quantity} onChange={(e) => updateDetailLine(index, 'quantity', e.target.value)} onFocus={(e) => e.target.select()} readOnly={isLocked}
+                              className={`w-full px-1.5 py-1 text-center ${inputBase} border-gray-300 dark:border-gray-600`} inputMode="decimal" step="0.01" autoCorrect="off" autoCapitalize="off" spellCheck={false} />
+                          </div>
+                          <div className="col-span-2">
+                            <div className="relative">
+                              <input type="number" value={line.unit_price} onChange={(e) => updateDetailLine(index, 'unit_price', e.target.value)} onFocus={(e) => e.target.select()} readOnly={isLocked}
+                                title={lowMargin ? `Marge sous le seuil de ${minMarginPercent}%` : undefined}
+                                className={`w-full px-2 py-1 text-right ${inputBase} ${priceClass} ${lowMargin ? 'pr-7' : ''}`} inputMode="decimal" step="0.01" autoCorrect="off" autoCapitalize="off" spellCheck={false} />
+                              {lowMargin && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />}
+                            </div>
+                          </div>
+                          <div className="col-span-1 text-right text-sm text-gray-700 dark:text-gray-300" title={cost !== null ? `Coûtant total: ${formatCurrency(cost * qtyNum)}` : undefined}>
+                            {cost !== null ? formatCurrency(cost) : <span className="text-gray-400">—</span>}
+                          </div>
+                          <div className="col-span-1 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {formatCurrency(line.total)}
+                          </div>
+                          <div className="col-span-1 text-center">
+                            {!isLocked && (
+                              <button onClick={() => removeDetailLine(index)} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors" title="Retirer du détail">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        {line.type === 'material' && cost !== null && (
+                          <div className="grid grid-cols-12 gap-2 mt-0.5">
+                            <div className="col-span-4"></div>
+                            <div className="col-span-8 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 pl-1">
+                              {productInfo && <span>En main: <span className="font-medium text-gray-700 dark:text-gray-300">{parseFloat(productInfo.stock_qty) || 0}</span></span>}
+                              <span className={`font-medium flex items-center gap-1 ${lowMargin ? 'text-red-600 dark:text-red-400' : getMarginColor(cost, line.unit_price)}`}>
+                                {lowMargin && <AlertTriangle className="w-3 h-3" />}
+                                Marge: {getMarginPercentage(cost, line.unit_price)}
+                                {lowMargin && ` (< ${minMarginPercent}%)`}
+                              </span>
+                              {productInfo?.supplier && <span>Fourn.: <span className="font-medium text-gray-700 dark:text-gray-300">{productInfo.supplier}</span></span>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {/* Sommaire du détail + comparaison avec le prix facturé */}
+              <div className="border-t border-purple-200 dark:border-purple-800 bg-purple-50/60 dark:bg-purple-900/10 px-3 py-3">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      <span>M.O.: <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.labor)}</span></span>
+                      <span>Transport: <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.transport)}</span></span>
+                      <span>Matériaux (vendant): <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.materials)}</span></span>
+                      {jobeSummary.other !== 0 && (
+                        <span>Autre: <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.other)}</span></span>
+                      )}
+                    </div>
+                    <div>
+                      Coûtant matériaux: <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.materialsCost)}</span>
+                      {jobeSummary.unknownCostCount > 0 && (
+                        <span className="ml-1 text-amber-600 dark:text-amber-400">({jobeSummary.unknownCostCount} sans coûtant connu)</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="sm:min-w-[260px] space-y-1 text-sm">
+                    <div className="flex justify-between text-gray-800 dark:text-gray-200">
+                      <span>Total du détail (vendant):</span>
+                      <span className="font-bold">{formatCurrency(jobeSummary.total)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-800 dark:text-gray-200">
+                      <span>Prix facturé au client:</span>
+                      <span className="font-bold">{formatCurrency(jobeSummary.billed)}</span>
+                    </div>
+                    <div className={`flex justify-between font-medium ${
+                      jobeSummary.belowCost ? 'text-red-600 dark:text-red-400'
+                        : jobeSummary.gap < 0 ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-green-600 dark:text-green-400'
+                    }`}>
+                      <span>Écart vs détail:</span>
+                      <span>
+                        {jobeSummary.gap > 0 ? '+' : ''}{formatCurrency(jobeSummary.gap)}
+                        {jobeSummary.gapPercent !== null && ` (${jobeSummary.gapPercent > 0 ? '+' : ''}${jobeSummary.gapPercent.toFixed(1)} %)`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {jobeSummary.belowCost && (
+                  <div className="mt-2 text-xs text-red-700 dark:text-red-400 flex items-start gap-1.5">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <span>Le prix facturé ({formatCurrency(jobeSummary.billed)}) est <strong>inférieur au coûtant des matériaux</strong> ({formatCurrency(jobeSummary.materialsCost)}). Alerte interne seulement.</span>
+                  </div>
+                )}
+
+                {!isLocked && (
+                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={applyDetailTotalToForfait}
+                      disabled={Math.abs(jobeSummary.gap) < 0.005 && lineItems.some(l => l.type === 'forfait')}
+                      className="min-h-[44px] px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Reporter le total du détail sur la ligne « forfait » de la facture"
+                    >
+                      <Calculator className="w-4 h-4" />
+                      Utiliser ce total comme prix forfaitaire ({formatCurrency(jobeSummary.total)})
+                    </button>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Ou modifiez directement le prix unitaire de la ligne forfait ci-dessus.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Description BT/BL */}
           {sourceDescription && (

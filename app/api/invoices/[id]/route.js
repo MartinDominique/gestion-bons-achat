@@ -4,9 +4,12 @@
  *              - GET: Récupérer une facture complète par ID
  *              - PUT: Mettre à jour une facture (lignes, totaux, statut)
  *              - DELETE: Supprimer une facture (brouillon seulement)
- * @version 1.2.0
- * @date 2026-09-14
+ * @version 1.3.0
+ * @date 2026-09-17
  * @changelog
+ *   1.3.0 - PUT: accepte jobe_detail_items (détail interne du forfait Prix Jobé). Si la
+ *           colonne n'existe pas encore (migration 20260917 non passée), la facture est
+ *           mise à jour sans le détail et la réponse porte un warning explicite
  *   1.2.0 - Ajout email_3 + additional_emails au SELECT client (tous les destinataires possibles)
  *   1.1.0 - Ajout email_2 au SELECT client (sélection des destinataires d'envoi facture)
  *   1.0.0 - Version initiale (Phase B Facturation MVP)
@@ -69,6 +72,7 @@ export async function PUT(request, { params }) {
       'total_materials', 'total_labor', 'total_transport',
       'status', 'is_prix_jobe', 'notes',
       'sent_at', 'paid_at',
+      'jobe_detail_items',
     ];
 
     const updates = { updated_at: new Date().toISOString() };
@@ -83,12 +87,31 @@ export async function PUT(request, { params }) {
       updates.paid_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from('invoices')
       .update(updates)
       .eq('id', parseInt(id))
       .select()
       .single();
+
+    // Colonne jobe_detail_items absente (migration 20260917 non passée): PostgREST répond
+    // PGRST204 ou Postgres 42703. On réessaie sans le détail pour ne pas bloquer la facture.
+    let jobeColumnMissing = false;
+    if (
+      error && 'jobe_detail_items' in updates &&
+      (error.code === 'PGRST204' || error.code === '42703') &&
+      /jobe_detail_items/.test(error.message || '')
+    ) {
+      jobeColumnMissing = true;
+      console.warn('Colonne invoices.jobe_detail_items absente — facture mise à jour sans le détail du forfait');
+      const { jobe_detail_items: _omit, ...rest } = updates;
+      ({ data, error } = await supabaseAdmin
+        .from('invoices')
+        .update(rest)
+        .eq('id', parseInt(id))
+        .select()
+        .single());
+    }
 
     if (error) {
       console.error('Erreur mise à jour facture:', error);
@@ -102,6 +125,9 @@ export async function PUT(request, { params }) {
       success: true,
       data,
       message: `Facture ${data.invoice_number} mise à jour`,
+      warning: jobeColumnMissing
+        ? `Facture ${data.invoice_number} mise à jour, MAIS le détail interne du forfait n'a pas pu être enregistré (colonne jobe_detail_items absente — exécuter la migration 20260917_add_invoice_jobe_detail.sql). Le prix forfaitaire est bien sauvegardé.`
+        : null,
     });
 
   } catch (error) {
