@@ -4,9 +4,10 @@
  *              - GET: Récupère les paramètres (taux horaires, taxes, facturation)
  *              - PUT: Met à jour les paramètres
  *              - Table singleton (id=1 toujours)
- * @version 1.5.0
- * @date 2026-08-27
+ * @version 1.6.0
+ * @date 2026-09-17
  * @changelog
+ *   1.6.0 - Ajout labor_cost_hourly_rate (coût horaire interne M.O., détail du forfait Prix Jobé)
  *   1.5.0 - Ajout usd_fx_fee_percent (frais bancaires sur conversion USD->CAD)
  *           et cache du dernier taux (usd_cad_rate / _date / _source)
  *   1.4.0 - Ajout champ accountant_email (rapports comptables ventes/paiements)
@@ -53,6 +54,7 @@ export async function GET() {
             invoice_ownership_note: '',
             invoice_next_number: 1,
             min_margin_percent: 10,
+            labor_cost_hourly_rate: 0,
             late_interest_annual_rate: 18,
             statement_footer_note: '',
             accountant_email: '',
@@ -98,6 +100,7 @@ export async function PUT(request) {
       'invoice_ownership_note',
       'invoice_next_number',
       'min_margin_percent',
+      'labor_cost_hourly_rate',
       'late_interest_annual_rate',
       'statement_footer_note',
       'accountant_email',
@@ -139,6 +142,12 @@ export async function PUT(request) {
     if (updates.min_margin_percent !== undefined && (updates.min_margin_percent < 0 || updates.min_margin_percent > 1000)) {
       return NextResponse.json(
         { success: false, error: 'La marge minimale doit être entre 0 et 1000 %' },
+        { status: 400 }
+      );
+    }
+    if (updates.labor_cost_hourly_rate !== undefined && (updates.labor_cost_hourly_rate < 0 || updates.labor_cost_hourly_rate > 1000)) {
+      return NextResponse.json(
+        { success: false, error: 'Le coût horaire interne doit être entre 0 et 1000 $/h' },
         { status: 400 }
       );
     }

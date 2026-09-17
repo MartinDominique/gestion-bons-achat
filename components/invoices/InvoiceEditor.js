@@ -24,9 +24,13 @@
  *                coûtant/marge). Le prix forfaitaire est pré-rempli avec le total du détail
  *                et reste modifiable; la facture client ne montre que la ligne forfait.
  *                Le détail est conservé dans invoices.jobe_detail_items (jamais sur le PDF).
- * @version 2.13.0
+ * @version 2.14.0
  * @date 2026-09-17
  * @changelog
+ *   2.14.0 - Détail du forfait: coûtant M.O. (heures × coût horaire interne des Paramètres),
+ *            coûtant total, profit brut et marge estimée de la job; alerte si le prix facturé
+ *            est sous le coûtant total. Facture Jobé existante rouverte avec un forfait à 0 $:
+ *            le prix est proposé automatiquement à partir du total du détail reconstruit.
  *   2.13.0 - Prix Jobé: la facture n'arrivait plus avec AUCUN prix (ligne forfait à 0 $, sans
  *            aucune composante visible). Ajout du « Détail du forfait » interne (toutes les
  *            composantes du BT/BL avec qté, vendant, coûtant, marge, total), pré-remplissage
@@ -390,6 +394,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
   // Seuil de marge minimale (alerte interne, jamais sur la facture client)
   const minMarginPercent = settings?.min_margin_percent ?? 10;
+  // Coût horaire interne de la M.O. (Paramètres) — 0 = non configuré
+  const laborCostRate = parseFloat(settings?.labor_cost_hourly_rate) || 0;
 
   // Facture envoyée = verrouillée en lecture seule
   const isLocked = invoice?.status === 'sent' || invoice?.status === 'paid';
@@ -430,7 +436,22 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               // passée): on reconstruit le détail depuis le BT/BL source.
               if (invoice.is_prix_jobe && storedDetail.length === 0) {
                 const srcType = invoice.source_type === 'work_order' ? 'bt' : 'bl';
-                setJobeDetail(generateSourceLines(srcType, result.data, settings));
+                const rebuilt = generateSourceLines(srcType, result.data, settings);
+                setJobeDetail(rebuilt);
+                // Brouillon Jobé créé avant 2.13.0 (forfait resté à 0 $): proposer le total
+                // du détail comme prix forfaitaire, sans toucher un prix déjà saisi.
+                const locked = invoice.status === 'sent' || invoice.status === 'paid';
+                const existing = Array.isArray(invoice.line_items) ? invoice.line_items : [];
+                const forfaitTotal = sumTotals(existing.filter(l => l.type === 'forfait'));
+                const suggested = sumTotals(rebuilt);
+                if (!locked && suggested > 0 && forfaitTotal === 0 && existing.some(l => l.type === 'forfait')) {
+                  let done = false;
+                  setLineItems(prev => prev.map(l => {
+                    if (done || l.type !== 'forfait') return l;
+                    done = true;
+                    return { ...l, quantity: 1, unit_price: suggested, total: suggested };
+                  }));
+                }
               }
             }
           })
@@ -842,6 +863,11 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const buildJobeDetailPayload = () => {
     if (!isPrixJobe) return null;
     return jobeDetail.map(line => {
+      if (line.type === 'labor') {
+        // Coût horaire interne figé (Paramètres), sinon valeur déjà enregistrée
+        const cost = laborCostRate > 0 ? laborCostRate : parseFloat(line.cost_price);
+        return { ...line, cost_price: Number.isFinite(cost) ? cost : null };
+      }
       if (line.type !== 'material') return line;
       const pid = line.product_id || line.detail;
       const info = pid ? productDataMap[pid] : null;
@@ -1138,8 +1164,15 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     }, 0);
   }, [lineItems, jobeDetail, isPrixJobe, productDataMap, minMarginPercent]);
 
-  // Coûtant unitaire d'une ligne du détail: fiche produit (vivant) sinon coûtant figé à la sauvegarde
+  // Coûtant unitaire d'une ligne du détail:
+  //   - matériau: fiche produit (vivant) sinon coûtant figé à la sauvegarde
+  //   - M.O.: coût horaire interne (Paramètres) sinon valeur figée à la sauvegarde
+  //   - transport/autre: inconnu
   const getDetailCost = (line) => {
+    if (line.type === 'labor') {
+      const cost = laborCostRate > 0 ? laborCostRate : parseFloat(line.cost_price);
+      return Number.isFinite(cost) && cost > 0 ? cost : null;
+    }
     if (line.type !== 'material') return null;
     const info = getProductInfo(line);
     const cost = info ? parseFloat(info.cost_price) : parseFloat(line.cost_price);
@@ -1156,20 +1189,41 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     const total = round2(labor + transport + materials + other);
     let materialsCost = 0;
     let unknownCostCount = 0;
+    let laborCost = 0;
+    let laborHours = 0;
+    let laborCostKnown = true;
     jobeDetail.forEach(l => {
+      if (l.type === 'labor') {
+        const hours = parseFloat(l.quantity) || 0;
+        laborHours += hours;
+        const cost = getDetailCost(l);
+        if (cost === null) { laborCostKnown = false; return; }
+        laborCost += cost * hours;
+        return;
+      }
       if (l.type !== 'material') return;
       const cost = getDetailCost(l);
       if (cost === null) { unknownCostCount++; return; }
       materialsCost += cost * (parseFloat(l.quantity) || 0);
     });
     materialsCost = round2(materialsCost);
+    laborCost = round2(laborCost);
+    laborHours = round2(laborHours);
+    if (laborHours === 0) laborCostKnown = true;
+    const totalCost = round2(materialsCost + laborCost);
     const billed = round2(totals.subtotal);
     const gap = round2(billed - total);
     const gapPercent = total > 0 ? (gap / total) * 100 : null;
-    const belowCost = materialsCost > 0 && billed < materialsCost;
-    return { labor, transport, materials, other, total, materialsCost, unknownCostCount, billed, gap, gapPercent, belowCost };
+    const profit = round2(billed - totalCost);
+    const marginPercent = totalCost > 0 ? (profit / totalCost) * 100 : null;
+    const belowCost = totalCost > 0 && billed < totalCost;
+    return {
+      labor, transport, materials, other, total,
+      materialsCost, unknownCostCount, laborCost, laborHours, laborCostKnown, totalCost,
+      billed, gap, gapPercent, profit, marginPercent, belowCost,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobeDetail, productDataMap, totals.subtotal]);
+  }, [jobeDetail, productDataMap, totals.subtotal, laborCostRate]);
 
   const canRegenerateDetail = !!(sourceData || fetchedSource);
 
@@ -1789,7 +1843,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                               {lowMargin && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />}
                             </div>
                           </div>
-                          <div className="col-span-1 text-right text-sm text-gray-700 dark:text-gray-300" title={cost !== null ? `Coûtant total: ${formatCurrency(cost * qtyNum)}` : undefined}>
+                          <div className="col-span-1 text-right text-sm text-gray-700 dark:text-gray-300" title={cost !== null ? `${line.type === 'labor' ? 'Coût interne / h — total' : 'Coûtant total'}: ${formatCurrency(cost * qtyNum)}` : (line.type === 'labor' ? 'Coût horaire interne non configuré (Paramètres)' : undefined)}>
                             {cost !== null ? formatCurrency(cost) : <span className="text-gray-400">—</span>}
                           </div>
                           <div className="col-span-1 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -1835,11 +1889,29 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         <span>Autre: <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.other)}</span></span>
                       )}
                     </div>
-                    <div>
-                      Coûtant matériaux: <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.materialsCost)}</span>
-                      {jobeSummary.unknownCostCount > 0 && (
-                        <span className="ml-1 text-amber-600 dark:text-amber-400">({jobeSummary.unknownCostCount} sans coûtant connu)</span>
-                      )}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 border-t border-purple-200/60 dark:border-purple-800/60">
+                      <span>
+                        Coûtant matériaux: <span className="font-medium text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.materialsCost)}</span>
+                        {jobeSummary.unknownCostCount > 0 && (
+                          <span className="ml-1 text-amber-600 dark:text-amber-400">({jobeSummary.unknownCostCount} sans coûtant)</span>
+                        )}
+                      </span>
+                      <span>
+                        Coûtant M.O.:{' '}
+                        {jobeSummary.laborCostKnown ? (
+                          <span className="font-medium text-gray-800 dark:text-gray-200">
+                            {formatCurrency(jobeSummary.laborCost)}
+                            {jobeSummary.laborHours > 0 && laborCostRate > 0 && ` (${jobeSummary.laborHours} h × ${formatCurrency(laborCostRate)}/h)`}
+                          </span>
+                        ) : (
+                          <span className="text-amber-600 dark:text-amber-400" title="Définir le coût horaire interne dans Paramètres → Facturation">
+                            inconnu — coût horaire interne non configuré (Paramètres)
+                          </span>
+                        )}
+                      </span>
+                      <span>
+                        Coûtant total: <span className="font-semibold text-gray-800 dark:text-gray-200">{formatCurrency(jobeSummary.totalCost)}</span>
+                      </span>
                     </div>
                   </div>
                   <div className="sm:min-w-[260px] space-y-1 text-sm">
@@ -1862,13 +1934,30 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                         {jobeSummary.gapPercent !== null && ` (${jobeSummary.gapPercent > 0 ? '+' : ''}${jobeSummary.gapPercent.toFixed(1)} %)`}
                       </span>
                     </div>
+                    {jobeSummary.totalCost > 0 && (
+                      <div className={`flex justify-between font-medium border-t border-purple-200/60 dark:border-purple-800/60 pt-1 ${
+                        jobeSummary.belowCost ? 'text-red-600 dark:text-red-400'
+                          : (jobeSummary.marginPercent !== null && jobeSummary.marginPercent < minMarginPercent) ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-green-600 dark:text-green-400'
+                      }`}>
+                        <span>Profit brut / marge:</span>
+                        <span>
+                          {jobeSummary.profit > 0 ? '+' : ''}{formatCurrency(jobeSummary.profit)}
+                          {jobeSummary.marginPercent !== null && ` (${jobeSummary.marginPercent.toFixed(1)} %)`}
+                          {!jobeSummary.laborCostKnown && ' *'}
+                        </span>
+                      </div>
+                    )}
+                    {jobeSummary.totalCost > 0 && !jobeSummary.laborCostKnown && (
+                      <div className="text-[11px] text-amber-600 dark:text-amber-400 text-right">* sans le coûtant M.O. (non configuré)</div>
+                    )}
                   </div>
                 </div>
 
                 {jobeSummary.belowCost && (
                   <div className="mt-2 text-xs text-red-700 dark:text-red-400 flex items-start gap-1.5">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                    <span>Le prix facturé ({formatCurrency(jobeSummary.billed)}) est <strong>inférieur au coûtant des matériaux</strong> ({formatCurrency(jobeSummary.materialsCost)}). Alerte interne seulement.</span>
+                    <span>Le prix facturé ({formatCurrency(jobeSummary.billed)}) est <strong>inférieur au coûtant total</strong> ({formatCurrency(jobeSummary.totalCost)} — matériaux {formatCurrency(jobeSummary.materialsCost)} + M.O. {formatCurrency(jobeSummary.laborCost)}). Alerte interne seulement.</span>
                   </div>
                 )}
 

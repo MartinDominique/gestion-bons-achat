@@ -2204,6 +2204,15 @@ strictement identiques (ils ne lisent que `line_items`).
   non passée) reconstruit depuis le BT/BL source. Facture envoyée = détail en lecture seule.
 - Le coûtant de chaque matériau est **figé** dans le détail à la sauvegarde (trace de la marge au
   moment de facturer), l'écran affiche le coûtant vivant de la fiche s'il est disponible.
+- **Coûtant M.O. (demande Martin, 2026-09-17):** nouveau paramètre « Coût horaire interne (main
+  d'oeuvre) » (Paramètres → Facturation, $/h, ce qu'une heure coûte à l'entreprise). Le sommaire
+  affiche Coûtant matériaux + Coûtant M.O. (heures × taux, taux unique sans majoration) + Coûtant
+  total + **Profit brut / marge de la job** (rouge si le prix facturé est sous le coûtant total,
+  orange si la marge est sous le seuil minimal). Non configuré (0) → « inconnu », marge marquée « * ».
+- **Factures Jobé existantes (brouillons créés avant ce correctif, forfait à 0 $):** à l'ouverture,
+  le détail est reconstruit depuis le BT et le prix forfaitaire est **proposé automatiquement**
+  (= total du détail); un prix déjà saisi n'est jamais écrasé. Une facture déjà envoyée reste
+  verrouillée (détail visible en lecture seule).
 
 **Implementation completee (2026-09-17):**
 - `supabase/migrations/20260917_add_invoice_jobe_detail.sql` (nouveau) — `invoices.jobe_detail_items` JSONB
@@ -2213,13 +2222,18 @@ strictement identiques (ils ne lisent que `line_items`).
 - `app/api/invoices/route.js` v1.4.0 — POST accepte `jobe_detail_items`; repli sans la colonne
   (PGRST204/42703) + warning
 - `app/api/invoices/[id]/route.js` v1.3.0 — PUT accepte `jobe_detail_items`; même repli + warning
+- `supabase/migrations/20260917b_add_labor_cost_hourly_rate.sql` (nouveau) — `settings.labor_cost_hourly_rate`
+- `app/api/settings/route.js` v1.6.0 + `app/(protected)/parametres/page.js` v2.7.0 — champ Coût horaire interne
+- `components/invoices/InvoiceEditor.js` v2.14.0 — coûtant M.O., coûtant total, profit/marge, auto-proposition du prix sur brouillon Jobé à 0 $
 
 **Non modifié (volontairement):** `send-email/route.js` (PDF), `report-data.js`, statistiques
 financières, état de compte, factures non-Jobé, workflow BT Prix Jobé (2 PDF).
 
-**Reste:** exécuter la migration SQL `20260917_add_invoice_jobe_detail.sql` dans Supabase Dashboard
-(sans elle, la facture est sauvegardée avec son prix, un avertissement s'affiche et le détail est
-reconstruit depuis le BT à chaque ouverture).
+**Reste:** exécuter les migrations SQL `20260917_add_invoice_jobe_detail.sql` et
+`20260917b_add_labor_cost_hourly_rate.sql` dans Supabase Dashboard, puis saisir le coût horaire
+interne dans Paramètres (sans les migrations, la facture est sauvegardée avec son prix, un
+avertissement s'affiche, le détail est reconstruit depuis le BT à chaque ouverture et le coûtant
+M.O. reste « inconnu »).
 
 ---
 
