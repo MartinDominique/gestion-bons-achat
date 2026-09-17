@@ -24,9 +24,19 @@
  *                coûtant/marge). Le prix forfaitaire est pré-rempli avec le total du détail
  *                et reste modifiable; la facture client ne montre que la ligne forfait.
  *                Le détail est conservé dans invoices.jobe_detail_items (jamais sur le PDF).
- * @version 2.14.0
+ *              - Recherche d'article (InvoiceProductSearch, même recherche tolérante que BT/BL)
+ *                pour ajouter une ligne matériau à la facture ou au détail du forfait.
+ *              - Inventaire synchronisé après chaque sauvegarde (POST sync-inventory): article
+ *                retiré/ajouté/quantité changée dans la facture → retour ou sortie de stock
+ *                par rapport au BT/BL (mouvements 'invoice', idempotent). Résumé affiché.
+ * @version 2.15.0
  * @date 2026-09-17
  * @changelog
+ *   2.15.0 - Recherche d'article (code/description, vendant, coûtant, En main) pour ajouter
+ *            un matériau dans la facture et dans le détail du forfait (fusion des quantités
+ *            si l'article est déjà présent). Après chaque sauvegarde, l'inventaire est
+ *            ajusté selon les matériaux facturés vs ceux du BT/BL (retour en stock d'un
+ *            article retiré, sortie d'un article ajouté) et un résumé est affiché.
  *   2.14.0 - Détail du forfait: coûtant M.O. (heures × coût horaire interne des Paramètres),
  *            coûtant total, profit brut et marge estimée de la job; alerte si le prix facturé
  *            est sous le coûtant total. Facture Jobé existante rouverte avec un forfait à 0 $:
@@ -89,6 +99,7 @@ import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTr
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
 import InvoiceReferencePanel from './InvoiceReferencePanel';
+import InvoiceProductSearch from './InvoiceProductSearch';
 import DisablePullToRefresh from '../DisablePullToRefresh';
 
 /**
@@ -334,6 +345,37 @@ function generateSourceLines(type, btOrBl, settings) {
 }
 
 const round2 = (n) => Math.round((parseFloat(n) || 0) * 100) / 100;
+
+/**
+ * Ajoute un article (fiche produit) à une liste de lignes: si une ligne matériau porte déjà
+ * ce code, sa quantité est augmentée de 1 (fusion, comme BT/BL); sinon une ligne est créée
+ * (qté 1, prix vendant de l'inventaire).
+ */
+function addProductToLines(lines, product) {
+  const code = String(product.product_id || '').trim();
+  if (!code) return lines;
+  const idx = lines.findIndex(l => l.type === 'material' && String(l.product_id || l.detail || '').trim() === code);
+  if (idx >= 0) {
+    return lines.map((l, i) => {
+      if (i !== idx) return l;
+      const qty = (parseFloat(l.quantity) || 0) + 1;
+      const price = parseFloat(l.unit_price) || 0;
+      return { ...l, quantity: qty, total: round2(qty * price) };
+    });
+  }
+  const price = parseFloat(product.selling_price) || 0;
+  return [...lines, {
+    id: `mat-${code}-${Date.now()}`,
+    type: 'material',
+    description: product.description || code,
+    detail: code,
+    quantity: 1,
+    unit_price: price,
+    total: round2(price),
+    product_id: code,
+    unit: product.unit || 'UN',
+  }];
+}
 
 const sumTotals = (lines) => round2(lines.reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0));
 
@@ -757,7 +799,16 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     }]);
   }, []);
 
+  // Ajouter un article trouvé par la recherche aux lignes de la facture
+  const addProductLine = useCallback((product) => {
+    setLineItems(prev => addProductToLines(prev, product));
+  }, []);
+
   // ---- Détail interne du forfait (Prix Jobé) ----
+  const addProductToDetail = useCallback((product) => {
+    setJobeDetail(prev => addProductToLines(prev, product));
+  }, []);
+
   const updateDetailLine = useCallback((index, field, value) => {
     setJobeDetail(prev => {
       const updated = [...prev];
@@ -876,6 +927,32 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     });
   };
 
+  // Après sauvegarde: ajuster l'inventaire selon les matériaux facturés vs ceux du BT/BL
+  // (article retiré → retour en stock, article ajouté / qté augmentée → sortie). Idempotent.
+  const syncInventory = async (invoiceId) => {
+    if (!invoiceId || isLocked) return;
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/sync-inventory`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.success) {
+        alert(`Facture sauvegardée, MAIS l'inventaire n'a pas pu être ajusté: ${data.details || data.error || 'erreur'}`);
+        return;
+      }
+      const adj = data.adjustments || [];
+      const skipped = data.skipped || [];
+      if (adj.length === 0 && skipped.length === 0) return;
+      const lines = adj.map(a => {
+        const q = Math.abs(a.delta);
+        return `${a.delta > 0 ? '−' : '+'}${q}  ${a.product_id} — ${a.description || ''}  (en main: ${a.previous_stock} → ${a.new_stock})`;
+      });
+      const skippedLines = skipped.map(x => `⚠ ${x.product_id}: ${x.reason}`);
+      alert(`Inventaire ajusté selon la facture (vs ${sourceType === 'bt' ? 'BT' : 'BL'}):\n${[...lines, ...skippedLines].join('\n')}`);
+    } catch (err) {
+      console.error('Sync inventaire facture:', err);
+      alert("Facture sauvegardée, MAIS l'inventaire n'a pas pu être ajusté (connexion).");
+    }
+  };
+
   // Sauvegarder facture (retirer product_id des line_items avant sauvegarde)
   const handleSave = async (andSend = false) => {
     // Si on envoie et qu'il y a des destinataires possibles mais aucun coché → bloquer
@@ -960,6 +1037,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         invoiceId = data.data.id;
         if (data.warning) alert(data.warning);
       }
+
+      await syncInventory(invoiceId);
 
       if (andSend && invoiceId) {
         const sendRes = await fetch(`/api/invoices/${invoiceId}/send-email`, {
@@ -1074,6 +1153,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         invoiceId = data.data.id;
         if (data.warning) alert(data.warning);
       }
+
+      await syncInventory(invoiceId);
 
       // Appeler send-email en mode print_only
       const sendRes = await fetch(`/api/invoices/${invoiceId}/send-email`, {
@@ -1383,7 +1464,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
             {lineItems.length === 0 ? (
               <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-                Aucune ligne. Cliquez &quot;+ Ajouter ligne&quot; pour commencer.
+                Aucune ligne. Cherchez un article ci-dessous ou cliquez &quot;+ Ligne libre&quot; pour commencer.
               </div>
             ) : (
               lineItems.map((line, index) => {
@@ -1616,12 +1697,16 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             )}
 
             {!isLocked && (
-              <div className="border-t dark:border-gray-700 px-3 py-2">
+              <div className="border-t dark:border-gray-700 px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <InvoiceProductSearch onSelect={addProductLine} placeholder="Ajouter un article de l'inventaire (code ou description)..." />
+                </div>
                 <button
                   onClick={addLine}
-                  className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium flex items-center gap-1"
+                  className="min-h-[44px] px-3 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium flex items-center gap-1 whitespace-nowrap"
+                  title="Ligne libre (texte, montant)"
                 >
-                  <Plus className="w-4 h-4" /> Ajouter ligne
+                  <Plus className="w-4 h-4" /> Ligne libre
                 </button>
               </div>
             )}
@@ -1694,6 +1779,12 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 )}
               </div>
 
+              {!isLocked && (
+                <div className="px-3 py-2 border-t border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-900">
+                  <InvoiceProductSearch onSelect={addProductToDetail} placeholder="Ajouter un article au détail (code ou description)..." compact />
+                </div>
+              )}
+
               {/* En-tête desktop */}
               <div className="hidden sm:grid grid-cols-12 gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase border-t border-purple-200 dark:border-purple-800">
                 <div className="col-span-4">Description</div>
@@ -1707,7 +1798,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
               {jobeDetail.length === 0 ? (
                 <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-purple-200 dark:border-purple-800">
-                  Aucune composante. {canRegenerateDetail ? `Utilisez « Depuis le ${sourceType === 'bt' ? 'BT' : 'BL'} » ou « Ajouter ligne ».` : 'Utilisez « Ajouter ligne ».'}
+                  Aucune composante. {canRegenerateDetail ? `Utilisez « Depuis le ${sourceType === 'bt' ? 'BT' : 'BL'} », la recherche d'article ou « Ajouter ligne ».` : 'Utilisez la recherche d\'article ou « Ajouter ligne ».'}
                 </div>
               ) : (
                 jobeDetail.map((line, index) => {
@@ -2436,7 +2527,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                                       {movement.reference_type === 'direct_receipt' && 'Réception directe'}
                                       {movement.reference_type === 'adjustment' && 'Ajustement'}
                                       {movement.reference_type === 'manual_edit' && 'Modification manuelle'}
-                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit'].includes(movement.reference_type) && movement.reference_type}
+                                      {movement.reference_type === 'invoice' && 'Facture (correction)'}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit', 'invoice'].includes(movement.reference_type) && movement.reference_type}
                                     </span>
                                   )}
                                 </div>

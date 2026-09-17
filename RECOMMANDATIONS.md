@@ -2237,4 +2237,38 @@ M.O. reste « inconnu »).
 
 ---
 
+## Facturation — Recherche d'article + inventaire ajusté selon les corrections ✅ COMPLETE (2026-09-17)
+
+**Problème (Martin, 2026-09-17):** item erroné dans un BT → retiré dans la facture, mais aucune
+recherche d'article pour en ajouter un autre (contrairement au BT/BL). Et question: que devient
+l'inventaire quand on retire/ajoute des quantités directement dans la facture? Réponse avant ce
+correctif: **rien** — le stock sorti à la signature du BT restait tel quel, faux dans les deux sens.
+
+**Solution:**
+- **Recherche d'article** (`InvoiceProductSearch.js`, même recherche tolérante que BT/BL) sous les
+  lignes de la facture et dans le « Détail du forfait » (Jobé). Résultat: code, description,
+  vendant, coûtant, En main. Un tap ajoute la ligne (qté 1, prix vendant) ou **augmente la
+  quantité** si l'article est déjà là. L'ancien « + Ajouter ligne » devient « + Ligne libre ».
+- **Synchronisation inventaire** après chaque sauvegarde (`POST /api/invoices/[id]/sync-inventory`):
+  `delta(produit) = qté facturée − qté du BT/BL − ajustements déjà appliqués`
+  → delta > 0: sortie (OUT), delta < 0: retour en stock (IN). Mouvements `reference_type='invoice'`
+  (N° de facture en référence, libellé « Facture (correction) » dans les historiques), `stock_qty`
+  mis à jour. **Idempotent**: re-sauvegarder n'ajuste que la différence; supprimer la facture
+  (brouillon) **annule** les ajustements. Résumé affiché après la sauvegarde (alerte).
+- Jobé: référence = matériaux du détail du forfait; sans détail enregistré → aucun ajustement.
+- Non couvert: un item non inventorié (code introuvable) est ignoré et signalé; la M.O. et le
+  transport ne touchent jamais l'inventaire.
+
+**Implementation completee (2026-09-17):**
+- `components/invoices/InvoiceProductSearch.js` (nouveau)
+- `components/invoices/InvoiceEditor.js` v2.15.0 — recherche (facture + détail), `addProductToLines()`, `syncInventory()` après POST/PUT dans Sauvegarder / Imprimer / Sauvegarder & Envoyer
+- `lib/services/invoice-inventory.js` (nouveau) — `syncInvoiceInventory(invoiceId, { revert })`
+- `app/api/invoices/[id]/sync-inventory/route.js` (nouveau)
+- `app/api/invoices/[id]/route.js` v1.4.0 — DELETE: revert des ajustements avant suppression
+- `components/InventoryManager.js` v3.14.1 — libellé « Facture (correction) »
+
+Aucune migration SQL requise.
+
+---
+
 *Document genere le 2026-02-05, mis a jour le 2026-09-17 par Claude AI*

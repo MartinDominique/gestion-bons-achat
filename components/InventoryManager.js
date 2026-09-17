@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.14.0
- * @date 2026-09-10
+ * @version 3.14.1
+ * @date 2026-09-17
  * @changelog
+ *   3.14.1 - Historique: libellé « Facture (correction) » pour les mouvements reference_type 'invoice'
  *   3.14.0 - Items associés: carré « As » sur chaque ligne de la liste (violet + compteur si
  *            le produit a des associés) → ouvre la fiche sur le nouvel onglet « Associés »
  *            (liste des associés, ajout/retrait de liens, section « Suggéré par »)
@@ -1495,7 +1496,8 @@ export default function InventoryManager() {
                                       {movement.reference_type === 'direct_receipt' && 'Réception directe'}
                                       {movement.reference_type === 'adjustment' && 'Ajustement'}
                                       {movement.reference_type === 'manual_edit' && 'Modification manuelle'}
-                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit'].includes(movement.reference_type) && movement.reference_type}
+                                      {movement.reference_type === 'invoice' && 'Facture (correction)'}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit', 'invoice'].includes(movement.reference_type) && movement.reference_type}
                                     </span>
                                   )}
                                 </div>
