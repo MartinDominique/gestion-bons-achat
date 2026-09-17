@@ -29,9 +29,11 @@
  *              - Inventaire synchronisé après chaque sauvegarde (POST sync-inventory): article
  *                retiré/ajouté/quantité changée dans la facture → retour ou sortie de stock
  *                par rapport au BT/BL (mouvements 'invoice', idempotent). Résumé affiché.
- * @version 2.15.0
+ * @version 2.15.1
  * @date 2026-09-17
  * @changelog
+ *   2.15.1 - Résultats de la recherche d'article visibles (liste dans le flux, plus coupée
+ *            par le cadre des lignes)
  *   2.15.0 - Recherche d'article (code/description, vendant, coûtant, En main) pour ajouter
  *            un matériau dans la facture et dans le détail du forfait (fusion des quantités
  *            si l'article est déjà présent). Après chaque sauvegarde, l'inventaire est

@@ -4,9 +4,12 @@
  *              (même recherche tolérante que BT/BL/Inventaire via /api/products/search:
  *              « p1540 » trouve « P1-540 »). Liste déroulante: code, description, vendant,
  *              En main, unité. Un tap → onSelect(product). Cibles tactiles 44 px.
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-09-17
  * @changelog
+ *   1.1.0 - Résultats affichés dans le flux (sous le champ) au lieu d'une superposition:
+ *           le cadre des lignes (overflow-hidden) et la zone défilante de la modale
+ *           coupaient la liste. Défilement automatique pour amener la liste en vue.
  *   1.0.0 - Version initiale (ajout d'article depuis la facture)
  */
 
@@ -24,6 +27,7 @@ export default function InvoiceProductSearch({ onSelect, placeholder = 'Ajouter 
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
+  const resultsRef = useRef(null);
   const requestId = useRef(0);
 
   // Recherche avec délai (300 ms), 2 caractères minimum
@@ -51,6 +55,13 @@ export default function InvoiceProductSearch({ onSelect, placeholder = 'Ajouter 
     }, 300);
     return () => clearTimeout(timer);
   }, [term]);
+
+  // Amener la liste en vue quand elle s'ouvre (elle est dans le flux, sous le champ)
+  useEffect(() => {
+    if (open && results.length > 0 && resultsRef.current) {
+      try { resultsRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+    }
+  }, [open, results.length]);
 
   // Fermer la liste au clic à l'extérieur
   useEffect(() => {
@@ -110,7 +121,7 @@ export default function InvoiceProductSearch({ onSelect, placeholder = 'Ajouter 
       </div>
 
       {open && term.trim().length >= 2 && (
-        <div className="absolute z-30 left-0 right-0 mt-1 max-h-72 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl">
+        <div ref={resultsRef} className="mt-1 max-h-72 overflow-y-auto bg-white dark:bg-gray-800 border border-emerald-300 dark:border-emerald-700 rounded-lg shadow-lg">
           {results.length === 0 ? (
             <div className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
               {searching ? 'Recherche...' : 'Aucun article trouvé'}
