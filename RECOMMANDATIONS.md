@@ -2271,4 +2271,38 @@ Aucune migration SQL requise.
 
 ---
 
+## Aucun défilement horizontal — check-up de tous les modules ✅ COMPLETE (2026-09-17)
+
+**Demande (Martin):** plus de défilement de gauche à droite, surtout desktop et tablette, dans tous
+les modules; vérifier partout et corriger ce qui déborde; rapport des changements.
+
+**Méthode:** banc de mesure automatisé (Chromium/Playwright sur le build de production, session et
+données factices injectées): 16 pages × 7 largeurs (1920, 1366, 1280, 1024, 820, 768, 390) +
+14 fenêtres modales (BA, Soumission, AF, À Commander, Éditeur de facture, Factures, État de compte,
+Rapports compta, fiche Inventaire, Gestion Clients, Note, MaterialSelector BT/BL, Statistiques
+Financier) × 4 largeurs. Mesure = `scrollWidth` du document vs largeur d'écran + liste des éléments
+qui dépassent le bord droit (hors conteneurs à défilement interne).
+
+**Résultat avant:** 50 pages sur 112 débordaient — de +481 px (1920) à +1057 px (1024). Cause unique:
+la barre de navigation (noms complets de 10 modules + courriel + « Se déconnecter » ≈ 2000 px).
+Sur l'écran de Martin (Windows à 150 %: 1920 px physiques = 1280 px CSS), toutes les pages
+défilaient. Cellulaire (390 px): +3 px et boutons qui chevauchaient le logo.
+**Résultat après:** 0 sur 112 pages, 0 sur 56 modales. Barre sur une seule ligne à 1920, 1700,
+1536, 1280, 1024, 820, 412, 390 et 360 px; barre `sticky` toujours fonctionnelle.
+
+**Implementation completee (2026-09-17):**
+- `components/Navigation.js` v2.4.0 — libellés courts + icône de 1024 à 1699 px (nom complet en
+  infobulle), noms complets à partir de 1700 px, texte plus petit, conteneur pleine largeur,
+  `flex-wrap` de secours, courriel retiré de la barre (dans l'infobulle du bouton), « Se déconnecter »
+  en icône sous 1700 px; cellulaire: logo 56 px, boutons 44 px, « Se déconnecter » dans le menu « Plus »
+- `components/DbStatusBadge.js` v1.0.1 — pas de marge horizontale sur cellulaire
+- `app/globals.css` — `html { overflow-x: hidden }` (filet de sécurité global, `<body>` non touché
+  pour préserver la barre `sticky`)
+
+**Initiatives prises (à valider):** courriel de l'utilisateur retiré de la barre (visible dans
+l'infobulle et dans le menu « Plus »); libellés abrégés sur desktop 1024-1699 px; « Se déconnecter »
+dans le menu « Plus » sur cellulaire.
+
+---
+
 *Document genere le 2026-02-05, mis a jour le 2026-09-17 par Claude AI*
