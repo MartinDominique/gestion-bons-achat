@@ -420,6 +420,7 @@ const total = subtotal + tps + tvq;
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
 /api/invoices/relink                   → Réparation liens BT/BL ↔ facture manquants (GET aperçu / POST appliquer; auto au chargement « À facturer »)
+/api/invoices/[id]/sync-inventory      → Ajuste l'inventaire selon les matériaux facturés vs BT/BL (POST; { revert:true } = retour à l'état du BT/BL)
 /api/statements/[clientId]              → État de compte client (GET, ?as_of=YYYY-MM-DD)
 /api/statements/[clientId]/send-email   → Aperçu/envoi PDF de l'état de compte (body as_of)
 /api/reports/sales                     → Rapport de ventes comptable (GET: mois/année/plage)
@@ -438,6 +439,7 @@ lib/services/email-service.js       → Génération PDF + envoi email (BT + BL 
 lib/services/pdf-common.js          → En-tête/footer PDF standardisé
 lib/services/client-signature.js    → Gestion signatures (BT + BL)
 lib/services/statement-data.js      → État de compte à une date donnée (as_of), partagé écran/PDF/courriel
+lib/services/invoice-inventory.js   → Sync inventaire ↔ facture (delta = facturé − BT/BL − déjà appliqué, mouvements 'invoice', idempotent)
 lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique)
 lib/utils/priceShift.js             → Décalage historique prix (3 niveaux)
 lib/utils/currency.js               → Conversion USD→CAD (taux + frais bancaires), cost_price toujours en CAD
@@ -479,6 +481,7 @@ components/statistics/FinancialPDFExport.js   → Export PDF rapport financier
 components/invoices/InvoiceManager.js         → Module Facturation (2 onglets: À facturer + Factures + Rapport Acomba)
 components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ + badges BA/Soumission cliquables)
 components/invoices/InvoiceReferencePanel.js  → Panneau lecture seule BA/Soumission liés (consultation prix de vente client)
+components/invoices/InvoiceProductSearch.js   → Recherche d'article (tolérante) pour ajouter un matériau à la facture / au détail du forfait
 components/invoices/AccountingReports.js      → Onglet Rapports compta (ventes + paiements, PDF + envoi comptable)
 components/notes/NotesManager.js              → Tableau de bord Notes (page d'ouverture, recherche, filtre, CRUD)
 components/notes/NoteCard.js                  → Carte note (couleur urgence, checkbox, badge projet cliquable)
@@ -976,6 +979,17 @@ CRON_SECRET                   # Auth pour cron jobs
     - Réouverture d'une facture Jobé: détail relu depuis `jobe_detail_items`, sinon reconstruit depuis le BT/BL source (anciennes factures Jobé). **Brouillon Jobé antérieur avec forfait à 0 $:** le prix forfaitaire est proposé automatiquement (= total du détail reconstruit), sans toucher un prix déjà saisi
     - **Coûtant M.O. (v2.14.0):** `supabase/migrations/20260917b_add_labor_cost_hourly_rate.sql` — `settings.labor_cost_hourly_rate` (coût interne d'une heure de M.O., $/h, défaut 0 = non configuré); `app/api/settings/route.js` v1.6.0 + `parametres/page.js` v2.7.0 (champ « Coût horaire interne (main d'oeuvre) », section Facturation). Le détail affiche Coûtant matériaux + **Coûtant M.O.** (heures × taux, sans majoration soir/fin de semaine) + **Coûtant total** + **Profit brut / marge** (rouge si prix facturé < coûtant total, orange si marge < seuil). Le coût M.O. est figé sur chaque ligne à la sauvegarde
     - **Reste:** exécuter les migrations SQL `20260917_add_invoice_jobe_detail.sql` + `20260917b_add_labor_cost_hourly_rate.sql` dans Supabase Dashboard, puis saisir le coût horaire interne dans Paramètres (sans les migrations: tout fonctionne, mais le détail est reconstruit depuis le BT à chaque ouverture et le coûtant M.O. reste « inconnu »)
+
+34. ~~**Facturation: recherche d'article + inventaire ajusté selon les corrections de la facture**~~ - ✅ COMPLÉTÉ (2026-09-17)
+    - Problème: un mauvais item dans le BT → retiré dans la facture, mais impossible d'en ajouter un autre (aucune recherche comme dans BT/BL), et le stock (déjà sorti à la signature du BT) ne suivait pas les corrections
+    - `components/invoices/InvoiceProductSearch.js` (nouveau) — recherche tolérante via `/api/products/search` (code, description, vendant, coûtant, En main, badge Non-inv.), 300 ms, Entrée = 1er résultat, 44 px
+    - `components/invoices/InvoiceEditor.js` v2.15.0 — recherche sous les lignes de la facture (+ bouton « Ligne libre » = ancien « Ajouter ligne ») et dans le « Détail du forfait »; `addProductToLines()` fusionne les quantités si l'article est déjà présent (comme BT/BL); après **chaque sauvegarde** (Sauvegarder / Imprimer / Sauvegarder & Envoyer) → `POST /api/invoices/[id]/sync-inventory` et **alerte récapitulative** des ajustements (`−2 A … (en main: 8 → 6)`)
+    - `lib/services/invoice-inventory.js` (nouveau) + `app/api/invoices/[id]/sync-inventory/route.js` (nouveau) — **delta par produit = qté facturée − qté du BT/BL − ajustements déjà appliqués** (mouvements `reference_type='invoice'`, `reference_number` = N° facture) → delta > 0 = sortie (OUT), delta < 0 = retour en stock (IN); `stock_qty` mis à jour dans `products` puis `non_inventory_items`; **idempotent** (re-sauvegarder n'ajuste que la différence); produit introuvable → ignoré et signalé; mouvement non tracé → stock remis (cohérence)
+    - Facture **Prix Jobé**: la référence est le « Détail du forfait » (`jobe_detail_items`); sans détail enregistré → aucun ajustement (jamais de retour massif par erreur)
+    - `app/api/invoices/[id]/route.js` v1.4.0 — DELETE annule d'abord les ajustements (`revert`) → inventaire ramené à l'état du BT/BL
+    - `components/InventoryManager.js` v3.14.1 + éditeur — libellé « Facture (correction) » dans l'historique des mouvements
+    - Vérifié par test sur base simulée: retrait A(2)/ajout B(1) → A +2, B −1; 2e sauvegarde → 0; B 1→3 → B −2; suppression → retour exact; Jobé sans détail → inchangé
+    - Aucune migration SQL requise
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

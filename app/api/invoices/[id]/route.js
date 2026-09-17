@@ -4,9 +4,11 @@
  *              - GET: Récupérer une facture complète par ID
  *              - PUT: Mettre à jour une facture (lignes, totaux, statut)
  *              - DELETE: Supprimer une facture (brouillon seulement)
- * @version 1.3.0
+ * @version 1.4.0
  * @date 2026-09-17
  * @changelog
+ *   1.4.0 - DELETE: les ajustements d'inventaire faits depuis la facture (mouvements
+ *           'invoice') sont annulés avant la suppression (retour à l'état du BT/BL)
  *   1.3.0 - PUT: accepte jobe_detail_items (détail interne du forfait Prix Jobé). Si la
  *           colonne n'existe pas encore (migration 20260917 non passée), la facture est
  *           mise à jour sans le détail et la réponse porte un warning explicite
@@ -17,6 +19,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { syncInvoiceInventory } from '../../../../lib/services/invoice-inventory';
 
 /**
  * GET /api/invoices/[id]
@@ -168,6 +171,18 @@ export async function DELETE(request, { params }) {
       );
     }
 
+    // Annuler les ajustements d'inventaire faits depuis cette facture (retour à l'état du BT/BL)
+    let inventoryWarning = null;
+    try {
+      const sync = await syncInvoiceInventory(invoice.id, { revert: true });
+      if (sync.skipped && sync.skipped.length > 0) {
+        inventoryWarning = `Inventaire partiellement rétabli (${sync.skipped.map(s => s.product_id).join(', ')})`;
+      }
+    } catch (invErr) {
+      console.error('Annulation ajustements inventaire facture:', invErr);
+      inventoryWarning = `Les ajustements d'inventaire de la facture n'ont pas pu être annulés (${invErr.message})`;
+    }
+
     // Retirer le lien invoice_id du BT ou BL source
     const sourceTable = invoice.source_type === 'work_order' ? 'work_orders' : 'delivery_notes';
     await supabaseAdmin
@@ -191,7 +206,8 @@ export async function DELETE(request, { params }) {
 
     return NextResponse.json({
       success: true,
-      message: `Facture ${invoice.invoice_number} supprimée avec succès`,
+      message: `Facture ${invoice.invoice_number} supprimée avec succès${inventoryWarning ? ` — ${inventoryWarning}` : ''}`,
+      warning: inventoryWarning,
     });
 
   } catch (error) {
