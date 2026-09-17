@@ -3,9 +3,13 @@
  * @description API CRUD pour les Factures (Phase B — Facturation MVP)
  *              - POST: Créer une nouvelle facture à partir d'un BT ou BL
  *              - GET: Lister les factures avec filtres, tri et pagination
- * @version 1.3.0
- * @date 2026-09-14
+ * @version 1.4.0
+ * @date 2026-09-17
  * @changelog
+ *   1.4.0 - POST: accepte jobe_detail_items (détail interne du forfait Prix Jobé: M.O.,
+ *           transport, matériaux avec vendant/coûtant). Jamais sur la facture client.
+ *           Si la colonne n'existe pas encore (migration 20260917 non passée), la facture
+ *           est créée sans le détail et la réponse porte un warning explicite
  *   1.3.0 - Numérotation auto-correctrice: le numéro attribué = max(prochain numéro des
  *           paramètres, plus grand numéro déjà émis + 1). Si l'insertion échoue quand même
  *           sur un doublon de numéro (23505), nouvelle tentative avec le numéro suivant.
@@ -54,7 +58,13 @@ export async function POST(request) {
       total_transport = 0,
       is_prix_jobe = false,
       notes,
+      jobe_detail_items = null,
     } = body;
+
+    // Détail interne du forfait (Prix Jobé) — tableau non vide seulement
+    const jobeDetail = Array.isArray(jobe_detail_items) && jobe_detail_items.length > 0
+      ? jobe_detail_items
+      : null;
 
     // Validation
     if (!client_id || !source_type || !source_id || !source_number) {
@@ -151,13 +161,28 @@ export async function POST(request) {
       is_prix_jobe,
       notes: notes || null,
       status: 'draft',
+      // Colonne ajoutée seulement si un détail existe: une facture sans détail ne
+      // dépend jamais de la migration 20260917.
+      ...(jobeDetail ? { jobe_detail_items: jobeDetail } : {}),
     };
 
-    let { data: invoice, error: invoiceError } = await supabaseAdmin
-      .from('invoices')
-      .insert([invoiceData])
-      .select()
-      .single();
+    // Colonne jobe_detail_items absente (migration non passée): PostgREST répond PGRST204
+    // (colonne inconnue du cache de schéma) ou Postgres 42703. On réinsère sans le détail.
+    const isMissingJobeColumn = (err) =>
+      !!err && (err.code === 'PGRST204' || err.code === '42703') && /jobe_detail_items/.test(err.message || '');
+    let jobeColumnMissing = false;
+    const insertInvoice = async (data) => {
+      let res = await supabaseAdmin.from('invoices').insert([data]).select().single();
+      if (isMissingJobeColumn(res.error)) {
+        jobeColumnMissing = true;
+        console.warn('Colonne invoices.jobe_detail_items absente — facture créée sans le détail du forfait');
+        const { jobe_detail_items: _omit, ...rest } = data;
+        res = await supabaseAdmin.from('invoices').insert([rest]).select().single();
+      }
+      return res;
+    };
+
+    let { data: invoice, error: invoiceError } = await insertInvoice(invoiceData);
 
     // Doublon de numéro malgré tout (course entre deux créations, ou numéro non numérique
     // dans l'historique): une seule nouvelle tentative avec le numéro suivant.
@@ -165,11 +190,7 @@ export async function POST(request) {
       nextNumber += 1;
       invoiceNumber = String(nextNumber);
       console.warn(`Numéro de facture déjà utilisé, nouvelle tentative avec ${invoiceNumber}`);
-      ({ data: invoice, error: invoiceError } = await supabaseAdmin
-        .from('invoices')
-        .insert([{ ...invoiceData, invoice_number: invoiceNumber }])
-        .select()
-        .single());
+      ({ data: invoice, error: invoiceError } = await insertInvoice({ ...invoiceData, invoice_number: invoiceNumber }));
     }
 
     if (invoiceError) {
@@ -215,6 +236,9 @@ export async function POST(request) {
     }
     if (numberErr) {
       warnings.push(`Le prochain numéro de facture n'a pas pu être incrémenté (${numberErr}): vérifiez le numéro dans Paramètres avant la prochaine facture.`);
+    }
+    if (jobeColumnMissing) {
+      warnings.push('Le détail interne du forfait n\'a pas pu être enregistré (colonne jobe_detail_items absente — exécuter la migration 20260917_add_invoice_jobe_detail.sql). Le prix forfaitaire est bien sauvegardé.');
     }
 
     return NextResponse.json({

@@ -5,9 +5,10 @@
  *              - Section Taux & Tarifs horaires (taux régulier, 1.5x, 2x, augmentation)
  *              - Section Facturation (numéros taxes, taux TPS/TVQ, conditions, N° facture)
  *              - Section Sauvegarde & Restauration (procédure + lien vers /admin/restore)
- * @version 2.6.0
- * @date 2026-08-27
+ * @version 2.7.0
+ * @date 2026-09-17
  * @changelog
+ *   2.7.0 - Ajout champ Coût horaire interne M.O. (labor_cost_hourly_rate) - détail du forfait Prix Jobé
  *   2.6.0 - Ajout section Change USD -> CAD (frais bancaires % + taux courant du jour)
  *   2.5.0 - Ajout section Sauvegarde & Restauration (procédure pas-à-pas + bouton vers la page de restauration)
  *   2.4.0 - Ajout champ Courriel du comptable (rapports comptables ventes/paiements)
@@ -477,6 +478,39 @@ export default function ParametresPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Sur une facture, le prix vendant d&apos;un article passe en rouge si sa marge
                   est sous ce seuil. Alerte interne seulement &mdash; jamais affichée au client.
+                </p>
+              </div>
+            </div>
+
+            {/* Coût horaire interne de la main d'oeuvre (Prix Jobé) */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="max-w-xs">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Coût horaire interne (main d&apos;oeuvre)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="1000"
+                    className="w-full px-3 py-2 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    value={settings?.labor_cost_hourly_rate ?? ''}
+                    onChange={(e) => updateField('labor_cost_hourly_rate', parseFloat(e.target.value) || 0)}
+                    onFocus={(e) => e.target.select()}
+                    inputMode="decimal"
+                    placeholder="0"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 dark:text-gray-400">$/h</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Ce qu&apos;une heure de main d&apos;oeuvre <strong>coûte</strong> à l&apos;entreprise
+                  (salaire + charges). Sert au « Détail du forfait » d&apos;une facture Prix Jobé pour
+                  calculer le coûtant M.O., le coûtant total et la marge de la job. Taux unique, sans
+                  majoration soir/fin de semaine. 0 = non configuré. Interne seulement.
                 </p>
               </div>
             </div>

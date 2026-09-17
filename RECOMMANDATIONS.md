@@ -757,6 +757,10 @@ await supabase
 
 **Recommandation:** Option A est plus simple a implementer et garde la flexibilite.
 
+**Note (2026-09-17):** côté **Facturation**, le cas Jobé est maintenant couvert par le « Détail du
+forfait (interne) » de l'éditeur de facture — voir la section « Facturation Prix Jobé — Détail
+interne du forfait » en fin de document. Le workflow BT (2 PDF) reste inchangé.
+
 ### 7. Systeme de Restauration (Priorite: Moyenne)
 
 **Etat actuel:** L'endpoint `/api/admin/restore` existe mais n'a jamais ete teste.
@@ -2170,4 +2174,67 @@ Contact #3, Facturation ni adresses supplémentaires). Leur sélection est persi
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-09-14 par Claude AI*
+## Facturation Prix Jobé — Détail interne du forfait (composantes, coûtant, prix) ✅ COMPLETE (2026-09-17)
+
+**Problème (Martin, 2026-09-17):** un BT fait avec la case « Prix Jobé » (petite job sans soumission
+préalable) donne, à la facturation, **une seule ligne forfait à 0 $** et aucune composante visible.
+Impossible de vérifier les matériaux (qté, vendant, coûtant), les heures, ni de fixer le prix total.
+Contrainte: ne rien changer au reste du module Facturation (il fonctionne bien) et n'envoyer au
+client qu'un résumé avec le prix forfaitaire.
+
+**Solution retenue:** ajouter une **section interne** dans l'éditeur, sans toucher aux lignes de la
+facture client. Les composantes vivent dans une nouvelle colonne (`jobe_detail_items`), jamais dans
+`line_items` — donc PDF client, rapports compta, statistiques financières et état de compte restent
+strictement identiques (ils ne lisent que `line_items`).
+
+**Comportement:**
+- Case « Prix forfaitaire (Jobe) » cochée → section violette **« Détail du forfait (interne) »** sous
+  les totaux, avec le rappel « N'apparaît pas sur la facture client ».
+- Contenu = mêmes lignes qu'une facture normale: M.O. (heures × taux, surcharges), transport,
+  matériaux (code cliquable → fiche inventaire, qté, vendant, **coûtant**, marge, En main, fournisseur).
+  Chaque ligne est modifiable (description, qté, vendant) ou retirable; « Ajouter ligne »; « Depuis le
+  BT/BL » reconstruit le détail (avec confirmation).
+- Sommaire: M.O. / Transport / Matériaux (vendant) / Autre, **Coûtant matériaux**, **Total du détail**
+  vs **Prix facturé au client** avec écart en $ et % (vert ≥ 0, orange < 0, rouge si le prix facturé
+  est sous le coûtant des matériaux — alerte interne).
+- **Pré-remplissage:** à la création, la ligne forfait prend le total du détail comme prix (modifiable).
+  Bouton « Utiliser ce total comme prix forfaitaire » pour re-synchroniser après ajustements.
+- Le bandeau « marge faible » compte aussi les lignes matériaux du détail.
+- Réouverture: détail relu depuis `jobe_detail_items`; sinon (facture Jobé antérieure ou migration
+  non passée) reconstruit depuis le BT/BL source. Facture envoyée = détail en lecture seule.
+- Le coûtant de chaque matériau est **figé** dans le détail à la sauvegarde (trace de la marge au
+  moment de facturer), l'écran affiche le coûtant vivant de la fiche s'il est disponible.
+- **Coûtant M.O. (demande Martin, 2026-09-17):** nouveau paramètre « Coût horaire interne (main
+  d'oeuvre) » (Paramètres → Facturation, $/h, ce qu'une heure coûte à l'entreprise). Le sommaire
+  affiche Coûtant matériaux + Coûtant M.O. (heures × taux, taux unique sans majoration) + Coûtant
+  total + **Profit brut / marge de la job** (rouge si le prix facturé est sous le coûtant total,
+  orange si la marge est sous le seuil minimal). Non configuré (0) → « inconnu », marge marquée « * ».
+- **Factures Jobé existantes (brouillons créés avant ce correctif, forfait à 0 $):** à l'ouverture,
+  le détail est reconstruit depuis le BT et le prix forfaitaire est **proposé automatiquement**
+  (= total du détail); un prix déjà saisi n'est jamais écrasé. Une facture déjà envoyée reste
+  verrouillée (détail visible en lecture seule).
+
+**Implementation completee (2026-09-17):**
+- `supabase/migrations/20260917_add_invoice_jobe_detail.sql` (nouveau) — `invoices.jobe_detail_items` JSONB
+- `components/invoices/InvoiceEditor.js` v2.13.0 — `generateSourceLines()`, état `jobeDetail`,
+  section « Détail du forfait », `jobeSummary`, `applyDetailTotalToForfait()`,
+  `regenerateDetailFromSource()`, `buildJobeDetailPayload()`; pré-remplissage du prix forfaitaire
+- `app/api/invoices/route.js` v1.4.0 — POST accepte `jobe_detail_items`; repli sans la colonne
+  (PGRST204/42703) + warning
+- `app/api/invoices/[id]/route.js` v1.3.0 — PUT accepte `jobe_detail_items`; même repli + warning
+- `supabase/migrations/20260917b_add_labor_cost_hourly_rate.sql` (nouveau) — `settings.labor_cost_hourly_rate`
+- `app/api/settings/route.js` v1.6.0 + `app/(protected)/parametres/page.js` v2.7.0 — champ Coût horaire interne
+- `components/invoices/InvoiceEditor.js` v2.14.0 — coûtant M.O., coûtant total, profit/marge, auto-proposition du prix sur brouillon Jobé à 0 $
+
+**Non modifié (volontairement):** `send-email/route.js` (PDF), `report-data.js`, statistiques
+financières, état de compte, factures non-Jobé, workflow BT Prix Jobé (2 PDF).
+
+**Reste:** exécuter les migrations SQL `20260917_add_invoice_jobe_detail.sql` et
+`20260917b_add_labor_cost_hourly_rate.sql` dans Supabase Dashboard, puis saisir le coût horaire
+interne dans Paramètres (sans les migrations, la facture est sauvegardée avec son prix, un
+avertissement s'affiche, le détail est reconstruit depuis le BT à chaque ouverture et le coûtant
+M.O. reste « inconnu »).
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-09-17 par Claude AI*
