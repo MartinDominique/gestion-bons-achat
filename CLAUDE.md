@@ -991,6 +991,14 @@ CRON_SECRET                   # Auth pour cron jobs
     - Vérifié par test sur base simulée: retrait A(2)/ajout B(1) → A +2, B −1; 2e sauvegarde → 0; B 1→3 → B −2; suppression → retour exact; Jobé sans détail → inchangé
     - Aucune migration SQL requise
 
+35. ~~**Aucun défilement horizontal (desktop, tablette, cellulaire) — check-up de tous les modules**~~ - ✅ COMPLÉTÉ (2026-09-17)
+    - Méthode: banc de mesure Chromium (Playwright, session + données factices) sur 16 pages × 7 largeurs (1920/1366/1280/1024/820/768/390) + 14 fenêtres modales × 4 largeurs. **Avant:** 50 pages sur 112 débordaient (jusqu'à +1057 px à 1024 px, +481 px même à 1920 px). **Après:** 0 sur 112 pages, 0 sur 56 modales
+    - **Cause unique sur desktop/tablette:** la barre de navigation (`Navigation.js`): 10 modules en noms complets + « Bonjour courriel » + « Se déconnecter » ≈ 2000 px, dans un conteneur plafonné à 1280 px. Sur un écran Windows à 150 % (1920 physiques = 1280 px CSS), toute page défilait de gauche à droite
+    - `components/Navigation.js` v2.4.0 — libellés courts avec icône de 1024 à 1699 px (Notes / BA / Soum. / Inv. / Achat / BT / Stats / Fact. / Clients / Param., nom complet en infobulle), noms complets ≥ 1700 px, texte `text-sm`, conteneur pleine largeur, `flex-wrap` de secours (2 lignes plutôt qu'un défilement), courriel retiré de la barre (dans l'infobulle de « Se déconnecter »), « Se déconnecter » en icône sous 1700 px. **Cellulaire (< 640 px):** logo 56 px, 5 boutons de 44 px, voyant BD sans marge (`DbStatusBadge.js` v1.0.1), « Se déconnecter » déplacé au bas du menu « Plus » (la barre chevauchait le logo à 390 px)
+    - `app/globals.css` — filet de sécurité `html { overflow-x: hidden }`: la page ne défile plus jamais horizontalement, un élément trop large est coupé au lieu de faire glisser toute la page. Sur `<html>` seulement (le `<body>` reste libre) → la barre `sticky` fonctionne toujours (vérifié: `top: 0` après 600 px de défilement à 9 largeurs)
+    - Tableaux larges (BT/BL, Factures, État de compte, Statistiques, AF, BA): déjà dans des conteneurs `overflow-x-auto` → défilement **interne** au tableau, jamais de la page; inchangés
+    - Non modifié: contenu des modules, formulaires BT/BL (aucun débordement mesuré)
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)

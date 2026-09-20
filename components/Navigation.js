@@ -4,9 +4,19 @@
  *              - Desktop: barre complète avec tous les modules
  *              - Tablette/Mobile: modules principaux (BA, BT, Clients) + menu "Plus"
  *              - Menu Plus (bottom sheet): Soumissions, Inventaire, Achat, Stats, Facturation, Paramètres
- * @version 2.3.0
- * @date 2026-09-14
+ *              - Aucun défilement horizontal: libellés courts de 1024 à 1699 px, complets à
+ *                partir de 1700 px (avec « Se déconnecter » en texte), courriel dans l'infobulle
+ *                du bouton; retour à la ligne en dernier recours. Mobile (< 640 px): logo et
+ *                boutons compactés, « Se déconnecter » déplacé dans le menu « Plus ».
+ * @version 2.4.0
+ * @date 2026-09-17
  * @changelog
+ *   2.4.0 - Fin du défilement horizontal causé par la barre desktop (10 modules + courriel +
+ *           « Se déconnecter » ≈ 2000 px): libellés courts (1024-1699 px), complets (≥ 1700 px),
+ *           texte plus petit, conteneur pleine largeur (plus de plafond 1280 px), flex-wrap de secours, courriel
+ *           retiré de la barre (infobulle du bouton), « Se déconnecter » en icône sous 1700 px.
+ *           Mobile (< 640 px): logo 56 px, boutons 44 px, voyant BD sans texte, « Se déconnecter »
+ *           dans le menu « Plus » (la barre débordait et chevauchait le logo à 390 px)
  *   2.3.0 - Voyant d'état de la base de données (DbStatusBadge) à côté du logo
  *   2.2.0 - Pastille compteur « À commander » sur l'onglet Achat (desktop + menu Plus)
  *   2.1.0 - Ajout onglet Notes (1er) + badge notes urgentes + route /notes protégée
@@ -193,8 +203,8 @@ return (
   <>
     {/* Navigation principale */}
     <nav className="sticky top-0 z-40 bg-white dark:bg-gray-900 shadow-md dark:shadow-gray-950/50 mb-6 print:shadow-none">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16 md:h-20">
+        <div className="w-full px-3 sm:px-4">
+          <div className="flex items-center justify-between min-h-[4rem] md:min-h-[5rem] gap-1">
             
             {/* Logo */}
             <div className="flex items-center flex-shrink-0">
@@ -204,32 +214,36 @@ return (
                   alt="Services TMT Logo"
                   width={315}
                   height={142}
-                  className="w-20 h-auto md:w-32 rounded-lg object-contain -ml-2 md:-ml-4"
+                  className="w-14 h-auto sm:w-20 md:w-28 lg:w-24 xl:w-32 rounded-lg object-contain -ml-1 sm:-ml-2 md:-ml-4"
                   priority
                 />
               </div>
               {/* Voyant base de données: vert OK / orange lente / rouge hors ligne */}
-              <div className="ml-1 md:ml-3">
+              <div className="ml-0.5 md:ml-3">
                 <DbStatusBadge />
               </div>
             </div>
 
             {/* Navigation desktop (grand écran) */}
-            <div className="hidden lg:flex lg:items-center lg:space-x-4">
-              {pages.map(({ id, name, icon: Icon }) => {
+            {/* Libellés courts de lg à xl, complets à partir de 2xl; flex-wrap = filet de
+                sécurité (2 lignes plutôt qu'un défilement horizontal de la page) */}
+            <div className="hidden lg:flex lg:items-center lg:flex-wrap lg:justify-center gap-0.5 xl:gap-1 flex-1 min-w-0 mx-1 xl:mx-2">
+              {pages.map(({ id, name, shortName, icon: Icon }) => {
                 const active = pathname.startsWith('/' + id);
                 return (
                   <Link
                     key={id}
                     href={`/${id}`}
-                    className={`relative flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                    title={name}
+                    className={`relative flex items-center px-1.5 xl:px-2.5 min-[1700px]:px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                       active
                         ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
-                    <Icon className="w-5 h-5 mr-2" />
-                    {name}
+                    <Icon className="w-5 h-5 mr-1.5 flex-shrink-0" />
+                    <span className="min-[1700px]:hidden">{shortName}</span>
+                    <span className="hidden min-[1700px]:inline">{name}</span>
                     {id === 'notes' && urgentNotes > 0 && (
                       <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-red-600 text-white">
                         {urgentNotes}
@@ -246,34 +260,38 @@ return (
 
               <button
                 onClick={() => setShowClientManager(true)}
-                className="flex items-center px-4 py-2 rounded-lg font-medium text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                title="Gestion des Clients"
+                className="flex items-center px-1.5 xl:px-2.5 min-[1700px]:px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
               >
-                <Users className="w-5 h-5 mr-2" />
-                Gestion Clients
+                <Users className="w-5 h-5 mr-1.5 flex-shrink-0" />
+                <span className="min-[1700px]:hidden">Clients</span>
+                <span className="hidden min-[1700px]:inline">Gestion Clients</span>
               </button>
 
               <Link
                 href="/parametres"
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
+                title="Paramètres"
+                className={`flex items-center px-1.5 xl:px-2.5 min-[1700px]:px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                   pathname.startsWith('/parametres')
                     ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
-                <Settings className="w-5 h-5 mr-2" />
-                Paramètres
+                <Settings className="w-5 h-5 mr-1.5 flex-shrink-0" />
+                <span className="min-[1700px]:hidden">Param.</span>
+                <span className="hidden min-[1700px]:inline">Paramètres</span>
               </Link>
             </div>
 
             {/* Navigation tablette ET mobile (modules principaux + menu Plus) */}
-            <div className="flex lg:hidden flex-1 min-w-0 items-center justify-center space-x-1 sm:space-x-2 mx-2">
+            <div className="flex lg:hidden flex-1 min-w-0 items-center justify-center gap-0.5 sm:gap-2 mx-1 sm:mx-2">
               {mobilePages.map(({ id, name, shortName, icon: Icon }) => {
                 const active = pathname.startsWith('/' + id);
                 return (
                   <Link
                     key={id}
                     href={`/${id}`}
-                    className={`relative flex flex-col items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors min-w-[60px] sm:min-w-[72px] flex-shrink-0 ${
+                    className={`relative flex flex-col items-center px-1 sm:px-4 py-2 rounded-lg font-medium transition-colors min-w-[44px] sm:min-w-[72px] flex-shrink-0 ${
                       active
                         ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -293,7 +311,7 @@ return (
 
               <button
                 onClick={() => setShowClientManager(true)}
-                className="flex flex-col items-center px-3 sm:px-4 py-2 rounded-lg font-medium text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors min-w-[60px] sm:min-w-[72px] flex-shrink-0"
+                className="flex flex-col items-center px-1 sm:px-4 py-2 rounded-lg font-medium text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors min-w-[44px] sm:min-w-[72px] flex-shrink-0"
                 title="Gestion des Clients"
               >
                 <Users className="w-5 h-5 sm:w-6 sm:h-6 mb-1" />
@@ -303,7 +321,7 @@ return (
               {/* Bouton Plus - ouvre le menu avec les modules bureau */}
               <button
                 onClick={() => setShowPlusMenu(true)}
-                className={`flex flex-col items-center px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors min-w-[60px] sm:min-w-[72px] flex-shrink-0 relative ${
+                className={`flex flex-col items-center px-1 sm:px-4 py-2 rounded-lg font-medium transition-colors min-w-[44px] sm:min-w-[72px] flex-shrink-0 relative ${
                   isPlusPageActive
                     ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700'
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -324,28 +342,19 @@ return (
             <div className="flex items-center space-x-2 flex-shrink-0">
               {/* Info utilisateur desktop */}
               {user && (
-                <div className="hidden sm:flex items-center space-x-3">
-                  <span className="text-sm text-gray-700 dark:text-gray-300 hidden lg:block">
-                    Bonjour {user.email}
-                  </span>
+                <div className="hidden sm:flex items-center min-w-0">
+                  {/* Courriel retiré de la barre (dans l'infobulle): il faisait déborder la page */}
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center text-red-600 hover:text-red-800 transition-colors p-2"
+                    title={`Se déconnecter (${user.email})`}
+                    className="flex items-center min-w-[44px] min-h-[44px] justify-center text-red-600 hover:text-red-800 transition-colors p-2 whitespace-nowrap"
                   >
-                    <LogOut className="w-4 h-4 mr-1" />
-                    <span className="hidden md:block">Se déconnecter</span>
+                    <LogOut className="w-5 h-5 min-[1700px]:w-4 min-[1700px]:h-4 min-[1700px]:mr-1" />
+                    <span className="hidden min-[1700px]:block text-sm">Se déconnecter</span>
                   </button>
                 </div>
               )}
-
-              {/* Bouton déconnexion mobile */}
-              <button
-                onClick={handleSignOut}
-                className="sm:hidden flex items-center text-red-600 hover:text-red-800 transition-colors p-2"
-                title="Se déconnecter"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
+              {/* Mobile (< 640 px): « Se déconnecter » est dans le menu « Plus » (place limitée) */}
             </div>
           </div>
         </div>
@@ -409,6 +418,17 @@ return (
                   </Link>
                 );
               })}
+            </div>
+            {/* Déconnexion (seule porte de sortie sur cellulaire, où la barre n'a plus de bouton) */}
+            <div className="px-4 pb-6 -mt-4 border-t border-gray-200 dark:border-gray-700 pt-3">
+              <button
+                onClick={() => { setShowPlusMenu(false); handleSignOut(); }}
+                className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                Se déconnecter
+                {user?.email && <span className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">({user.email})</span>}
+              </button>
             </div>
           </div>
         </div>

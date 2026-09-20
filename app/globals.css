@@ -7,6 +7,15 @@
   .dark {
     color-scheme: dark;
   }
+
+  /* Filet de sécurité: jamais de défilement horizontal de la PAGE (desktop, tablette,
+     cellulaire). Un élément trop large est coupé au lieu de faire glisser toute la page;
+     les tableaux larges gardent leur propre défilement interne (overflow-x-auto).
+     Placé sur <html> seulement: le <body> reste sans overflow, donc la barre de
+     navigation « sticky » continue de fonctionner. */
+  html {
+    overflow-x: hidden;
+  }
 }
 
 /* Ajouter ces styles à la fin de globals.css */

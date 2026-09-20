@@ -9,9 +9,10 @@
  *              - Sert à savoir si une lenteur ou des erreurs viennent de la base,
  *                pas de l'appareil, et à attendre qu'elle soit revenue avant de
  *                refaire une action (ex. renvoyer une facture)
- * @version 1.0.0
- * @date 2026-09-14
+ * @version 1.0.1
+ * @date 2026-09-17
  * @changelog
+ *   1.0.1 - Mobile: voyant sans marge horizontale (barre de navigation compactée, plus de chevauchement)
  *   1.0.0 - Version initiale (diagnostic DB lente / 500 en cascade)
  */
 
@@ -83,7 +84,7 @@ export default function DbStatusBadge() {
         onClick={() => { setShowDetail(v => !v); check(); }}
         title={detail}
         aria-label={detail}
-        className="min-w-[44px] min-h-[44px] px-2 inline-flex items-center justify-center gap-1.5 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="min-w-[44px] min-h-[44px] px-0.5 sm:px-2 inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         <Database className="w-4 h-4" />
         <span className={`w-2.5 h-2.5 rounded-full ${style.dot}`} />
