@@ -37,20 +37,24 @@ jobs:
         run: |
           echo "🚀 Démarrage du backup..."
 
+          # La route pagine 29 tables (~1-2 min); 7 min de marge (Vercel maxDuration = 300 s)
+          start=$(date +%s)
           response=$(curl -s -w "\n%{http_code}" \
-            --max-time 300 \
+            --max-time 420 \
             -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.VERCEL_URL }}/api/cron/backup")
 
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n-1)
+          elapsed=$(( $(date +%s) - start ))
 
-          echo "📊 Statut HTTP: $http_code"
+          echo "📊 Statut HTTP: $http_code (${elapsed}s)"
           echo "📄 Réponse: $body"
 
           if [ "$http_code" = "000" ]; then
-            echo "❌ Erreur de connexion - URL inaccessible ou timeout"
+            echo "❌ Erreur de connexion - URL inaccessible ou timeout (${elapsed}s)"
+            echo "👉 Vérifier le voyant BD de l'app / l'état du projet Supabase (instance saturée?)"
             exit 1
           fi
 
@@ -61,6 +65,12 @@ jobs:
 
           if [ "$http_code" != "200" ]; then
             echo "❌ Erreur lors du backup (HTTP $http_code)"
+            echo "👉 HTTP 500 + courriel « INCOMPLET » = une table est en erreur ou partielle (voir le résumé du courriel)"
+            exit 1
+          fi
+
+          if ! echo "$body" | grep -q '"success":true'; then
+            echo "❌ La route n'a pas confirmé le succès (voir la réponse ci-dessus)"
             exit 1
           fi
 
