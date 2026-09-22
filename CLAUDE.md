@@ -154,6 +154,16 @@ n'est **jamais sauvegardée**, et donc **définitivement perdue** en cas de rest
 4. **Table sans colonne `created_at`** (ex: `settings`, singleton) → aucune action spéciale : le backup
    fait déjà un repli automatique sans tri. Ne PAS ajouter de `.order('created_at')` qui casserait la table.
 5. Incrémenter la version + changelog de l'en-tête de `route.ts` (voir Standards de Code).
+6. **Colonne lourde** (fichier/PDF en base64, image) → NE JAMAIS la stocker en base : utiliser Supabase
+   Storage. Si elle existe déjà, l'ajouter à `EXCLUDED_COLUMNS` de `route.ts` (comme
+   `purchase_orders.files`), sinon la lecture expire (« statement timeout ») et la table entière
+   disparaît du backup.
+
+**Fonctionnement (v3.0.0, 2026-09-21) :** lecture **paginée** par 1000 lignes (aucune table coupée au
+plafond « max rows » de Supabase), 3 tables à la fois, compte exact vérifié (lu = attendu). Une table en
+erreur ou partielle ⇒ courriel au sujet **« ⚠️ … INCOMPLET »** + HTTP 500 ⇒ **workflow GitHub rouge**.
+Un courriel d'échec du workflow signifie donc : soit la base ne répond pas (voir voyant BD / projet
+Supabase), soit une table est en erreur (le résumé du courriel de backup dit laquelle).
 
 **Checklist rapide lors de l'ajout d'une table :**
 - [ ] Migration SQL créée dans `supabase/migrations/`
@@ -1006,6 +1016,11 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Backup quotidien: échec « exit code 28 » (21 sept.), BA jamais sauvegardés, tables coupées à 1000 lignes~~ → Corrigé (2026-09-21)
+  - Symptôme: workflow « Backup Quotidien Supabase » #297 puis #298 en échec (curl abandonne après 5 min sans réponse), aucun courriel de backup, app et tableau de bord Supabase en « connection timeout » (instance gratuite saturée, revenue d'elle-même ~30 min plus tard).
+  - Trous silencieux dans TOUS les backups « réussis » depuis au moins le 26 juillet: (1) `purchase_orders` (BA clients) à **0 enregistrements** — la colonne `files` (PDF joints en base64, jusqu'à 10 Mo) faisait expirer le `select *` (« canceling statement due to statement timeout »), et les 2 essais lourds par jour pesaient sur la mémoire de l'instance; (2) `products`, `work_order_materials`, `inventory_movements` à **exactement 1000 lignes** — plafond « max rows » de Supabase, jamais paginé. Le workflow affichait quand même « succès ».
+  - Correctif: `app/api/cron/backup/route.ts` v3.0.0 — lecture paginée (1000/page, compte exact vérifié), `EXCLUDED_COLUMNS` (`purchase_orders.files`), 3 tables à la fois, `maxDuration = 300`, sujet « ⚠️ INCOMPLET » + HTTP 500 si une table manque. `.github/workflows/weekly-backup.yml` — délai curl 420 s, durée affichée, vérifie `"success":true`.
+  - Non couvert: les PDF joints aux BA ne sont pas dans le backup (à migrer vers Supabase Storage). Aucune migration requise.
 - ~~BCC: le contact #3 et les adresses supplémentaires du dossier client n'apparaissent pas dans les destinataires~~ → Corrigé (2026-09-14)
   - Symptôme: 3 contacts + admin au dossier, mais la fenêtre BCC ne proposait que Principal / #2 / Administration (contact #3 et `additional_emails` jamais branchés).
   - Correctif: `BCCConfirmationModal.js` v1.7.0 — liste complète alignée sur l'état de compte (Principal, #2, #3, Administration, Facturation, adresses supplémentaires, courriel du BA). Même correction dans l'éditeur de facture (`InvoiceEditor.js` v2.12.0 + `app/api/invoices/[id]/route.js` v1.2.0). Aucune migration requise.
@@ -1160,6 +1175,10 @@ CRON_SECRET                   # Auth pour cron jobs
 - Backup v2.0.0 (2026-07-16) : ajout de `products`, `inventory_movements`, `delivery_notes`,
   `delivery_note_materials`, `invoices`, `invoice_payments`, `notes`, `settings`, `supplier_purchase_receipts`
   (9 tables qui manquaient) + tri résilient pour les tables sans `created_at`.
+- Backup v3.0.0 (2026-09-21) : pagination (fin de la coupure à 1000 lignes), exclusion de
+  `purchase_orders.files` (PDF base64 → BA absents du backup pendant 2 mois), contrôle d'intégrité,
+  échec explicite (courriel « INCOMPLET » + workflow rouge). Les PDF joints aux BA ne sont PAS
+  sauvegardés : à migrer vers Supabase Storage (`PurchaseOrderModal.js` stocke encore en base64).
 
 ---
 

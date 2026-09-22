@@ -775,7 +775,16 @@ interne du forfait » en fin de document. Le workflow BT (2 PDF) reste inchangé
 3. **Ameliorer le backup:**
    - Stocker les backups dans Supabase Storage (pas juste email)
    - Retention: garder 30 jours de backups
-   - Verification d'integrite
+   - ~~Verification d'integrite~~ ✅ COMPLETE (2026-09-21)
+   - Migrer les PDF joints aux BA (`purchase_orders.files`, base64) vers Supabase Storage — ils sont
+     EXCLUS du backup depuis la v3.0.0 (leur lecture faisait expirer la requete et saturait l'instance)
+
+**Correctif backup (2026-09-21):**
+- `app/api/cron/backup/route.ts` v3.0.0 — pagination (fin de la coupure a 1000 lignes: products,
+  work_order_materials, inventory_movements), exclusion de `purchase_orders.files` (les BA etaient
+  ABSENTS de chaque backup depuis au moins le 26 juillet: « statement timeout »), lecture 3 tables a la
+  fois, controle d'integrite (lu vs compte exact), courriel « INCOMPLET » + HTTP 500 si une table manque
+- `.github/workflows/weekly-backup.yml` — delai 420 s, duree affichee, verifie `"success":true`
 
 ### 8. Dashboard/Tableau de Bord (Priorite: Moyenne)
 
@@ -2305,4 +2314,4 @@ dans le menu « Plus » sur cellulaire.
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-09-17 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-09-21 par Claude AI*
