@@ -9,9 +9,11 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.8.0
- * @date 2026-09-10
+ * @version 1.8.1
+ * @date 2026-09-23
  * @changelog
+ *   1.8.1 - PDF AF: le contact imprimé (nom + courriel + tél.) est le destinataire coché;
+ *           plusieurs cochés → le 1er (principal, #2, #3) prime. Avant: toujours le principal.
  *   1.8.0 - Items associés: colonne « As » dans le tableau des produits sélectionnés (AF).
  *           Un tap ouvre la liste des associés (cases décochées par défaut, qté = défaut ×
  *           qté de la ligne, modifiable); les items cochés s'ajoutent à l'AF (fusion si déjà
@@ -197,21 +199,27 @@ export const PurchaseForm = ({
       list.push({
         key: 'primary',
         name: selectedSupplier.contact_name || selectedSupplier.company_name || 'Contact principal',
-        email: selectedSupplier.email
+        contactName: selectedSupplier.contact_name || '',
+        email: selectedSupplier.email,
+        phone: selectedSupplier.phone || ''
       });
     }
     if (selectedSupplier.email_2) {
       list.push({
         key: 'c2',
         name: selectedSupplier.contact_name_2 || 'Contact 2',
-        email: selectedSupplier.email_2
+        contactName: selectedSupplier.contact_name_2 || '',
+        email: selectedSupplier.email_2,
+        phone: selectedSupplier.phone_2 || ''
       });
     }
     if (selectedSupplier.email_3) {
       list.push({
         key: 'c3',
         name: selectedSupplier.contact_name_3 || 'Contact 3',
-        email: selectedSupplier.email_3
+        contactName: selectedSupplier.contact_name_3 || '',
+        email: selectedSupplier.email_3,
+        phone: selectedSupplier.phone_3 || ''
       });
     }
     return list;
@@ -230,6 +238,21 @@ export const PurchaseForm = ({
     );
   };
 
+  // Fournisseur tel qu'imprimé sur le PDF: le contact affiché (nom + courriel) est
+  // celui coché. Plusieurs cochés → le 1er dans l'ordre (principal, #2, #3) prime.
+  // Aucun coché → contact principal de la fiche (comportement d'origine).
+  const pdfSupplier = React.useMemo(() => {
+    if (!selectedSupplier) return selectedSupplier;
+    const contact = supplierContacts.find((c) => selectedRecipientEmails.includes(c.email));
+    if (!contact || contact.key === 'primary') return selectedSupplier;
+    return {
+      ...selectedSupplier,
+      contact_name: contact.contactName,
+      email: contact.email,
+      phone: contact.phone || selectedSupplier.phone,
+    };
+  }, [selectedSupplier, supplierContacts, selectedRecipientEmails]);
+
   const handlePrint = async () => {
     try {
       // Sauvegarder avant impression pour avoir created_at et purchase_number
@@ -240,7 +263,7 @@ export const PurchaseForm = ({
       // Inclure les selectedItems actuels dans purchaseForm pour le PDF
       const formWithItems = { ...purchaseForm, items: selectedItems };
       await exportPDF('download', savedData, formWithItems, {
-        supplier: selectedSupplier,
+        supplier: pdfSupplier,
         deliveryAddress: selectedAddress,
       });
     } catch (error) {
@@ -302,7 +325,7 @@ export const PurchaseForm = ({
       // Générer et sauvegarder le PDF via jsPDF (inclure selectedItems actuels)
       const formWithItems = { ...purchaseForm, items: selectedItems };
       await exportPDF('download', savedData, formWithItems, {
-        supplier: selectedSupplier,
+        supplier: pdfSupplier,
         deliveryAddress: selectedAddress,
       });
 
