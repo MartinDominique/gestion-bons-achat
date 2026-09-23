@@ -1016,6 +1016,9 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~AF: le PDF affiche toujours le contact principal même si un autre destinataire est coché~~ → Corrigé (2026-09-23)
+  - Symptôme: contact #2 seul coché → courriel envoyé au #2, mais le PDF indiquait « Contact: » + « Email: » du contact principal.
+  - Correctif: `SupplierPurchaseForms.js` v1.8.1 — le PDF (Imprimer + Envoyer au fournisseur) reçoit un fournisseur dont nom/courriel/tél. sont ceux du contact coché; plusieurs cochés → le 1er dans l'ordre (principal, #2, #3) prime; aucun coché → principal. Aucune migration requise.
 - ~~Backup quotidien: échec « exit code 28 » (21 sept.), BA jamais sauvegardés, tables coupées à 1000 lignes~~ → Corrigé (2026-09-21)
   - Symptôme: workflow « Backup Quotidien Supabase » #297 puis #298 en échec (curl abandonne après 5 min sans réponse), aucun courriel de backup, app et tableau de bord Supabase en « connection timeout » (instance gratuite saturée, revenue d'elle-même ~30 min plus tard).
   - Trous silencieux dans TOUS les backups « réussis » depuis au moins le 26 juillet: (1) `purchase_orders` (BA clients) à **0 enregistrements** — la colonne `files` (PDF joints en base64, jusqu'à 10 Mo) faisait expirer le `select *` (« canceling statement due to statement timeout »), et les 2 essais lourds par jour pesaient sur la mémoire de l'instance; (2) `products`, `work_order_materials`, `inventory_movements` à **exactement 1000 lignes** — plafond « max rows » de Supabase, jamais paginé. Le workflow affichait quand même « succès ».
