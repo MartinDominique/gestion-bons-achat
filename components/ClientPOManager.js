@@ -4,9 +4,10 @@
  *              - Création, édition, conversion depuis soumissions
  *              - Gestion des livraisons par BA
  *              - Interface desktop et mobile
- * @version 1.1.1
- * @date 2026-03-07
+ * @version 1.2.0
+ * @date 2026-10-02
  * @changelog
+ *   1.2.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   1.1.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.0 - Ajout classes dark mode Tailwind CSS
  *   1.0.0 - Version initiale
@@ -393,7 +394,7 @@ export default function ClientPOManager() {
 
   if (showForm) {
     return (
-      <div className="max-w-6xl mx-auto p-4">
+      <div className="max-w-6xl 2xl:max-w-none mx-auto p-4">
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden">
           
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-4 sm:p-6">

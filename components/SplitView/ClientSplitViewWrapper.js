@@ -5,9 +5,10 @@
  *              is a server component.
  *              - Desktop (≥1024px): 55/45 split side-by-side
  *              - Tablet/Mobile (<1024px): Overlay panel sliding from right
- * @version 2.0.0
- * @date 2026-03-01
+ * @version 2.1.0
+ * @date 2026-10-02
  * @changelog
+ *   2.1.0 - Desktop grand écran (≥ 1536 px): conteneur principal de tous les modules élargi de 1152 à 1800 px (2xl:max-w-[1800px]); tablette/cellulaire inchangés
  *   2.0.0 - Overlay mode pour tablette/mobile, fix panneau invisible
  *   1.0.0 - Version initiale
  */
@@ -42,7 +43,7 @@ function SplitViewInner({ children }) {
               : 'w-full'
           }`}
         >
-          <main className={`${panelOpen && isDesktop ? 'max-w-none mx-4' : 'max-w-6xl mx-auto'} p-6 bg-white dark:bg-gray-900 rounded-lg shadow dark:shadow-gray-950/50 transition-all duration-300`}>
+          <main className={`${panelOpen && isDesktop ? 'max-w-none mx-4' : 'max-w-6xl 2xl:max-w-[1800px] mx-auto'} p-6 bg-white dark:bg-gray-900 rounded-lg shadow dark:shadow-gray-950/50 transition-all duration-300`}>
             {children}
           </main>
         </div>

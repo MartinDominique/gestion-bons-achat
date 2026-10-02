@@ -17,9 +17,13 @@
  *                badge « Crédit », déduites du solde, réglables par un remboursement ou
  *                l'application du crédit (montant négatif)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.9.0
- * @date 2026-09-14
+ * @version 1.10.0
+ * @date 2026-10-02
  * @changelog
+ *   1.10.0 - Après un paiement enregistré: écran de confirmation (montant, factures, mode)
+ *            pendant quelques secondes, puis fermeture automatique de la fiche client →
+ *            retour direct à la liste des états de compte. Bouton « Rester sur ce client »
+ *            pour annuler la fermeture (ex. autre paiement à saisir)
  *   1.9.0 - Messages succès/erreur en toast flottant (components/Toast.js) au lieu d'une bande
  *           sous l'en-tête: le contenu ne bouge plus quand le message apparaît/disparaît
  *   1.8.0 - Anti-double paiement: après une ERREUR d'enregistrement, l'état de compte est
@@ -50,7 +54,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, RefreshCw, CheckCircle, Trash2, Send, Eye,
@@ -60,6 +64,9 @@ import { PAYMENT_METHODS, paymentMethodLabel } from '../../lib/constants/payment
 import Toast from '../Toast';
 
 const METHODS = PAYMENT_METHODS;
+
+// Durée d'affichage de la confirmation de paiement avant la fermeture automatique
+const PAYMENT_CONFIRM_MS = 3000;
 
 const BUCKET_LABELS = {
   current: 'Courant',
@@ -109,6 +116,8 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
   const [success, setSuccess] = useState(null);
   const [busy, setBusy] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Confirmation après paiement: { total, invoices: [N°...], method } → fermeture auto
+  const [paymentDone, setPaymentDone] = useState(null);
 
   // Date du relevé (« au »): par défaut aujourd'hui, modifiable (ex. 31 juillet)
   const [asOf, setAsOf] = useState(todayStr());
@@ -172,6 +181,17 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
   const clearSuccess = useCallback(() => setSuccess(null), []);
   const clearError = useCallback(() => setError(null), []);
 
+  // Paiement confirmé: laisser la confirmation visible quelques secondes, puis fermer
+  // la fiche client pour revenir à la liste des états de compte.
+  // (ref: onClose change à chaque rendu du parent, ce qui relancerait le délai)
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    if (!paymentDone) return;
+    const t = setTimeout(() => onCloseRef.current?.(), PAYMENT_CONFIRM_MS);
+    return () => clearTimeout(t);
+  }, [paymentDone]);
+
   // Escompte 2% = 2% du sous-total (avant taxes) de la facture (jamais sur un crédit)
   const discountFor = (inv) =>
     inv.is_credit ? 0 : Math.round((Number(inv.subtotal) || 0) * 0.02 * 100) / 100;
@@ -233,6 +253,9 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
     setBusy(true);
     setError(null);
     let recordedCount = 0;
+    let recordedTotal = 0;
+    const recordedNumbers = [];
+    const methodUsed = pay.method;
     try {
       for (const inv of selectedInvoices) {
         const a = alloc[inv.id];
@@ -276,16 +299,22 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
           return;
         }
         recordedCount += 1;
+        recordedTotal += amount;
+        recordedNumbers.push(inv.invoice_number);
       }
-      setSuccess('Paiement(s) enregistré(s)');
       setPay({
         payment_date: todayStr(),
         method: data?.client?.preferred_payment_method || 'cheque',
         reference: '',
         notes: '',
       });
-      await load();
       onChanged?.();
+      if (recordedCount > 0) {
+        // Confirmation plein cadre puis fermeture automatique (voir useEffect)
+        setPaymentDone({ total: recordedTotal, invoices: recordedNumbers, method: methodUsed });
+      } else {
+        await load();
+      }
     } catch (err) {
       setError('Erreur de connexion');
     } finally {
@@ -476,7 +505,54 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
 
   const modalContent = (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-stretch sm:items-center justify-center sm:p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 w-full sm:max-w-5xl sm:rounded-2xl shadow-2xl flex flex-col max-h-screen sm:max-h-[95vh]">
+      <div className="relative bg-white dark:bg-gray-900 w-full sm:max-w-5xl sm:rounded-2xl shadow-2xl flex flex-col max-h-screen sm:max-h-[95vh]">
+        {/* Confirmation de paiement (recouvre la fiche, puis fermeture automatique) */}
+        {paymentDone && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 px-6 text-center bg-white/95 dark:bg-gray-900/95 sm:rounded-2xl"
+          >
+            <CheckCircle className="w-16 h-16 text-emerald-500" />
+            <p className="text-xl font-bold text-gray-900 dark:text-gray-100">Paiement enregistré</p>
+            <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
+              {fmtCurrency(paymentDone.total)}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {data?.client?.name ? `${data.client.name} · ` : ''}
+              {paymentMethodLabel(paymentDone.method)}
+              {' · '}
+              {paymentDone.invoices.length > 1 ? 'Factures ' : 'Facture '}
+              {paymentDone.invoices.join(', ')}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Retour à la liste des états de compte…
+            </p>
+            <div className="w-48 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+              <div
+                className="h-full bg-emerald-500"
+                style={{ animation: `payment-confirm-bar ${PAYMENT_CONFIRM_MS}ms linear forwards` }}
+              />
+            </div>
+            <style>{`@keyframes payment-confirm-bar { from { width: 0% } to { width: 100% } }`}</style>
+            <div className="flex flex-wrap justify-center gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => onClose?.()}
+                className="min-h-[44px] px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Fermer maintenant
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPaymentDone(null); load(); }}
+                className="min-h-[44px] px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Rester sur ce client
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b dark:border-gray-700 bg-gradient-to-r from-emerald-600 to-teal-600 sm:rounded-t-2xl">

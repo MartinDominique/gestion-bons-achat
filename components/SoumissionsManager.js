@@ -6,9 +6,10 @@
  *              - Recherche produits (tolérante aux tirets/accents), calcul taxes QC, gestion fichiers
  *              - Modal « Modifier l'article »: calculateur de marge, ajustement du stock
  *                et répercussion des prix dans la fiche inventaire
- * @version 2.5.0
- * @date 2026-09-10
+ * @version 2.6.0
+ * @date 2026-10-02
  * @changelog
+ *   2.6.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés — fin du défilement horizontal du tableau « Produits sélectionnés » (colonne As)
  *   2.5.0 - Items associés: carré « As » sur chaque article de la soumission (table desktop +
  *           cartes mobile). Un tap ouvre la liste des associés (cases décochées par défaut,
  *           qté = défaut × qté de l'article, modifiable); les items cochés s'ajoutent à la
@@ -2068,7 +2069,7 @@ const cleanupFilesForSubmission = async (files) => {
           `}
         </style>
 
-        <div className="max-w-6xl mx-auto p-4">
+        <div className="max-w-6xl 2xl:max-w-none mx-auto p-4">
           {/* VERSION COMPLÈTE AVEC COÛTS - Zone d'impression */}
           {selectedItems.length > 0 && (
             <div className="print-area">

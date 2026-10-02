@@ -7,9 +7,10 @@
  *              - Numéros de référence cliquables (SplitView)
  *              - Onglet "État de compte": soldes clients, paiements, relevés
  *              - Onglet "Rapports compta": ventes + paiements (PDF + envoi au comptable)
- * @version 2.6.0
- * @date 2026-09-14
+ * @version 2.7.0
+ * @date 2026-10-02
  * @changelog
+ *   2.7.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   2.6.0 - Messages succès/erreur en toast flottant (components/Toast.js) au lieu d'une
  *           bande en haut de la liste: la liste ne bouge plus quand le message apparaît
  *           ou disparaît (tap manqué sur « Créer facture » au retrait de la bande)
@@ -492,7 +493,7 @@ export default function InvoiceManager() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container 2xl:max-w-none mx-auto px-4 py-8">
 
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 dark:from-emerald-700 dark:via-emerald-600 dark:to-teal-600 rounded-2xl shadow-xl dark:shadow-gray-950/50 p-4 sm:p-5 mb-6">

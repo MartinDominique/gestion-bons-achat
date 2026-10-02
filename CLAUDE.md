@@ -850,6 +850,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/settings/route.js` v1.3.0 + `parametres/page.js` v2.3.0 — Taux d'intérêt configurable + note pied de relevé
     - Escompte 2 % sur sous-total (taxes complètes — Revenu Québec); intérêt = solde × taux × jours/365; relevé open-item; aging Courant/1-30/31-60/61-90/90+
     - **Reste:** exécuter la migration SQL `20260614_create_invoice_payments.sql` dans Supabase Dashboard
+    - **Amélioration (2026-10-02):** `ClientStatementView.js` v1.10.0 — après un paiement enregistré, écran « Paiement enregistré » (montant, mode, N° de facture(s)) ~3 s puis fermeture automatique de la fiche → retour à la liste des états de compte; boutons « Fermer maintenant » / « Rester sur ce client »
 
 21. ~~**Rapports comptables (Ventes + Paiements)**~~ - ✅ COMPLÉTÉ (2026-06-14)
     - `supabase/migrations/20260614b_add_accountant_email.sql` — colonne `settings.accountant_email`
@@ -1008,6 +1009,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/globals.css` — filet de sécurité `html { overflow-x: hidden }`: la page ne défile plus jamais horizontalement, un élément trop large est coupé au lieu de faire glisser toute la page. Sur `<html>` seulement (le `<body>` reste libre) → la barre `sticky` fonctionne toujours (vérifié: `top: 0` après 600 px de défilement à 9 largeurs)
     - Tableaux larges (BT/BL, Factures, État de compte, Statistiques, AF, BA): déjà dans des conteneurs `overflow-x-auto` → défilement **interne** au tableau, jamais de la page; inchangés
     - Non modifié: contenu des modules, formulaires BT/BL (aucun débordement mesuré)
+    - **Amélioration (2026-10-02):** largeur étendue sur desktop grand écran (≥ 1536 px, breakpoint Tailwind `2xl`) — conteneur principal `ClientSplitViewWrapper.js` v2.1.0 de 1152 à 1800 px + `2xl:max-w-none` sur les conteneurs internes (Soumissions, Inventaire, AF, BA, Statistiques, À Commander, Achat, BT/BL, Facturation). Fin du défilement horizontal du tableau « Produits sélectionnés » de la Soumission (colonne As). Tablette/cellulaire (< 1536 px): inchangés
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
@@ -1016,6 +1018,11 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Achat en USD: le prix US (ex. 377 $ US, GS23-53P0) enregistré comme coûtant CAD dans l'inventaire~~ → Corrigé (2026-10-02)
+  - Symptôme: produit acheté en USD dans un AF; à la vente (facture, BT…), le coûtant affiché était le montant US non converti.
+  - Cause: dans le tableau de l'AF, taper le prix dans la case « $ CAD » puis appuyer sur la bascule « USD » fait perdre le focus au champ AVANT la bascule → `handlePriceBlur` ouvrait la fenêtre « Mise à jour prix inventaire » avec le montant tapé comme coûtant **CAD**, qui était écrit dans la fiche produit (régression liée à la bascule CAD | USD du 2026-09-08). La fenêtre n'indiquait aucune devise.
+  - Correctif: `SupplierPurchaseHooks.js` v1.2.0 — vérification du prix différée (250 ms) sur les valeurs à jour et **annulée si la devise de la ligne a changé**; lignes « Créer l'AF » (À Commander) démarrent en USD si la fiche est en USD; produit non-inventaire créé en USD garde sa devise sur la ligne. `SupplierPurchaseForms.js` v1.10.0 — fenêtre « Mise à jour prix inventaire » en « $ CAD » + rappel « = X $ US converti en CAD ».
+  - Réparation des données: Inventaire → fiche du produit → Prix coûtant → bascule **USD** → saisir le prix US (377) → le CAD est recalculé et enregistré. Aucune migration requise.
 - ~~AF: le PDF affiche toujours le contact principal même si un autre destinataire est coché~~ → Corrigé (2026-09-23)
   - Symptôme: contact #2 seul coché → courriel envoyé au #2, mais le PDF indiquait « Contact: » + « Email: » du contact principal.
   - Correctif: `SupplierPurchaseForms.js` v1.8.1 — le PDF (Imprimer + Envoyer au fournisseur) reçoit un fournisseur dont nom/courriel/tél. sont ceux du contact coché; plusieurs cochés → le 1er dans l'ordre (principal, #2, #3) prime; aucun coché → principal. Aucune migration requise.

@@ -9,9 +9,10 @@
  *                sessionStorage ('af-prefill') puis bascule vers l'onglet Achats
  *                Fournisseurs (le hook AF pré-remplit le formulaire au montage).
  *              - Mobile/tablette: touch targets 44px, cartes empilées.
- * @version 1.3.0
- * @date 2026-08-12
+ * @version 1.4.0
+ * @date 2026-10-02
  * @changelog
+ *   1.4.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   1.3.0 - Vue « Commandés »: le N° d'AF devient cliquable (ReferenceLink →
  *           ouvre l'AF dans le panneau latéral) quand supplier_purchase_id est lié.
  *           Sans id lié (AF antérieurs à la migration 20260812), texte simple.
@@ -263,7 +264,7 @@ export default function OrderListManager({ onCreateAF, onCountChange }) {
 
   // ============================ RENDU ============================
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl 2xl:max-w-none mx-auto">
       {/* En-tête + bascule de vue */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">

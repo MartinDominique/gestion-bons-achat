@@ -3,14 +3,22 @@
  * @description Hook principal de la gestion des achats fournisseurs (AF): états, chargement,
  *              recherche produits, lignes d'AF (ajout/quantité/prix/devise), sauvegarde,
  *              marquage « À commander », réception, fournisseurs et adresses.
- * @version 1.1.0
- * @date 2026-09-10
+ * @version 1.2.0
+ * @date 2026-10-02
  * @changelog
+ *   1.2.0 - Fix coûtant USD enregistré comme CAD dans l'inventaire: taper le prix dans la case
+ *           « $ CAD » puis appuyer sur la bascule « USD » ouvrait la fenêtre « Mise à jour prix
+ *           inventaire » avec le montant tapé (ex. 377 $ US) comme coûtant CAD. La vérification
+ *           du prix au blur est maintenant différée et annulée si la devise de la ligne change
+ *           (la fenêtre s'ouvrira au blur du champ USD, avec le bon montant converti).
+ *           Lignes venant de « À Commander » (Créer l'AF): devise d'achat USD reprise de la
+ *           fiche produit (la ligne démarre en USD avec le dernier coûtant US).
+ *           Produit non-inventaire créé en USD depuis l'AF: la ligne garde sa devise
  *   1.1.0 - Items associés: addAssociatedItemsToPurchase() ajoute en lot les associés cochés
  *           dans la fenêtre « As » (fusion des quantités si la ligne existe déjà)
  *   1.0.0 - Version initiale (en-tête ajouté rétroactivement)
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import {
@@ -93,6 +101,9 @@ export const useSupplierPurchase = () => {
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [searchingProducts, setSearchingProducts] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
+  // Dernière valeur des lignes, lue par les vérifications différées (handlePriceBlur)
+  const selectedItemsRef = useRef(selectedItems);
+  selectedItemsRef.current = selectedItems;
   const [focusedProductIndex, setFocusedProductIndex] = useState(-1);
   const [showQuantityInput, setShowQuantityInput] = useState(false);
   const [selectedProductForQuantity, setSelectedProductForQuantity] = useState(null);
@@ -366,6 +377,29 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
           is_non_inventory: !!it.is_non_inventory,
         };
       });
+      // Devise d'achat reprise de la fiche produit: un article acheté en USD démarre
+      // en USD (dernier coûtant US), pour ne pas taper un prix US dans la case CAD.
+      try {
+        const codes = items.map((it) => it.product_id).filter(Boolean);
+        if (codes.length > 0) {
+          const cols = 'product_id, purchase_currency, cost_price_usd';
+          const [prod, nonInv] = await Promise.all([
+            supabase.from('products').select(cols).in('product_id', codes),
+            supabase.from('non_inventory_items').select(cols).in('product_id', codes),
+          ]);
+          const byCode = {};
+          [...(nonInv.data || []), ...(prod.data || [])].forEach((r) => { byCode[r.product_id] = r; });
+          items.forEach((it) => {
+            const r = byCode[it.product_id];
+            if (r?.purchase_currency === CURRENCY_USD && parseFloat(r.cost_price_usd) > 0) {
+              it.purchase_currency = CURRENCY_USD;
+              it.cost_price_usd = String(r.cost_price_usd);
+            }
+          });
+        }
+      } catch (e) {
+        // Colonnes de devise absentes (migration non passée): lignes en CAD, comme avant
+      }
       setSelectedItems(items);
 
       const newNumber = await generatePurchaseNumber();
@@ -781,9 +815,23 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
 
   // Vérifier si le prix a changé et ouvrir le modal
   const handlePriceBlur = (productId, newPrice) => {
+    // Le champ perd aussi le focus quand on appuie sur la bascule CAD | USD de la même
+    // ligne: vérifier APRÈS ce clic, sur les valeurs à jour. Si la devise a changé,
+    // ne rien ouvrir (le montant tapé n'est pas un coûtant CAD définitif).
+    const before = selectedItemsRef.current.find(i => i.product_id === productId);
+    const currencyBefore = before?.purchase_currency || CURRENCY_CAD;
+    setTimeout(() => {
+      const latest = selectedItemsRef.current.find(i => i.product_id === productId);
+      if (!latest) return;
+      if ((latest.purchase_currency || CURRENCY_CAD) !== currencyBefore) return;
+      checkPriceChange(productId, latest.cost_price);
+    }, 250);
+  };
+
+  const checkPriceChange = (productId, newPrice) => {
     console.log('🔍 handlePriceBlur appelé:', productId, newPrice);
     
-    const item = selectedItems.find(i => i.product_id === productId);
+    const item = selectedItemsRef.current.find(i => i.product_id === productId);
     if (!item) {
       console.log('❌ Item non trouvé');
       return;
@@ -1029,7 +1077,11 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
           product_group: nonInventoryForm.product_group,
           quantity: 1,
           notes: '',
-          is_non_inventory: true
+          is_non_inventory: true,
+          // Devise saisie dans la fenêtre: la ligne d'AF (et la réception) la conserve
+          purchase_currency: nonInventoryForm.purchase_currency === CURRENCY_USD ? CURRENCY_USD : CURRENCY_CAD,
+          cost_price_usd: nonInventoryForm.purchase_currency === CURRENCY_USD ? nonInventoryForm.cost_price_usd : '',
+          original_cost_price: parseFloat(nonInventoryForm.cost_price)
         };
     
         setSelectedItems([...selectedItems, newItem]);

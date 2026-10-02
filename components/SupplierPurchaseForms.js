@@ -9,9 +9,13 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.8.1
- * @date 2026-09-23
+ * @version 1.10.0
+ * @date 2026-10-02
  * @changelog
+ *   1.10.0 - Fenêtre « Mise à jour prix inventaire »: montants affichés en « $ CAD » et, pour une
+ *            ligne achetée en USD, rappel du prix US d'origine (« = 377,00 $ US converti ») —
+ *            on voit tout de suite si un prix US a été pris pour un prix CAD
+ *   1.9.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   1.8.1 - PDF AF: le contact imprimé (nom + courriel + tél.) est le destinataire coché;
  *           plusieurs cochés → le 1er (principal, #2, #3) prime. Avant: toujours le principal.
  *   1.8.0 - Items associés: colonne « As » dans le tableau des produits sélectionnés (AF).
@@ -419,7 +423,7 @@ Merci!`;
   return (
     <>
       {/* FORMULAIRE */}
-      <div className="max-w-6xl mx-auto p-4 no-print">
+      <div className="max-w-6xl 2xl:max-w-none mx-auto p-4 no-print">
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-orange-200 dark:border-orange-800 overflow-hidden">
 
         {/* En-tête */}
@@ -1522,17 +1526,24 @@ export const PriceUpdateModal = ({
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">Prix inventaire actuel:</span>
-              <span className="font-medium dark:text-gray-200">{item.originalCostPrice?.toFixed(2)} $</span>
+              <span className="font-medium dark:text-gray-200">{item.originalCostPrice?.toFixed(2)} $ CAD</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">Nouveau prix fournisseur:</span>
               <span className={`font-bold ${priceDiff > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {item.newCostPrice?.toFixed(2)} $
+                {item.newCostPrice?.toFixed(2)} $ CAD
                 <span className="ml-2 text-sm">
                   ({priceDiff > 0 ? '↑' : '↓'} {Math.abs(priceDiff).toFixed(2)}$ / {priceDiff > 0 ? '+' : ''}{priceDiffPercent}%)
                 </span>
               </span>
             </div>
+            {item.purchase_currency === CURRENCY_USD && parseFloat(item.cost_price_usd) > 0 && (
+              <div className="flex justify-end">
+                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                  = {parseFloat(item.cost_price_usd).toFixed(2)} $ US converti en CAD
+                </span>
+              </div>
+            )}
             <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-700">
               <span className="text-sm text-gray-600 dark:text-gray-400">Prix de vente actuel:</span>
               <span className="font-medium text-blue-700 dark:text-blue-300">
