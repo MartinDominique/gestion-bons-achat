@@ -1018,6 +1018,11 @@ CRON_SECRET                   # Auth pour cron jobs
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
 
 ### Bugs connus (corrigés)
+- ~~Achat en USD: le prix US (ex. 377 $ US, GS23-53P0) enregistré comme coûtant CAD dans l'inventaire~~ → Corrigé (2026-10-02)
+  - Symptôme: produit acheté en USD dans un AF; à la vente (facture, BT…), le coûtant affiché était le montant US non converti.
+  - Cause: dans le tableau de l'AF, taper le prix dans la case « $ CAD » puis appuyer sur la bascule « USD » fait perdre le focus au champ AVANT la bascule → `handlePriceBlur` ouvrait la fenêtre « Mise à jour prix inventaire » avec le montant tapé comme coûtant **CAD**, qui était écrit dans la fiche produit (régression liée à la bascule CAD | USD du 2026-09-08). La fenêtre n'indiquait aucune devise.
+  - Correctif: `SupplierPurchaseHooks.js` v1.2.0 — vérification du prix différée (250 ms) sur les valeurs à jour et **annulée si la devise de la ligne a changé**; lignes « Créer l'AF » (À Commander) démarrent en USD si la fiche est en USD; produit non-inventaire créé en USD garde sa devise sur la ligne. `SupplierPurchaseForms.js` v1.10.0 — fenêtre « Mise à jour prix inventaire » en « $ CAD » + rappel « = X $ US converti en CAD ».
+  - Réparation des données: Inventaire → fiche du produit → Prix coûtant → bascule **USD** → saisir le prix US (377) → le CAD est recalculé et enregistré. Aucune migration requise.
 - ~~AF: le PDF affiche toujours le contact principal même si un autre destinataire est coché~~ → Corrigé (2026-09-23)
   - Symptôme: contact #2 seul coché → courriel envoyé au #2, mais le PDF indiquait « Contact: » + « Email: » du contact principal.
   - Correctif: `SupplierPurchaseForms.js` v1.8.1 — le PDF (Imprimer + Envoyer au fournisseur) reçoit un fournisseur dont nom/courriel/tél. sont ceux du contact coché; plusieurs cochés → le 1er dans l'ordre (principal, #2, #3) prime; aucun coché → principal. Aucune migration requise.
