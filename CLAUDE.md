@@ -850,6 +850,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/settings/route.js` v1.3.0 + `parametres/page.js` v2.3.0 — Taux d'intérêt configurable + note pied de relevé
     - Escompte 2 % sur sous-total (taxes complètes — Revenu Québec); intérêt = solde × taux × jours/365; relevé open-item; aging Courant/1-30/31-60/61-90/90+
     - **Reste:** exécuter la migration SQL `20260614_create_invoice_payments.sql` dans Supabase Dashboard
+    - **Amélioration (2026-10-02):** `ClientStatementView.js` v1.10.0 — après un paiement enregistré, écran « Paiement enregistré » (montant, mode, N° de facture(s)) ~3 s puis fermeture automatique de la fiche → retour à la liste des états de compte; boutons « Fermer maintenant » / « Rester sur ce client »
 
 21. ~~**Rapports comptables (Ventes + Paiements)**~~ - ✅ COMPLÉTÉ (2026-06-14)
     - `supabase/migrations/20260614b_add_accountant_email.sql` — colonne `settings.accountant_email`
