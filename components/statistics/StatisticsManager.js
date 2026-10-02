@@ -5,9 +5,10 @@
  *              - Orchestre filtres, rapport de ventes et export PDF
  *              - Gère l'état des données et la communication avec l'API
  *              - Responsive: desktop tableau, mobile cartes
- * @version 2.0.0
- * @date 2026-02-27
+ * @version 2.1.0
+ * @date 2026-10-02
  * @changelog
+ *   2.1.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   2.0.0 - Ajout sous-onglets Opérationnel/Financier (Phase D)
  *   1.0.0 - Version initiale - Phase 1 MVP
  */
@@ -134,7 +135,7 @@ export default function StatisticsManager() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="max-w-7xl 2xl:max-w-none mx-auto px-4 py-6">
       {/* En-tête */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">

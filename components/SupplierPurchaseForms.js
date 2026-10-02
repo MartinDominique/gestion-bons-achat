@@ -9,9 +9,10 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.8.1
- * @date 2026-09-23
+ * @version 1.9.0
+ * @date 2026-10-02
  * @changelog
+ *   1.9.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   1.8.1 - PDF AF: le contact imprimé (nom + courriel + tél.) est le destinataire coché;
  *           plusieurs cochés → le 1er (principal, #2, #3) prime. Avant: toujours le principal.
  *   1.8.0 - Items associés: colonne « As » dans le tableau des produits sélectionnés (AF).
@@ -419,7 +420,7 @@ Merci!`;
   return (
     <>
       {/* FORMULAIRE */}
-      <div className="max-w-6xl mx-auto p-4 no-print">
+      <div className="max-w-6xl 2xl:max-w-none mx-auto p-4 no-print">
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-orange-200 dark:border-orange-800 overflow-hidden">
 
         {/* En-tête */}

@@ -5,9 +5,10 @@
  *              - « À Commander »: liste de réapprovisionnement (OrderListManager)
  *              La bascule vers l'onglet AF remonte SupplierPurchaseManager, dont le
  *              hook lit sessionStorage 'af-prefill' au montage pour pré-remplir l'AF.
- * @version 2.1.0
- * @date 2026-08-07
+ * @version 2.2.0
+ * @date 2026-10-02
  * @changelog
+ *   2.2.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés (remplace 2xl:max-w-[1600px])
  *   2.1.0 - Élargissement de la vue sur grand écran PC (2xl:max-w-[1600px]) pour laisser plus de place au tableau AF
  *   2.0.0 - Ajout onglet « À Commander » (liste de réapprovisionnement)
  *   1.0.0 - Version initiale (SupplierPurchaseManager seul)
@@ -40,7 +41,7 @@ export default function AchatMaterielsPage() {
   }, []);
 
   return (
-    <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-3 sm:px-4">
+    <div className="max-w-7xl 2xl:max-w-none mx-auto px-3 sm:px-4">
       {/* Bascule d'onglets */}
       <div className="flex items-center gap-2 mb-4 border-b border-gray-200 dark:border-gray-700">
         <button

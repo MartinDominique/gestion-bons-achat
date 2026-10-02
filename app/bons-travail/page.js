@@ -6,9 +6,10 @@
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
  *              - Badge BO et indicateur BL de suivi
- * @version 2.6.0
- * @date 2026-06-22
+ * @version 2.7.0
+ * @date 2026-10-02
  * @changelog
+ *   2.7.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   2.6.0 - Rafraîchissement auto de la liste au retour en avant-plan (visibilitychange/focus): un BT punché d'un autre appareil apparaît sans pull-to-refresh manuel
  *   2.5.0 - Tri BT par date de session la plus récente (time_entries), pas seulement work_date
  *   2.4.0 - Ajout recherche par Description + persistance état recherche/filtres/scroll (sessionStorage)
@@ -404,7 +405,7 @@ export default function BonsTravailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container 2xl:max-w-none mx-auto px-4 py-8">
           <div className="flex items-center justify-center min-h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
             <span className="ml-2 text-teal-700 dark:text-teal-400">Chargement...</span>
@@ -416,7 +417,7 @@ export default function BonsTravailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container 2xl:max-w-none mx-auto px-4 py-8">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 via-orange-400 to-gray-500 dark:from-orange-600 dark:via-orange-500 dark:to-gray-600 rounded-2xl shadow-xl dark:shadow-gray-950/50 p-4 sm:p-5 mb-6">
           {/* Ligne 1: Titre + Boutons */}

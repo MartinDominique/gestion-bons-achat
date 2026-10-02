@@ -1009,6 +1009,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/globals.css` — filet de sécurité `html { overflow-x: hidden }`: la page ne défile plus jamais horizontalement, un élément trop large est coupé au lieu de faire glisser toute la page. Sur `<html>` seulement (le `<body>` reste libre) → la barre `sticky` fonctionne toujours (vérifié: `top: 0` après 600 px de défilement à 9 largeurs)
     - Tableaux larges (BT/BL, Factures, État de compte, Statistiques, AF, BA): déjà dans des conteneurs `overflow-x-auto` → défilement **interne** au tableau, jamais de la page; inchangés
     - Non modifié: contenu des modules, formulaires BT/BL (aucun débordement mesuré)
+    - **Amélioration (2026-10-02):** largeur étendue sur desktop grand écran (≥ 1536 px, breakpoint Tailwind `2xl`) — conteneur principal `ClientSplitViewWrapper.js` v2.1.0 de 1152 à 1800 px + `2xl:max-w-none` sur les conteneurs internes (Soumissions, Inventaire, AF, BA, Statistiques, À Commander, Achat, BT/BL, Facturation). Fin du défilement horizontal du tableau « Produits sélectionnés » de la Soumission (colonne As). Tablette/cellulaire (< 1536 px): inchangés
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

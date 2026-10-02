@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.14.1
- * @date 2026-09-17
+ * @version 3.15.0
+ * @date 2026-10-02
  * @changelog
+ *   3.15.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   3.14.1 - Historique: libellé « Facture (correction) » pour les mouvements reference_type 'invoice'
  *   3.14.0 - Items associés: carré « As » sur chaque ligne de la liste (violet + compteur si
  *            le produit a des associés) → ouvre la fiche sur le nouvel onglet « Associés »
@@ -794,7 +795,7 @@ export default function InventoryManager() {
 
   // ===== RENDU =====
   return (
-    <div className="max-w-6xl mx-auto p-2 sm:p-4 space-y-3">
+    <div className="max-w-6xl 2xl:max-w-none mx-auto p-2 sm:p-4 space-y-3">
 
       {/* En-tête */}
       <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-lg shadow-lg p-3 text-white">
