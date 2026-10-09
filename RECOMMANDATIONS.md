@@ -1142,6 +1142,15 @@ bg-yellow-50  → dark:bg-yellow-900/20 (avertissements)
 - [ ] Verifier les badges de statut (couleurs pastel en mode sombre)
 - [ ] `WorkOrderList.js` et `WorkOrderClientView.js` non migres (pages peu utilisees)
 - [ ] Ajuster si des couleurs semblent incorrectes apres test terrain
+- [x] AF (2026-10-09): fenêtre « Importer depuis une Soumission » (texte noir sur fond noir, cases
+      illisibles, tableau blanc), formulaire Nouveau/Modifier Fournisseur, badges de statut, boutons
+      Modifier/Supprimer (adresses + fournisseurs) → `SupplierPurchaseManager.js` v1.4.1 +
+      `SupplierPurchaseForms.js` v1.10.1
+- [ ] Reste à migrer (classes claires sans variante `dark:`, relevé 2026-10-09): `SoumissionsManager.js` (17),
+      `InventoryManager.js` (16), `work-orders/WorkOrderList.js` (14), `ClientPOManager.js` (10),
+      `PurchaseOrderManager.js` (6), `app/bons-travail/[id]/modifier/page.js` (6),
+      `app/bons-travail/bl/[id]/modifier/page.js` (4), `SplitView/PanelSupplierPurchase.js` (4),
+      `SplitView/PanelSoumission.js` (4), `work-orders/ClientSelect.js` (3) + quelques lignes isolées ailleurs
 
 ### ~~Phase 14 - Navigation mobile + SplitView tablette~~ ✅ COMPLETE (2026-03-01)
 - [x] #1: Navigation mobile Option A - Menu "Plus" pour modules bureau (bottom sheet)
@@ -2314,4 +2323,4 @@ dans le menu « Plus » sur cellulaire.
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-09-21 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-10-09 par Claude AI*

@@ -1016,6 +1016,8 @@ CRON_SECRET                   # Auth pour cron jobs
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
 9. **Ajustements visuels Dark Mode** - Tester sur tablette, corriger couleurs si besoin
+   - 2026-10-09: module AF corrigé (fenêtre « Importer depuis une Soumission », formulaire Fournisseur,
+     badges de statut). Reste: voir la liste des fichiers dans RECOMMANDATIONS.md (Phase 13)
 
 ### Bugs connus (corrigés)
 - ~~Achat en USD: le prix US (ex. 377 $ US, GS23-53P0) enregistré comme coûtant CAD dans l'inventaire~~ → Corrigé (2026-10-02)

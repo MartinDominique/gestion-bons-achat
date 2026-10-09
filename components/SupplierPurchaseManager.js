@@ -4,9 +4,13 @@
  *              - Liste, création, modification, suppression des AF
  *              - Réception directe et réception AF
  *              - Gestion des adresses de livraison fournisseur
- * @version 1.4.0
- * @date 2026-09-10
+ * @version 1.4.1
+ * @date 2026-10-09
  * @changelog
+ *   1.4.1 - Mode sombre: fenêtre « Importer depuis une Soumission » entièrement adaptée (cartes de
+ *           soumission, bandeau « Soumission sélectionnée », boutons Tout sélectionner/désélectionner,
+ *           tableau des items, champs quantité, pied). Aussi: badges de statut AF, date/montant de la
+ *           liste mobile, boutons Modifier/Supprimer des adresses de livraison
  *   1.4.0 - Items associés: transmission de addAssociatedItemsToPurchase au formulaire AF
  *   1.3.0 - Achats en USD: transmission des handlers de devise aux lignes d'AF
  *   1.2.1 - Desktop: retrait du collage (sticky) qui recouvrait la colonne « Statut ». Table compactée
@@ -705,11 +709,11 @@ export default function SupplierPurchaseManager() {
                         onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
                         disabled={isLoadingEmail}
                         className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${
-                          purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
-                          purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
-                          purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                          purchase.status === 'received' ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
+                          purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200' :
+                          purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200' :
+                          purchase.status === 'draft' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' :
+                          purchase.status === 'received' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' :
+                          'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
                         }`}
                       >
                         {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
@@ -784,7 +788,7 @@ export default function SupplierPurchaseManager() {
                     </div>
 
                     {/* Date création */}
-                    <div className="text-xs font-medium text-gray-700 flex-shrink-0 hidden sm:block">
+                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300 flex-shrink-0 hidden sm:block">
                       {formatDate(purchase.created_at)}
                     </div>
 
@@ -793,13 +797,13 @@ export default function SupplierPurchaseManager() {
                       purchase.delivery_date && 
                       new Date(purchase.delivery_date) < new Date().setHours(0,0,0,0) &&
                       purchase.status !== 'received'
-                        ? 'bg-red-100 text-red-700'
-                        : 'text-blue-600'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                        : 'text-blue-600 dark:text-blue-400'
                     }`}>
                       📅 {formatDate(purchase.delivery_date)}
                     </div>
                     {/* Montant */}
-                    <div className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
+                    <div className="bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
                       {formatCurrency(purchase.total_amount)}
                     </div>
 
@@ -813,11 +817,11 @@ export default function SupplierPurchaseManager() {
                         onChange={(e) => handleQuickStatusUpdate(purchase.id, e.target.value, purchase)}
                         disabled={isLoadingEmail}
                         className={`text-[10px] font-medium rounded-full border-0 py-0.5 px-2 cursor-pointer ${
-                          purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800' :
-                          purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800' :
-                          purchase.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                          purchase.status === 'received' ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
+                          purchase.status === 'ordered' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200' :
+                          purchase.status === 'in_order' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200' :
+                          purchase.status === 'draft' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' :
+                          purchase.status === 'received' ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' :
+                          'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
                         }`}
                       >
                         {Object.entries(PURCHASE_STATUSES).map(([key, label]) => (
@@ -973,11 +977,11 @@ const ImportSubmissionModal = ({
             
             {loadingSubmissions ? (
               <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mr-3"></div>
-                <span className="text-green-600">Chargement des soumissions...</span>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 dark:border-green-400 mr-3"></div>
+                <span className="text-green-600 dark:text-green-400">Chargement des soumissions...</span>
               </div>
             ) : availableSubmissions.length === 0 ? (
-              <div className="text-center p-8 text-gray-500">
+              <div className="text-center p-8 text-gray-500 dark:text-gray-400">
                 <p>Aucune soumission acceptée trouvée</p>
               </div>
             ) : (
@@ -987,35 +991,35 @@ const ImportSubmissionModal = ({
                     key={submission.id} 
                     className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                       selectedSubmissionForImport?.id === submission.id 
-                        ? 'border-green-500 bg-green-50' 
-                        : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/30' 
+                        : 'border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
                     }`}
                     onClick={() => handleSubmissionSelect(submission)}
                   >
                     <div className="space-y-2">
                       <div className="flex justify-between items-start">
-                        <h4 className="font-semibold text-gray-900">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                           {submission.submission_number}
                         </h4>
-                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                        <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-2 py-1 rounded text-xs">
                           Acceptée
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         <strong>Client:</strong> {submission.client_name}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         <strong>Description:</strong> {submission.description}
                       </p>
                       <div className="flex justify-between items-center text-sm">
-                        <span className="text-green-600 font-medium">
+                        <span className="text-green-600 dark:text-green-400 font-medium">
                           {formatCurrency(submission.amount)}
                         </span>
-                        <span className="text-gray-500">
+                        <span className="text-gray-500 dark:text-gray-400">
                           {submission.items?.length || 0} item(s)
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {formatDate(submission.created_at)}
                       </p>
                     </div>
@@ -1028,18 +1032,18 @@ const ImportSubmissionModal = ({
           {/* Étape 2: Sélection des items */}
           {selectedSubmissionForImport && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
                 2. Sélectionnez les items à commander
               </h3>
               
-              <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                <p className="text-blue-800 text-sm">
+              <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 p-4 rounded-lg mb-4">
+                <p className="text-blue-800 dark:text-blue-200 text-sm">
                   <strong>Soumission sélectionnée:</strong> {selectedSubmissionForImport.submission_number} - {selectedSubmissionForImport.client_name}
                 </p>
               </div>
 
               {itemsToImport.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Cette soumission ne contient aucun item</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-8">Cette soumission ne contient aucun item</p>
               ) : (
                 <>
                   {/* Actions en lot */}
@@ -1049,7 +1053,7 @@ const ImportSubmissionModal = ({
                       onClick={() => {
                         itemsToImport.forEach(item => toggleItemSelection(item.product_id, true));
                       }}
-                      className="px-4 py-2 bg-green-100 text-green-800 rounded-lg hover:bg-green-200 text-sm"
+                      className="px-4 py-2 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/60 text-sm"
                     >
                       Tout sélectionner
                     </button>
@@ -1058,16 +1062,16 @@ const ImportSubmissionModal = ({
                       onClick={() => {
                         itemsToImport.forEach(item => toggleItemSelection(item.product_id, false));
                       }}
-                      className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 text-sm"
+                      className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-sm"
                     >
                       Tout désélectionner
                     </button>
                   </div>
 
                   {/* Tableau des items */}
-                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50">
+                  <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <table className="w-full text-sm text-gray-900 dark:text-gray-100">
+                      <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                         <tr>
                           <th className="text-left p-3 font-semibold">Sélection</th>
                           <th className="text-left p-3 font-semibold">Code</th>
@@ -1080,23 +1084,23 @@ const ImportSubmissionModal = ({
                       </thead>
                       <tbody>
                         {itemsToImport.map((item) => (
-                          <tr key={item.product_id} className="border-t hover:bg-gray-50">
+                          <tr key={item.product_id} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                             <td className="p-3 text-center">
                               <input
                                 type="checkbox"
                                 checked={item.selected}
                                 onChange={(e) => toggleItemSelection(item.product_id, e.target.checked)}
-                                className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                                className="w-4 h-4 text-green-600 rounded focus:ring-green-500 dark:bg-gray-800 dark:border-gray-600"
                               />
                             </td>
                             <td className="p-3 font-mono text-xs">{item.product_id}</td>
                             <td className="p-3">
                               <div>
                                 <div className="font-medium">{item.description}</div>
-                                <div className="text-xs text-gray-500">{item.unit}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">{item.unit}</div>
                               </div>
                             </td>
-                            <td className="p-3 text-center text-gray-600">
+                            <td className="p-3 text-center text-gray-600 dark:text-gray-300">
                               {item.quantity}
                             </td>
                             <td className="p-3 text-center">
@@ -1108,14 +1112,14 @@ const ImportSubmissionModal = ({
                                 onChange={(e) => updateImportQuantity(item.product_id, e.target.value)}
                                 onFocus={(e) => e.target.select()}
                                 disabled={!item.selected}
-                                className={`w-20 text-center rounded border p-1 ${
+                                className={`w-20 text-center rounded border p-1 dark:text-gray-100 ${
                                   item.selected 
-                                    ? 'border-green-300 focus:border-green-500 focus:ring-green-500' 
-                                    : 'border-gray-200 bg-gray-50'
+                                    ? 'border-green-300 dark:border-green-600 bg-white dark:bg-gray-800 focus:border-green-500 focus:ring-green-500' 
+                                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500'
                                 }`}
                               />
                             </td>
-                            <td className="p-3 text-right font-medium text-orange-600">
+                            <td className="p-3 text-right font-medium text-orange-600 dark:text-orange-400">
                               {formatCurrency(item.cost_price || 0)}
                             </td>
                             <td className="p-3 text-right font-bold">
@@ -1129,7 +1133,7 @@ const ImportSubmissionModal = ({
 
                   {/* Actions finales */}
                   <div className="flex justify-between items-center mt-6">
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
                       {itemsToImport.filter(item => item.selected).length} item(s) sélectionné(s) 
                       sur {itemsToImport.length}
                     </div>
@@ -1137,7 +1141,7 @@ const ImportSubmissionModal = ({
                       <button
                         type="button"
                         onClick={onClose}
-                        className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        className="px-6 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         Annuler
                       </button>
@@ -1145,7 +1149,7 @@ const ImportSubmissionModal = ({
                         type="button"
                         onClick={handleImportSelectedItems}
                         disabled={itemsToImport.filter(item => item.selected).length === 0}
-                        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 dark:disabled:text-gray-400 disabled:cursor-not-allowed"
                       >
                         Importer {itemsToImport.filter(item => item.selected).length} item(s)
                       </button>
@@ -1239,13 +1243,13 @@ const AddressModal = ({
                           onClose();
                           setShowAddressFormModal(true);
                         }}
-                        className="px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                        className="px-3 py-2 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-900/60"
                       >
                         Modifier
                       </button>
                       <button
                         onClick={() => handleDeleteAddress(address.id)}
-                        className="px-3 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                        className="px-3 py-2 bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-900/60"
                       >
                         Supprimer
                       </button>
