@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.15.0
- * @date 2026-10-02
+ * @version 3.15.1
+ * @date 2026-10-09
  * @changelog
+ *   3.15.1 - Mode sombre: pastilles groupe/fournisseur/non-inv./stock faible, section « En main » du modal, onglet Historique des mouvements (cartes IN/OUT, libellés)
  *   3.15.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   3.14.1 - Historique: libellé « Facture (correction) » pour les mouvements reference_type 'invoice'
  *   3.14.0 - Items associés: carré « As » sur chaque ligne de la liste (violet + compteur si
@@ -921,10 +922,10 @@ export default function InventoryManager() {
             <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
               {getModeLabel()}
             </span>
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
               {itemCount.products} inventaire
             </span>
-            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">
               {itemCount.nonInventory} non-inv.
             </span>
             <span className="text-xs text-gray-500">
@@ -996,19 +997,19 @@ export default function InventoryManager() {
                       {/* Informations produit */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1 flex-wrap gap-y-1">
-                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
+                          <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs font-mono">
                             {item.product_id}
                           </span>
                           {item.product_group && (
-                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">
+                            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded text-xs">
                               {item.product_group}
                             </span>
                           )}
                           {/* Badge source — toujours visible */}
                           <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                             isProduct
-                              ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                              : 'bg-purple-50 text-purple-600 border border-purple-200'
+                              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                              : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-700'
                           }`}>
                             {isProduct ? 'Inventaire' : 'Non-inv.'}
                           </span>
@@ -1021,7 +1022,7 @@ export default function InventoryManager() {
                             onClick={() => openEditModal(item, 'associations')}
                           />
                           {stockQty < 10 && isProduct && (
-                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                            <span className="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 px-2 py-1 rounded text-xs">
                               Stock faible
                             </span>
                           )}
@@ -1293,8 +1294,8 @@ export default function InventoryManager() {
 
                   {/* Calcul automatique de marge */}
                   {editForm.cost_price && parseFloat(editForm.cost_price) > 0 && (
-                    <div className="bg-green-50 p-3 rounded-lg">
-                      <label className="block text-sm font-medium text-green-800 mb-2">
+                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                      <label className="block text-sm font-medium text-green-800 dark:text-green-200 mb-2">
                         Calcul automatique par marge %
                       </label>
                       <div className="flex gap-2">
@@ -1427,7 +1428,7 @@ export default function InventoryManager() {
                   {historyLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
-                      <span className="ml-3 text-gray-600">Chargement...</span>
+                      <span className="ml-3 text-gray-600 dark:text-gray-400">Chargement...</span>
                     </div>
                   ) : historyMovements.length === 0 ? (
                     <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -1438,7 +1439,7 @@ export default function InventoryManager() {
                     <>
                       {/* Résumé IN/OUT */}
                       <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 text-center">
                           <ArrowDownCircle className="w-5 h-5 mx-auto mb-1 text-green-600" />
                           <div className="text-lg font-bold text-green-700">
                             {historyMovements
@@ -1448,7 +1449,7 @@ export default function InventoryManager() {
                           </div>
                           <div className="text-xs text-green-600">Total entré (IN)</div>
                         </div>
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3 text-center">
                           <ArrowUpCircle className="w-5 h-5 mx-auto mb-1 text-red-600" />
                           <div className="text-lg font-bold text-red-700">
                             {historyMovements
@@ -1468,7 +1469,7 @@ export default function InventoryManager() {
                             <div
                               key={movement.id || index}
                               className={`border rounded-lg p-3 ${
-                                isIn ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                                isIn ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
                               }`}
                             >
                               <div className="flex justify-between items-start">
@@ -1476,16 +1477,16 @@ export default function InventoryManager() {
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
                                       isIn
-                                        ? 'bg-green-200 text-green-800'
-                                        : 'bg-red-200 text-red-800'
+                                        ? 'bg-green-200 dark:bg-green-900/60 text-green-800 dark:text-green-200'
+                                        : 'bg-red-200 dark:bg-red-900/60 text-red-800 dark:text-red-200'
                                     }`}>
                                       {isIn ? '+ IN' : '- OUT'}
                                     </span>
-                                    <span className="text-sm font-medium text-gray-900">
+                                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                       {parseFloat(movement.quantity).toFixed(2)} {movement.unit}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-gray-600 truncate">
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                                     {movement.notes || movement.reference_number || '-'}
                                   </p>
                                   {movement.reference_type && (
@@ -1503,7 +1504,7 @@ export default function InventoryManager() {
                                   )}
                                 </div>
                                 <div className="text-right ml-3 shrink-0">
-                                  <div className="text-xs font-medium text-gray-700">
+                                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
                                     {formatMovementDate(movement.created_at)}
                                   </div>
                                   {movement.unit_cost > 0 && (
@@ -1570,13 +1571,13 @@ export default function InventoryManager() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs text-gray-400">Coûtant</div>
-                              <div className="text-sm font-medium text-gray-700">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {editingItem.cost_price_1st != null ? formatCurrency(editingItem.cost_price_1st) : '-'}
                               </div>
                             </div>
                             <div>
                               <div className="text-xs text-gray-400">Vendant</div>
-                              <div className="text-sm font-medium text-gray-700">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {editingItem.selling_price_1st != null ? formatCurrency(editingItem.selling_price_1st) : '-'}
                               </div>
                             </div>
@@ -1596,13 +1597,13 @@ export default function InventoryManager() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs text-gray-400">Coûtant</div>
-                              <div className="text-sm font-medium text-gray-700">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {editingItem.cost_price_2nd != null ? formatCurrency(editingItem.cost_price_2nd) : '-'}
                               </div>
                             </div>
                             <div>
                               <div className="text-xs text-gray-400">Vendant</div>
-                              <div className="text-sm font-medium text-gray-700">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {editingItem.selling_price_2nd != null ? formatCurrency(editingItem.selling_price_2nd) : '-'}
                               </div>
                             </div>
@@ -1622,13 +1623,13 @@ export default function InventoryManager() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs text-gray-400">Coûtant</div>
-                              <div className="text-sm font-medium text-gray-700">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {editingItem.cost_price_3rd != null ? formatCurrency(editingItem.cost_price_3rd) : '-'}
                               </div>
                             </div>
                             <div>
                               <div className="text-xs text-gray-400">Vendant</div>
-                              <div className="text-sm font-medium text-gray-700">
+                              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {editingItem.selling_price_3rd != null ? formatCurrency(editingItem.selling_price_3rd) : '-'}
                               </div>
                             </div>

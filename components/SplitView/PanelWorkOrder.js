@@ -7,9 +7,10 @@
  *              - Time entries: start/end, pause, surcharge, transport, travel
  *              - Materials: code, description, qty, unit, price, notes
  *              - Totals summary + signature info
- * @version 2.1.0
- * @date 2026-04-11
+ * @version 2.1.1
+ * @date 2026-10-09
  * @changelog
+ *   2.1.1 - Mode sombre: couleur de repli du badge de statut
  *   2.1.0 - Fix matériaux invisibles: utilise API route au lieu de Supabase client
  *           (bypass RLS, enrichissement produit garanti)
  *   2.0.0 - Refonte complète: ajout adresse client, BA lié, transport/déplacement,
@@ -190,7 +191,7 @@ export default function PanelWorkOrder({ data }) {
     pending_send: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
     completed: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
     sent: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-  }[workOrder.status] || 'bg-gray-100 text-gray-800';
+  }[workOrder.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
 
   const timeEntries = workOrder.time_entries || [];
   const materials = workOrder.materials || [];

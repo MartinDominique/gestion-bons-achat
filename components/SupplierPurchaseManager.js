@@ -4,9 +4,10 @@
  *              - Liste, création, modification, suppression des AF
  *              - Réception directe et réception AF
  *              - Gestion des adresses de livraison fournisseur
- * @version 1.4.1
+ * @version 1.4.2
  * @date 2026-10-09
  * @changelog
+ *   1.4.2 - Mode sombre (suite): bouton Réinitialiser, pastilles client / BA lié, boutons Modifier/Supprimer/Recevoir (desktop + mobile), ligne compteur des cartes mobile, pastille « Par défaut » des adresses
  *   1.4.1 - Mode sombre: fenêtre « Importer depuis une Soumission » entièrement adaptée (cartes de
  *           soumission, bandeau « Soumission sélectionnée », boutons Tout sélectionner/désélectionner,
  *           tableau des items, champs quantité, pied). Aussi: badges de statut AF, date/montant de la
@@ -413,7 +414,7 @@ export default function SupplierPurchaseManager() {
                 }));
                 setShowForm(true);
               }}
-              className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
+              className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-gray-900 text-orange-600 dark:text-orange-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium text-sm"
             >
               Nouvel Achat Fourn.
             </button>
@@ -590,7 +591,7 @@ export default function SupplierPurchaseManager() {
                         setCustomEndDate('');
                         setDateFilter('all');
                       }}
-                      className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
                       title="Effacer les filtres de date"
                     >
                       ✕
@@ -601,7 +602,7 @@ export default function SupplierPurchaseManager() {
 
               {/* Indicateur du nombre de résultats */}
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 lg:ml-auto">
-                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                <span className="bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 px-2 py-1 rounded">
                   {filteredPurchases.length} résultat{filteredPurchases.length !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -638,7 +639,7 @@ export default function SupplierPurchaseManager() {
                 return (
                   <tr key={purchase.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td className="px-2 py-4 whitespace-nowrap">
-                      <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
+                      <span className="bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 px-2 py-1 rounded text-xs font-medium">
                         {purchase.purchase_number}
                       </span>
                     </td>
@@ -692,7 +693,7 @@ export default function SupplierPurchaseManager() {
                       purchase.delivery_date &&
                       new Date(purchase.delivery_date) < new Date().setHours(0,0,0,0) &&
                       purchase.status !== 'received'
-                        ? 'bg-red-100 text-red-700 font-semibold'
+                        ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-semibold'
                         : 'text-gray-500'
                     }`}>
                       {formatDate(purchase.delivery_date)}
@@ -725,14 +726,14 @@ export default function SupplierPurchaseManager() {
                       <div className="flex justify-center space-x-1">
                         <button
                           onClick={() => handleEditPurchase(purchase)}
-                          className="bg-orange-100 text-orange-700 hover:bg-orange-200 p-2 rounded-lg"
+                          className="bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/60 p-2 rounded-lg"
                           title="Modifier"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeletePurchase(purchase.id)}
-                          className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg"
+                          className="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 p-2 rounded-lg"
                           title="Supprimer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -740,7 +741,7 @@ export default function SupplierPurchaseManager() {
                         {(purchase.status === 'ordered' || purchase.status === 'partial') && (
                         <button
                           onClick={() => openReceiptModal(purchase)}
-                          className="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg"
+                          className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60 p-2 rounded-lg"
                           title="Réception"
                         >
                           <Truck className="w-4 h-4" />
@@ -837,14 +838,14 @@ export default function SupplierPurchaseManager() {
                     >
                       <button
                         onClick={() => handleEditPurchase(purchase)}
-                        className="bg-orange-100 text-orange-700 hover:bg-orange-200 p-1.5 rounded"
+                        className="bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/60 p-1.5 rounded"
                         title="Modifier"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeletePurchase(purchase.id)}
-                        className="bg-red-100 text-red-700 hover:bg-red-200 p-1.5 rounded"
+                        className="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 p-1.5 rounded"
                         title="Supprimer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -852,7 +853,7 @@ export default function SupplierPurchaseManager() {
                       {(purchase.status === 'ordered' || purchase.status === 'partial') && (
                         <button
                           onClick={() => openReceiptModal(purchase)}
-                          className="bg-green-100 text-green-700 hover:bg-green-200 p-1.5 rounded"
+                          className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60 p-1.5 rounded"
                           title="Réception"
                         >
                           <Truck className="w-4 h-4" />
@@ -862,7 +863,7 @@ export default function SupplierPurchaseManager() {
                   </div>
 
                   {/* LIGNE 2: Client + PO Client */}
-                  <div className="flex items-center justify-between gap-2 text-xs text-gray-600 pl-2">
+                  <div className="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-400 pl-2">
                     <div className="flex items-center gap-2 truncate flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                       {getClientLabel(purchase) && (
                         <span className="text-gray-700 dark:text-gray-300 font-medium truncate">
@@ -1219,7 +1220,7 @@ const AddressModal = ({
                 <div key={address.id} className="border dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 relative">
                   {address.is_default && (
                     <div className="absolute top-2 right-2">
-                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                      <span className="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded-full text-xs font-medium">
                         Par défaut
                       </span>
                     </div>

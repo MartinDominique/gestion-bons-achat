@@ -9,9 +9,10 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.10.1
+ * @version 1.10.2
  * @date 2026-10-09
  * @changelog
+ *   1.10.2 - Mode sombre (suite): boutons + fournisseur / + adresse, boutons de marge 27/30/35 % (produit non-inventaire + modal prix)
  *   1.10.1 - Mode sombre: formulaire Nouveau/Modifier Fournisseur (libellés, champs, listes, cases,
  *            Annuler), boutons Modifier/Supprimer de la liste des fournisseurs, encadré « Marge »
  *            du produit non-inventaire et bouton Annuler de cette fenêtre
@@ -480,7 +481,7 @@ Merci!`;
               <button
                 type="submit"
                 form="purchase-form"
-                className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
+                className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-gray-900 text-orange-600 dark:text-orange-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium text-sm"
                 disabled={isLoadingEmail}
               >
                 {isLoadingEmail ? 'Envoi...' : (editingPurchase ? 'Mettre à jour' : 'Créer')}
@@ -561,7 +562,7 @@ Merci!`;
                     <button
                       type="button"
                       onClick={() => setShowSupplierModal(true)}
-                      className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex-shrink-0"
+                      className="px-3 py-2 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex-shrink-0"
                       title="Gérer les fournisseurs"
                     >
                       <Building2 className="w-5 h-5" />
@@ -690,7 +691,7 @@ Merci!`;
                     <button
                       type="button"
                       onClick={() => setShowAddressModal(true)}
-                      className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex-shrink-0"
+                      className="px-3 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/60 flex-shrink-0"
                       title="Gérer les adresses"
                     >
                       <MapPin className="w-5 h-5" />
@@ -1225,26 +1226,26 @@ export const NonInventoryModal = ({
               {/* BOUTONS DE PROFIT */}
               {nonInventoryForm.cost_price && parseFloat(nonInventoryForm.cost_price) > 0 && (
                 <div className="mt-2">
-                  <p className="text-xs text-gray-600 mb-2">Profit automatique:</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Profit automatique:</p>
                   <div className="flex gap-1">
                     <button
                       type="button"
                       onClick={() => applyProfitMargin(15)}
-                      className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                      className="flex-1 px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs hover:bg-green-200 dark:hover:bg-green-900/60 font-medium"
                     >
                       +15%
                     </button>
                     <button
                       type="button"
                       onClick={() => applyProfitMargin(20)}
-                      className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
+                      className="flex-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-900/60 font-medium"
                     >
                       +20%
                     </button>
                     <button
                       type="button"
                       onClick={() => applyProfitMargin(27)}
-                      className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
+                      className="flex-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs hover:bg-purple-200 dark:hover:bg-purple-900/60 font-medium"
                     >
                       +27%
                     </button>
@@ -1598,7 +1599,7 @@ export const PriceUpdateModal = ({
                   key={pct}
                   type="button"
                   onClick={() => applyMargin(pct)}
-                  className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                  className="flex-1 px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs hover:bg-green-200 dark:hover:bg-green-900/60 font-medium"
                 >
                   {pct}%
                 </button>

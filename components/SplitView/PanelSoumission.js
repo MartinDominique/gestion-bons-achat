@@ -3,9 +3,10 @@
  * @description Wrapper to render Soumission details inside the split view panel.
  *              - Shows soumission details in read mode
  *              - Could be extended for edit mode
- * @version 1.1.0
- * @date 2026-03-24
+ * @version 1.1.1
+ * @date 2026-10-09
  * @changelog
+ *   1.1.1 - Mode sombre: badges de statut, libellés Description/Montant/Date, en-tête et lignes de la liste d'articles
  *   1.1.0 - Bouton "Retour à la liste" quand ouvert depuis PanelSoumissionsList
  *   1.0.0 - Version initiale
  */
@@ -110,11 +111,11 @@ export default function PanelSoumission({ data }) {
   }[soumission.status] || soumission.status;
 
   const statusColor = {
-    draft: 'bg-gray-100 text-gray-800',
-    sent: 'bg-blue-100 text-blue-800',
-    accepted: 'bg-green-100 text-green-800',
-    rejected: 'bg-red-100 text-red-800'
-  }[soumission.status] || 'bg-gray-100 text-gray-800';
+    draft: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
+    sent: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200',
+    accepted: 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200',
+    rejected: 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200'
+  }[soumission.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
 
   const items = soumission.items || [];
 
@@ -148,21 +149,21 @@ export default function PanelSoumission({ data }) {
       <div className="space-y-3">
         {soumission.description && (
           <div className="text-sm">
-            <span className="text-gray-600 font-medium">Description:</span>
-            <p className="text-gray-900 mt-1">{soumission.description}</p>
+            <span className="text-gray-600 dark:text-gray-400 font-medium">Description:</span>
+            <p className="text-gray-900 dark:text-gray-100 mt-1">{soumission.description}</p>
           </div>
         )}
 
         <div className="flex items-center gap-2 text-sm">
           <DollarSign className="w-4 h-4 text-green-500" />
-          <span className="text-gray-600">Montant:</span>
+          <span className="text-gray-600 dark:text-gray-400">Montant:</span>
           <span className="font-bold text-green-700">{formatCurrency(soumission.amount)}</span>
         </div>
 
         {soumission.created_at && (
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600">Date:</span>
+            <span className="text-gray-600 dark:text-gray-400">Date:</span>
             <span className="font-medium">{formatDate(soumission.created_at)}</span>
           </div>
         )}
@@ -171,8 +172,8 @@ export default function PanelSoumission({ data }) {
       {/* Items */}
       {items.length > 0 && (
         <div className="border rounded-lg overflow-hidden">
-          <div className="bg-gray-50 px-3 py-2 border-b">
-            <h4 className="text-sm font-semibold text-gray-700">
+          <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 border-b">
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Articles ({items.length})
             </h4>
           </div>
@@ -180,7 +181,7 @@ export default function PanelSoumission({ data }) {
             {items.map((item, idx) => (
               <div key={idx} className="px-3 py-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="font-medium text-gray-900 truncate flex-1">
+                  <span className="font-medium text-gray-900 dark:text-gray-100 truncate flex-1">
                     {item.name || item.description || item.product_id}
                   </span>
                   <span className="text-green-600 font-medium ml-2 flex-shrink-0">

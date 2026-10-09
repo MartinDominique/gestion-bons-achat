@@ -6,9 +6,10 @@
  *              - Recherche produits (tolérante aux tirets/accents), calcul taxes QC, gestion fichiers
  *              - Modal « Modifier l'article »: calculateur de marge, ajustement du stock
  *                et répercussion des prix dans la fiche inventaire
- * @version 2.6.0
- * @date 2026-10-02
+ * @version 2.6.1
+ * @date 2026-10-09
  * @changelog
+ *   2.6.1 - Mode sombre: boutons Annuler, boutons de marge 27/30/35 %, badges de statut (desktop + mobile), boutons Supprimer/Dupliquer/Voir, pastilles client/N°, compteurs des cartes mobile
  *   2.6.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés — fin du défilement horizontal du tableau « Produits sélectionnés » (colonne As)
  *   2.5.0 - Items associés: carré « As » sur chaque article de la soumission (table desktop +
  *           cartes mobile). Un tap ouvre la liste des associés (cases décochées par défaut,
@@ -2595,7 +2596,7 @@ const cleanupFilesForSubmission = async (files) => {
                                   <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                                   {product.product_id} - {product.description}
                                   {product.is_non_inventory && (
-                                  <span className="ml-2 bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs font-medium">
+                                  <span className="ml-2 bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200 px-2 py-1 rounded text-xs font-medium">
                                   🏷️ Service
                                   </span>
                                   )}
@@ -2681,7 +2682,7 @@ const cleanupFilesForSubmission = async (files) => {
                                 setSelectedProductForQuantity(null);
                                 setTempQuantity('1');
                               }}
-                              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                              className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                             >
                               Annuler
                             </button>
@@ -2801,26 +2802,26 @@ const cleanupFilesForSubmission = async (files) => {
                             {/* BOUTONS DE PROFIT */}
                             {quickProductForm.cost_price && parseFloat(quickProductForm.cost_price) > 0 && (
                               <div className="mt-2">
-                                <p className="text-xs text-gray-600 mb-2">Profit automatique:</p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Profit automatique:</p>
                                 <div className="flex gap-1">
                                   <button
                                     type="button"
                                     onClick={() => applyProfitMargin(15)}
-                                    className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                                    className="flex-1 px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs hover:bg-green-200 dark:hover:bg-green-900/60 font-medium"
                                   >
                                     +15%
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => applyProfitMargin(20)}
-                                    className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
+                                    className="flex-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-900/60 font-medium"
                                   >
                                     +20%
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => applyProfitMargin(27)}
-                                    className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
+                                    className="flex-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs hover:bg-purple-200 dark:hover:bg-purple-900/60 font-medium"
                                   >
                                     +27%
                                   </button>
@@ -2855,7 +2856,7 @@ const cleanupFilesForSubmission = async (files) => {
                                 cost_price_usd: ''
                               });
                             }}
-                            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                            className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                           >
                             Annuler
                           </button>
@@ -3136,7 +3137,7 @@ const cleanupFilesForSubmission = async (files) => {
                             type="button"
                             onClick={deleteFromEditModal}
                             disabled={savingEditItem}
-                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             🗑️ Supprimer
                           </button>
@@ -3198,7 +3199,7 @@ const cleanupFilesForSubmission = async (files) => {
                             <button
                               type="button"
                               onClick={closeCommentModal}
-                              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                              className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                             >
                               Annuler
                             </button>
@@ -3323,7 +3324,7 @@ const cleanupFilesForSubmission = async (files) => {
                                   <button
                                     type="button"
                                     onClick={() => removeItemFromSubmission(item.product_id)}
-                                    className="px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200 text-xs"
+                                    className="px-2 py-1 bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-900/60 text-xs"
                                     title="Supprimer"
                                   >
                                     ❌
@@ -3462,7 +3463,7 @@ const cleanupFilesForSubmission = async (files) => {
                     <button
                       type="button"
                       onClick={() => openFile(file)}
-                      className="flex-1 sm:flex-none px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded border border-blue-300 transition-colors md:hidden"
+                      className="flex-1 sm:flex-none px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded border border-blue-300 dark:border-blue-700 transition-colors md:hidden"
                       title="Ouvrir le fichier"
                     >
                       👁️ Voir
@@ -3470,21 +3471,21 @@ const cleanupFilesForSubmission = async (files) => {
                     <button
                       type="button"
                       onClick={() => downloadFile(file)}
-                      className="flex-1 sm:flex-none px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded border border-green-300 transition-colors"
+                      className="flex-1 sm:flex-none px-3 py-1 text-xs bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-900/60 text-green-700 dark:text-green-300 rounded border border-green-300 dark:border-green-700 transition-colors"
                       title="Télécharger le fichier"
                     >
                       💾 Télécharger
                     </button>
                   </>
                 ) : (
-                  <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded">
+                  <span className="px-2 py-1 text-xs bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 rounded">
                     📄 En cours...
                   </span>
                 )}
                 <button
                   type="button"
                   onClick={() => removeFile(index)}
-                  className="flex-1 sm:flex-none px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-300 transition-colors"
+                  className="flex-1 sm:flex-none px-3 py-1 text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded border border-red-300 dark:border-red-700 transition-colors"
                   title="Supprimer le fichier"
                 >
                   🗑️
@@ -3747,12 +3748,12 @@ const cleanupFilesForSubmission = async (files) => {
                   <td className="px-3 py-4 whitespace-nowrap">
                     <div className="text-sm space-y-1">
                       {submission.submission_number && (
-                        <div className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium inline-block">
+                        <div className="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 px-2 py-1 rounded text-xs font-medium inline-block">
                           N°: {submission.submission_number}
                         </div>
                       )}
                       {submission.items?.some(item => item.comment) && (
-                        <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium inline-block ml-1">
+                        <div className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs font-medium inline-block ml-1">
                           💬
                         </div>
                       )}
@@ -3775,9 +3776,9 @@ const cleanupFilesForSubmission = async (files) => {
                     <button
                       onClick={() => setStatusDropdownId(statusDropdownId === submission.id ? null : submission.id)}
                       className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:ring-2 hover:ring-purple-300 transition-all ${
-                        submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                        submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                        'bg-green-100 text-green-800'
+                        submission.status === 'sent' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200' :
+                        submission.status === 'draft' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200' :
+                        'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
                       }`}
                       title="Cliquer pour changer le statut"
                     >
@@ -3821,7 +3822,7 @@ const cleanupFilesForSubmission = async (files) => {
                     <div className="flex justify-center space-x-1">
                       <button
                         onClick={() => handleDeleteSubmission(submission.id)}
-                        className="bg-red-100 text-red-700 hover:bg-red-200 p-2 rounded-lg transition-colors"
+                        className="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 p-2 rounded-lg transition-colors"
                         title="Supprimer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -3895,15 +3896,15 @@ const cleanupFilesForSubmission = async (files) => {
                   </div>
 
                   {/* Montant */}
-                  <div className="bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
+                  <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap flex-shrink-0">
                     {formatCurrency(submission.amount)}
                   </div>
 
                   {/* Statut */}
                   <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${
-                    submission.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                    submission.status === 'draft' ? 'bg-gray-100 text-gray-800' :
-                    'bg-green-100 text-green-800'
+                    submission.status === 'sent' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200' :
+                    submission.status === 'draft' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200' :
+                    'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
                   }`}>
                     {submission.status === 'sent' ? '📤' :
                      submission.status === 'draft' ? '📝' : '✅'}
@@ -3912,7 +3913,7 @@ const cleanupFilesForSubmission = async (files) => {
                   {/* Indicateurs */}
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {submission.items && submission.items.length > 0 && (
-                      <span className="text-xs text-gray-600">📦{submission.items.length}</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">📦{submission.items.length}</span>
                     )}
                     {submission.items?.some(item => item.comment) && (
                       <span className="text-xs text-blue-600">💬</span>
@@ -3921,7 +3922,7 @@ const cleanupFilesForSubmission = async (files) => {
                 </div>
 
                 {/* LIGNE 2: Description + Marge */}
-                <div className="flex items-center justify-between gap-2 text-xs text-gray-600 pl-2">
+                <div className="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-400 pl-2">
                   <div className="truncate flex-1 min-w-0">
                     {submission.description || 'Aucune description'}
                   </div>

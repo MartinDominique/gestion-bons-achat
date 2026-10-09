@@ -1,3 +1,12 @@
+/**
+ * @file components/ConnectionStatus.js
+ * @description Badge de connexion (En ligne / Hors ligne) + bannière d'avertissement rouge quand la connexion tombe
+ * @version 1.0.1
+ * @date 2026-10-09
+ * @changelog
+ *   1.0.1 - Mode sombre: badge En ligne / Hors ligne
+ *   1.0.0 - Version initiale (en-tête ajouté rétroactivement)
+ */
 // components/ConnectionStatus.js
 // ================================
 // RÔLE: Affiche un badge de connexion (🟢 En ligne / 🔴 Hors ligne)
@@ -41,8 +50,8 @@ export default function ConnectionStatus({ className = '' }) {
       {/* Badge compact - toujours visible */}
       <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
         isOnline 
-          ? 'bg-green-100 text-green-700' 
-          : 'bg-red-100 text-red-700 animate-pulse'
+          ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' 
+          : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 animate-pulse'
       } ${className}`}>
         {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
         {isOnline ? 'En ligne' : 'Hors ligne'}

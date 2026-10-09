@@ -3,9 +3,10 @@
  * @description Page publique de présentation du BT au client pour signature
  *              - Charge les données depuis l'API publique (pas d'auth requise)
  *              - Cache-busting pour toujours obtenir les données les plus récentes
- * @version 1.1.0
- * @date 2026-03-06
+ * @version 1.1.1
+ * @date 2026-10-09
  * @changelog
+ *   1.1.1 - Mode sombre: messages Chargement / non trouvé
  *   1.1.0 - Fix: ajout cache-busting (timestamp) et cache:'no-store' au fetch
  *           Corrige le bug où la vue client affichait des données obsolètes
  *   1.0.0 - Version initiale
@@ -67,7 +68,7 @@ export default function ClientViewPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Chargement du bon de travail...</p>
+          <p className="text-gray-600 dark:text-gray-400">Chargement du bon de travail...</p>
         </div>
       </div>
     );
@@ -92,7 +93,7 @@ export default function ClientViewPage() {
   if (!workOrder) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Bon de travail non trouvé</p>
+        <p className="text-gray-600 dark:text-gray-400">Bon de travail non trouvé</p>
       </div>
     );
   }

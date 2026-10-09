@@ -1,3 +1,14 @@
+/**
+ * @file app/bons-travail/nouveau/page.js
+ * @description Page de création d'un nouveau bon de travail
+ *              - Vérification connexion + timeout + messages d'erreur explicites
+ *              - Pas de redirection si la sauvegarde échoue (le BT reste ouvert)
+ * @version 1.0.1
+ * @date 2026-10-09
+ * @changelog
+ *   1.0.1 - Mode sombre: titre et sous-titre de la page
+ *   1.0.0 - Version initiale (en-tête ajouté rétroactivement)
+ */
 //==============================
 // app/bons-travail/nouveau/page.js
 //===============================
@@ -197,13 +208,13 @@ export default function NouveauBonTravailPage() {
       {/* Header avec indicateur connexion */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Nouveau Bon de Travail
           </h1>
           {/* Badge de connexion */}
           <ConnectionStatus />
         </div>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           Créez un nouveau bon de travail avec matériaux et description
         </p>
       </div>

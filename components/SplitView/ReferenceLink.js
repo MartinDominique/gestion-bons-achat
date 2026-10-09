@@ -4,9 +4,10 @@
  *              in the split view panel instead of navigating away.
  *              - Used for BA, AF, and Soumission references
  *              - Renders as a styled clickable badge
- * @version 1.0.0
- * @date 2026-02-14
+ * @version 1.0.1
+ * @date 2026-10-09
  * @changelog
+ *   1.0.1 - Mode sombre: 4 variantes de couleur du lien de référence
  *   1.0.0 - Version initiale
  */
 
@@ -28,10 +29,10 @@ export default function ReferenceLink({ type, label, data, variant = 'blue', cla
   const { openPanel } = useSplitView();
 
   const variantStyles = {
-    blue: 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-900',
-    orange: 'bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-900',
-    purple: 'bg-purple-100 text-purple-700 hover:bg-purple-200 hover:text-purple-900',
-    green: 'bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-900'
+    blue: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60 hover:text-blue-900 dark:hover:text-blue-100',
+    orange: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/60 hover:text-orange-900 dark:hover:text-orange-100',
+    purple: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/60 hover:text-purple-900 dark:hover:text-purple-100',
+    green: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60 hover:text-green-900 dark:hover:text-green-100'
   };
 
   const handleClick = (e) => {

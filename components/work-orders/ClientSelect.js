@@ -1,4 +1,14 @@
-
+/**
+ * @file components/work-orders/ClientSelect.js
+ * @description Sélecteur de client avec recherche (liste déroulante) — partagé BT + BL
+ *              - Recherche par nom/adresse, bouton « Nouveau client »
+ *              - Utilisé sur tablette/mobile (BT/BL 95 % mobile)
+ * @version 1.0.1
+ * @date 2026-10-09
+ * @changelog
+ *   1.0.1 - Mode sombre: bouton sélecteur, liste déroulante, champ de recherche, ligne sélectionnée, pied de liste
+ *   1.0.0 - Version initiale (en-tête ajouté rétroactivement)
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, User, MapPin, Mail, Phone, X } from 'lucide-react';
 
@@ -138,15 +148,15 @@ export default function ClientSelect({
         onClick={openDropdown}
         disabled={disabled}
         className={`w-full px-3 py-2 text-left border rounded-lg focus:ring-2 focus:ring-blue-500 flex items-center justify-between ${
-          error ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white'
-        } ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}
+          error ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+        } ${disabled ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'}
         ${isOpen ? 'ring-2 ring-blue-500' : ''}`}
       >
         <div className="flex items-center flex-1 min-w-0">
           <User className="mr-2 text-gray-400 flex-shrink-0" size={16} />
           {selectedClient ? (
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900 truncate">
+              <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
                 {selectedClient.name}
               </div>
               {selectedClient.address && (
@@ -184,16 +194,16 @@ export default function ClientSelect({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 flex flex-col">
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-80 flex flex-col">
           {/* Barre de recherche */}
-          <div className="p-3 border-b border-gray-200">
+          <div className="p-3 border-b border-gray-200 dark:border-gray-700">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
                 ref={inputRef}
                 type="text"
                 placeholder="Rechercher par nom, adresse, email..."
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
@@ -231,8 +241,8 @@ export default function ClientSelect({
                     key={client.id}
                     type="button"
                     onClick={() => handleClientSelect(client)}
-                    className={`w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none ${
-                      selectedClient?.id === client.id ? 'bg-blue-100 text-blue-900' : 'text-gray-900'
+                    className={`w-full px-3 py-2 text-left hover:bg-blue-50 dark:hover:bg-blue-900/30 focus:bg-blue-50 dark:focus:bg-blue-900/30 focus:outline-none ${
+                      selectedClient?.id === client.id ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-200' : 'text-gray-900 dark:text-gray-100'
                     }`}
                   >
                     <div className="font-medium truncate">{client.name}</div>
@@ -266,7 +276,7 @@ export default function ClientSelect({
 
           {/* Footer avec actions */}
           {!loading && (
-            <div className="p-3 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 flex justify-between">
+            <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs text-gray-600 dark:text-gray-400 flex justify-between">
               <span>{(filteredClients || []).length} client(s) trouvé(s)</span>
               <button
                 type="button"

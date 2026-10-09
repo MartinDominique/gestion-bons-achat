@@ -5,9 +5,10 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.2.1
- * @date 2026-06-05
+ * @version 1.2.2
+ * @date 2026-10-09
  * @changelog
+ *   1.2.2 - Mode sombre: pastille verte de fichier joint
  *   1.2.1 - Import Fournisseurs: utilise le prix vendant (selling_price) au lieu du coûtant (cost_price)
  *           pour afficher le vrai prix de vente au client (import + aperçu + total estimé)
  *   1.2.0 - Propagation changement quantité depuis BCC vers onglet Articles (onQuantityChange)
@@ -2562,7 +2563,7 @@ setTimeout(() => {
                           <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{submission.description}</p>
                           <div className="flex gap-4 text-xs text-gray-500 dark:text-gray-400">
                             <span>Date: {new Date(submission.created_at).toLocaleDateString()}</span>
-                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
+                            <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 px-2 py-1 rounded">
                               {submission.status}
                             </span>
                             <span>{submission.items?.length || 0} articles</span>

@@ -5,9 +5,10 @@
  *              - Sessions manuelles (ajout, édition, suppression)
  *              - Détection automatique surcharges (soir, samedi, dimanche, jours fériés QC)
  *              - Application des minimums (2h soir, 3h weekend/férié)
- * @version 2.3.0
- * @date 2026-05-19
+ * @version 2.3.1
+ * @date 2026-10-09
  * @changelog
+ *   2.3.1 - Mode sombre: carte verte de la session en cours
  *   2.3.0 - Affichage des sessions en ordre inversé (dernière en haut). Support forwardRef pour déclenchement externe de punch-in + prop hidePunchInButton + callback onWorkingStateChange
  *   2.2.0 - Ajout champ session_description (20 car. max, optionnel) par session
  *   2.1.1 - Ajout onFocus select sur champs pause (auto-sélection)
@@ -645,7 +646,7 @@ const formatDuration = (hours) => {
             key={index}
             className={`border rounded-lg p-3 ${
               entry.in_progress 
-                ? 'bg-green-50 border-green-500 border-2' 
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-500 border-2' 
                 : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600'
             }`}
           >

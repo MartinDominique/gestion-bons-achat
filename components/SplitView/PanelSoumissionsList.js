@@ -4,9 +4,10 @@
  *              - Affiche toutes les soumissions avec filtre par statut
  *              - Changement de statut inline (dropdown) sans ouvrir le formulaire
  *              - Clic sur une soumission ouvre le détail dans le même panneau
- * @version 1.0.0
- * @date 2026-03-24
+ * @version 1.0.1
+ * @date 2026-10-09
  * @changelog
+ *   1.0.1 - Mode sombre: badges de statut des filtres + pastille N° soumission
  *   1.0.1 - Ligne entière cliquable pour ouvrir le détail de la soumission
  *   1.0.0 - Version initiale
  */
@@ -31,9 +32,9 @@ const formatDate = (dateStr) => {
 };
 
 const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Brouillon', emoji: '📝', bgClass: 'bg-gray-100 text-gray-800', activeBg: 'bg-gray-50' },
-  { value: 'sent', label: 'Envoyée', emoji: '📤', bgClass: 'bg-blue-100 text-blue-800', activeBg: 'bg-blue-50' },
-  { value: 'accepted', label: 'Acceptée', emoji: '✅', bgClass: 'bg-green-100 text-green-800', activeBg: 'bg-green-50' }
+  { value: 'draft', label: 'Brouillon', emoji: '📝', bgClass: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200', activeBg: 'bg-gray-50 dark:bg-gray-800' },
+  { value: 'sent', label: 'Envoyée', emoji: '📤', bgClass: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200', activeBg: 'bg-blue-50 dark:bg-blue-900/20' },
+  { value: 'accepted', label: 'Acceptée', emoji: '✅', bgClass: 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200', activeBg: 'bg-green-50 dark:bg-green-900/20' }
 ];
 
 export default function PanelSoumissionsList({ data }) {
@@ -179,7 +180,7 @@ export default function PanelSoumissionsList({ data }) {
                 <div className="flex items-center gap-2">
                   {submission.submission_number && (
                     <span
-                      className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs font-mono font-bold flex-shrink-0"
+                      className="bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded text-xs font-mono font-bold flex-shrink-0"
                     >
                       {submission.submission_number}
                     </span>

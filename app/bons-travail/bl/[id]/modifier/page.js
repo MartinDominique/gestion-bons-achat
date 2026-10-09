@@ -1,9 +1,10 @@
 /**
  * @file app/bons-travail/bl/[id]/modifier/page.js
  * @description Page d'édition d'un Bon de Livraison (BL) existant
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.0.1
+ * @date 2026-10-09
  * @changelog
+ *   1.0.1 - Mode sombre: encadré d'erreur, page « introuvable », liste de contrôle, bandeau d'en-tête orange
  *   1.0.0 - Version initiale
  */
 
@@ -204,8 +205,8 @@ export default function ModifierBonLivraisonPage({ params }) {
   if (error && !deliveryNote) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">Erreur</h2>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">Erreur</h2>
           <p className="text-red-700 whitespace-pre-line">{error}</p>
           <button
             onClick={() => router.push('/bons-travail')}
@@ -222,8 +223,8 @@ export default function ModifierBonLivraisonPage({ params }) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Bon de livraison introuvable</h2>
-          <p className="text-gray-600 mb-6">Le bon de livraison demandé n'existe pas ou a été supprimé.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Bon de livraison introuvable</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Le bon de livraison demandé n'existe pas ou a été supprimé.</p>
           <button
             onClick={() => router.push('/bons-travail')}
             className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700"
@@ -249,7 +250,7 @@ export default function ModifierBonLivraisonPage({ params }) {
               </button>
             </li>
             <li>/</li>
-            <li className="text-gray-900 font-medium">
+            <li className="text-gray-900 dark:text-gray-100 font-medium">
               Modifier {deliveryNote.bl_number}
             </li>
           </ol>
@@ -257,7 +258,7 @@ export default function ModifierBonLivraisonPage({ params }) {
         </div>
       </nav>
 
-      <div className="mb-6 bg-orange-50 border border-orange-200 rounded-lg p-4">
+      <div className="mb-6 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-orange-900">
