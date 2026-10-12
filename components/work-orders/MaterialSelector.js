@@ -8,9 +8,10 @@
  *              - Affichage stock en main + quantité en commande (AF) dans la recherche
  *              - Affichage "En main" (stock) dans le modal d'ajout, le modal d'édition
  *                et la liste des matériaux ajoutés (BT + BL)
- * @version 1.9.0
- * @date 2026-09-10
+ * @version 1.9.1
+ * @date 2026-10-09
  * @changelog
+ *   1.9.1 - Mode sombre: pastille « Stock faible »
  *   1.9.0 - Items associés: carré « As » sur chaque ligne de matériau (BT + BL). Un tap ouvre
  *           la liste des associés (cases décochées par défaut, qté = défaut × qté du parent,
  *           modifiable); les items cochés s'ajoutent à la liste (fusion si déjà présents).
@@ -924,7 +925,7 @@ const deleteMaterialFromModal = () => {
                               </span>
                             )}
                             {product.stock_qty < 10 && (
-                              <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">
+                              <span className="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 px-2 py-1 rounded text-xs">
                                 Stock faible
                               </span>
                             )}

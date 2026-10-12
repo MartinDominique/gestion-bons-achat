@@ -4,9 +4,10 @@
  *              - Création, édition, conversion depuis soumissions
  *              - Gestion des livraisons par BA
  *              - Interface desktop et mobile
- * @version 1.2.0
- * @date 2026-10-02
+ * @version 1.2.1
+ * @date 2026-10-09
  * @changelog
+ *   1.2.1 - Mode sombre: badges de statut BA, pastilles N° soumission / client, boutons d'action (cartes mobile), barre de progression
  *   1.2.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   1.1.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur tous les champs texte
  *   1.1.0 - Ajout classes dark mode Tailwind CSS
@@ -324,9 +325,9 @@ export default function ClientPOManager() {
   // Badge de statut
     const getStatusBadgeStyle = (status) => {
       const badges = {
-        in_progress: 'bg-blue-100 text-blue-800',
-        partial: 'bg-yellow-100 text-yellow-800',
-        completed: 'bg-green-100 text-green-800'
+        in_progress: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200',
+        partial: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200',
+        completed: 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
       };
       return badges[status] || badges.in_progress;
     };
@@ -790,7 +791,7 @@ export default function ClientPOManager() {
                     <p className="text-sm text-gray-600 dark:text-gray-400">{submission.client_name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{submission.description}</p>
                   </div>
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+                  <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 px-2 py-1 rounded text-xs font-medium">
                     ✅ Acceptée
                   </span>
                 </div>
@@ -859,11 +860,11 @@ export default function ClientPOManager() {
                     <tr key={po.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <td className="px-3 py-4 whitespace-nowrap">
                         <div className="text-sm space-y-1">
-                          <div className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-medium inline-block">
+                          <div className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 px-2 py-1 rounded text-xs font-medium inline-block">
                             📄 {po.ba_number}
                           </div>
                           {po.submission_number && (
-                            <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium inline-block ml-1">
+                            <div className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs font-medium inline-block ml-1">
                               📋 {po.submission_number}
                             </div>
                           )}
@@ -895,7 +896,7 @@ export default function ClientPOManager() {
                           {deliveryStatus.status !== 'completed' && po.items && po.items.length > 0 && (
                             <button
                               onClick={() => openDeliveryForm(po)}
-                              className="bg-green-100 text-green-700 hover:bg-green-200 p-2 rounded-lg transition-colors"
+                              className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60 p-2 rounded-lg transition-colors"
                               title="Créer livraison"
                             >
                               <Truck className="w-4 h-4" />
@@ -925,7 +926,7 @@ export default function ClientPOManager() {
                               });
                               setShowForm(true);
                             }}
-                            className="bg-blue-100 text-blue-700 hover:bg-blue-200 p-2 rounded-lg transition-colors"
+                            className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60 p-2 rounded-lg transition-colors"
                             title="Modifier"
                           >
                             <Edit className="w-4 h-4" />
@@ -969,7 +970,7 @@ export default function ClientPOManager() {
                   
                   {po.submission_number && (
                     <div className="mb-3">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                      <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs font-medium">
                         📋 {po.submission_number}
                       </span>
                     </div>
@@ -977,7 +978,7 @@ export default function ClientPOManager() {
 
                   {deliveryStatus.status === 'partial' && (
                     <div className="mb-3">
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
+                      <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
                         <span>Progression livraison</span>
                         <span>{deliveryStatus.percentage}%</span>
                       </div>

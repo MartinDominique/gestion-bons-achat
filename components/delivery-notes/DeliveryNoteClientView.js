@@ -9,9 +9,10 @@
  *              - Auto-fermeture après signature + envoi email
  *              - Affichage colonnes backorder (BO) en lecture seule
  *              Mobile-first: 95% usage tablette/mobile
- * @version 2.11.0
- * @date 2026-06-04
+ * @version 2.11.1
+ * @date 2026-10-09
  * @changelog
+ *   2.11.1 - Mode sombre: titre vert de l'encadré de confirmation
  *   2.11.0 - Fermeture quasi-instantanée après signature: délais réduits de
  *            800ms→100ms (succès) et 1500ms→100ms (envoi manuel), fallback
  *            navigation 300ms→150ms
@@ -1019,7 +1020,7 @@ export default function DeliveryNoteClientView({ deliveryNote, onStatusUpdate })
         {/* Livraison envoyée */}
         {deliveryNote.status === 'sent' && (
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 mb-6 text-center">
-            <h3 className="text-lg font-semibold text-green-800 mb-2">
+            <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
               ✅ Bon de Livraison Envoyé avec Succès
             </h3>
             <p className="text-green-700 dark:text-green-300">

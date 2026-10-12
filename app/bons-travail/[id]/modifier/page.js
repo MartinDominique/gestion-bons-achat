@@ -1,3 +1,14 @@
+/**
+ * @file app/bons-travail/[id]/modifier/page.js
+ * @description Page d'édition d'un bon de travail existant
+ *              - Vérification connexion + timeout + messages d'erreur explicites
+ *              - Pas de redirection si la sauvegarde échoue (le BT reste ouvert)
+ * @version 1.0.1
+ * @date 2026-10-09
+ * @changelog
+ *   1.0.1 - Mode sombre: encadré d'erreur, page « introuvable », liste de contrôle, bandeau d'en-tête bleu
+ *   1.0.0 - Version initiale (en-tête ajouté rétroactivement)
+ */
 //==============================
 // app/bons-travail/[id]/modifier/page.js
 //===============================
@@ -247,8 +258,8 @@ export default function ModifierBonTravailPage({ params }) {
   if (error && !workOrder) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">Erreur</h2>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">Erreur</h2>
           <p className="text-red-700 whitespace-pre-line">{error}</p>
           <button
             onClick={() => router.push('/bons-travail')}
@@ -265,8 +276,8 @@ export default function ModifierBonTravailPage({ params }) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Bon de travail introuvable</h2>
-          <p className="text-gray-600 mb-6">Le bon de travail demandé n'existe pas ou a été supprimé.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Bon de travail introuvable</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Le bon de travail demandé n'existe pas ou a été supprimé.</p>
           <button
             onClick={() => router.push('/bons-travail')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
@@ -293,7 +304,7 @@ export default function ModifierBonTravailPage({ params }) {
               </button>
             </li>
             <li>/</li>
-            <li className="text-gray-900 font-medium">
+            <li className="text-gray-900 dark:text-gray-100 font-medium">
               Modifier {workOrder.bt_number}
             </li>
           </ol>
@@ -303,10 +314,10 @@ export default function ModifierBonTravailPage({ params }) {
       </nav>
 
       {/* Informations du BT */}
-      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-blue-900">
+            <h1 className="text-xl font-bold text-blue-900 dark:text-blue-200">
               Modification du bon de travail {workOrder.bt_number}
             </h1>
             <p className="text-blue-700 text-sm mt-1">
@@ -319,7 +330,7 @@ export default function ModifierBonTravailPage({ params }) {
           </div>
           <div className="text-right">
             <div className="text-sm text-blue-700">Client:</div>
-            <div className="font-medium text-blue-900">{workOrder.client?.name || 'Client non défini'}</div>
+            <div className="font-medium text-blue-900 dark:text-blue-200">{workOrder.client?.name || 'Client non défini'}</div>
           </div>
         </div>
       </div>

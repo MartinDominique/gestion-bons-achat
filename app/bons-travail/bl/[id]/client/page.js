@@ -1,9 +1,10 @@
 /**
  * @file app/bons-travail/bl/[id]/client/page.js
  * @description Page de signature client pour un BL (accès public)
- * @version 1.2.0
- * @date 2026-02-18
+ * @version 1.2.1
+ * @date 2026-10-09
  * @changelog
+ *   1.2.1 - Mode sombre: messages Chargement / non trouvé
  *   1.2.0 - Fix: fetch avec cache: 'no-store' pour toujours charger les
  *           données à jour (quantités, emails) lors de re-présentation
  *   1.1.0 - Ajout onStatusUpdate pour mise à jour statut après signature
@@ -57,7 +58,7 @@ export default function ClientViewBLPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-teal-600" />
-          <p className="text-gray-600">Chargement du bon de livraison...</p>
+          <p className="text-gray-600 dark:text-gray-400">Chargement du bon de livraison...</p>
         </div>
       </div>
     );
@@ -82,7 +83,7 @@ export default function ClientViewBLPage() {
   if (!deliveryNote) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Bon de livraison non trouvé</p>
+        <p className="text-gray-600 dark:text-gray-400">Bon de livraison non trouvé</p>
       </div>
     );
   }

@@ -9,9 +9,13 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.10.0
- * @date 2026-10-02
+ * @version 1.10.2
+ * @date 2026-10-09
  * @changelog
+ *   1.10.2 - Mode sombre (suite): boutons + fournisseur / + adresse, boutons de marge 27/30/35 % (produit non-inventaire + modal prix)
+ *   1.10.1 - Mode sombre: formulaire Nouveau/Modifier Fournisseur (libellés, champs, listes, cases,
+ *            Annuler), boutons Modifier/Supprimer de la liste des fournisseurs, encadré « Marge »
+ *            du produit non-inventaire et bouton Annuler de cette fenêtre
  *   1.10.0 - Fenêtre « Mise à jour prix inventaire »: montants affichés en « $ CAD » et, pour une
  *            ligne achetée en USD, rappel du prix US d'origine (« = 377,00 $ US converti ») —
  *            on voit tout de suite si un prix US a été pris pour un prix CAD
@@ -477,7 +481,7 @@ Merci!`;
               <button
                 type="submit"
                 form="purchase-form"
-                className="w-full sm:w-auto px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100 font-medium text-sm"
+                className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-gray-900 text-orange-600 dark:text-orange-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium text-sm"
                 disabled={isLoadingEmail}
               >
                 {isLoadingEmail ? 'Envoi...' : (editingPurchase ? 'Mettre à jour' : 'Créer')}
@@ -558,7 +562,7 @@ Merci!`;
                     <button
                       type="button"
                       onClick={() => setShowSupplierModal(true)}
-                      className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex-shrink-0"
+                      className="px-3 py-2 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 flex-shrink-0"
                       title="Gérer les fournisseurs"
                     >
                       <Building2 className="w-5 h-5" />
@@ -687,7 +691,7 @@ Merci!`;
                     <button
                       type="button"
                       onClick={() => setShowAddressModal(true)}
-                      className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 flex-shrink-0"
+                      className="px-3 py-2 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/60 flex-shrink-0"
                       title="Gérer les adresses"
                     >
                       <MapPin className="w-5 h-5" />
@@ -1222,26 +1226,26 @@ export const NonInventoryModal = ({
               {/* BOUTONS DE PROFIT */}
               {nonInventoryForm.cost_price && parseFloat(nonInventoryForm.cost_price) > 0 && (
                 <div className="mt-2">
-                  <p className="text-xs text-gray-600 mb-2">Profit automatique:</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Profit automatique:</p>
                   <div className="flex gap-1">
                     <button
                       type="button"
                       onClick={() => applyProfitMargin(15)}
-                      className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                      className="flex-1 px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs hover:bg-green-200 dark:hover:bg-green-900/60 font-medium"
                     >
                       +15%
                     </button>
                     <button
                       type="button"
                       onClick={() => applyProfitMargin(20)}
-                      className="flex-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 font-medium"
+                      className="flex-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-900/60 font-medium"
                     >
                       +20%
                     </button>
                     <button
                       type="button"
                       onClick={() => applyProfitMargin(27)}
-                      className="flex-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 font-medium"
+                      className="flex-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs hover:bg-purple-200 dark:hover:bg-purple-900/60 font-medium"
                     >
                       +27%
                     </button>
@@ -1252,8 +1256,8 @@ export const NonInventoryModal = ({
 
             {/* Marge */}
             {nonInventoryForm.selling_price && nonInventoryForm.cost_price && (
-              <div className="sm:col-span-2 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="sm:col-span-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
                   💰 Marge: {formatCurrency(parseFloat(nonInventoryForm.selling_price || 0) - parseFloat(nonInventoryForm.cost_price || 0))} 
                   ({((parseFloat(nonInventoryForm.selling_price || 0) - parseFloat(nonInventoryForm.cost_price || 0)) / parseFloat(nonInventoryForm.selling_price || 1) * 100).toFixed(1)}%)
                 </p>
@@ -1281,7 +1285,7 @@ export const NonInventoryModal = ({
                 setUsdAmountCost('');
                 setUsdAmountSelling('');
               }}
-              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Annuler
             </button>
@@ -1595,7 +1599,7 @@ export const PriceUpdateModal = ({
                   key={pct}
                   type="button"
                   onClick={() => applyMargin(pct)}
-                  className="flex-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 font-medium"
+                  className="flex-1 px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs hover:bg-green-200 dark:hover:bg-green-900/60 font-medium"
                 >
                   {pct}%
                 </button>
@@ -1761,13 +1765,13 @@ export const SupplierModal = ({
                           });
                           document.getElementById('supplier-form-modal').showModal();
                         }}
-                        className="px-3 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                        className="px-3 py-2 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-900/60"
                       >
                         Modifier
                       </button>
                       <button
                         onClick={() => handleDeleteSupplier(supplier.id)}
-                        className="px-3 py-2 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                        className="px-3 py-2 bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-900/60"
                       >
                         Supprimer
                       </button>
@@ -1838,14 +1842,14 @@ export const SupplierFormModal = ({
         <form onSubmit={handleSupplierSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nom de l'entreprise *
               </label>
               <input
                 type="text"
                 value={supplierForm.company_name}
                 onChange={(e) => setSupplierForm({...supplierForm, company_name: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 required
                 autoCorrect="on"
                 autoCapitalize="sentences"
@@ -1854,14 +1858,14 @@ export const SupplierFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nom du contact
               </label>
               <input
                 type="text"
                 value={supplierForm.contact_name}
                 onChange={(e) => setSupplierForm({...supplierForm, contact_name: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 autoCorrect="on"
                 autoCapitalize="sentences"
                 spellCheck={true}
@@ -1869,14 +1873,14 @@ export const SupplierFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email
               </label>
               <input
                 type="email"
                 value={supplierForm.email}
                 onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
@@ -1884,14 +1888,14 @@ export const SupplierFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Téléphone
               </label>
               <input
                 type="tel"
                 value={supplierForm.phone}
                 onChange={handlePhoneChange}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="(418) 225-3875"
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -1906,42 +1910,42 @@ export const SupplierFormModal = ({
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nom du contact
               </label>
               <input
                 type="text"
                 value={supplierForm.contact_name_2 || ''}
                 onChange={(e) => setSupplierForm({...supplierForm, contact_name_2: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 autoCorrect="on"
                 autoCapitalize="sentences"
                 spellCheck={true}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email
               </label>
               <input
                 type="email"
                 value={supplierForm.email_2 || ''}
                 onChange={(e) => setSupplierForm({...supplierForm, email_2: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Téléphone (optionnel)
               </label>
               <input
                 type="tel"
                 value={supplierForm.phone_2 || ''}
                 onChange={handlePhoneFieldChange('phone_2')}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="(418) 225-3875"
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -1956,42 +1960,42 @@ export const SupplierFormModal = ({
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nom du contact
               </label>
               <input
                 type="text"
                 value={supplierForm.contact_name_3 || ''}
                 onChange={(e) => setSupplierForm({...supplierForm, contact_name_3: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 autoCorrect="on"
                 autoCapitalize="sentences"
                 spellCheck={true}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email
               </label>
               <input
                 type="email"
                 value={supplierForm.email_3 || ''}
                 onChange={(e) => setSupplierForm({...supplierForm, email_3: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 autoCorrect="off"
                 autoCapitalize="off"
                 spellCheck={false}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Téléphone (optionnel)
               </label>
               <input
                 type="tel"
                 value={supplierForm.phone_3 || ''}
                 onChange={handlePhoneFieldChange('phone_3')}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder="(418) 225-3875"
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -2000,14 +2004,14 @@ export const SupplierFormModal = ({
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Adresse
               </label>
               <input
                 type="text"
                 value={supplierForm.address}
                 onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 autoCorrect="on"
                 autoCapitalize="sentences"
                 spellCheck={true}
@@ -2015,7 +2019,7 @@ export const SupplierFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Pays
               </label>
               <select
@@ -2029,7 +2033,7 @@ export const SupplierFormModal = ({
                     postal_code: ''
                   });
                 }}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
               >
                 <option value="Canada">Canada</option>
                 <option value="USA">USA</option>
@@ -2038,14 +2042,14 @@ export const SupplierFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Ville
               </label>
               <input
                 type="text"
                 value={supplierForm.city}
                 onChange={(e) => setSupplierForm({...supplierForm, city: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 autoCorrect="on"
                 autoCapitalize="sentences"
                 spellCheck={true}
@@ -2053,14 +2057,14 @@ export const SupplierFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {supplierForm.country === 'USA' ? 'État' : 'Province'}
               </label>
               {supplierForm.country === 'Canada' ? (
                 <select
                   value={supplierForm.province}
                   onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 >
                   {Object.entries(CANADIAN_PROVINCES).map(([code, name]) => (
                     <option key={code} value={code}>{name}</option>
@@ -2071,7 +2075,7 @@ export const SupplierFormModal = ({
                   type="text"
                   value={supplierForm.province}
                   onChange={(e) => setSupplierForm({...supplierForm, province: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                   placeholder={supplierForm.country === 'USA' ? 'Ex: California, Texas...' : 'État/Province'}
                   autoCorrect="on"
                   autoCapitalize="sentences"
@@ -2081,7 +2085,7 @@ export const SupplierFormModal = ({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {supplierForm.country === 'USA' ? 'ZIP Code' : 'Code postal'}
               </label>
               <input
@@ -2097,7 +2101,7 @@ export const SupplierFormModal = ({
                   }
                   setSupplierForm({...supplierForm, postal_code: value});
                 }}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 placeholder={getPostalCodePlaceholder(supplierForm.country)}
                 pattern={getPostalCodePattern(supplierForm.country)}
                 autoCorrect="off"
@@ -2107,13 +2111,13 @@ export const SupplierFormModal = ({
             </div>
             
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Notes
               </label>
               <textarea
                 value={supplierForm.notes}
                 onChange={(e) => setSupplierForm({...supplierForm, notes: e.target.value})}
-                className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                 rows="3"
                 autoCorrect="on"
                 autoCapitalize="sentences"
@@ -2127,13 +2131,13 @@ export const SupplierFormModal = ({
                   type="checkbox"
                   checked={supplierForm.preferred_english}
                   onChange={(e) => setSupplierForm({...supplierForm, preferred_english: e.target.checked})}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Préférence anglais / English preference
                 </span>
               </label>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Si coché, les bons de commande seront générés en anglais/français pour ce fournisseur
               </p>
             </div>
@@ -2144,27 +2148,27 @@ export const SupplierFormModal = ({
                   type="checkbox"
                   checked={supplierForm.tax_exempt}
                   onChange={(e) => setSupplierForm({...supplierForm, tax_exempt: e.target.checked})}
-                  className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-red-600 focus:ring-red-500"
                 />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Exempt de taxes / Tax exempt
                 </span>
               </label>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Si coché, aucune taxe ne sera appliquée aux commandes de ce fournisseur
               </p>
             </div>
 
             {supplierForm.country === 'USA' && (
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Tax ID / EIN (optionnel)
                 </label>
                 <input
                   type="text"
                   value={supplierForm.tax_id}
                   onChange={(e) => setSupplierForm({...supplierForm, tax_id: e.target.value})}
-                  className="w-full rounded-lg border-gray-300 shadow-sm p-3"
+                  className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 shadow-sm p-3"
                   placeholder="12-3456789"
                   autoCorrect="off"
                   autoCapitalize="off"
@@ -2178,7 +2182,7 @@ export const SupplierFormModal = ({
             <button
               type="button"
               onClick={() => document.getElementById('supplier-form-modal').close()}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Annuler
             </button>

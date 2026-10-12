@@ -4,9 +4,10 @@
  *              - Protection signature si offline + indicateur wifi visible + timeout
  *              - IMPORTANT: Bloque la signature si pas de connexion
  *              - Mobile-first: 95% usage tablette/mobile
- * @version 2.3.0
- * @date 2026-06-04
+ * @version 2.3.1
+ * @date 2026-10-09
  * @changelog
+ *   2.3.1 - Mode sombre: bandeau rouge d'avertissement
  *   2.3.0 - Fermeture quasi-instantanée après signature: délai réduit 500ms→100ms
  *   2.2.0 - Barre du bas: "Accepter et Signer" élargi (ratio 3:1 vs "Fermer")
  *           Modal signature: boutons Effacer/Annuler/Confirmer placés au-dessus
@@ -747,8 +748,8 @@ export default function WorkOrderClientView({ workOrder, onStatusUpdate }) {
       
                   {/* ✅ NOUVEAU: Avertissement si offline dans le modal */}
                   {!isOnline && (
-                    <div className="bg-red-100 border-b-2 border-red-300 px-6 py-3">
-                      <p className="text-red-800 font-semibold text-center">
+                    <div className="bg-red-100 dark:bg-red-900/40 border-b-2 border-red-300 dark:border-red-700 px-6 py-3">
+                      <p className="text-red-800 dark:text-red-200 font-semibold text-center">
                         ⚠️ Pas de connexion - La signature ne pourra pas être enregistrée!
                       </p>
                     </div>

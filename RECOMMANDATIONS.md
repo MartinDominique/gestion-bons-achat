@@ -1142,6 +1142,21 @@ bg-yellow-50  → dark:bg-yellow-900/20 (avertissements)
 - [ ] Verifier les badges de statut (couleurs pastel en mode sombre)
 - [ ] `WorkOrderList.js` et `WorkOrderClientView.js` non migres (pages peu utilisees)
 - [ ] Ajuster si des couleurs semblent incorrectes apres test terrain
+- [x] AF (2026-10-09): fenêtre « Importer depuis une Soumission » (texte noir sur fond noir, cases
+      illisibles, tableau blanc), formulaire Nouveau/Modifier Fournisseur, badges de statut, boutons
+      Modifier/Supprimer (adresses + fournisseurs) → `SupplierPurchaseManager.js` v1.4.1 +
+      `SupplierPurchaseForms.js` v1.10.1
+- [x] Passe complète (2026-10-09): scan automatique de tous les composants/pages pour les classes claires
+      sans variante `dark:` (fonds blanc/gris/pastel, textes gris foncé, badges de statut) → 0 restant.
+      Fichiers: `SoumissionsManager.js` v2.6.1, `InventoryManager.js` v3.15.1, `ClientPOManager.js` v1.2.1,
+      `work-orders/ClientSelect.js` v1.0.1 (sélecteur de client BT/BL), `TimeTracker.js` v2.3.1,
+      `MaterialSelector.js` v1.9.1, `WorkOrderClientView.js` v2.3.1, `DeliveryNoteClientView.js` v2.11.1,
+      `ConnectionStatus.js` v1.0.1, `PurchaseOrderModal.js` v1.2.2, SplitView (`PanelSoumission` v1.1.1,
+      `PanelSoumissionsList` v1.0.1, `PanelSupplierPurchase` v1.0.1, `PanelWorkOrder` v2.1.1,
+      `PanelDeliveryNote` v2.1.1, `ReferenceLink` v1.0.1), pages BT/BL (`nouveau`, `nouveau-bl`,
+      `[id]/modifier`, `bl/[id]/modifier`, `[id]/client`, `bl/[id]/client`), AF (`SupplierPurchaseManager`
+      v1.4.2, `SupplierPurchaseForms` v1.10.2). Exclus volontairement: boutons blancs sur les bandeaux
+      dégradés (lisibles dans les 2 modes), `WorkOrderList.js` (composant non importé, code mort)
 
 ### ~~Phase 14 - Navigation mobile + SplitView tablette~~ ✅ COMPLETE (2026-03-01)
 - [x] #1: Navigation mobile Option A - Menu "Plus" pour modules bureau (bottom sheet)
@@ -2314,4 +2329,4 @@ dans le menu « Plus » sur cellulaire.
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-09-21 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-10-09 par Claude AI*

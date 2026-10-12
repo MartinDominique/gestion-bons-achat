@@ -1,9 +1,10 @@
 /**
  * @file app/bons-travail/nouveau-bl/page.js
  * @description Page de création d'un nouveau Bon de Livraison (BL)
- * @version 1.1.0
- * @date 2026-02-18
+ * @version 1.1.1
+ * @date 2026-10-09
  * @changelog
+ *   1.1.1 - Mode sombre: titre et sous-titre de la page
  *   1.1.0 - Fix: utiliser PUT après première sauvegarde pour éviter les doublons.
  *           Quand le BL est déjà créé (savedBlId), les sauvegardes suivantes
  *           font un PUT au lieu d'un POST.
@@ -156,12 +157,12 @@ export default function NouveauBonLivraisonPage() {
 
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Nouveau Bon de Livraison
           </h1>
           <ConnectionStatus />
         </div>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           Créez un nouveau bon de livraison avec matériaux
         </p>
       </div>
