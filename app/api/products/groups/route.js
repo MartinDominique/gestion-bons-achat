@@ -3,14 +3,20 @@
  * @description API pour récupérer les groupes de produits distincts
  *              - Combine les groupes de products et non_inventory_items
  *              - Retourne une liste triée alphabétiquement
- * @version 1.0.0
- * @date 2026-02-12
+ * @version 1.1.0
+ * @date 2026-11-03
  * @changelog
+ *   1.1.0 - `export const dynamic = 'force-dynamic'`: sans cette directive, Next.js 14
+ *           met en cache statique une route GET() sans paramètre => la liste des groupes
+ *           restait figée à l'état du dernier déploiement (même bug que reservations v1.2.0)
  *   1.0.0 - Version initiale
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../../lib/supabaseAdmin';
+
+// OBLIGATOIRE: route GET() sans paramètre => sinon cache statique Next.js 14
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {

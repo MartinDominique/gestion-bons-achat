@@ -2327,6 +2327,31 @@ défilaient. Cellulaire (390 px): +3 px et boutons qui chevauchaient le logo.
 l'infobulle et dans le menu « Plus »); libellés abrégés sur desktop 1024-1699 px; « Se déconnecter »
 dans le menu « Plus » sur cellulaire.
 
+### Bug: Inventaire « Réservé −0 » / « En commande +0 » figés — route de réservation mise en cache statique par Next.js ✅ CORRIGÉ (2026-11-03)
+
+**Symptôme (Martin, 3 nov.):** JBX884 (1 en main) ajouté au BT-2026-207, sauvegardé la veille en brouillon et non
+signé, mais la fiche Inventaire affiche « Réservé (BT/BL non signés) −0 ». Vérification SQL: la ligne existe bien dans
+`work_order_materials` (`product_id` = `product_code` = `JBX884`, qté 1, BT en `draft`), et seulement 92 lignes à lire
+(loin du plafond 1000). La donnée est bonne, c'est la route qui ment.
+
+**Cause:** `app/api/inventory/reservations/route.js` exportait `GET()` sans paramètre et sans
+`export const dynamic = 'force-dynamic'`. En Next.js 14, une telle route est **statique**: elle est exécutée une seule
+fois au déploiement Vercel et sa réponse est servie telle quelle ensuite. « En commande » et « Réservé » reflétaient
+donc l'état de la base **au dernier déploiement** (d'où l'impression que « ça marchait » juste après chaque correctif,
+puis dérivait en silence). Trois autres routes GET() sans paramètre avaient le même oubli: `products/groups`
+(nouveau groupe invisible jusqu'au déploiement suivant), `send-daily-report`, `send-weekly-report`.
+
+**Implementation completee (2026-11-03):**
+- `app/api/inventory/reservations/route.js` v1.2.0 — `force-dynamic` + `Cache-Control: no-store`; erreurs Supabase
+  vérifiées sur chaque requête (avant: `data` null avalé → « succès » avec zéro réservation partout); lecture paginée
+  par 1000 (AF, BT, BL, matériaux); clés produit normalisées (`trim`); paramètre de diagnostic
+  `?code=JBX884` qui retourne les lignes brutes trouvées (BT/BL/AF) + les quantités calculées
+- `app/api/products/groups/route.js` v1.1.0, `app/api/send-daily-report/route.js` v1.1.0,
+  `app/api/send-weekly-report/route.js` v1.1.0 — `export const dynamic = 'force-dynamic'`
+- `CLAUDE.md` — règle « Routes API GET » (Standards de Code) + bug dans « Bugs connus »
+- Aucune migration SQL requise. Vérification après déploiement: fiche JBX884 → « Réservé −1 », ou
+  `/api/inventory/reservations?code=JBX884` dans le navigateur
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-10-09 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-03 par Claude AI*

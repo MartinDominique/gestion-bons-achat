@@ -1,3 +1,15 @@
+/**
+ * @file app/api/send-daily-report/route.js
+ * @description Envoi automatique du rapport quotidien (BA clients) par courriel (Resend)
+ * @version 1.1.0
+ * @date 2026-11-03
+ * @changelog
+ *   1.1.0 - `export const dynamic = 'force-dynamic'`: sans cette directive, Next.js 14
+ *           met en cache statique une route GET() sans paramètre => le rapport pouvait
+ *           être généré à partir de données figées au dernier déploiement
+ *   1.0.0 - Version initiale
+ */
+
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
@@ -8,6 +20,9 @@ const supabase = createClient(
 );
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// OBLIGATOIRE: route GET() sans paramètre => sinon cache statique Next.js 14
+export const dynamic = 'force-dynamic';
 
 // Fonction pour calculer la couleur de la ligne selon la date
 function getRowColor(deliveryDate) {

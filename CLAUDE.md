@@ -316,6 +316,28 @@ Tous les champs `<input>` et `<textarea>` DOIVENT avoir les attributs approprié
 **Note:** Les champs `type="number"`, `type="email"`, `type="tel"`, `type="password"` sont toujours CODE/REFERENCE.
 Les champs `type="date"`, `type="time"`, `type="checkbox"`, `type="radio"`, `type="file"`, `readOnly` sont exemptés.
 
+### Routes API GET — `force-dynamic` OBLIGATOIRE
+
+En Next.js 14, une route `app/api/**/route.js` dont le `GET()` n'utilise ni `request`, ni `cookies()`,
+ni `headers()` est considérée **statique**: elle est exécutée **une seule fois au déploiement** et sa
+réponse est servie telle quelle jusqu'au déploiement suivant. Ça a figé « En commande » / « Réservé »
+de l'inventaire pendant des mois (bug JBX884, 2026-11-03).
+
+```javascript
+// Toute route GET qui lit la base DOIT déclarer, juste après les imports:
+export const dynamic = 'force-dynamic';
+```
+
+**Règles:**
+1. Chaque nouvelle route avec un `GET` qui lit Supabase déclare `export const dynamic = 'force-dynamic'`.
+2. Les requêtes Supabase vérifient **toujours** `error` (jamais `const { data } = ...` seul): une erreur
+   doit remonter en HTTP 500 avec message, pas devenir un « succès » vide.
+3. Une lecture qui peut dépasser 1000 lignes est **paginée** (`.range()` par 1000, avec `.order()` stable),
+   voir `fetchAll()` dans `app/api/inventory/reservations/route.js` ou le backup.
+
+**Vérification:** dans le journal de build Vercel, section « Route (app) », une route API doit être
+`ƒ (Dynamic)`, jamais `○ (Static)`.
+
 ### Gestion d'Erreurs
 
 Pattern standard pour les réponses API:
@@ -1022,6 +1044,10 @@ CRON_SECRET                   # Auth pour cron jobs
      Reste: vérification visuelle sur tablette
 
 ### Bugs connus (corrigés)
+- ~~Inventaire: « Réservé −0 » / « En commande +0 » figés alors que le BT brouillon contient bien l'item (JBX884, BT-2026-207)~~ → Corrigé (2026-11-03)
+  - Symptôme: BT sauvegardé en brouillon, non signé, ligne présente dans `work_order_materials` (vérifié en SQL), mais la fiche Inventaire affiche « Réservé −0 ».
+  - Cause: `app/api/inventory/reservations/route.js` était une route `GET()` sans paramètre et sans `export const dynamic = 'force-dynamic'` → **cache statique Next.js 14**: la réponse était calculée une fois au déploiement Vercel et servie telle quelle jusqu'au déploiement suivant. Les chiffres étaient justes juste après chaque déploiement, puis dérivaient en silence.
+  - Correctif: `reservations/route.js` v1.2.0 — `force-dynamic` + `no-store`, erreurs Supabase vérifiées (plus de « succès » vide), lecture paginée par 1000, `?code=XXX` pour diagnostiquer sans SQL. Même directive ajoutée à `products/groups` v1.1.0, `send-daily-report` v1.1.0, `send-weekly-report` v1.1.0. Voir la règle « Routes API GET » (Standards de Code). Aucune migration requise.
 - ~~Achat en USD: le prix US (ex. 377 $ US, GS23-53P0) enregistré comme coûtant CAD dans l'inventaire~~ → Corrigé (2026-10-02)
   - Symptôme: produit acheté en USD dans un AF; à la vente (facture, BT…), le coûtant affiché était le montant US non converti.
   - Cause: dans le tableau de l'AF, taper le prix dans la case « $ CAD » puis appuyer sur la bascule « USD » fait perdre le focus au champ AVANT la bascule → `handlePriceBlur` ouvrait la fenêtre « Mise à jour prix inventaire » avec le montant tapé comme coûtant **CAD**, qui était écrit dans la fiche produit (régression liée à la bascule CAD | USD du 2026-09-08). La fenêtre n'indiquait aucune devise.
