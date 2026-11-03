@@ -1,4 +1,14 @@
-// app/api/send-weekly-report/route.js - VERSION AVEC RAPPORT INVENTAIRE
+/**
+ * @file app/api/send-weekly-report/route.js
+ * @description Envoi automatique du rapport hebdomadaire (avec rapport inventaire) par courriel (Resend)
+ * @version 1.1.0
+ * @date 2026-11-03
+ * @changelog
+ *   1.1.0 - `export const dynamic = 'force-dynamic'`: sans cette directive, Next.js 14
+ *           met en cache statique une route GET() sans paramètre => le rapport pouvait
+ *           être généré à partir de données figées au dernier déploiement
+ *   1.0.0 - Version initiale
+ */
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 
@@ -6,6 +16,9 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+// OBLIGATOIRE: route GET() sans paramètre => sinon cache statique Next.js 14
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
