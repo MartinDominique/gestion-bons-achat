@@ -2383,6 +2383,10 @@ fiche (`clients.payment_terms`).
   [clientId]/route.js` v1.3.0 (`payment_terms`), `send-email/route.js` v1.6.0 (« Conditions: » dans l'en-tête
   PDF, avis d'intérêts = phrase partagée, notes de pied en noir), `components/invoices/ClientStatementView.js`
   v1.11.0 (pastille « Conditions: Net 30 jours » toujours visible)
+- **Colonne « INTÉRÊTS » par facture** (demande Martin, 4 nov.) `send-email/route.js` v1.7.0 — le tableau du
+  PDF du relevé montre l'intérêt de chaque facture en retard (« - » sur une facture à jour ou un crédit); le
+  total des intérêts reste au sommaire sous le solde. Colonne présente seulement si des intérêts sont facturés
+  (case « Facturer les intérêts de retard » cochée et intérêts > 0); largeurs des colonnes rééquilibrées
 - **Sélecteurs** `components/ClientModal.js` v2.4.0, `app/(protected)/parametres/page.js` v2.8.0,
   `components/invoices/InvoiceEditor.js` v2.16.0 — options tirées de `PAYMENT_TERMS`; `app/api/settings/route.js`
   v1.7.0 — défauts partagés + validation de `default_payment_terms`

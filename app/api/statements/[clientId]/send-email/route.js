@@ -13,9 +13,12 @@
  *              - Body save_to_client (défaut true): une adresse saisie à la volée est
  *                enregistrée au dossier client (email_admin s'il est vide, sinon
  *                additional_emails) pour être proposée aux prochains envois
- * @version 1.6.0
+ * @version 1.7.0
  * @date 2026-11-04
  * @changelog
+ *   1.7.0 - Colonne « INTÉRÊTS » par facture dans le tableau du PDF (visible seulement si des
+ *           intérêts sont facturés): le client voit l'intérêt de chaque facture en retard;
+ *           le total des intérêts reste au sommaire sous le solde. « - » sur un crédit
  *   1.6.0 - En-tête PDF: « Conditions: Net 30 jours » (fiche client, sinon Paramètres);
  *           avis d'intérêts remplacé par la phrase partagée lateInterestNotice()
  *           (« Intérêts de 18 %/an (1,5 %/mois) sur tout solde en souffrance après
@@ -169,6 +172,8 @@ function generateStatementPDF(statement) {
   });
 
   // ---- TABLEAU DES FACTURES ----
+  // Colonne intérêts par facture: seulement si des intérêts sont réclamés sur ce relevé
+  const showInterestColumn = chargeInterest && totals.interest > 0;
   const columns = [
     { header: 'FACTURE', dataKey: 'number' },
     { header: 'RÉF.', dataKey: 'ref' },
@@ -178,6 +183,7 @@ function generateStatementPDF(statement) {
     { header: 'TOTAL', dataKey: 'total' },
     { header: 'PAYÉ', dataKey: 'paid' },
     { header: 'SOLDE', dataKey: 'balance' },
+    ...(showInterestColumn ? [{ header: 'INTÉRÊTS', dataKey: 'interest' }] : []),
   ];
 
   const body = lines.map(l => ({
@@ -190,6 +196,7 @@ function generateStatementPDF(statement) {
     total: money(l.total),
     paid: money(l.amount_paid),
     balance: money(l.balance),
+    interest: (l.is_credit || !(l.interest > 0)) ? '-' : money(l.interest),
   }));
 
   body.push({
@@ -201,6 +208,7 @@ function generateStatementPDF(statement) {
     total: '',
     paid: '',
     balance: money(totals.balance),
+    interest: money(totals.interest),
   });
 
   doc.autoTable({
@@ -227,14 +235,15 @@ function generateStatementPDF(statement) {
       fontSize: 8,
     },
     columnStyles: {
-      number: { cellWidth: 22, halign: 'center', font: 'courier' },
+      number: { cellWidth: showInterestColumn ? 18 : 22, halign: 'center', font: 'courier' },
       ref: { cellWidth: 24, halign: 'center', font: 'courier' },
-      date: { cellWidth: 24, halign: 'center' },
-      due: { cellWidth: 24, halign: 'center' },
+      date: { cellWidth: showInterestColumn ? 20 : 24, halign: 'center' },
+      due: { cellWidth: showInterestColumn ? 20 : 24, halign: 'center' },
       overdue: { cellWidth: 18, halign: 'center' },
       total: { cellWidth: 'auto', halign: 'right', font: 'courier' },
       paid: { cellWidth: 'auto', halign: 'right', font: 'courier' },
       balance: { cellWidth: 'auto', halign: 'right', font: 'courier' },
+      interest: { cellWidth: 'auto', halign: 'right', font: 'courier' },
     },
     margin: { left: pdfCommon.PAGE.margin.left, right: pdfCommon.PAGE.margin.right },
     showHead: 'everyPage',
