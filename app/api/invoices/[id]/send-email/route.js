@@ -6,9 +6,12 @@
  *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.8.0
+ * @version 1.9.0
  * @date 2026-11-04
  * @changelog
+ *   1.9.0 - Mode pdf_only: génère le PDF + upload Storage et retourne pdf_url SANS courriel et
+ *           SANS toucher au statut ni à pdf_url de la facture (dossier BA → « Générer le PDF »
+ *           d'une facture brouillon ou d'une ancienne facture dont le PDF n'est pas en Storage)
  *   1.8.0 - Conditions de paiement unifiées (lib/constants/paymentTerms): « Échéance: » dans
  *           l'en-tête du PDF (sous « Termes: ») et mention « Intérêts de 18 %/an (1,5 %/mois)
  *           sur tout solde en souffrance après l'échéance. » en pied de facture (taux des
@@ -281,7 +284,8 @@ export async function POST(request, { params }) {
   try {
     const { id } = params;
     const body = await request.json();
-    const { emails: customEmails, print_only, show_signature } = body;
+    const { emails: customEmails, print_only, show_signature, pdf_only } = body;
+    const skipEmail = Boolean(print_only || pdf_only);
 
     // 1. Récupérer la facture
     const { data: invoice, error: invoiceError } = await supabaseAdmin
@@ -337,7 +341,7 @@ export async function POST(request, { params }) {
     // 3. Déterminer les adresses email (cascade) — sauf en mode print_only
     let emailAddresses = [];
 
-    if (!print_only) {
+    if (!skipEmail) {
       if (customEmails && customEmails.length > 0) {
         emailAddresses = customEmails;
       } else {
@@ -400,8 +404,8 @@ export async function POST(request, { params }) {
       console.error('Erreur Storage (non bloquante):', storageErr.message);
     }
 
-    // 6. Envoyer l'email (sauf en mode print_only)
-    if (!print_only) {
+    // 6. Envoyer l'email (sauf en mode print_only / pdf_only)
+    if (!skipEmail) {
       const companyName = pdfCommon.COMPANY.name;
       const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@servicestmt.com';
 
@@ -463,6 +467,22 @@ export async function POST(request, { params }) {
           { status: 500 }
         );
       }
+    }
+
+    // 6b. Mode pdf_only: PDF généré/stocké, facture intacte (statut + pdf_url inchangés)
+    if (pdf_only) {
+      if (!pdfUrl) {
+        return NextResponse.json(
+          { success: false, error: `PDF de la facture ${invoice.invoice_number} généré mais non stocké (Supabase Storage indisponible). Réessayez.` },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json({
+        success: true,
+        message: `PDF de la facture ${invoice.invoice_number} généré`,
+        pdf_url: pdfUrl,
+        pdf_only: true,
+      });
     }
 
     // 7. Mettre à jour le statut de la facture + pdf_url

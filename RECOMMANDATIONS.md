@@ -2352,6 +2352,35 @@ puis dérivait en silence). Trois autres routes GET() sans paramètre avaient le
 - Aucune migration SQL requise. Vérification après déploiement: fiche JBX884 → « Réservé −1 », ou
   `/api/inventory/reservations?code=JBX884` dans le navigateur
 
+## Dossier BA — Factures liées (PDF) dans l'onglet « Docs » ✅ COMPLETE (2026-11-04)
+
+**Demande (Martin, 4 nov.):** voir, dans le dossier d'un BA client, les factures qui portent ce N° de BA,
+en PDF; et que les factures déjà faites y apparaissent aussi.
+
+**Implementation completee (2026-11-04):**
+- `app/api/purchase-orders/[id]/invoices/route.js` (nouveau, `force-dynamic`) — GET: BT et BL dont
+  `linked_po_id` = BA → factures créées depuis ces documents (`invoices.source_type/source_id`) **ou**
+  référencées par leur `invoice_id` (union, donc robuste si un lien `invoice_id` est resté NULL). Pour
+  chaque facture, nouvelle URL signée (24 h) vers le PDF du bucket `invoices`
+  (`YYYY/MM/facture-{n}.pdf`): `has_pdf`, `pdf_url` (voir) + `pdf_download_url` (téléchargement forcé).
+  BT/BL facturés dans Acomba (`invoice_id = -1`) renvoyés dans `external`. Erreurs Supabase vérifiées
+- `app/api/invoices/[id]/send-email/route.js` v1.9.0 — mode `pdf_only`: génère le PDF + upload Storage et
+  retourne `pdf_url` **sans courriel et sans toucher au statut** ni à `pdf_url` de la facture (une facture
+  brouillon reste brouillon; une facture envoyée n'est pas marquée « renvoyée »)
+- `components/PurchaseOrderModal.js` v1.3.0 — onglet **Docs**: section « 🧾 Factures liées (n) » (date,
+  total, statut Brouillon/Envoyée/Partielle/Payée, Prix Jobé, N° BT/BL source), boutons **Voir** (ouvre le
+  PDF, tablette) / **Télécharger** (ordinateur) si le PDF est en stockage, sinon **« Générer le PDF »**
+  (facture ancienne ou brouillon; « Régénérer » sur un brouillon); bouton « Actualiser »; ligne « Facturés
+  dans Acomba » s'il y a lieu; compteur de factures ajouté à la pastille de l'onglet Docs; rechargement sur
+  `ba-list-updated`. Même rendu dans le panneau latéral (SplitView → `PanelPurchaseOrder`)
+- **Factures déjà faites:** rien à migrer ni à rattacher — la liste est calculée en direct, donc toutes les
+  factures existantes dont le BT/BL est lié au BA apparaissent immédiatement. Celles envoyées/imprimées depuis
+  l'app ont déjà leur PDF (Storage); pour les autres, « Générer le PDF » le crée à partir des données de la
+  facture. Une facture dont le BT/BL n'a **pas** de BA lié n'apparaît pas: lier le BT/BL au BA suffit
+- Aucune migration SQL requise
+
+---
+
 ## Conditions de paiement + intérêts unifiés (Soumission, Facture, État de compte) ✅ COMPLETE (2026-11-04)
 
 **Demande (Martin, 4 nov.):** ajouter sur la soumission, après « Paiement: Net 30 jours », la ligne
