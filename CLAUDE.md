@@ -1037,8 +1037,9 @@ CRON_SECRET                   # Auth pour cron jobs
 36. ~~**Conditions de paiement + intérêts unifiés (Soumission, Facture, État de compte)**~~ - ✅ COMPLÉTÉ (2026-11-04)
     - `lib/constants/paymentTerms.js` (nouveau) — **source unique**: liste `PAYMENT_TERMS` (libellé + jours nets),
       `resolvePaymentTerms()` (fiche client → Paramètres → « Net 30 jours »), `computeDueDate()` (échéance = date de
-      facture + jours nets, même définition que le libellé), `lateInterestNotice()` → « Intérêts de 18 %/an (1,5 %/mois)
-      sur tout solde en souffrance après l'échéance. » (taux `settings.late_interest_annual_rate`, vide si 0)
+      facture + jours nets, même définition que le libellé), `lateInterestNotice()` → « Frais de retard de 1,5 % par mois
+      (18 % par année) sur tout solde en souffrance après l'échéance. » (mensuel en premier comme les fournisseurs,
+      intérêt simple donc sans « composés »; taux `settings.late_interest_annual_rate`, vide si 0)
     - Soumission (`SoumissionsManager.js` v2.7.0: PDF + impression + courriel), Facture (`send-email` v1.8.0: « Échéance: »
       en en-tête + mention en pied + courriel; `invoices/route.js` v1.5.0 + `[id]/route.js` v1.5.0: échéance calculée ET
       recalculée au changement de condition), État de compte (`statement-data.js` v1.3.0, route v1.3.0, PDF v1.7.0 avec
