@@ -1,11 +1,9 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL + création BL suivi backorder
- * @version 1.7.0
- * @date 2026-11-04
+ * @version 1.6.0
+ * @date 2026-04-21
  * @changelog
- *   1.7.0 - Charge default_payment_terms + late_interest_annual_rate (Paramètres) et les
- *           transmet au PDF BL (bloc conditions de paiement + intérêts)
  *   1.6.0 - Fix: fallback sur product_code si product_id est NULL (même pattern que BT).
  *           Sans ce fallback, les matériaux avec SKU texte non résolu étaient skippés
  *           → pas de décrément de stock, pas de mouvement d'inventaire.
@@ -390,18 +388,11 @@ export async function POST(request, { params }) {
       });
     }
 
-    // 5. Envoyer l'email (conditions de paiement + taux d'intérêt des Paramètres pour le PDF)
-    const { data: paymentSettings } = await supabaseAdmin
-      .from('settings')
-      .select('default_payment_terms, late_interest_annual_rate')
-      .eq('id', 1)
-      .maybeSingle();
-
+    // 5. Envoyer l'email
     const emailService = new DeliveryNoteEmailService();
     const result = await emailService.sendDeliveryNoteEmail(deliveryNote, {
       sendToBureau: true,
-      clientEmail: recipientEmails,
-      settings: paymentSettings || null
+      clientEmail: recipientEmails
     });
 
     if (result.success) {

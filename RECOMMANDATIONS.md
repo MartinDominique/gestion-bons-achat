@@ -2352,11 +2352,11 @@ puis dérivait en silence). Trois autres routes GET() sans paramètre avaient le
 - Aucune migration SQL requise. Vérification après déploiement: fiche JBX884 → « Réservé −1 », ou
   `/api/inventory/reservations?code=JBX884` dans le navigateur
 
-## Conditions de paiement + intérêts unifiés (Soumission, Facture, BL, État de compte) ✅ COMPLETE (2026-11-04)
+## Conditions de paiement + intérêts unifiés (Soumission, Facture, État de compte) ✅ COMPLETE (2026-11-04)
 
 **Demande (Martin, 4 nov.):** ajouter sur la soumission, après « Paiement: Net 30 jours », la ligne
 « Intérêts de 18 %/an (1,5 %/mois) sur tout solde en souffrance après l'échéance. »; même mention sur la
-facture et le bon de livraison; même formulation sur l'état de compte; une seule constante partagée pour
+facture; même formulation sur l'état de compte; une seule constante partagée pour
 que les gabarits ne divergent plus; « Net 30 jours » issu de la même source que le calcul de l'échéance;
 « Conditions: Net 30 jours » dans l'en-tête de l'état de compte; la condition de chaque client vient de sa
 fiche (`clients.payment_terms`).
@@ -2377,9 +2377,8 @@ fiche (`clients.payment_terms`).
 - **Échéance (source unique)** `app/api/invoices/route.js` v1.5.0 — `computeDueDate()` à la création;
   `app/api/invoices/[id]/route.js` v1.5.0 — échéance **recalculée** au PUT quand la date de facture ou la
   condition change (avant: figée à la création, donc fausse après un changement de condition)
-- **Bon de livraison** `lib/services/email-service.js` v3.5.0 — bloc « CONDITIONS GÉNÉRALES » (Paiement +
-  intérêts) avant la signature, versions client et bureau; `app/api/delivery-notes/[id]/send-email/route.js`
-  v1.4.0 + `complete-signature/route.js` v1.7.0 chargent `default_payment_terms` et `late_interest_annual_rate`
+- **Bon de livraison et Bon de travail: inchangés** (précision de Martin, 4 nov.): ces formulaires ne portent
+  aucun montant dû, donc aucune condition de paiement ni mention d'intérêts
 - **État de compte** `lib/services/statement-data.js` v1.3.0 (`paymentTerms` résolu), `app/api/statements/
   [clientId]/route.js` v1.3.0 (`payment_terms`), `send-email/route.js` v1.6.0 (« Conditions: » dans l'en-tête
   PDF, avis d'intérêts = phrase partagée, notes de pied en noir), `components/invoices/ClientStatementView.js`
@@ -2390,9 +2389,6 @@ fiche (`clients.payment_terms`).
 - Taux: `settings.late_interest_annual_rate` (Paramètres, défaut 18) alimente **tous** les documents; un taux à
   0 retire la phrase partout. La case « Facturer les intérêts de retard » de l'état de compte garde son effet
 - Aucune migration SQL requise
-
-**Non fait (à décider):** le PDF du **Bon de travail (BT)** n'a pas reçu le bloc conditions (demande limitée
-à Facture / BL / Soumission / État de compte). Même ajout possible en 3 lignes dans `ImprovedWorkOrderPDFService`.
 
 ---
 
