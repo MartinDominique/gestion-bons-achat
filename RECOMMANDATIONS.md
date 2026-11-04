@@ -2366,8 +2366,10 @@ fiche (`clients.payment_terms`).
   source unique: `PAYMENT_TERMS` (libellé + `net_days`: Net 30 → 30, 2 % 10 Net 30 → 30, Payable sur
   réception → 0), `DEFAULT_PAYMENT_TERMS`, `resolvePaymentTerms(client, paramètres)` (client → Paramètres →
   « Net 30 jours »), `computeDueDate(dateFacture, condition)` (arithmétique UTC sur la date seule, aucun
-  décalage de jour), `DEFAULT_LATE_INTEREST_ANNUAL_RATE = 18`, `lateInterestNotice(taux)` → « Intérêts de
-  18 %/an (1,5 %/mois) sur tout solde en souffrance après l'échéance. » (mensuel = annuel ÷ 12, vide si taux 0),
+  décalage de jour), `DEFAULT_LATE_INTEREST_ANNUAL_RATE = 18`, `lateInterestNotice(taux)` → « Frais de retard
+  de 1,5 % par mois (18 % par année) sur tout solde en souffrance après l'échéance. » (format fournisseur, mensuel
+  en premier comme Lumen; **sans « composés »** car le calcul est un intérêt simple: solde × taux × jours ÷ 365;
+  mensuel = annuel ÷ 12, vide si taux 0),
   `paymentConditions()` (facture/BL) et `submissionConditions()` (soumission)
 - **Soumission** `components/SoumissionsManager.js` v2.7.0 — même liste dans le PDF jsPDF, l'impression CSS
   et le corps du courriel: validité 30 j · « Paiement: <condition de la fiche client, sinon Paramètres> » ·
@@ -2383,6 +2385,10 @@ fiche (`clients.payment_terms`).
   [clientId]/route.js` v1.3.0 (`payment_terms`), `send-email/route.js` v1.6.0 (« Conditions: » dans l'en-tête
   PDF, avis d'intérêts = phrase partagée, notes de pied en noir), `components/invoices/ClientStatementView.js`
   v1.11.0 (pastille « Conditions: Net 30 jours » toujours visible)
+- **Colonne « INTÉRÊTS » par facture** (demande Martin, 4 nov.) `send-email/route.js` v1.7.0 — le tableau du
+  PDF du relevé montre l'intérêt de chaque facture en retard (« - » sur une facture à jour ou un crédit); le
+  total des intérêts reste au sommaire sous le solde. Colonne présente seulement si des intérêts sont facturés
+  (case « Facturer les intérêts de retard » cochée et intérêts > 0); largeurs des colonnes rééquilibrées
 - **Sélecteurs** `components/ClientModal.js` v2.4.0, `app/(protected)/parametres/page.js` v2.8.0,
   `components/invoices/InvoiceEditor.js` v2.16.0 — options tirées de `PAYMENT_TERMS`; `app/api/settings/route.js`
   v1.7.0 — défauts partagés + validation de `default_payment_terms`

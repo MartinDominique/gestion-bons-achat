@@ -1037,12 +1037,14 @@ CRON_SECRET                   # Auth pour cron jobs
 36. ~~**Conditions de paiement + intérêts unifiés (Soumission, Facture, État de compte)**~~ - ✅ COMPLÉTÉ (2026-11-04)
     - `lib/constants/paymentTerms.js` (nouveau) — **source unique**: liste `PAYMENT_TERMS` (libellé + jours nets),
       `resolvePaymentTerms()` (fiche client → Paramètres → « Net 30 jours »), `computeDueDate()` (échéance = date de
-      facture + jours nets, même définition que le libellé), `lateInterestNotice()` → « Intérêts de 18 %/an (1,5 %/mois)
-      sur tout solde en souffrance après l'échéance. » (taux `settings.late_interest_annual_rate`, vide si 0)
+      facture + jours nets, même définition que le libellé), `lateInterestNotice()` → « Frais de retard de 1,5 % par mois
+      (18 % par année) sur tout solde en souffrance après l'échéance. » (mensuel en premier comme les fournisseurs,
+      intérêt simple donc sans « composés »; taux `settings.late_interest_annual_rate`, vide si 0)
     - Soumission (`SoumissionsManager.js` v2.7.0: PDF + impression + courriel), Facture (`send-email` v1.8.0: « Échéance: »
       en en-tête + mention en pied + courriel; `invoices/route.js` v1.5.0 + `[id]/route.js` v1.5.0: échéance calculée ET
-      recalculée au changement de condition), État de compte (`statement-data.js` v1.3.0, route v1.3.0, PDF v1.6.0 avec
-      « Conditions: » en en-tête, `ClientStatementView.js` v1.11.0)
+      recalculée au changement de condition), État de compte (`statement-data.js` v1.3.0, route v1.3.0, PDF v1.7.0 avec
+      « Conditions: » en en-tête + colonne « INTÉRÊTS » par facture dans le tableau, total au sommaire;
+      `ClientStatementView.js` v1.11.0)
     - Sélecteurs (fiche client v2.4.0, Paramètres v2.8.0, éditeur de facture v2.16.0, API settings v1.7.0) lisent la même liste
     - **Règle:** ne plus écrire « Net 30 jours » ni la phrase d'intérêts en dur — passer par `lib/constants/paymentTerms.js`
     - **BT et BL volontairement exclus** (décision Martin 2026-11-04): aucun montant dû sur ces formulaires, donc aucune
