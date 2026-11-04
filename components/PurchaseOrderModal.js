@@ -5,9 +5,15 @@
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
- * @version 1.2.2
- * @date 2026-10-09
+ *              - Onglet Docs: factures liées au BA (via BT/BL rattachés) avec PDF (voir / télécharger / générer)
+ * @version 1.3.0
+ * @date 2026-11-04
  * @changelog
+ *   1.3.0 - Onglet Docs: section « Factures liées » — liste les factures créées depuis les BT/BL
+ *           rattachés à ce BA (GET /api/purchase-orders/[id]/invoices), y compris celles déjà
+ *           existantes; boutons Voir / Télécharger (PDF en Storage) ou « Générer le PDF »
+ *           (mode pdf_only, statut de la facture inchangé); BT/BL facturés dans Acomba signalés;
+ *           compteur ajouté à la pastille de l'onglet Docs; rechargement sur 'ba-list-updated'
  *   1.2.2 - Mode sombre: pastille verte de fichier joint
  *   1.2.1 - Import Fournisseurs: utilise le prix vendant (selling_price) au lieu du coûtant (cost_price)
  *           pour afficher le vrai prix de vente au client (import + aperçu + total estimé)
@@ -69,6 +75,13 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
   const [deliverySlips, setDeliverySlips] = useState([]);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [supplierPurchases, setSupplierPurchases] = useState([]);
+
+  // Factures liées au BA (créées depuis les BT/BL rattachés) — onglet Docs
+  const [linkedInvoices, setLinkedInvoices] = useState([]);
+  const [externalInvoicedDocs, setExternalInvoicedDocs] = useState([]);
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
+  const [invoicesError, setInvoicesError] = useState('');
+  const [invoicePdfLoading, setInvoicePdfLoading] = useState({});
   
   // Vérification soumission existante
   const [hasExistingSubmission, setHasExistingSubmission] = useState(false);
@@ -86,6 +99,73 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
   const [showMobileItemEditor, setShowMobileItemEditor] = useState(false);
   const [mobileSearchResults, setMobileSearchResults] = useState([]);
   const [mobileSearchTimeout, setMobileSearchTimeout] = useState(null);
+
+  // Charger les factures liées à ce BA (BT/BL rattachés → factures), avec lien PDF frais
+  const loadLinkedInvoices = async (purchaseOrderId) => {
+    if (!purchaseOrderId) {
+      setLinkedInvoices([]);
+      setExternalInvoicedDocs([]);
+      return;
+    }
+    setIsLoadingInvoices(true);
+    setInvoicesError('');
+    try {
+      const res = await fetch(`/api/purchase-orders/${purchaseOrderId}/invoices`, { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Erreur ${res.status}`);
+      }
+      setLinkedInvoices(json.data || []);
+      setExternalInvoicedDocs(json.external || []);
+    } catch (err) {
+      console.error('Erreur chargement factures du BA:', err);
+      setInvoicesError('Factures liées non chargées: ' + err.message);
+    } finally {
+      setIsLoadingInvoices(false);
+    }
+  };
+
+  // Générer (ou régénérer) le PDF d'une facture sans toucher à son statut, puis l'ouvrir
+  const generateInvoicePdf = async (invoice) => {
+    setInvoicePdfLoading(prev => ({ ...prev, [invoice.id]: true }));
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdf_only: true }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Erreur ${res.status}`);
+      }
+      if (json.pdf_url) window.open(json.pdf_url, '_blank');
+      const currentPOId = editingPO?.id || stayOpenEditingPO?.id;
+      if (currentPOId) await loadLinkedInvoices(currentPOId);
+    } catch (err) {
+      console.error('Erreur génération PDF facture:', err);
+      setInvoicesError(`PDF de la facture ${invoice.invoice_number} non généré: ${err.message}`);
+    } finally {
+      setInvoicePdfLoading(prev => {
+        const n = { ...prev };
+        delete n[invoice.id];
+        return n;
+      });
+    }
+  };
+
+  const INVOICE_STATUS_LABELS = {
+    draft: { label: 'Brouillon', cls: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' },
+    sent: { label: 'Envoyée', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' },
+    partial: { label: 'Partielle', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
+    paid: { label: 'Payée', cls: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' },
+  };
+
+  const formatInvoiceDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(`${String(dateStr).slice(0, 10)}T12:00:00`);
+    if (isNaN(d)) return String(dateStr);
+    return d.toLocaleDateString('fr-CA', { timeZone: 'America/Toronto', day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   // Charger les achats fournisseurs liés au client (pour import)
   const loadClientSupplierPurchases = async (clientName) => {
@@ -305,8 +385,12 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
       loadPOData(editingPO.id);
       checkExistingSubmission(editingPO.id);
       loadSupplierPurchases(editingPO.id);
+      loadLinkedInvoices(editingPO.id);
     } else if (isOpen) {
       resetForm();
+      setLinkedInvoices([]);
+      setExternalInvoicedDocs([]);
+      setInvoicesError('');
       loadClients();
       // Prefill data from split view panel (e.g., client info from AF form)
       if (prefillData) {
@@ -338,6 +422,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
     // Écouter aussi ba-list-updated au cas où
     const handleBAUpdated = () => {
       loadSupplierPurchases(currentPOId);
+      loadLinkedInvoices(currentPOId);
     };
 
     window.addEventListener('af-saved', handleAFSaved);
@@ -1731,9 +1816,9 @@ setTimeout(() => {
               >
                 <span>📎</span>
                 <span>Docs</span>
-                {attachedFiles.length > 0 && (
+                {(attachedFiles.length + linkedInvoices.length) > 0 && (
                   <span className="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 text-xs px-1 sm:px-2 py-1 rounded-full">
-                    {attachedFiles.length}
+                    {attachedFiles.length + linkedInvoices.length}
                   </span>
                 )}
               </button>
@@ -2378,6 +2463,116 @@ setTimeout(() => {
                     </div>
                   )}
                 </div>
+
+                {/* Section Factures liées (via BT/BL rattachés à ce BA) */}
+                {effectiveEditingPO && (
+                  <div className="space-y-4 border-t dark:border-gray-700 pt-6">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                      <h3 className="text-lg font-semibold dark:text-gray-100 flex items-center gap-2">
+                        🧾 Factures liées ({linkedInvoices.length})
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => loadLinkedInvoices(effectiveEditingPO.id)}
+                        disabled={isLoadingInvoices}
+                        className="min-h-[44px] px-3 py-2 text-sm text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 self-start sm:self-auto"
+                      >
+                        {isLoadingInvoices ? 'Chargement…' : '↻ Actualiser'}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Factures créées depuis les BT/BL rattachés à ce BA (anciennes incluses). « Voir » ouvre le PDF, « Télécharger » le sauvegarde.
+                      Sans PDF en stockage (facture ancienne ou brouillon): « Générer le PDF ».
+                    </p>
+
+                    {invoicesError && (
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
+                        {invoicesError}
+                      </div>
+                    )}
+
+                    {isLoadingInvoices && linkedInvoices.length === 0 ? (
+                      <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">Chargement des factures…</div>
+                    ) : linkedInvoices.length === 0 ? (
+                      <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+                        <p className="text-gray-500 dark:text-gray-400">Aucune facture liée à ce BA</p>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                          Une facture apparaît ici dès qu'elle est créée depuis un BT ou un BL rattaché à ce bon d'achat
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3">
+                        {linkedInvoices.map((inv) => {
+                          const st = INVOICE_STATUS_LABELS[inv.status] || { label: inv.status || '—', cls: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' };
+                          const busy = Boolean(invoicePdfLoading[inv.id]);
+                          const srcLabel = inv.source_type === 'work_order' ? 'BT' : inv.source_type === 'delivery_note' ? 'BL' : '';
+                          return (
+                            <div key={inv.id} className="border dark:border-gray-700 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex-shrink-0 text-xl">{inv.has_pdf ? '📄' : '🧾'}</div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+                                    <span>Facture {inv.invoice_number}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+                                    {inv.is_prix_jobe && (
+                                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">Prix Jobé</span>
+                                    )}
+                                  </p>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    {formatInvoiceDate(inv.invoice_date)}
+                                    {' • '}{Number(inv.total || 0).toFixed(2)} $
+                                    {inv.source_number && <> • {srcLabel} {inv.source_number}</>}
+                                    {!inv.has_pdf && <span className="text-amber-600 dark:text-amber-400"> • PDF non généré</span>}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {inv.has_pdf && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => viewFile({ url: inv.pdf_url, name: inv.pdf_file_name })}
+                                      className="min-h-[44px] text-blue-600 hover:text-blue-800 dark:text-blue-400 px-3 py-2 border border-blue-300 dark:border-blue-700 rounded text-sm"
+                                      title="Voir le PDF"
+                                    >
+                                      Voir
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => downloadFile({ url: inv.pdf_download_url || inv.pdf_url, name: inv.pdf_file_name })}
+                                      className="min-h-[44px] text-green-600 hover:text-green-800 dark:text-green-400 px-3 py-2 border border-green-300 dark:border-green-700 rounded text-sm"
+                                      title="Télécharger le PDF"
+                                    >
+                                      Télécharger
+                                    </button>
+                                  </>
+                                )}
+                                {(!inv.has_pdf || inv.status === 'draft') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => generateInvoicePdf(inv)}
+                                    disabled={busy}
+                                    className="min-h-[44px] text-purple-700 hover:text-purple-900 dark:text-purple-300 px-3 py-2 border border-purple-300 dark:border-purple-700 rounded text-sm disabled:opacity-50"
+                                    title={inv.has_pdf ? 'Régénérer le PDF à partir de la facture actuelle' : 'Générer le PDF de cette facture (statut inchangé)'}
+                                  >
+                                    {busy ? 'Génération…' : inv.has_pdf ? 'Régénérer' : 'Générer le PDF'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {externalInvoicedDocs.length > 0 && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                        <strong>Facturés dans Acomba (hors app, sans PDF ici):</strong>{' '}
+                        {externalInvoicedDocs.map(d => `${d.source_type === 'work_order' ? 'BT' : 'BL'} ${d.source_number}`).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Section Achats Fournisseurs */}
                 <div className="space-y-4 border-t pt-6">

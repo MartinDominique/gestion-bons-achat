@@ -435,6 +435,7 @@ const total = subtotal + tps + tvq;
 /api/delivery-notes/[id]/public        → Accès public BL (vue client sans auth)
 /api/purchase-orders                   → CRUD BA Client
 /api/purchase-orders/[id]/send-confirmation → Envoi BCC (confirmation commande)
+/api/purchase-orders/[id]/invoices     → Factures liées au BA (via BT/BL rattachés) + URL signée PDF (onglet Docs du dossier BA)
 /api/clients                           → CRUD clients
 /api/products                          → CRUD produits
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
@@ -1049,6 +1050,12 @@ CRON_SECRET                   # Auth pour cron jobs
     - **Règle:** ne plus écrire « Net 30 jours » ni la phrase d'intérêts en dur — passer par `lib/constants/paymentTerms.js`
     - **BT et BL volontairement exclus** (décision Martin 2026-11-04): aucun montant dû sur ces formulaires, donc aucune
       condition de paiement. Aucune migration SQL requise
+
+37. ~~**Dossier BA: factures liées en PDF (onglet Docs)**~~ - ✅ COMPLÉTÉ (2026-11-04)
+    - `app/api/purchase-orders/[id]/invoices/route.js` (nouveau) — factures des BT/BL rattachés au BA (union source + invoice_id), URL signée fraîche vers le PDF Storage, BT/BL « Acomba » dans `external`
+    - `app/api/invoices/[id]/send-email/route.js` v1.9.0 — mode `pdf_only` (PDF + Storage, statut intact)
+    - `components/PurchaseOrderModal.js` v1.3.0 — onglet Docs: section « Factures liées » (Voir / Télécharger / Générer le PDF), compteur dans la pastille
+    - Les factures déjà existantes apparaissent automatiquement (liste calculée en direct). Aucune migration requise
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
