@@ -6,9 +6,11 @@
  *              - Paramètre ?as_of=YYYY-MM-DD: relevé à une date passée (ex. fin juillet).
  *                Les factures émises après cette date et les paiements reçus après
  *                cette date sont exclus.
- * @version 1.2.0
- * @date 2026-08-20
+ * @version 1.3.0
+ * @date 2026-11-04
  * @changelog
+ *   1.3.0 - Retourne payment_terms (condition du client, sinon défaut des Paramètres) pour
+ *           la pastille « Conditions: » de l'en-tête de l'écran
  *   1.2.0 - Date du relevé (?as_of) + calcul déplacé dans lib/services/statement-data.js
  *   1.1.0 - Retourne le mode de paiement habituel du client (preferred_payment_method)
  *   1.0.0 - Version initiale (module État de compte client)
@@ -47,6 +49,7 @@ export async function GET(request, { params }) {
         aging: statement.aging,
         totals: statement.totals,
         interest_rate: statement.interestRate,
+        payment_terms: statement.paymentTerms,
         statement_footer_note: statement.settings?.statement_footer_note || null,
         statement_date: statement.statementDate,
         is_today: statement.is_today,

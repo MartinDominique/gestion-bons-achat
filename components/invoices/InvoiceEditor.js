@@ -29,9 +29,12 @@
  *              - Inventaire synchronisé après chaque sauvegarde (POST sync-inventory): article
  *                retiré/ajouté/quantité changée dans la facture → retour ou sortie de stock
  *                par rapport au BT/BL (mouvements 'invoice', idempotent). Résumé affiché.
- * @version 2.15.1
- * @date 2026-09-17
+ * @version 2.16.0
+ * @date 2026-11-04
  * @changelog
+ *   2.16.0 - Conditions de paiement: liste du sélecteur et condition par défaut tirées de
+ *            lib/constants/paymentTerms (client → Paramètres → Net 30 jours), même source
+ *            que le calcul de l'échéance côté serveur
  *   2.15.1 - Résultats de la recherche d'article visibles (liste dans le flux, plus coupée
  *            par le cadre des lignes)
  *   2.15.0 - Recherche d'article (code/description, vendant, coûtant, En main) pour ajouter
@@ -100,6 +103,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTriangle, Lock, Package, History, Edit, ArrowDownCircle, ArrowUpCircle, Printer, Mail, ShoppingCart, EyeOff, RefreshCw, Calculator } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
+import { PAYMENT_TERMS, DEFAULT_PAYMENT_TERMS, resolvePaymentTerms } from '../../lib/constants/paymentTerms';
 import InvoiceReferencePanel from './InvoiceReferencePanel';
 import InvoiceProductSearch from './InvoiceProductSearch';
 import DisablePullToRefresh from '../DisablePullToRefresh';
@@ -389,7 +393,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   // State
   const [lineItems, setLineItems] = useState([]);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
-  const [paymentTerms, setPaymentTerms] = useState('Net 30 jours');
+  const [paymentTerms, setPaymentTerms] = useState(DEFAULT_PAYMENT_TERMS);
   const [notes, setNotes] = useState('');
   const [isPrixJobe, setIsPrixJobe] = useState(false);
   // Détail INTERNE du forfait (Prix Jobé): composantes M.O./transport/matériaux du BT/BL.
@@ -449,7 +453,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     if (invoice) {
       setLineItems(invoice.line_items || []);
       setInvoiceDate(invoice.invoice_date || new Date().toISOString().split('T')[0]);
-      setPaymentTerms(invoice.payment_terms || 'Net 30 jours');
+      setPaymentTerms(resolvePaymentTerms(invoice.payment_terms));
       setNotes(invoice.notes || '');
       setIsPrixJobe(invoice.is_prix_jobe || false);
       const storedDetail = Array.isArray(invoice.jobe_detail_items) ? invoice.jobe_detail_items : [];
@@ -542,8 +546,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
         setLineItems(lines);
       }
 
-      const clientTerms = btOrBl.client?.payment_terms;
-      setPaymentTerms(clientTerms || settings?.default_payment_terms || 'Net 30 jours');
+      // Condition du client → défaut des Paramètres → Net 30 jours (source unique)
+      setPaymentTerms(resolvePaymentTerms(btOrBl.client?.payment_terms, settings?.default_payment_terms));
       setNotes(settings?.invoice_footer_note || '');
     }
   }, [invoice, sourceData, source?.type, settings]);
@@ -1433,9 +1437,9 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 disabled={isLocked}
                 className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
-                <option value="Net 30 jours">Net 30 jours</option>
-                <option value="2% 10 Net 30 jours">2% 10 Net 30 jours</option>
-                <option value="Payable sur réception">Payable sur réception</option>
+                {PAYMENT_TERMS.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
             </div>
             <div className="flex items-end">

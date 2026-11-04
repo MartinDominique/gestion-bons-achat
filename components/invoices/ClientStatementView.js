@@ -17,9 +17,11 @@
  *                badge « Crédit », déduites du solde, réglables par un remboursement ou
  *                l'application du crédit (montant négatif)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.10.0
- * @date 2026-10-02
+ * @version 1.11.0
+ * @date 2026-11-04
  * @changelog
+ *   1.11.0 - En-tête: pastille « Conditions: Net 30 jours » toujours affichée (condition de
+ *            la fiche client, sinon défaut des Paramètres — même source que le PDF)
  *   1.10.0 - Après un paiement enregistré: écran de confirmation (montant, factures, mode)
  *            pendant quelques secondes, puis fermeture automatique de la fiche client →
  *            retour direct à la liste des états de compte. Bouton « Rester sur ce client »
@@ -570,10 +572,10 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                     ? paymentMethodLabel(data.client.preferred_payment_method)
                     : 'non spécifié'}
                 </span>
-                {data?.client?.payment_terms && (
+                {(data?.payment_terms || data?.client?.payment_terms) && (
                   <span className="inline-flex items-center gap-1 bg-white/20 text-white text-[11px] sm:text-xs px-2 py-0.5 rounded-full">
                     <Clock className="w-3 h-3" />
-                    {data.client.payment_terms}
+                    Conditions: {data.payment_terms || data.client.payment_terms}
                   </span>
                 )}
               </div>

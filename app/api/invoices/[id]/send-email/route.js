@@ -6,9 +6,13 @@
  *              - Sauvegarde pdf_url dans la table invoices
  *              - Envoie par Resend au client (cascade email)
  *              - Met à jour le statut de la facture à 'sent'
- * @version 1.7.0
- * @date 2026-09-14
+ * @version 1.8.0
+ * @date 2026-11-04
  * @changelog
+ *   1.8.0 - Conditions de paiement unifiées (lib/constants/paymentTerms): « Échéance: » dans
+ *           l'en-tête du PDF (sous « Termes: ») et mention « Intérêts de 18 %/an (1,5 %/mois)
+ *           sur tout solde en souffrance après l'échéance. » en pied de facture (taux des
+ *           Paramètres) + même mention dans le courriel. Texte en noir pur (règle PDF client)
  *   1.7.0 - La mise à jour du statut (sent/sent_at/pdf_url) après l'envoi est vérifiée
  *           et retentée (2 tentatives). Si elle échoue encore, la réponse reste
  *           success:true (le courriel EST parti) mais porte status_updated:false +
@@ -36,6 +40,7 @@ require('jspdf-autotable');
 const fs = require('fs');
 const path = require('path');
 const pdfCommon = require('../../../../../lib/services/pdf-common');
+const { lateInterestNotice } = require('../../../../../lib/constants/paymentTerms');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -68,6 +73,9 @@ function generateInvoicePDF(invoice, settings) {
 
   if (invoice.payment_terms) {
     headerFields.push({ label: 'Termes:', value: invoice.payment_terms, bold: false });
+  }
+  if (invoice.due_date) {
+    headerFields.push({ label: 'Échéance:', value: pdfCommon.formatDate(invoice.due_date), bold: false });
   }
 
   let y = pdfCommon.drawHeader(doc, LOGO_BASE64, {
@@ -224,6 +232,18 @@ function generateInvoicePDF(invoice, settings) {
     const noteLines = doc.splitTextToSize(invoice.notes, pdfCommon.CONTENT_WIDTH);
     doc.text(noteLines, pdfCommon.PAGE.margin.left, y);
     y += noteLines.length * 4 + 5;
+  }
+
+  // Conditions de paiement: mention d'intérêts (même phrase que soumission/BL/état de compte)
+  const interestNotice = lateInterestNotice(settings?.late_interest_annual_rate);
+  if (interestNotice) {
+    y = pdfCommon.checkPageBreak(doc, y, 12);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    const interestLines = doc.splitTextToSize(interestNotice, pdfCommon.CONTENT_WIDTH);
+    doc.text(interestLines, pdfCommon.PAGE.margin.left, y);
+    y += interestLines.length * 4 + 3;
   }
 
   // Note de pied de facture (settings)
@@ -397,6 +417,9 @@ export async function POST(request, { params }) {
                en référence au document <strong>${invoice.source_number}</strong>.</p>
             ${invoice.payment_terms ? `<p><strong>Conditions:</strong> ${invoice.payment_terms}</p>` : ''}
             ${invoice.due_date ? `<p><strong>Échéance:</strong> ${invoice.due_date}</p>` : ''}
+            ${lateInterestNotice(settings?.late_interest_annual_rate)
+              ? `<p style="font-size: 13px; color: #555;">${lateInterestNotice(settings?.late_interest_annual_rate)}</p>`
+              : ''}
             <p>N'hésitez pas à nous contacter pour toute question.</p>
             <p style="color: #999; font-size: 13px; font-style: italic; margin: 20px 0 0;">
               Ne pas répondre à ce courriel.<br>

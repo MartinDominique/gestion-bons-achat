@@ -7,9 +7,11 @@
  *              - Formatage automatique des numéros de téléphone
  *              - email_admin optionnel
  *              - Courriels supplémentaires illimités (additional_emails, JSONB)
- * @version 2.3.0
- * @date 2026-08-20
+ * @version 2.4.0
+ * @date 2026-11-04
  * @changelog
+ *   2.4.0 - Sélecteur « Conditions de paiement » alimenté par la liste canonique
+ *           lib/constants/paymentTerms (source unique avec Paramètres et Facturation)
  *   2.3.0 - Section « Courriels supplémentaires »: plus d'une adresse d'administration par
  *           client (liste illimitée, ajout/retrait); alimentée aussi automatiquement à
  *           l'envoi d'un état de compte
@@ -25,6 +27,7 @@
 import { useState, useEffect } from 'react';
 import { X, User, Users, Building, PenTool, DollarSign, Mail, Plus } from 'lucide-react';
 import { CLIENT_PAYMENT_METHODS } from '../lib/constants/paymentMethods';
+import { PAYMENT_TERMS } from '../lib/constants/paymentTerms';
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: '', label: 'Non spécifié' },
@@ -33,9 +36,7 @@ const PAYMENT_METHOD_OPTIONS = [
 
 const PAYMENT_TERMS_OPTIONS = [
   { value: '', label: 'Par défaut (voir Paramètres)' },
-  { value: 'Net 30 jours', label: 'Net 30 jours' },
-  { value: '2% 10 Net 30 jours', label: '2% 10 Net 30 jours' },
-  { value: 'Payable sur réception', label: 'Payable sur réception' },
+  ...PAYMENT_TERMS.map(t => ({ value: t.value, label: t.label })),
 ];
 
 const EMPTY_FORM = {
