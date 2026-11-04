@@ -5,9 +5,12 @@
  *              - Section Taux & Tarifs horaires (taux régulier, 1.5x, 2x, augmentation)
  *              - Section Facturation (numéros taxes, taux TPS/TVQ, conditions, N° facture)
  *              - Section Sauvegarde & Restauration (procédure + lien vers /admin/restore)
- * @version 2.7.0
- * @date 2026-09-17
+ * @version 2.8.0
+ * @date 2026-11-04
  * @changelog
+ *   2.8.0 - Sélecteur « Conditions de paiement par défaut » alimenté par la liste canonique
+ *           lib/constants/paymentTerms (même source que la fiche client, l'éditeur de facture
+ *           et le calcul de l'échéance)
  *   2.7.0 - Ajout champ Coût horaire interne M.O. (labor_cost_hourly_rate) - détail du forfait Prix Jobé
  *   2.6.0 - Ajout section Change USD -> CAD (frais bancaires % + taux courant du jour)
  *   2.5.0 - Ajout section Sauvegarde & Restauration (procédure pas-à-pas + bouton vers la page de restauration)
@@ -26,6 +29,7 @@ import { useTheme } from 'next-themes';
 import { useState, useEffect, useCallback } from 'react';
 import { Sun, Moon, Monitor, DollarSign, FileText, Save, RefreshCw, AlertTriangle, Database, Download, Upload, Mail } from 'lucide-react';
 import { effectiveUsdToCadRate, formatRate, formatRateDate } from '../../../lib/utils/currency';
+import { PAYMENT_TERMS, DEFAULT_PAYMENT_TERMS } from '../../../lib/constants/paymentTerms';
 
 export default function ParametresPage() {
   const { theme, setTheme } = useTheme();
@@ -146,11 +150,8 @@ export default function ParametresPage() {
     { value: 'dark', label: 'Sombre', description: 'Theme sombre en permanence', icon: Moon },
   ];
 
-  const paymentTermsOptions = [
-    'Net 30 jours',
-    '2% 10 Net 30 jours',
-    'Payable sur réception',
-  ];
+  // Liste canonique partagée (fiche client, éditeur de facture, calcul de l'échéance)
+  const paymentTermsOptions = PAYMENT_TERMS.map(t => t.value);
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -656,7 +657,7 @@ export default function ParametresPage() {
               </label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                value={settings?.default_payment_terms || 'Net 30 jours'}
+                value={settings?.default_payment_terms || DEFAULT_PAYMENT_TERMS}
                 onChange={(e) => updateField('default_payment_terms', e.target.value)}
               >
                 {paymentTermsOptions.map(opt => (

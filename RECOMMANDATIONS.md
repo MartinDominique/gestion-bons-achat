@@ -2352,6 +2352,44 @@ puis dérivait en silence). Trois autres routes GET() sans paramètre avaient le
 - Aucune migration SQL requise. Vérification après déploiement: fiche JBX884 → « Réservé −1 », ou
   `/api/inventory/reservations?code=JBX884` dans le navigateur
 
+## Conditions de paiement + intérêts unifiés (Soumission, Facture, État de compte) ✅ COMPLETE (2026-11-04)
+
+**Demande (Martin, 4 nov.):** ajouter sur la soumission, après « Paiement: Net 30 jours », la ligne
+« Intérêts de 18 %/an (1,5 %/mois) sur tout solde en souffrance après l'échéance. »; même mention sur la
+facture; même formulation sur l'état de compte; une seule constante partagée pour
+que les gabarits ne divergent plus; « Net 30 jours » issu de la même source que le calcul de l'échéance;
+« Conditions: Net 30 jours » dans l'en-tête de l'état de compte; la condition de chaque client vient de sa
+fiche (`clients.payment_terms`).
+
+**Implementation completee (2026-11-04):**
+- `lib/constants/paymentTerms.js` (nouveau, CommonJS comme `pdf-common.js` → `import` et `require`) —
+  source unique: `PAYMENT_TERMS` (libellé + `net_days`: Net 30 → 30, 2 % 10 Net 30 → 30, Payable sur
+  réception → 0), `DEFAULT_PAYMENT_TERMS`, `resolvePaymentTerms(client, paramètres)` (client → Paramètres →
+  « Net 30 jours »), `computeDueDate(dateFacture, condition)` (arithmétique UTC sur la date seule, aucun
+  décalage de jour), `DEFAULT_LATE_INTEREST_ANNUAL_RATE = 18`, `lateInterestNotice(taux)` → « Intérêts de
+  18 %/an (1,5 %/mois) sur tout solde en souffrance après l'échéance. » (mensuel = annuel ÷ 12, vide si taux 0),
+  `paymentConditions()` (facture/BL) et `submissionConditions()` (soumission)
+- **Soumission** `components/SoumissionsManager.js` v2.7.0 — même liste dans le PDF jsPDF, l'impression CSS
+  et le corps du courriel: validité 30 j · « Paiement: <condition de la fiche client, sinon Paramètres> » ·
+  intérêts · prix sujets à changement. Les Paramètres (`/api/settings`) sont chargés une fois à l'ouverture
+- **Facture** `app/api/invoices/[id]/send-email/route.js` v1.8.0 — « Échéance: » dans l'en-tête du PDF (sous
+  « Termes: ») + mention d'intérêts en pied (noir pur) + même phrase dans le courriel
+- **Échéance (source unique)** `app/api/invoices/route.js` v1.5.0 — `computeDueDate()` à la création;
+  `app/api/invoices/[id]/route.js` v1.5.0 — échéance **recalculée** au PUT quand la date de facture ou la
+  condition change (avant: figée à la création, donc fausse après un changement de condition)
+- **Bon de livraison et Bon de travail: inchangés** (précision de Martin, 4 nov.): ces formulaires ne portent
+  aucun montant dû, donc aucune condition de paiement ni mention d'intérêts
+- **État de compte** `lib/services/statement-data.js` v1.3.0 (`paymentTerms` résolu), `app/api/statements/
+  [clientId]/route.js` v1.3.0 (`payment_terms`), `send-email/route.js` v1.6.0 (« Conditions: » dans l'en-tête
+  PDF, avis d'intérêts = phrase partagée, notes de pied en noir), `components/invoices/ClientStatementView.js`
+  v1.11.0 (pastille « Conditions: Net 30 jours » toujours visible)
+- **Sélecteurs** `components/ClientModal.js` v2.4.0, `app/(protected)/parametres/page.js` v2.8.0,
+  `components/invoices/InvoiceEditor.js` v2.16.0 — options tirées de `PAYMENT_TERMS`; `app/api/settings/route.js`
+  v1.7.0 — défauts partagés + validation de `default_payment_terms`
+- Taux: `settings.late_interest_annual_rate` (Paramètres, défaut 18) alimente **tous** les documents; un taux à
+  0 retire la phrase partout. La case « Facturer les intérêts de retard » de l'état de compte garde son effet
+- Aucune migration SQL requise
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-03 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-04 par Claude AI*

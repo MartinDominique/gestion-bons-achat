@@ -4,9 +4,12 @@
  *              - GET: Récupérer une facture complète par ID
  *              - PUT: Mettre à jour une facture (lignes, totaux, statut)
  *              - DELETE: Supprimer une facture (brouillon seulement)
- * @version 1.4.0
- * @date 2026-09-17
+ * @version 1.5.0
+ * @date 2026-11-04
  * @changelog
+ *   1.5.0 - PUT: si la date de facture ou la condition de paiement change (sans due_date
+ *           explicite), l'échéance est recalculée via computeDueDate() — avant, l'échéance
+ *           restait figée à la valeur de création (ex. « Net 30 » → « Payable sur réception »)
  *   1.4.0 - DELETE: les ajustements d'inventaire faits depuis la facture (mouvements
  *           'invoice') sont annulés avant la suppression (retour à l'état du BT/BL)
  *   1.3.0 - PUT: accepte jobe_detail_items (détail interne du forfait Prix Jobé). Si la
@@ -20,6 +23,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { syncInvoiceInventory } from '../../../../lib/services/invoice-inventory';
+import { computeDueDate, resolvePaymentTerms } from '../../../../lib/constants/paymentTerms';
 
 /**
  * GET /api/invoices/[id]
@@ -83,6 +87,20 @@ export async function PUT(request, { params }) {
       if (field in body) {
         updates[field] = body[field];
       }
+    }
+
+    // Échéance recalculée quand la date de facture ou la condition change (même source
+    // que la création: lib/constants/paymentTerms). Un due_date explicite dans le body prime.
+    if (!('due_date' in body) && ('invoice_date' in body || 'payment_terms' in body)) {
+      const { data: current } = await supabaseAdmin
+        .from('invoices')
+        .select('invoice_date, payment_terms')
+        .eq('id', parseInt(id))
+        .maybeSingle();
+      const invoiceDate = body.invoice_date || current?.invoice_date;
+      const terms = resolvePaymentTerms(body.payment_terms, current?.payment_terms);
+      const recomputed = computeDueDate(invoiceDate, terms);
+      if (recomputed) updates.due_date = recomputed;
     }
 
     // Si on marque comme payée, ajouter le timestamp

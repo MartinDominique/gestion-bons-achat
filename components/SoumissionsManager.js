@@ -6,9 +6,13 @@
  *              - Recherche produits (tolérante aux tirets/accents), calcul taxes QC, gestion fichiers
  *              - Modal « Modifier l'article »: calculateur de marge, ajustement du stock
  *                et répercussion des prix dans la fiche inventaire
- * @version 2.6.1
- * @date 2026-10-09
+ * @version 2.7.0
+ * @date 2026-11-04
  * @changelog
+ *   2.7.0 - Conditions générales unifiées (lib/constants/paymentTerms): « Paiement: <condition
+ *           de la fiche client, sinon défaut des Paramètres> » + nouvelle ligne « Intérêts de
+ *           18 %/an (1,5 %/mois) sur tout solde en souffrance après l'échéance. » (taux des
+ *           Paramètres) — même liste dans le PDF jsPDF, l'impression CSS et le courriel
  *   2.6.1 - Mode sombre: boutons Annuler, boutons de marge 27/30/35 %, badges de statut (desktop + mobile), boutons Supprimer/Dupliquer/Voir, pastilles client/N°, compteurs des cartes mobile
  *   2.6.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés — fin du défilement horizontal du tableau « Produits sélectionnés » (colonne As)
  *   2.5.0 - Items associés: carré « As » sur chaque article de la soumission (table desktop +
@@ -56,6 +60,7 @@ import AddToOrderButton from './order-list/AddToOrderButton';
 import AssociatedItemsButton from './associations/AssociatedItemsButton';
 import { searchWithFallback } from '../lib/utils/productSearch';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
+import { submissionConditions } from '../lib/constants/paymentTerms';
 import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
 import { CURRENCY_CAD, CURRENCY_USD, safeCurrencyUpdates, formatRate } from '../lib/utils/currency';
 
@@ -81,9 +86,10 @@ async function getLogoBase64() {
  * @param {Array} params.selectedItems - Articles sélectionnés
  * @param {Array} params.clients - Liste des clients
  * @param {boolean} params.isClientVersion - true = version client (sans coûts)
+ * @param {Object} [params.settings] - Paramètres (default_payment_terms, late_interest_annual_rate)
  * @returns {Promise<jsPDF>} Document jsPDF
  */
-async function generateSubmissionPDF({ submissionForm, selectedItems, clients, isClientVersion = false }) {
+async function generateSubmissionPDF({ submissionForm, selectedItems, clients, isClientVersion = false, settings = null }) {
   const doc = new jsPDF({ format: 'letter', unit: 'mm' });
   const logoBase64 = await getLogoBase64();
 
@@ -206,11 +212,11 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
     y = headerEndY; // Commencer après l'espace réservé au header
   }
 
-  const conditions = [
-    'Prix valides pour 30 jours',
-    'Paiement: Net 30 jours',
-    'Prix sujets à changement sans préavis',
-  ];
+  // Conditions générales partagées (validité, paiement du client, intérêts, prix)
+  const conditions = submissionConditions({
+    terms: clientData?.payment_terms || settings?.default_payment_terms,
+    interestRate: settings?.late_interest_annual_rate,
+  });
   y = drawConditions(doc, y, conditions);
 
   const sousTotal = submissionForm.amount || 0;
@@ -244,6 +250,8 @@ async function generateSubmissionPDF({ submissionForm, selectedItems, clients, i
 export default function SoumissionsManager() {
   const [soumissions, setSoumissions] = useState([]);
   const [clients, setClients] = useState([]);
+  // Paramètres globaux (condition de paiement par défaut + taux d'intérêt) pour les conditions
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showClientManager, setShowClientManager] = useState(false);
@@ -391,7 +399,29 @@ export default function SoumissionsManager() {
     fetchSoumissions();
     fetchProducts();
     fetchClients();
+    fetchSettings();
   }, []);
+
+  // Conditions de paiement par défaut + taux d'intérêt (Paramètres). En cas d'échec,
+  // submissionConditions() retombe sur les défauts partagés (Net 30 jours, 18 %/an).
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const json = await res.json();
+      if (res.ok && json.success && json.data) setSettings(json.data);
+    } catch (error) {
+      console.warn('Paramètres non chargés (conditions par défaut utilisées):', error.message);
+    }
+  };
+
+  // Conditions générales du formulaire courant (impression CSS + courriel)
+  const currentConditions = () => {
+    const clientData = clients.find(c => c.name === submissionForm.client_name);
+    return submissionConditions({
+      terms: clientData?.payment_terms || settings?.default_payment_terms,
+      interestRate: settings?.late_interest_annual_rate,
+    });
+  };
 
   // Fonctions pour les boutons de profit
   const applyProfitMargin = (percentage) => {
@@ -1362,7 +1392,7 @@ export default function SoumissionsManager() {
   const handlePrint = async () => {
     try {
       const doc = await generateSubmissionPDF({
-        submissionForm, selectedItems, clients, isClientVersion: false
+        submissionForm, selectedItems, clients, isClientVersion: false, settings
       });
       doc.save(`Soumission Coutant ${submissionForm.submission_number || 'nouveau'}.pdf`);
     } catch (error) {
@@ -1382,7 +1412,7 @@ export default function SoumissionsManager() {
 
     try {
       const doc = await generateSubmissionPDF({
-        submissionForm, selectedItems, clients, isClientVersion: true
+        submissionForm, selectedItems, clients, isClientVersion: true, settings
       });
       doc.save(`Soumission Client ${submissionForm.submission_number || 'nouveau'}.pdf`);
     } catch (error) {
@@ -1418,7 +1448,7 @@ export default function SoumissionsManager() {
       try {
         // Générer et sauvegarder le PDF client
         const doc = await generateSubmissionPDF({
-          submissionForm, selectedItems, clients, isClientVersion: true
+          submissionForm, selectedItems, clients, isClientVersion: true, settings
         });
         doc.save(`SOU-${submissionForm.submission_number}.pdf`);
 
@@ -1436,7 +1466,7 @@ export default function SoumissionsManager() {
           const tvq = sousTotal * 0.09975;
           const total = sousTotal + tps + tvq;
 
-          const corpsEmail = `Bonjour,\n\nVeuillez trouver ci-joint notre soumission pour : ${submissionForm.description}\n\nRÉSUMÉ:\n- Sous-total: ${formatCurrency(sousTotal)}\n- TPS (5%): ${formatCurrency(tps)}\n- TVQ (9.975%): ${formatCurrency(tvq)}\n- TOTAL: ${formatCurrency(total)}\n\nDétails:\n- Nombre d'articles: ${selectedItems.length}\n- Validité: 30 jours\n- Paiement: Net 30 jours\n\nN'hésitez pas à nous contacter pour toute question.`;
+          const corpsEmail = `Bonjour,\n\nVeuillez trouver ci-joint notre soumission pour : ${submissionForm.description}\n\nRÉSUMÉ:\n- Sous-total: ${formatCurrency(sousTotal)}\n- TPS (5%): ${formatCurrency(tps)}\n- TVQ (9.975%): ${formatCurrency(tvq)}\n- TOTAL: ${formatCurrency(total)}\n\nDétails:\n- Nombre d'articles: ${selectedItems.length}\n${currentConditions().map(c => `- ${c}`).join('\n')}\n\nN'hésitez pas à nous contacter pour toute question.`;
 
           const mailtoLink = `mailto:${client.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corpsEmail)}`;
 
@@ -2321,9 +2351,9 @@ const cleanupFilesForSubmission = async (files) => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1, fontSize: '9px', marginRight: '20px' }}>
                       <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>CONDITIONS GÉNÉRALES:</div>
-                      <div>• Prix valides pour 30 jours</div>
-                      <div>• Paiement: Net 30 jours</div>
-                      <div>• Prix sujets à changement sans préavis</div>
+                      {currentConditions().map((condition) => (
+                        <div key={condition}>• {condition}</div>
+                      ))}
                     </div>
                     <div style={{ minWidth: '250px', fontSize: '12px' }}>
                       {(() => {

@@ -3,9 +3,12 @@
  * @description API CRUD pour les Factures (Phase B — Facturation MVP)
  *              - POST: Créer une nouvelle facture à partir d'un BT ou BL
  *              - GET: Lister les factures avec filtres, tri et pagination
- * @version 1.4.0
- * @date 2026-09-17
+ * @version 1.5.0
+ * @date 2026-11-04
  * @changelog
+ *   1.5.0 - Échéance calculée par computeDueDate() (lib/constants/paymentTerms): même
+ *           définition « Net 30 jours » = date de facture + 30 jours que le libellé affiché
+ *           sur les documents; condition résolue via resolvePaymentTerms() (défaut partagé)
  *   1.4.0 - POST: accepte jobe_detail_items (détail interne du forfait Prix Jobé: M.O.,
  *           transport, matériaux avec vendant/coûtant). Jamais sur la facture client.
  *           Si la colonne n'existe pas encore (migration 20260917 non passée), la facture
@@ -26,6 +29,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { computeDueDate, resolvePaymentTerms } from '../../../lib/constants/paymentTerms';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -126,15 +130,10 @@ export async function POST(request) {
     let nextNumber = Math.max(parseInt(settings.invoice_next_number, 10) || 1, highestIssued + 1);
     let invoiceNumber = String(nextNumber);
 
-    // Calculer la date d'échéance
-    let due_date = null;
-    if (payment_terms === 'Net 30 jours' || payment_terms === '2% 10 Net 30 jours') {
-      const date = new Date(invoice_date || new Date());
-      date.setDate(date.getDate() + 30);
-      due_date = date.toISOString().split('T')[0];
-    } else if (payment_terms === 'Payable sur réception') {
-      due_date = invoice_date || new Date().toISOString().split('T')[0];
-    }
+    // Conditions de paiement + date d'échéance (source unique: lib/constants/paymentTerms)
+    const resolvedTerms = resolvePaymentTerms(payment_terms);
+    const resolvedInvoiceDate = invoice_date || computeDueDate(new Date(), 'Payable sur réception');
+    const due_date = computeDueDate(resolvedInvoiceDate, resolvedTerms);
 
     // Créer la facture
     const invoiceData = {
@@ -145,9 +144,9 @@ export async function POST(request) {
       source_type,
       source_id: parseInt(source_id),
       source_number,
-      invoice_date: invoice_date || new Date().toISOString().split('T')[0],
+      invoice_date: resolvedInvoiceDate,
       due_date,
-      payment_terms: payment_terms || 'Net 30 jours',
+      payment_terms: resolvedTerms,
       line_items,
       subtotal: parseFloat(subtotal) || 0,
       tps_rate: parseFloat(tps_rate) || 5.0,

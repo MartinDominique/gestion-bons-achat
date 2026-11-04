@@ -4,9 +4,12 @@
  *              - GET: Récupère les paramètres (taux horaires, taxes, facturation)
  *              - PUT: Met à jour les paramètres
  *              - Table singleton (id=1 toujours)
- * @version 1.6.0
- * @date 2026-09-17
+ * @version 1.7.0
+ * @date 2026-11-04
  * @changelog
+ *   1.7.0 - Défauts default_payment_terms / late_interest_annual_rate tirés de
+ *           lib/constants/paymentTerms (source unique); default_payment_terms validé
+ *           contre la liste canonique
  *   1.6.0 - Ajout labor_cost_hourly_rate (coût horaire interne M.O., détail du forfait Prix Jobé)
  *   1.5.0 - Ajout usd_fx_fee_percent (frais bancaires sur conversion USD->CAD)
  *           et cache du dernier taux (usd_cad_rate / _date / _source)
@@ -19,6 +22,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { DEFAULT_PAYMENT_TERMS, DEFAULT_LATE_INTEREST_ANNUAL_RATE, PAYMENT_TERMS_VALUES } from '../../../lib/constants/paymentTerms';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -49,13 +53,13 @@ export async function GET() {
             tvq_rate: 9.975,
             invoice_tps_number: '',
             invoice_tvq_number: '',
-            default_payment_terms: 'Net 30 jours',
+            default_payment_terms: DEFAULT_PAYMENT_TERMS,
             invoice_footer_note: '',
             invoice_ownership_note: '',
             invoice_next_number: 1,
             min_margin_percent: 10,
             labor_cost_hourly_rate: 0,
-            late_interest_annual_rate: 18,
+            late_interest_annual_rate: DEFAULT_LATE_INTEREST_ANNUAL_RATE,
             statement_footer_note: '',
             accountant_email: '',
             usd_fx_fee_percent: 3.5,
@@ -151,6 +155,13 @@ export async function PUT(request) {
         { status: 400 }
       );
     }
+    if (updates.default_payment_terms !== undefined && !PAYMENT_TERMS_VALUES.includes(updates.default_payment_terms)) {
+      return NextResponse.json(
+        { success: false, error: `Condition de paiement inconnue. Valeurs possibles: ${PAYMENT_TERMS_VALUES.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
     if (updates.late_interest_annual_rate !== undefined && (updates.late_interest_annual_rate < 0 || updates.late_interest_annual_rate > 100)) {
       return NextResponse.json(
         { success: false, error: 'Le taux d\'intérêt annuel doit être entre 0 et 100 %' },

@@ -13,9 +13,14 @@
  *              - Body save_to_client (défaut true): une adresse saisie à la volée est
  *                enregistrée au dossier client (email_admin s'il est vide, sinon
  *                additional_emails) pour être proposée aux prochains envois
- * @version 1.5.0
- * @date 2026-09-02
+ * @version 1.6.0
+ * @date 2026-11-04
  * @changelog
+ *   1.6.0 - En-tête PDF: « Conditions: Net 30 jours » (fiche client, sinon Paramètres);
+ *           avis d'intérêts remplacé par la phrase partagée lateInterestNotice()
+ *           (« Intérêts de 18 %/an (1,5 %/mois) sur tout solde en souffrance après
+ *           l'échéance. ») — identique à la soumission, la facture et le BL; notes de pied
+ *           en noir pur (règle PDF client, le gris s'imprime mal)
  *   1.5.0 - Notes de crédit (factures à total négatif) portées au relevé: ligne marquée
  *           « CRÉDIT », montants négatifs lisibles (-$X), sommaire Factures/Crédits,
  *           et courriel adapté quand le compte est soldé ou créditeur
@@ -32,6 +37,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
 import { buildStatement } from '../../../../../lib/services/statement-data';
+import { lateInterestNotice } from '../../../../../lib/constants/paymentTerms';
 
 const { Resend } = require('resend');
 const { jsPDF } = require('jspdf');
@@ -132,7 +138,7 @@ async function saveNewEmailsToClient(clientId, client, usedEmails) {
  * Génère le PDF de l'état de compte.
  */
 function generateStatementPDF(statement) {
-  const { client, invoices: lines, aging, totals, interestRate, statementDate, settings } = statement;
+  const { client, invoices: lines, aging, totals, interestRate, statementDate, settings, paymentTerms } = statement;
   // Intérêts facturés? (case décochée à l'écran => relevé totalement muet sur les intérêts)
   const chargeInterest = statement.chargeInterest !== false;
   const doc = new jsPDF({ format: 'letter', unit: 'mm' });
@@ -141,6 +147,7 @@ function generateStatementPDF(statement) {
     title: 'ÉTAT DE COMPTE',
     fields: [
       { label: 'Date du relevé:', value: pdfCommon.formatDate(statementDate) },
+      { label: 'Conditions:', value: paymentTerms || '', bold: false },
       { label: 'Factures dues:', value: String(totals.open_count ?? lines.length) },
       ...(totals.credit_count > 0
         ? [{ label: 'Crédits:', value: String(totals.credit_count) }]
@@ -320,28 +327,25 @@ function generateStatementPDF(statement) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(pdfCommon.FONT.body);
 
-  if (chargeInterest && (totals.interest > 0 || interestRate > 0)) {
+  // Même mention d'intérêts que sur la soumission, la facture et le BL
+  const interestNotice = chargeInterest ? lateInterestNotice(interestRate) : '';
+  if (interestNotice) {
     y = pdfCommon.checkPageBreak(doc, y, 12);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    const intLine = doc.splitTextToSize(
-      `Des intérêts de ${interestRate}% par année sont applicables sur tout solde en souffrance après l'échéance.`,
-      pdfCommon.CONTENT_WIDTH
-    );
+    doc.setTextColor(0, 0, 0);
+    const intLine = doc.splitTextToSize(interestNotice, pdfCommon.CONTENT_WIDTH);
     doc.text(intLine, pdfCommon.PAGE.margin.left, y);
     y += intLine.length * 4 + 3;
-    doc.setTextColor(0, 0, 0);
   }
 
   if (settings && settings.statement_footer_note) {
     y = pdfCommon.checkPageBreak(doc, y, 12);
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(0, 0, 0);
     const footerLines = doc.splitTextToSize(settings.statement_footer_note, pdfCommon.CONTENT_WIDTH);
     doc.text(footerLines, pdfCommon.PAGE.margin.left, y);
-    doc.setTextColor(0, 0, 0);
   }
 
   pdfCommon.drawFooter(doc);

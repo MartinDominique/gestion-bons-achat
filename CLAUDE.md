@@ -475,6 +475,7 @@ lib/services/invoice-inventory.js   → Sync inventaire ↔ facture (delta = fac
 lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique)
 lib/utils/priceShift.js             → Décalage historique prix (3 niveaux)
 lib/utils/currency.js               → Conversion USD→CAD (taux + frais bancaires), cost_price toujours en CAD
+lib/constants/paymentTerms.js       → Source unique conditions de paiement (liste, défaut, échéance) + mention d'intérêts (Soum./Facture/État de compte — jamais BT/BL)
 lib/utils/productSearch.js          → Recherche produits tolérante (tirets/accents ignorés)
 lib/services/product-associations.js → Helpers serveur items associés (lookupProducts par code, normalizeCode)
 lib/utils/associationsCache.js      → Cache client des compteurs « As » (1 requête groupée par écran) + hook useAssociationCount
@@ -1032,6 +1033,20 @@ CRON_SECRET                   # Auth pour cron jobs
     - Tableaux larges (BT/BL, Factures, État de compte, Statistiques, AF, BA): déjà dans des conteneurs `overflow-x-auto` → défilement **interne** au tableau, jamais de la page; inchangés
     - Non modifié: contenu des modules, formulaires BT/BL (aucun débordement mesuré)
     - **Amélioration (2026-10-02):** largeur étendue sur desktop grand écran (≥ 1536 px, breakpoint Tailwind `2xl`) — conteneur principal `ClientSplitViewWrapper.js` v2.1.0 de 1152 à 1800 px + `2xl:max-w-none` sur les conteneurs internes (Soumissions, Inventaire, AF, BA, Statistiques, À Commander, Achat, BT/BL, Facturation). Fin du défilement horizontal du tableau « Produits sélectionnés » de la Soumission (colonne As). Tablette/cellulaire (< 1536 px): inchangés
+
+36. ~~**Conditions de paiement + intérêts unifiés (Soumission, Facture, État de compte)**~~ - ✅ COMPLÉTÉ (2026-11-04)
+    - `lib/constants/paymentTerms.js` (nouveau) — **source unique**: liste `PAYMENT_TERMS` (libellé + jours nets),
+      `resolvePaymentTerms()` (fiche client → Paramètres → « Net 30 jours »), `computeDueDate()` (échéance = date de
+      facture + jours nets, même définition que le libellé), `lateInterestNotice()` → « Intérêts de 18 %/an (1,5 %/mois)
+      sur tout solde en souffrance après l'échéance. » (taux `settings.late_interest_annual_rate`, vide si 0)
+    - Soumission (`SoumissionsManager.js` v2.7.0: PDF + impression + courriel), Facture (`send-email` v1.8.0: « Échéance: »
+      en en-tête + mention en pied + courriel; `invoices/route.js` v1.5.0 + `[id]/route.js` v1.5.0: échéance calculée ET
+      recalculée au changement de condition), État de compte (`statement-data.js` v1.3.0, route v1.3.0, PDF v1.6.0 avec
+      « Conditions: » en en-tête, `ClientStatementView.js` v1.11.0)
+    - Sélecteurs (fiche client v2.4.0, Paramètres v2.8.0, éditeur de facture v2.16.0, API settings v1.7.0) lisent la même liste
+    - **Règle:** ne plus écrire « Net 30 jours » ni la phrase d'intérêts en dur — passer par `lib/constants/paymentTerms.js`
+    - **BT et BL volontairement exclus** (décision Martin 2026-11-04): aucun montant dû sur ces formulaires, donc aucune
+      condition de paiement. Aucune migration SQL requise
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
