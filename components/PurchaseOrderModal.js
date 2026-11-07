@@ -6,9 +6,10 @@
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
  *              - Onglet Docs: factures liées au BA (via BT/BL rattachés) avec PDF (voir / télécharger / générer)
- * @version 1.3.0
- * @date 2026-11-04
+ * @version 1.4.0
+ * @date 2026-11-07
  * @changelog
+ *   1.4.0 - Onglet Docs: BT/BL fermés par déduction « Varia » (aucune facture) signalés sous les factures liées
  *   1.3.0 - Onglet Docs: section « Factures liées » — liste les factures créées depuis les BT/BL
  *           rattachés à ce BA (GET /api/purchase-orders/[id]/invoices), y compris celles déjà
  *           existantes; boutons Voir / Télécharger (PDF en Storage) ou « Générer le PDF »
@@ -27,6 +28,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { searchWithFallback } from '../lib/utils/productSearch';
+import { DEDUCTION_LABEL } from '../lib/constants/deduction';
 import DeliverySlipModal from './DeliverySlipModal';
 import BCCConfirmationModal from './PurchaseOrder/BCCConfirmationModal';
 
@@ -79,6 +81,8 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
   // Factures liées au BA (créées depuis les BT/BL rattachés) — onglet Docs
   const [linkedInvoices, setLinkedInvoices] = useState([]);
   const [externalInvoicedDocs, setExternalInvoicedDocs] = useState([]);
+  // BT/BL fermés par déduction « Varia » (aucune facture, aucun PDF)
+  const [deductionDocs, setDeductionDocs] = useState([]);
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
   const [invoicesError, setInvoicesError] = useState('');
   const [invoicePdfLoading, setInvoicePdfLoading] = useState({});
@@ -117,6 +121,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
       }
       setLinkedInvoices(json.data || []);
       setExternalInvoicedDocs(json.external || []);
+      setDeductionDocs(json.deductions || []);
     } catch (err) {
       console.error('Erreur chargement factures du BA:', err);
       setInvoicesError('Factures liées non chargées: ' + err.message);
@@ -2569,6 +2574,12 @@ setTimeout(() => {
                       <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded">
                         <strong>Facturés dans Acomba (hors app, sans PDF ici):</strong>{' '}
                         {externalInvoicedDocs.map(d => `${d.source_type === 'work_order' ? 'BT' : 'BL'} ${d.source_number}`).join(', ')}
+                      </div>
+                    )}
+                    {deductionDocs.length > 0 && (
+                      <div className="text-xs text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/20 p-2 rounded">
+                        <strong>{DEDUCTION_LABEL} (aucune facture):</strong>{' '}
+                        {deductionDocs.map(d => `${d.source_type === 'work_order' ? 'BT' : 'BL'} ${d.source_number}`).join(', ')}
                       </div>
                     )}
                   </div>

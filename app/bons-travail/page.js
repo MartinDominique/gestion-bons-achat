@@ -6,9 +6,11 @@
  *              - Actions: modifier, supprimer, envoyer
  *              - Statistiques combinées
  *              - Badge BO et indicateur BL de suivi
- * @version 2.7.0
- * @date 2026-10-02
+ * @version 2.8.0
+ * @date 2026-11-07
  * @changelog
+ *   2.8.0 - Indicateur facture: pastille violette + mention « Varia » (BT/BL fermé par déduction,
+ *           invoice_id = -2, aucune facture créée); libellés centralisés (lib/constants/deduction)
  *   2.7.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   2.6.0 - Rafraîchissement auto de la liste au retour en avant-plan (visibilitychange/focus): un BT punché d'un autre appareil apparaît sans pull-to-refresh manuel
  *   2.5.0 - Tri BT par date de session la plus récente (time_entries), pas seulement work_date
@@ -30,6 +32,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Calendar, Clock, User, FileText, Edit, Trash2, Send, Eye, Search, Truck, Package, DollarSign } from 'lucide-react';
 import ConnectionStatus from '../../components/ConnectionStatus';
+import { invoiceIndicator, isDeduction, DEDUCTION_LABEL } from '../../lib/constants/deduction';
 
 export default function BonsTravailPage() {
   const [workOrders, setWorkOrders] = useState([]);
@@ -673,24 +676,25 @@ export default function BonsTravailPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          {['signed', 'completed', 'sent'].includes(item.status) && (
-                            <span
-                              className={`inline-flex h-2.5 w-2.5 rounded-full ${
-                                item.invoice_id === -1
-                                  ? 'bg-amber-500'
-                                  : item.invoice_id
-                                    ? 'bg-green-500'
-                                    : 'bg-red-500'
-                              }`}
-                              title={
-                                item.invoice_id === -1
-                                  ? 'Facturé (Acomba)'
-                                  : item.invoice_id
-                                    ? 'Facturé'
-                                    : 'Non facturé'
-                              }
-                            />
-                          )}
+                          {['signed', 'completed', 'sent'].includes(item.status) && (() => {
+                            const ind = invoiceIndicator(item.invoice_id);
+                            return (
+                              <>
+                                <span
+                                  className={`inline-flex h-2.5 w-2.5 rounded-full ${ind.dot}`}
+                                  title={ind.title}
+                                />
+                                {isDeduction(item.invoice_id) && (
+                                  <span
+                                    className="inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300"
+                                    title="Fermé par déduction (aucune facture)"
+                                  >
+                                    {DEDUCTION_LABEL}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                           <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
                             {getStatusLabel(item.status)}
                           </span>
@@ -765,23 +769,19 @@ export default function BonsTravailPage() {
                               }`}>
                                 {['signed', 'completed', 'sent'].includes(item.status) && (
                                   <span
-                                    className={`inline-flex h-2.5 w-2.5 rounded-full flex-shrink-0 ${
-                                      item.invoice_id === -1
-                                        ? 'bg-amber-500'
-                                        : item.invoice_id
-                                          ? 'bg-green-500'
-                                          : 'bg-red-500'
-                                    }`}
-                                    title={
-                                      item.invoice_id === -1
-                                        ? 'Facturé (Acomba)'
-                                        : item.invoice_id
-                                          ? 'Facturé'
-                                          : 'Non facturé'
-                                    }
+                                    className={`inline-flex h-2.5 w-2.5 rounded-full flex-shrink-0 ${invoiceIndicator(item.invoice_id).dot}`}
+                                    title={invoiceIndicator(item.invoice_id).title}
                                   />
                                 )}
                                 {item._number}
+                                {isDeduction(item.invoice_id) && (
+                                  <span
+                                    className="inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300"
+                                    title="Fermé par déduction (aucune facture)"
+                                  >
+                                    {DEDUCTION_LABEL}
+                                  </span>
+                                )}
                                 {!isBL && item.has_active_session && (
                                   <span className="relative flex h-3 w-3" title="Session en cours">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>

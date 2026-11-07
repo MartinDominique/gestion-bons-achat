@@ -6,15 +6,31 @@
  *              - Vue responsive: tableau desktop, cartes mobile
  *              - Pagination côté serveur
  *              - Numéros de documents cliquables (SplitView)
- * @version 1.1.0
- * @date 2026-02-27
+ * @version 1.2.0
+ * @date 2026-11-07
  * @changelog
+ *   1.2.0 - Pastille « Varia » à côté du N° d'un BT/BL fermé par déduction (aucune facture),
+ *           tableau desktop + cartes mobile
  *   1.1.0 - Ajout ReferenceLink sur N° documents (Phase E — Numéros cliquables)
  *   1.0.0 - Version initiale - Phase 1 MVP
  */
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReferenceLink } from '../SplitView';
+import { DEDUCTION_LABEL } from '../../lib/constants/deduction';
+
+/** Pastille « Varia »: BT/BL fermé par déduction (aucune facture créée) */
+function DeductionBadge({ doc }) {
+  if (!doc?.isDeduction) return null;
+  return (
+    <span
+      className="inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300"
+      title="Fermé par déduction (aucune facture)"
+    >
+      {DEDUCTION_LABEL}
+    </span>
+  );
+}
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('fr-CA', {
@@ -168,14 +184,17 @@ export default function SalesReport({ documents, summary, pagination, onPageChan
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    {(() => {
-                      const ref = getDocRefProps(doc);
-                      return ref ? (
-                        <ReferenceLink type={ref.type} label={doc.documentNumber} data={ref.data} variant={ref.variant} />
-                      ) : (
-                        <span className="font-mono text-xs text-gray-900 dark:text-gray-100">{doc.documentNumber}</span>
-                      );
-                    })()}
+                    <span className="inline-flex items-center gap-1.5">
+                      {(() => {
+                        const ref = getDocRefProps(doc);
+                        return ref ? (
+                          <ReferenceLink type={ref.type} label={doc.documentNumber} data={ref.data} variant={ref.variant} />
+                        ) : (
+                          <span className="font-mono text-xs text-gray-900 dark:text-gray-100">{doc.documentNumber}</span>
+                        );
+                      })()}
+                      <DeductionBadge doc={doc} />
+                    </span>
                   </td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{formatDate(doc.date)}</td>
                   <td className="px-3 py-2 text-gray-900 dark:text-gray-100 max-w-[150px] truncate">{doc.clientName}</td>
@@ -229,6 +248,7 @@ export default function SalesReport({ documents, summary, pagination, onPageChan
                       <span className="font-mono text-xs text-gray-900 dark:text-gray-100">{doc.documentNumber}</span>
                     );
                   })()}
+                  <DeductionBadge doc={doc} />
                 </div>
                 <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(doc.date)}</span>
               </div>

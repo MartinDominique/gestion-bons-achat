@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.15.1
- * @date 2026-10-09
+ * @version 3.16.0
+ * @date 2026-11-07
  * @changelog
+ *   3.16.0 - Historique: libellé « Varia » pour les mouvements reference_type 'deduction' (fiche de facturation sans facture)
  *   3.15.1 - Mode sombre: pastilles groupe/fournisseur/non-inv./stock faible, section « En main » du modal, onglet Historique des mouvements (cartes IN/OUT, libellés)
  *   3.15.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   3.14.1 - Historique: libellé « Facture (correction) » pour les mouvements reference_type 'invoice'
@@ -93,6 +94,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import { unitOptionsWith } from '../lib/constants/units';
+import { DEDUCTION_LABEL } from '../lib/constants/deduction';
 import AddToOrderButton from './order-list/AddToOrderButton';
 import AssociatedItemsButton from './associations/AssociatedItemsButton';
 import ProductAssociationsPanel from './associations/ProductAssociationsPanel';
@@ -1499,7 +1501,8 @@ export default function InventoryManager() {
                                       {movement.reference_type === 'adjustment' && 'Ajustement'}
                                       {movement.reference_type === 'manual_edit' && 'Modification manuelle'}
                                       {movement.reference_type === 'invoice' && 'Facture (correction)'}
-                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit', 'invoice'].includes(movement.reference_type) && movement.reference_type}
+                                      {movement.reference_type === 'deduction' && DEDUCTION_LABEL}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit', 'invoice', 'deduction'].includes(movement.reference_type) && movement.reference_type}
                                     </span>
                                   )}
                                 </div>

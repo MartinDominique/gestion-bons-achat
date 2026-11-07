@@ -4,14 +4,16 @@
  *              - Utilise pdf-common.js pour l'en-tête/footer standardisé
  *              - Tableau des documents avec revenus/coûts/marges
  *              - Bandeau résumé des totaux
- * @version 1.0.0
- * @date 2026-02-24
+ * @version 1.1.0
+ * @date 2026-11-07
  * @changelog
+ *   1.1.0 - Mention « Varia » après le N° d'un BT/BL fermé par déduction (aucune facture)
  *   1.0.0 - Version initiale - Phase 1 MVP
  */
 
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import { DEDUCTION_LABEL } from '../../lib/constants/deduction';
 import {
   drawHeader, drawFooter, drawSectionTitle,
   loadLogoBase64Client, formatCurrency as pdfFormatCurrency,
@@ -133,7 +135,7 @@ export async function generateStatisticsPDF({ documents, summary, filters, clien
 
     const body = documents.map(d => ({
       type: d.type,
-      docNum: d.documentNumber,
+      docNum: d.isDeduction ? `${d.documentNumber} (${DEDUCTION_LABEL})` : d.documentNumber,
       date: formatDatePDF(d.date),
       client: (d.clientName || '').substring(0, 25),
       revenue: pdfFormatCurrency(d.revenue),

@@ -7,9 +7,11 @@
  *              - Numéros de référence cliquables (SplitView)
  *              - Onglet "État de compte": soldes clients, paiements, relevés
  *              - Onglet "Rapports compta": ventes + paiements (PDF + envoi au comptable)
- * @version 2.7.0
- * @date 2026-10-02
+ * @version 2.8.0
+ * @date 2026-11-07
  * @changelog
+ *   2.8.0 - Fermeture de l'éditeur avec message personnalisé (toast « Déduction appliquée … Varia »
+ *           quand la fiche n'a produit aucune facture)
  *   2.7.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   2.6.0 - Messages succès/erreur en toast flottant (components/Toast.js) au lieu d'une
  *           bande en haut de la liste: la liste ne bouge plus quand le message apparaît
@@ -272,13 +274,14 @@ export default function InvoiceManager() {
   };
 
   // Fermer l'éditeur
-  const handleEditorClose = (saved) => {
+  // info.message (optionnel): toast personnalisé, ex. déduction « Varia » (aucune facture créée)
+  const handleEditorClose = (saved, info) => {
     setShowEditor(false);
     setEditorSource(null);
     setEditingInvoice(null);
     if (saved) {
       fetchData();
-      setSuccess('Facture sauvegardée avec succès');
+      setSuccess(info?.message || 'Facture sauvegardée avec succès');
     }
   };
 
