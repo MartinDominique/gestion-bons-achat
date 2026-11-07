@@ -5,13 +5,18 @@
  *              - Filtres: type, dates, client, n° document, description, produit
  *              - Calculs: revenus, coûts, marges par document
  *              - Pagination côté serveur (max 50 résultats)
- * @version 1.0.0
- * @date 2026-02-24
+ * @version 1.1.0
+ * @date 2026-11-07
  * @changelog
+ *   1.1.0 - BT/BL: invoice_id lu + champ isDeduction (fermé par déduction « Varia », aucune
+ *           facture) pour la mention dans le rapport; force-dynamic (règle routes GET)
  *   1.0.0 - Version initiale - Phase 1 MVP
  */
 
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { isDeduction } from '../../../lib/constants/deduction';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
@@ -40,7 +45,7 @@ export async function GET(request) {
       let btQuery = supabaseAdmin
         .from('work_orders')
         .select(`
-          id, bt_number, client_id, work_date, work_description, status,
+          id, bt_number, client_id, work_date, work_description, status, invoice_id,
           is_prix_jobe, total_hours, time_entries,
           client:clients(id, name),
           materials:work_order_materials(id, product_id, description, quantity, unit, unit_price)
@@ -109,6 +114,7 @@ export async function GET(request) {
             marginPercent: revenue > 0 ? Math.round(((revenue - cost) / revenue) * 10000) / 100 : 0,
             status: bt.status,
             isPrixJobe: bt.is_prix_jobe,
+            isDeduction: isDeduction(bt.invoice_id),
             materialCount: materials.length,
             totalHours: bt.total_hours || 0,
           });
@@ -123,7 +129,7 @@ export async function GET(request) {
       let blQuery = supabaseAdmin
         .from('delivery_notes')
         .select(`
-          id, bl_number, client_id, client_name, delivery_date, delivery_description, status,
+          id, bl_number, client_id, client_name, delivery_date, delivery_description, status, invoice_id,
           is_prix_jobe,
           materials:delivery_note_materials(id, product_id, description, quantity, unit, unit_price)
         `)
@@ -191,6 +197,7 @@ export async function GET(request) {
             marginPercent: revenue > 0 ? Math.round(((revenue - cost) / revenue) * 10000) / 100 : 0,
             status: bl.status,
             isPrixJobe: bl.is_prix_jobe,
+            isDeduction: isDeduction(bl.invoice_id),
             materialCount: materials.length,
           });
         });

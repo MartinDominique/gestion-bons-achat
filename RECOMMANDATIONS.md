@@ -2427,4 +2427,61 @@ fiche (`clients.payment_terms`).
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-04 par Claude AI*
+## Déduction « Varia » — fiche de facturation sans facture (client qui règle sans facture) ✅ COMPLETE (2026-11-07)
+
+**Demande (Martin, 5-7 nov.):** environ 1 fois sur 1000, le client veut régler sans facture alors que le BT/BL est
+déjà commencé. Besoin: voir les vendants des items et du travail, sortir les matériaux de l'inventaire, puis
+fermer le dossier **sans** produire de facture. Options écartées: bouton dans le BT/BL (trop lourd),
+suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (le mot ne convient pas).
+
+**Décisions (Martin, 7 nov.):**
+- Flux: tout fonctionne comme avant pour le BT/BL → Martin le signe lui-même sans l'envoyer au client
+  (destinataires vides) → le BT/BL tombe dans « À facturer » → « $ Facturer » → la fiche montre coûtants,
+  vendants, heures → case **« Déduction »** au-dessus de « Prix forfaitaire (Jobe) »
+- Cocher = **fenêtre de confirmation** bloquante (Confirmer / Annuler), pas un toast
+- Case visible sur **toutes** les plateformes (l'idée « PC seulement » a été abandonnée)
+- Boutons du bas **inchangés**; « Imprimer » et « Sauvegarder & Envoyer » répondent **« NE FONCTIONNE PAS »**;
+  seuls « Sauvegarder » et « Annuler » agissent
+- Mot de la mention: **« Varia »** (neutre, crédible dans un rapport; changeable en une constante)
+- Le BT/BL **reste dans la liste BT/BL** avec la mention; **rien** dans l'archive des Factures, **aucun** numéro
+- Pas d'action « Retirer la mention »: si le client change d'idée (jamais arrivé), Martin fera une facture
+  globale sans items
+- Toast de confirmation après la sauvegarde
+
+**Implementation completee (2026-11-07):**
+- `lib/constants/deduction.js` (nouveau) — `DEDUCTION_LABEL = 'Varia'`, `DEDUCTION_INVOICE_ID = -2`,
+  `EXTERNAL_INVOICE_ID = -1`, `DEDUCTION_REFERENCE_TYPE = 'deduction'`, `isDeduction()`, `isExternalInvoice()`,
+  `invoiceIndicator()` (pastille + infobulle: rouge / vert / ambre Acomba / violet Varia)
+- `lib/services/invoice-inventory.js` v1.1.0 — cœur de calcul extrait (`syncDocumentInventory`) et réutilisé:
+  `syncInvoiceInventory` (inchangé pour les factures) + `syncDeductionInventory(doc)` (fiche non enregistrée,
+  `reference_type='deduction'`, `reference_number` = N° du BT/BL, note « Varia (BT-…) — correction: … »),
+  delta = fiche − BT/BL − déjà appliqué → idempotent si la fiche est resoumise
+- `app/api/invoices/deduction/route.js` (nouveau) — POST: vérifie le BT/BL (404), refuse si déjà facturé, déjà
+  « Varia » ou si une facture existe (409); **inventaire d'abord, marquage ensuite** (`invoice_id = -2`, vérifié,
+  2 tentatives, `.is('invoice_id', null)`): si le marquage échoue, le BT/BL reste dans « À facturer » et une
+  nouvelle tentative n'ajuste que la différence. Aucune écriture dans `invoices`
+- `components/invoices/InvoiceEditor.js` v2.17.0 — case « Déduction » (création depuis BT/BL seulement, jamais
+  sur une facture existante), fenêtre de confirmation (z-70, 44 px, fond cliquable = annuler), pastille
+  « Varia — aucune facture » une fois cochée; `handleSave(false)` → `handleDeduction()` (POST deduction, alerte
+  récapitulative des ajustements d'inventaire comme pour une facture, fermeture avec message); `handleSave(true)`
+  et `handlePrint` → `alert` + bandeau « NE FONCTIONNE PAS … »; infobulles des 2 boutons; libellé « Varia »
+  dans l'historique des mouvements du modal produit
+- `components/invoices/InvoiceManager.js` v2.8.0 — `handleEditorClose(saved, info)` → toast `info.message`
+  (« Déduction appliquée: BT-… marqué « Varia » (aucune facture créée) »)
+- `app/bons-travail/page.js` v2.8.0 — pastille violette + mention « Varia » (cartes mobile + tableau desktop),
+  libellés via `invoiceIndicator()`
+- `app/api/statistics/route.js` v1.1.0 — `invoice_id` lu, champ `isDeduction` par BT/BL + `force-dynamic`;
+  `components/statistics/SalesReport.js` v1.2.0 — pastille « Varia » (tableau + cartes);
+  `components/statistics/StatisticsPDFExport.js` v1.1.0 — « BT-… (Varia) » dans le PDF
+- `components/InventoryManager.js` v3.16.0 — libellé « Varia » pour `reference_type='deduction'`
+- `app/api/purchase-orders/[id]/invoices/route.js` v1.1.0 + `components/PurchaseOrderModal.js` v1.4.0 — onglet
+  Docs du BA: ligne « Varia (aucune facture): BT-… »
+- **Non touché (par construction):** archive des Factures, état de compte, rapports compta, statistiques
+  financières, numérotation des factures, relink, mark-external (tous lisent `invoices` ou `invoice_id IS NULL`)
+- **Reste visible:** le BT/BL dans les statistiques opérationnelles (avec la mention) et dans les rapports
+  journalier/hebdomadaire par courriel (liste des BT)
+- Aucune migration SQL requise
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-11-07 par Claude AI*

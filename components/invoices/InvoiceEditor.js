@@ -29,9 +29,18 @@
  *              - Inventaire synchronisé après chaque sauvegarde (POST sync-inventory): article
  *                retiré/ajouté/quantité changée dans la facture → retour ou sortie de stock
  *                par rapport au BT/BL (mouvements 'invoice', idempotent). Résumé affiché.
- * @version 2.16.0
- * @date 2026-11-04
+ *              - Déduction « Varia » (création depuis un BT/BL seulement): case au-dessus de
+ *                « Prix forfaitaire (Jobe) ». Cocher ouvre une fenêtre de confirmation. Une fois
+ *                cochée, « Sauvegarder » n'enregistre AUCUNE facture (pas de numéro, rien dans
+ *                l'archive, l'état de compte ni les rapports): POST /api/invoices/deduction
+ *                ajuste l'inventaire selon les quantités de la fiche et marque le BT/BL
+ *                « Varia » (invoice_id = -2). « Imprimer » et « Sauvegarder & Envoyer » restent
+ *                affichés mais répondent « NE FONCTIONNE PAS ».
+ * @version 2.17.0
+ * @date 2026-11-07
  * @changelog
+ *   2.17.0 - Déduction « Varia »: case + fenêtre de confirmation, sauvegarde sans facture
+ *            (inventaire ajusté + BT/BL marqué), Imprimer/Envoyer neutralisés avec mention
  *   2.16.0 - Conditions de paiement: liste du sélecteur et condition par défaut tirées de
  *            lib/constants/paymentTerms (client → Paramètres → Net 30 jours), même source
  *            que le calcul de l'échéance côté serveur
@@ -104,6 +113,7 @@ import { X, Plus, Trash2, Save, Send, DollarSign, FileText, AlertCircle, AlertTr
 import { supabase } from '../../lib/supabase';
 import { buildPriceShiftUpdates } from '../../lib/utils/priceShift';
 import { PAYMENT_TERMS, DEFAULT_PAYMENT_TERMS, resolvePaymentTerms } from '../../lib/constants/paymentTerms';
+import { DEDUCTION_LABEL } from '../../lib/constants/deduction';
 import InvoiceReferencePanel from './InvoiceReferencePanel';
 import InvoiceProductSearch from './InvoiceProductSearch';
 import DisablePullToRefresh from '../DisablePullToRefresh';
@@ -396,6 +406,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
   const [paymentTerms, setPaymentTerms] = useState(DEFAULT_PAYMENT_TERMS);
   const [notes, setNotes] = useState('');
   const [isPrixJobe, setIsPrixJobe] = useState(false);
+  // Déduction « Varia »: la fiche ne produit AUCUNE facture (création depuis BT/BL seulement).
+  // Seuls « Sauvegarder » (→ /api/invoices/deduction) et « Annuler » fonctionnent.
+  const [isDeduction, setIsDeduction] = useState(false);
+  const [showDeductionConfirm, setShowDeductionConfirm] = useState(false);
   // Détail INTERNE du forfait (Prix Jobé): composantes M.O./transport/matériaux du BT/BL.
   // Jamais transmis au client — sert à vérifier et à fixer le prix forfaitaire.
   const [jobeDetail, setJobeDetail] = useState([]);
@@ -959,8 +973,85 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     }
   };
 
+  // Déduction « Varia »: mention affichée quand Imprimer / Sauvegarder & Envoyer sont pressés
+  const DEDUCTION_BLOCKED_MESSAGE =
+    `NE FONCTIONNE PAS : la case « Déduction (${DEDUCTION_LABEL}) » est cochée.\n` +
+    'Seuls « Sauvegarder » et « Annuler » s\'appliquent à une déduction.';
+
+  const notifyDeductionBlocked = () => {
+    setError(DEDUCTION_BLOCKED_MESSAGE);
+    alert(DEDUCTION_BLOCKED_MESSAGE);
+  };
+
+  // Déduction « Varia »: aucune facture enregistrée. L'inventaire est ajusté selon les
+  // quantités de la fiche et le BT/BL est marqué « Varia » (sort de « À facturer »).
+  const handleDeduction = async () => {
+    if (!sourceData) {
+      setError('Déduction impossible: document source introuvable');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+
+    const btOrBl = sourceData;
+    const docLabel = source.type === 'bt' ? 'BT' : 'BL';
+    const sourceNumber = source.type === 'bt' ? btOrBl.bt_number : btOrBl.bl_number;
+    const cleanedLineItems = lineItems.map(({ product_id, ...rest }) => ({ ...rest, product_id }));
+
+    try {
+      const res = await fetch('/api/invoices/deduction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_type: source.type === 'bt' ? 'work_order' : 'delivery_note',
+          source_id: btOrBl.id,
+          source_number: sourceNumber,
+          line_items: cleanedLineItems,
+          is_prix_jobe: isPrixJobe,
+          jobe_detail_items: isPrixJobe ? buildJobeDetailPayload() : null,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(`${data.error || 'Erreur déduction'}${data.details ? ` — ${data.details}` : ''}`);
+        setSaving(false);
+        return;
+      }
+
+      const adj = data.adjustments || [];
+      const skipped = data.skipped || [];
+      if (adj.length > 0 || skipped.length > 0 || data.reason) {
+        const lines = adj.map(a => {
+          const q = Math.abs(a.delta);
+          return `${a.delta > 0 ? '−' : '+'}${q}  ${a.product_id} — ${a.description || ''}  (en main: ${a.previous_stock} → ${a.new_stock})`;
+        });
+        const skippedLines = skipped.map(x => `⚠ ${x.product_id}: ${x.reason}`);
+        const header = data.reason
+          ? data.reason
+          : `Inventaire ajusté selon la fiche (vs ${docLabel}):`;
+        alert(`${header}\n${[...lines, ...skippedLines].join('\n')}`.trim());
+      }
+
+      setTimeout(() => onClose(true, {
+        message: data.message || `Déduction appliquée: ${docLabel} ${sourceNumber} marqué « ${DEDUCTION_LABEL} »`,
+      }), 300);
+    } catch (err) {
+      console.error('Erreur déduction:', err);
+      setError('Erreur de connexion au serveur');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Sauvegarder facture (retirer product_id des line_items avant sauvegarde)
   const handleSave = async (andSend = false) => {
+    // Déduction « Varia »: Sauvegarder → déduction, Envoyer → mention « NE FONCTIONNE PAS »
+    if (isDeduction) {
+      if (andSend) { notifyDeductionBlocked(); return; }
+      await handleDeduction();
+      return;
+    }
+
     // Si on envoie et qu'il y a des destinataires possibles mais aucun coché → bloquer
     if (andSend && emailRecipients.length > 0 && selectedEmails.length === 0) {
       setError('Sélectionnez au moins une adresse email, ou utilisez « Imprimer » pour générer le PDF sans envoi.');
@@ -1082,6 +1173,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
   // Imprimer: sauvegarder + générer PDF sans email + ouvrir PDF
   const handlePrint = async () => {
+    // Déduction « Varia »: aucune facture, donc aucun PDF
+    if (isDeduction) { notifyDeductionBlocked(); return; }
     setPrinting(true);
     setError(null);
 
@@ -1442,7 +1535,37 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 ))}
               </select>
             </div>
-            <div className="flex items-end">
+            <div className="flex flex-col justify-end gap-2">
+              {/* Déduction « Varia » — création depuis un BT/BL seulement (jamais sur une facture existante) */}
+              {!isEditing && !isLocked && (
+                <label
+                  className="flex items-center gap-2 cursor-pointer min-h-[44px] sm:min-h-0 py-1"
+                  title={`Aucune facture ne sera créée: inventaire ajusté + BT/BL marqué « ${DEDUCTION_LABEL} »`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isDeduction}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        // Cocher = fenêtre de confirmation (action irréversible à la sauvegarde)
+                        setShowDeductionConfirm(true);
+                      } else {
+                        setIsDeduction(false);
+                        setError(null);
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-violet-600 focus:ring-violet-500"
+                  />
+                  <span className={`text-sm font-medium ${isDeduction ? 'text-violet-700 dark:text-violet-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                    Déduction
+                    {isDeduction && (
+                      <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">
+                        {DEDUCTION_LABEL} — aucune facture
+                      </span>
+                    )}
+                  </span>
+                </label>
+              )}
               <label className={`flex items-center gap-2 ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
@@ -2214,7 +2337,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 onClick={handlePrint}
                 disabled={saving || sending || printing}
                 className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
-                title="Générer le PDF et marquer comme envoyée (sans email)"
+                title={isDeduction ? 'NE FONCTIONNE PAS avec « Déduction » cochée' : 'Générer le PDF et marquer comme envoyée (sans email)'}
               >
                 <Printer className="w-4 h-4" />
                 {printing ? 'Impression...' : 'Imprimer'}
@@ -2223,6 +2346,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 onClick={() => handleSave(true)}
                 disabled={saving || sending || printing}
                 className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
+                title={isDeduction ? 'NE FONCTIONNE PAS avec « Déduction » cochée' : undefined}
               >
                 <Send className="w-4 h-4" />
                 {sending ? 'Envoi...' : 'Sauvegarder & Envoyer'}
@@ -2231,6 +2355,57 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
           )}
         </div>
       </div>
+
+      {/* Fenêtre de confirmation — Déduction « Varia » (bloquante: Confirmer / Annuler) */}
+      {showDeductionConfirm && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[70]"
+          onClick={() => setShowDeductionConfirm(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-violet-600 dark:text-violet-300" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                  Déduction ({DEDUCTION_LABEL})
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {sourceType === 'bt' ? 'BT' : 'BL'} {sourceType === 'bt' ? sourceData?.bt_number : sourceData?.bl_number}
+                </p>
+              </div>
+            </div>
+            <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1.5 list-disc pl-5">
+              <li>Cette fiche ne deviendra <strong>pas</strong> une facture : aucun numéro, rien dans l&apos;archive des Factures, l&apos;état de compte ni les rapports.</li>
+              <li>À la sauvegarde, l&apos;inventaire sera ajusté selon les quantités de la fiche.</li>
+              <li>Le {sourceType === 'bt' ? 'BT' : 'BL'} sortira de « À facturer » et portera la mention « {DEDUCTION_LABEL} ».</li>
+              <li>Seuls « Sauvegarder » et « Annuler » fonctionnent. « Imprimer » et « Sauvegarder &amp; Envoyer » ne font rien.</li>
+            </ul>
+            <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDeductionConfirm(false)}
+                className="min-h-[44px] px-4 py-2.5 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsDeduction(true); setShowDeductionConfirm(false); setError(null); }}
+                className="min-h-[44px] px-4 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-semibold"
+              >
+                Confirmer la déduction
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Panneau de consultation BA / Soumission — côte-à-côte (desktop ≥1024px) */}
       {referenceView && (
@@ -2534,7 +2709,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                                       {movement.reference_type === 'adjustment' && 'Ajustement'}
                                       {movement.reference_type === 'manual_edit' && 'Modification manuelle'}
                                       {movement.reference_type === 'invoice' && 'Facture (correction)'}
-                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit', 'invoice'].includes(movement.reference_type) && movement.reference_type}
+                                      {movement.reference_type === 'deduction' && DEDUCTION_LABEL}
+                                      {!['supplier_purchase', 'work_order', 'delivery_note', 'delivery_slip', 'direct_receipt', 'adjustment', 'manual_edit', 'invoice', 'deduction'].includes(movement.reference_type) && movement.reference_type}
                                     </span>
                                   )}
                                 </div>

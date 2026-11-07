@@ -11,14 +11,18 @@
  *                `external` (aucun PDF dans l'app)
  *              - Les factures DÉJÀ existantes apparaissent automatiquement: aucune migration ni
  *                rattachement manuel (dès que le BT/BL est lié au BA)
- * @version 1.0.0
- * @date 2026-11-04
+ *              - Les BT/BL fermés par déduction « Varia » (invoice_id = -2, aucune facture) sont
+ *                listés dans `deductions`
+ * @version 1.1.0
+ * @date 2026-11-07
  * @changelog
+ *   1.1.0 - Liste `deductions` (BT/BL fermés par déduction « Varia »); sentinelles centralisées
  *   1.0.0 - Version initiale
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
+import { isExternalInvoice, isDeduction, DEDUCTION_LABEL } from '../../../../../lib/constants/deduction';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -118,10 +122,20 @@ export async function GET(request, { params }) {
 
     // 4. Documents facturés à l'externe (Acomba): invoice_id = -1
     const external = [
-      ...(bts || []).filter(d => Number(d.invoice_id) === -1).map(d => ({
+      ...(bts || []).filter(d => isExternalInvoice(d.invoice_id)).map(d => ({
         source_type: 'work_order', source_id: d.id, source_number: d.bt_number, date: d.work_date,
       })),
-      ...(bls || []).filter(d => Number(d.invoice_id) === -1).map(d => ({
+      ...(bls || []).filter(d => isExternalInvoice(d.invoice_id)).map(d => ({
+        source_type: 'delivery_note', source_id: d.id, source_number: d.bl_number, date: d.delivery_date,
+      })),
+    ];
+
+    // 5. Documents fermés par déduction « Varia » (invoice_id = -2): aucune facture, aucun PDF
+    const deductions = [
+      ...(bts || []).filter(d => isDeduction(d.invoice_id)).map(d => ({
+        source_type: 'work_order', source_id: d.id, source_number: d.bt_number, date: d.work_date,
+      })),
+      ...(bls || []).filter(d => isDeduction(d.invoice_id)).map(d => ({
         source_type: 'delivery_note', source_id: d.id, source_number: d.bl_number, date: d.delivery_date,
       })),
     ];
@@ -130,6 +144,8 @@ export async function GET(request, { params }) {
       success: true,
       data: enriched,
       external,
+      deductions,
+      deduction_label: DEDUCTION_LABEL,
       linked_documents: {
         work_orders: (bts || []).map(d => ({ id: d.id, number: d.bt_number, status: d.status, invoice_id: d.invoice_id })),
         delivery_notes: (bls || []).map(d => ({ id: d.id, number: d.bl_number, status: d.status, invoice_id: d.invoice_id })),

@@ -454,6 +454,7 @@ const total = subtotal + tps + tvq;
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
 /api/invoices/relink                   → Réparation liens BT/BL ↔ facture manquants (GET aperçu / POST appliquer; auto au chargement « À facturer »)
 /api/invoices/[id]/sync-inventory      → Ajuste l'inventaire selon les matériaux facturés vs BT/BL (POST; { revert:true } = retour à l'état du BT/BL)
+/api/invoices/deduction                → Déduction « Varia » (POST): ferme un BT/BL depuis la fiche de facturation SANS créer de facture (inventaire ajusté + invoice_id = -2)
 /api/statements/[clientId]              → État de compte client (GET, ?as_of=YYYY-MM-DD)
 /api/statements/[clientId]/send-email   → Aperçu/envoi PDF de l'état de compte (body as_of)
 /api/reports/sales                     → Rapport de ventes comptable (GET: mois/année/plage)
@@ -472,7 +473,8 @@ lib/services/email-service.js       → Génération PDF + envoi email (BT + BL 
 lib/services/pdf-common.js          → En-tête/footer PDF standardisé
 lib/services/client-signature.js    → Gestion signatures (BT + BL)
 lib/services/statement-data.js      → État de compte à une date donnée (as_of), partagé écran/PDF/courriel
-lib/services/invoice-inventory.js   → Sync inventaire ↔ facture (delta = facturé − BT/BL − déjà appliqué, mouvements 'invoice', idempotent)
+lib/services/invoice-inventory.js   → Sync inventaire ↔ facture (delta = facturé − BT/BL − déjà appliqué, mouvements 'invoice', idempotent) + déduction « Varia » (mouvements 'deduction', réf. N° BT/BL)
+lib/constants/deduction.js          → Déduction « Varia »: libellé, sentinelles invoice_id (-1 Acomba, -2 Varia), helpers isDeduction()/invoiceIndicator()
 lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique)
 lib/utils/priceShift.js             → Décalage historique prix (3 niveaux)
 lib/utils/currency.js               → Conversion USD→CAD (taux + frais bancaires), cost_price toujours en CAD
@@ -537,7 +539,7 @@ work_description, status, is_prix_jobe,
 signature_data, signature_timestamp, client_signature_name
 ```
 **Statuts:** draft, signed, pending_send, completed
-**Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `invoice_id IS NOT NULL` → facturé (vert)
+**Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `> 0` → facturé (vert) | `-1` → Acomba (ambre) | `-2` → Déduction « Varia » (violet, aucune facture). Voir `lib/constants/deduction.js`
 
 ### clients
 ```sql
@@ -576,7 +578,7 @@ user_id, created_at, updated_at
 ```
 **Statuts:** draft, ready_for_signature, signed, pending_send, sent
 **Matériaux:** Table séparée `delivery_note_materials` (product_id, quantity, unit, unit_price, ordered_quantity, previously_delivered, etc.)
-**Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `invoice_id IS NOT NULL` → facturé (vert)
+**Indicateur facture:** `invoice_id IS NULL` → non facturé (rouge) | `> 0` → facturé (vert) | `-1` → Acomba (ambre) | `-2` → Déduction « Varia » (violet, aucune facture). Voir `lib/constants/deduction.js`
 **Backorder:** `parent_bl_id` = BL d'origine (si suivi), `child_bl_id` = BL de suivi (si BO créé)
 
 ### invoices (Factures)
@@ -1056,6 +1058,34 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/invoices/[id]/send-email/route.js` v1.9.0 — mode `pdf_only` (PDF + Storage, statut intact)
     - `components/PurchaseOrderModal.js` v1.3.0 — onglet Docs: section « Factures liées » (Voir / Télécharger / Générer le PDF), compteur dans la pastille
     - Les factures déjà existantes apparaissent automatiquement (liste calculée en direct). Aucune migration requise
+
+38. ~~**Déduction « Varia » (fiche de facturation sans facture)**~~ - ✅ COMPLÉTÉ (2026-11-07)
+    - Cas (rare, ~1/1000): le client règle sans facture alors que le BT/BL est déjà fait. Flux: Martin signe
+      lui-même le BT/BL (destinataires vides → aucun courriel client) → « À facturer » → « $ Facturer » →
+      case **« Déduction »** (au-dessus de « Prix forfaitaire (Jobe) », tous appareils) → **fenêtre de
+      confirmation** → prix/quantités modifiables comme d'habitude → **« Sauvegarder »** → toast
+      « Déduction appliquée … Varia »
+    - Résultat: **aucune facture** (pas de numéro, rien dans l'archive des Factures, l'état de compte, les
+      rapports compta ni les statistiques financières); inventaire ajusté selon les quantités de la fiche
+      (mouvements `reference_type='deduction'`, `reference_number` = N° BT/BL, note « Varia (BT-…) »,
+      idempotent); BT/BL marqué `invoice_id = -2` → sort de « À facturer », reste dans la liste BT/BL avec
+      pastille violette + mention « Varia »; mention aussi dans les Statistiques opérationnelles (tableau,
+      cartes, PDF) et l'onglet Docs du BA
+    - « Imprimer » et « Sauvegarder & Envoyer » restent affichés mais répondent **« NE FONCTIONNE PAS »**
+      (alerte + bandeau); seuls « Sauvegarder » et « Annuler » agissent. Case absente sur une facture
+      existante (création depuis un BT/BL seulement)
+    - `lib/constants/deduction.js` (nouveau) — `DEDUCTION_LABEL = 'Varia'` (changer le mot ici suffit),
+      sentinelles `-1`/`-2`, `isDeduction()`, `invoiceIndicator()`
+    - `lib/services/invoice-inventory.js` v1.1.0 — cœur `syncDocumentInventory()` partagé +
+      `syncDeductionInventory()`; `app/api/invoices/deduction/route.js` (nouveau) — garde 409 si déjà
+      facturé / facture existante, inventaire d'abord puis marquage vérifié (2 tentatives)
+    - `components/invoices/InvoiceEditor.js` v2.17.0, `InvoiceManager.js` v2.8.0 (toast personnalisé),
+      `app/bons-travail/page.js` v2.8.0, `app/api/statistics/route.js` v1.1.0 (+ `force-dynamic`),
+      `components/statistics/SalesReport.js` v1.2.0 + `StatisticsPDFExport.js` v1.1.0,
+      `components/InventoryManager.js` v3.16.0 (libellé historique), `app/api/purchase-orders/[id]/invoices/
+      route.js` v1.1.0 + `components/PurchaseOrderModal.js` v1.4.0
+    - Décisions (Martin, 2026-11-07): pas de « Retirer la mention » (si le client change d'idée → facture
+      globale sans items); aucune ligne dans `invoices`. Aucune migration SQL requise
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
