@@ -29,16 +29,17 @@
  *              - Inventaire synchronisé après chaque sauvegarde (POST sync-inventory): article
  *                retiré/ajouté/quantité changée dans la facture → retour ou sortie de stock
  *                par rapport au BT/BL (mouvements 'invoice', idempotent). Résumé affiché.
- *              - Déduction « Varia » (création depuis un BT/BL seulement): case au-dessus de
+ *              - Case « Varia » (déduction, création depuis un BT/BL seulement) au-dessus de
  *                « Prix forfaitaire (Jobe) ». Cocher ouvre une fenêtre de confirmation. Une fois
  *                cochée, « Sauvegarder » n'enregistre AUCUNE facture (pas de numéro, rien dans
  *                l'archive, l'état de compte ni les rapports): POST /api/invoices/deduction
  *                ajuste l'inventaire selon les quantités de la fiche et marque le BT/BL
  *                « Varia » (invoice_id = -2). « Imprimer » et « Sauvegarder & Envoyer » restent
  *                affichés mais répondent « NE FONCTIONNE PAS ».
- * @version 2.17.0
+ * @version 2.17.1
  * @date 2026-11-07
  * @changelog
+ *   2.17.1 - La case s'appelle « Varia » (même mot que la mention), plus « Déduction »
  *   2.17.0 - Déduction « Varia »: case + fenêtre de confirmation, sauvegarde sans facture
  *            (inventaire ajusté + BT/BL marqué), Imprimer/Envoyer neutralisés avec mention
  *   2.16.0 - Conditions de paiement: liste du sélecteur et condition par défaut tirées de
@@ -975,8 +976,8 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
 
   // Déduction « Varia »: mention affichée quand Imprimer / Sauvegarder & Envoyer sont pressés
   const DEDUCTION_BLOCKED_MESSAGE =
-    `NE FONCTIONNE PAS : la case « Déduction (${DEDUCTION_LABEL}) » est cochée.\n` +
-    'Seuls « Sauvegarder » et « Annuler » s\'appliquent à une déduction.';
+    `NE FONCTIONNE PAS : la case « ${DEDUCTION_LABEL} » est cochée.\n` +
+    `Seuls « Sauvegarder » et « Annuler » s'appliquent à une fiche ${DEDUCTION_LABEL}.`;
 
   const notifyDeductionBlocked = () => {
     setError(DEDUCTION_BLOCKED_MESSAGE);
@@ -1557,10 +1558,10 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                     className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-violet-600 focus:ring-violet-500"
                   />
                   <span className={`text-sm font-medium ${isDeduction ? 'text-violet-700 dark:text-violet-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                    Déduction
+                    {DEDUCTION_LABEL}
                     {isDeduction && (
                       <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">
-                        {DEDUCTION_LABEL} — aucune facture
+                        aucune facture
                       </span>
                     )}
                   </span>
@@ -2337,7 +2338,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 onClick={handlePrint}
                 disabled={saving || sending || printing}
                 className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
-                title={isDeduction ? 'NE FONCTIONNE PAS avec « Déduction » cochée' : 'Générer le PDF et marquer comme envoyée (sans email)'}
+                title={isDeduction ? `NE FONCTIONNE PAS avec « ${DEDUCTION_LABEL} » cochée` : 'Générer le PDF et marquer comme envoyée (sans email)'}
               >
                 <Printer className="w-4 h-4" />
                 {printing ? 'Impression...' : 'Imprimer'}
@@ -2346,7 +2347,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 onClick={() => handleSave(true)}
                 disabled={saving || sending || printing}
                 className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50"
-                title={isDeduction ? 'NE FONCTIONNE PAS avec « Déduction » cochée' : undefined}
+                title={isDeduction ? `NE FONCTIONNE PAS avec « ${DEDUCTION_LABEL} » cochée` : undefined}
               >
                 <Send className="w-4 h-4" />
                 {sending ? 'Envoi...' : 'Sauvegarder & Envoyer'}
@@ -2374,7 +2375,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  Déduction ({DEDUCTION_LABEL})
+                  {DEDUCTION_LABEL} — fiche sans facture
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {sourceType === 'bt' ? 'BT' : 'BL'} {sourceType === 'bt' ? sourceData?.bt_number : sourceData?.bl_number}
@@ -2400,7 +2401,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                 onClick={() => { setIsDeduction(true); setShowDeductionConfirm(false); setError(null); }}
                 className="min-h-[44px] px-4 py-2.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-semibold"
               >
-                Confirmer la déduction
+                Confirmer {DEDUCTION_LABEL}
               </button>
             </div>
           </div>

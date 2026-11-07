@@ -2437,7 +2437,7 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
 **Décisions (Martin, 7 nov.):**
 - Flux: tout fonctionne comme avant pour le BT/BL → Martin le signe lui-même sans l'envoyer au client
   (destinataires vides) → le BT/BL tombe dans « À facturer » → « $ Facturer » → la fiche montre coûtants,
-  vendants, heures → case **« Déduction »** au-dessus de « Prix forfaitaire (Jobe) »
+  vendants, heures → case **« Varia »** au-dessus de « Prix forfaitaire (Jobe) »
 - Cocher = **fenêtre de confirmation** bloquante (Confirmer / Annuler), pas un toast
 - Case visible sur **toutes** les plateformes (l'idée « PC seulement » a été abandonnée)
 - Boutons du bas **inchangés**; « Imprimer » et « Sauvegarder & Envoyer » répondent **« NE FONCTIONNE PAS »**;
@@ -2460,9 +2460,9 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   « Varia » ou si une facture existe (409); **inventaire d'abord, marquage ensuite** (`invoice_id = -2`, vérifié,
   2 tentatives, `.is('invoice_id', null)`): si le marquage échoue, le BT/BL reste dans « À facturer » et une
   nouvelle tentative n'ajuste que la différence. Aucune écriture dans `invoices`
-- `components/invoices/InvoiceEditor.js` v2.17.0 — case « Déduction » (création depuis BT/BL seulement, jamais
+- `components/invoices/InvoiceEditor.js` v2.17.1 — case « Varia » (même mot que la mention; création depuis BT/BL seulement, jamais
   sur une facture existante), fenêtre de confirmation (z-70, 44 px, fond cliquable = annuler), pastille
-  « Varia — aucune facture » une fois cochée; `handleSave(false)` → `handleDeduction()` (POST deduction, alerte
+  « aucune facture » une fois cochée; `handleSave(false)` → `handleDeduction()` (POST deduction, alerte
   récapitulative des ajustements d'inventaire comme pour une facture, fermeture avec message); `handleSave(true)`
   et `handlePrint` → `alert` + bandeau « NE FONCTIONNE PAS … »; infobulles des 2 boutons; libellé « Varia »
   dans l'historique des mouvements du modal produit

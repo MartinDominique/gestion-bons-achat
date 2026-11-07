@@ -1062,7 +1062,7 @@ CRON_SECRET                   # Auth pour cron jobs
 38. ~~**Déduction « Varia » (fiche de facturation sans facture)**~~ - ✅ COMPLÉTÉ (2026-11-07)
     - Cas (rare, ~1/1000): le client règle sans facture alors que le BT/BL est déjà fait. Flux: Martin signe
       lui-même le BT/BL (destinataires vides → aucun courriel client) → « À facturer » → « $ Facturer » →
-      case **« Déduction »** (au-dessus de « Prix forfaitaire (Jobe) », tous appareils) → **fenêtre de
+      case **« Varia »** (au-dessus de « Prix forfaitaire (Jobe) », tous appareils) → **fenêtre de
       confirmation** → prix/quantités modifiables comme d'habitude → **« Sauvegarder »** → toast
       « Déduction appliquée … Varia »
     - Résultat: **aucune facture** (pas de numéro, rien dans l'archive des Factures, l'état de compte, les
@@ -1079,7 +1079,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - `lib/services/invoice-inventory.js` v1.1.0 — cœur `syncDocumentInventory()` partagé +
       `syncDeductionInventory()`; `app/api/invoices/deduction/route.js` (nouveau) — garde 409 si déjà
       facturé / facture existante, inventaire d'abord puis marquage vérifié (2 tentatives)
-    - `components/invoices/InvoiceEditor.js` v2.17.0, `InvoiceManager.js` v2.8.0 (toast personnalisé),
+    - `components/invoices/InvoiceEditor.js` v2.17.1, `InvoiceManager.js` v2.8.0 (toast personnalisé),
       `app/bons-travail/page.js` v2.8.0, `app/api/statistics/route.js` v1.1.0 (+ `force-dynamic`),
       `components/statistics/SalesReport.js` v1.2.0 + `StatisticsPDFExport.js` v1.1.0,
       `components/InventoryManager.js` v3.16.0 (libellé historique), `app/api/purchase-orders/[id]/invoices/
