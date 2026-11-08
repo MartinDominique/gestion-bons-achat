@@ -447,12 +447,13 @@ const total = subtotal + tps + tvq;
 /api/items-to-order                    → Liste À Commander (GET par statut, enrichi inventaire vivant qté/en commande/coûtant/vendant + POST ajout enrichi/fusion)
 /api/items-to-order/[id]               → GET/PUT/DELETE item à commander
 /api/items-to-order/mark-ordered       → Marque un lot commandé + lie l'AF (après création AF)
-/api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
+/api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres) — v2: la facture fait foi, sinon estimation complète; calcul dans lib/services/statistics-data.js
 /api/statistics/financial              → Statistiques financières (GET: par mois, par client, en attente)
 /api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
 /api/invoices                          → CRUD Factures (GET liste + POST création)
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
+/api/invoices/[id]/pdf-url              → URL signée fraîche du PDF de la facture (Storage) — « voir la facture » depuis Statistiques
 /api/invoices/relink                   → Réparation liens BT/BL ↔ facture manquants (GET aperçu / POST appliquer; auto au chargement « À facturer »)
 /api/invoices/[id]/sync-inventory      → Ajuste l'inventaire selon les matériaux facturés vs BT/BL (POST; { revert:true } = retour à l'état du BT/BL)
 /api/invoices/deduction                → Déduction « Varia » (POST): ferme un BT/BL depuis la fiche de facturation SANS créer de facture (inventaire ajusté + invoice_id = -2)
@@ -474,6 +475,7 @@ lib/services/email-service.js       → Génération PDF + envoi email (BT + BL 
 lib/services/pdf-common.js          → En-tête/footer PDF standardisé
 lib/services/client-signature.js    → Gestion signatures (BT + BL)
 lib/services/statement-data.js      → État de compte à une date donnée (as_of), partagé écran/PDF/courriel
+lib/services/statistics-data.js     → Statistiques opérationnelles: revenu/coût par BT/BL (facture liée si elle existe, sinon estimation M.O. + déplacements + matériaux), coûtant par code, soumissions à part
 lib/services/invoice-inventory.js   → Sync inventaire ↔ facture (delta = facturé − BT/BL − déjà appliqué, mouvements 'invoice', idempotent) + déduction « Varia » (mouvements 'deduction', réf. N° BT/BL)
 lib/constants/deduction.js          → Déduction « Varia »: libellé, sentinelles invoice_id (-1 Acomba, -2 Varia), helpers isDeduction()/invoiceIndicator()
 lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique)
@@ -765,6 +767,20 @@ CRON_SECRET                   # Auth pour cron jobs
    - `app/(protected)/statistiques/page.js` — Page protégée
    - `components/Navigation.js` — Ajout onglet Statistiques (icône BarChart3)
    - Note: Coûts BT/BL basés sur cost_price actuel des produits (approximatif si prix changé)
+   - **Refonte (2026-11-08) — chiffres faux (BT ~3 500 $ affiché « Revenu 107 $, coûts 1 $ »):** la v1 ne comptait
+     que les matériaux (M.O. + transport ignorés) et cherchait le coûtant par `product_id` seul (souvent NULL → 0).
+     `lib/services/statistics-data.js` (nouveau) + `app/api/statistics/route.js` v2.0.0: **la facture fait foi** (BT/BL
+     facturé → sous-total avant taxes de la/les facture(s) liée(s), crédits déduits, ventilation M.O./dépl./mat./forfait);
+     non facturé → **estimation complète** comme le pré-remplissage de facture (heures × taux client avec surcharges
+     1,5×/2×, déplacements, matériaux; AF-importé → vendant inventaire), pastille **« Estimé »**; Acomba/Varia estimés aussi.
+     Coûts: matériaux par `product_id` **ou** `product_code` (products puis non_inventory_items; Prix Jobé → coûtants figés
+     du détail du forfait) + **M.O. × `settings.labor_cost_hourly_rate`** (si 0: avis « M.O. non configurée »). Soumissions
+     listées mais **exclues des totaux** (valeur à part). Filtre « Produit / Item » enfin fonctionnel (code ou description,
+     matériaux + lignes de facture), filtre **Facturation** (Tous / Facturés / Non facturés), limit PDF 5000, lecture
+     paginée, erreurs remontées. Colonne **« Documents »** (`SalesReport.js` v2.0.0): factures liées cliquables →
+     **PDF de la facture** (`/api/invoices/[id]/pdf-url`, généré via `pdf_only` s'il n'existe pas), BA et soumission liés
+     (SplitView); BT/BL via leur N° (SplitView). `StatisticsPDFExport.js` v2.0.0 (colonne Facture, résumé ventilé),
+     `StatisticsFilters.js` v1.1.0, `StatisticsManager.js` v2.2.0. Vérifié sur base simulée (20 cas). Aucune migration
 
 10. ~~**Phase A Fondations — Taux horaires, Tarification, Settings**~~ - ✅ COMPLÉTÉ 2026-02-27
     - `supabase/migrations/20260227_add_settings_and_tarification.sql` — Table settings + colonnes clients

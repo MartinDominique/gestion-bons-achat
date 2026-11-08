@@ -2522,6 +2522,52 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
     (aucun appel API supplémentaire, fonctionne aussi avec la recherche et « Tous les clients »)
 - Aucune migration SQL requise
 
+### 2026-11-08 - Statistiques opérationnelles: chiffres faux (Revenu 107 $ / coûts 1 $ pour un BT de ~3 500 $) ✅ COMPLETE (2026-11-08)
+- **Besoin (Martin):** vérifier le module Statistiques à fond (fait avant la Facturation): un BT récent de
+  ~3 500 $ affichait « Revenu 107 $, coûts 1 $ ». Doit être fonctionnel à 110 %. Et pouvoir voir les
+  documents envoyés (Factures, Soumissions, BT/BL) depuis ce module.
+- **Causes trouvées (`app/api/statistics/route.js` v1):**
+  1. Revenu BT = **matériaux seulement**: `time_entries` (heures × taux) et frais de déplacement jamais comptés
+     → 107 $ = juste les matériaux du BT.
+  2. Coûtant cherché par `product_id` **seul** dans `products`: les SKU texte sont souvent stockés dans
+     `product_code` avec `product_id` NULL (bug connu WorkOrderForm) et les non-inventaire sont dans
+     `non_inventory_items` → coûtant 0 presque partout (→ 1 $).
+  3. La **facture** (qui contient le vrai montant facturé, Prix Jobé compris) n'était jamais consultée.
+  4. Soumissions additionnées aux BT/BL dans les totaux (double compte d'une même job).
+  5. Filtre « Produit / Item » sans effet (TODO jamais fait); `limit` plafonné à 100 → l'export PDF
+     « tous les résultats » n'avait que 100 lignes; erreurs Supabase avalées (liste vide « réussie »).
+- **Implementation:**
+  - `lib/services/statistics-data.js` (nouveau) — **la facture fait foi**: BT/BL facturé → sous-total avant
+    taxes de la/les facture(s) liée(s) (par source ou `invoice_id`, notes de crédit déduites), ventilation
+    M.O./déplacements/matériaux/forfait via `salesBreakdown` (même logique que les rapports compta);
+    non facturé (ou Acomba/Varia) → **estimation** identique au pré-remplissage de facture (heures × taux
+    client, surcharges soir/sam./dim. 1,5× et férié 2×, frais de déplacement par session, matériaux qté ×
+    vendant, item importé d'un AF → vendant inventaire), `estimated: true`. Coûts: matériaux par
+    `product_id` OU `product_code` (products puis non_inventory_items, casse ignorée; Prix Jobé → coûtants
+    figés du détail du forfait) + **M.O. = heures × `settings.labor_cost_hourly_rate`** (0 = non compté, avis
+    affiché). Soumissions: valeur/coût listés, **exclues des totaux** (`summary.soumValue`). Produits sans
+    fiche comptés (`unknownProducts`) et signalés. Lecture paginée, requêtes par lots de 150 ids
+  - `app/api/statistics/route.js` v2.0.0 — délègue au service; filtre `invoiced` (all/invoiced/not_invoiced);
+    filtre produit fonctionnel (code ou description, matériaux + lignes de facture); `limit` jusqu'à 5000;
+    erreurs → HTTP 500 avec message; `no-store`
+  - `app/api/invoices/[id]/pdf-url/route.js` (nouveau) — URL signée fraîche du PDF (Storage) ou `has_pdf:false`
+  - `components/statistics/SalesReport.js` v2.0.0 — pastilles **Estimé** / **Acomba** / Varia à côté du N°;
+    revenus et coûts ventilés (sous-ligne + infobulle); colonne **« Documents »**: `Fact. 23080` (vert; ambre
+    si brouillon; « Crédit » rose) → tap = **PDF de la facture** (généré via `pdf_only` s'il n'existe pas
+    encore, fenêtre ouverte avant l'appel pour ne pas être bloquée sur tablette), `BA …` et `Soum. …` →
+    panneau SplitView; le N° du BT/BL ouvre déjà son panneau. Résumé: documents de vente (facturés /
+    estimés), revenus facturé vs estimé, coûts Mat. + M.O. (ou « M.O. non configurée »), Soumissions (valeur)
+    à part, ligne de ventilation, avertissement produits sans fiche. Cartes mobile: mêmes infos
+  - `components/statistics/StatisticsFilters.js` v1.1.0 — boutons **Facturation**: Tous / Facturés / Non facturés
+  - `components/statistics/StatisticsManager.js` v2.2.0 — paramètre transmis, PDF complet (5000), note explicative
+  - `components/statistics/StatisticsPDFExport.js` v2.0.0 — colonne « Facture », résumé ventilé, soumissions à part
+- **Vérification:** banc d'essai sur base simulée (20 cas): BT facturé 3 500 $ − crédit 100 $ = 3 400 $ avec
+  ventilation exacte et coûts (CI71 par product_code, P1-540 en non_inventory, M.O. 5,5 h × 40 $); BT non
+  facturé férié 3 h × 95 $ × 2 + 45 $ + matériaux = 745 $; Varia estimé au taux par défaut; BL 10 × 60 $;
+  filtres produit/facturation/client; soumissions hors totaux. `next build` complet OK (routes ƒ Dynamic)
+- **Pour que le coût M.O. compte:** saisir « Coût horaire interne (main d'oeuvre) » dans Paramètres → Facturation
+- Aucune migration SQL requise
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-08 par Claude AI*
