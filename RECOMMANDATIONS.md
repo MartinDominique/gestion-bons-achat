@@ -2492,6 +2492,22 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   journalier/hebdomadaire par courriel (liste des BT)
 - Aucune migration SQL requise
 
+### 2026-11-08 - Liste des BA: pastille « Factures » à la place du camion ✅ COMPLETE (2026-11-08)
+- **Besoin (Martin):** dans la liste des BA, le petit camion (nombre de livraisons) ne sert jamais. Voir
+  plutôt s'il y a une ou des factures envoyées au client pour ce BA.
+- **Implementation:**
+  - `app/api/purchase-orders/invoices-summary/route.js` (nouveau) — résumé par BA en UNE requête (tous les BA
+    ou `?ids=`): BT/BL rattachés (`linked_po_id`) → factures créées depuis ces documents OU référencées par
+    `invoice_id` (même union robuste que l'onglet Docs); compte envoyées (sent/partial/paid), brouillons,
+    payées, liste courte (N°, statut, total, N° BT/BL); BT/BL « Acomba » (-1) et « Varia » (-2). supabaseAdmin
+    (RLS), paginé, `force-dynamic`, `no-store`
+  - `components/PurchaseOrderManager.js` v1.3.0 — pastille « Factures » (icône reçu): **vert** = n factures
+    envoyées (« ✓ » si toutes payées), **ambre** = n brouillons non envoyés (« n br. ») ou « Acomba »,
+    **violet** = « Varia », **gris « 0 »** sinon; infobulle détaillée; tap → dossier BA sur l'onglet Docs.
+    Compteur `delivery_slips` et icône camion retirés
+  - `components/PurchaseOrderModal.js` v1.5.0 — prop `initialTab`
+- Aucune migration SQL requise
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-08 par Claude AI*

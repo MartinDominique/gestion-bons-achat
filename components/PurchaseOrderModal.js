@@ -6,9 +6,11 @@
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
  *              - Onglet Docs: factures liées au BA (via BT/BL rattachés) avec PDF (voir / télécharger / générer)
- * @version 1.4.0
- * @date 2026-11-07
+ * @version 1.5.0
+ * @date 2026-11-08
  * @changelog
+ *   1.5.0 - Prop `initialTab` (ex. 'documents'): onglet affiché à l'ouverture d'un BA existant
+ *           (pastille « Factures » de la liste des BA → onglet Docs directement)
  *   1.4.0 - Onglet Docs: BT/BL fermés par déduction « Varia » (aucune facture) signalés sous les factures liées
  *   1.3.0 - Onglet Docs: section « Factures liées » — liste les factures créées depuis les BT/BL
  *           rattachés à ce BA (GET /api/purchase-orders/[id]/invoices), y compris celles déjà
@@ -32,7 +34,7 @@ import { DEDUCTION_LABEL } from '../lib/constants/deduction';
 import DeliverySlipModal from './DeliverySlipModal';
 import BCCConfirmationModal from './PurchaseOrder/BCCConfirmationModal';
 
-const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, panelMode = false, prefillData = null, keepOpenAfterCreate = false }) => {
+const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, panelMode = false, prefillData = null, keepOpenAfterCreate = false, initialTab = null }) => {
   // État principal du formulaire
   const [formData, setFormData] = useState({
     po_number: '',
@@ -391,6 +393,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
       checkExistingSubmission(editingPO.id);
       loadSupplierPurchases(editingPO.id);
       loadLinkedInvoices(editingPO.id);
+      if (initialTab) setActiveTab(initialTab);
     } else if (isOpen) {
       resetForm();
       setLinkedInvoices([]);

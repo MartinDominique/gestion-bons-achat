@@ -436,6 +436,7 @@ const total = subtotal + tps + tvq;
 /api/purchase-orders                   → CRUD BA Client
 /api/purchase-orders/[id]/send-confirmation → Envoi BCC (confirmation commande)
 /api/purchase-orders/[id]/invoices     → Factures liées au BA (via BT/BL rattachés) + URL signée PDF (onglet Docs du dossier BA)
+/api/purchase-orders/invoices-summary  → Résumé des factures par BA en UNE requête (envoyées/brouillons/Acomba/Varia) — pastille « Factures » de la liste BA
 /api/clients                           → CRUD clients
 /api/products                          → CRUD produits
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
@@ -1061,6 +1062,12 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/invoices/[id]/send-email/route.js` v1.9.0 — mode `pdf_only` (PDF + Storage, statut intact)
     - `components/PurchaseOrderModal.js` v1.3.0 — onglet Docs: section « Factures liées » (Voir / Télécharger / Générer le PDF), compteur dans la pastille
     - Les factures déjà existantes apparaissent automatiquement (liste calculée en direct). Aucune migration requise
+    - **Amélioration (2026-11-08) — liste des BA:** la pastille « camion » (nombre de livraisons `delivery_slips`, jamais
+      utilisée) est remplacée par une pastille **« Factures »** (`PurchaseOrderManager.js` v1.3.0): vert = n factures
+      **envoyées** au client (« ✓ » si toutes payées), ambre = brouillons non envoyés ou « Acomba », violet = « Varia »,
+      gris « 0 » sinon; infobulle N°/statut/montant; tap → dossier BA ouvert sur l'onglet Docs (`PurchaseOrderModal.js`
+      v1.5.0, prop `initialTab`). Données: `app/api/purchase-orders/invoices-summary/route.js` (nouveau, 1 requête
+      pour tous les BA, supabaseAdmin, paginé). Aucune migration requise
 
 38. ~~**Déduction « Varia » (fiche de facturation sans facture)**~~ - ✅ COMPLÉTÉ (2026-11-07)
     - Cas (rare, ~1/1000): le client règle sans facture alors que le BT/BL est déjà fait. Flux: Martin signe

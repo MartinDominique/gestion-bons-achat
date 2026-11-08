@@ -4,15 +4,21 @@
  *              - Liste compacte 2 lignes avec statut modifiable inline
  *              - Filtre multi-sélection avec mémoire localStorage
  *              - Vue responsive optimisée mobile/tablette
- * @version 1.2.0
- * @date 2026-03-20
+ * @version 1.3.0
+ * @date 2026-11-08
  * @changelog
+ *   1.3.0 - Pastille « Factures » remplace le compteur de livraisons (camion, jamais utilisé):
+ *           nombre de factures ENVOYÉES au client pour ce BA (vert), brouillons non envoyés
+ *           (ambre), BT/BL facturés dans Acomba (ambre « Acomba ») ou fermés par déduction
+ *           « Varia » (violet), gris « 0 » sinon; infobulle avec N°, statut et montant de chaque
+ *           facture; un tap ouvre le dossier BA directement sur l'onglet Docs. Chargement groupé
+ *           en UNE requête (GET /api/purchase-orders/invoices-summary)
  *   1.2.0 - Ligne dédiée nom client sur mobile (3 lignes: badges / client / description)
  *   1.1.0 - Filtre multi-sélection (toggle buttons) avec mémoire localStorage, fix mobile overflow/client name
  *   1.0.0 - Version initiale
  */
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Truck, BarChart3, Edit, Users, DollarSign, Loader2, Check } from 'lucide-react';
+import { Search, Plus, FileText, Receipt, BarChart3, Edit, Users, DollarSign, Loader2, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // Importer seulement vos composants existants
@@ -31,7 +37,9 @@ const PurchaseOrderManager = () => {
 
   // États pour la gestion des BAs (logique directe au lieu de hooks)
   const [purchaseOrders, setPurchaseOrders] = useState([]);
-  const [deliveryCounts, setDeliveryCounts] = useState({});
+  const [invoiceSummaries, setInvoiceSummaries] = useState({}); // { [poId]: { total, sent, draft, paid, invoices, external, deductions } }
+  const [invoiceSummariesLoaded, setInvoiceSummariesLoaded] = useState(false);
+  const [modalInitialTab, setModalInitialTab] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,9 +74,9 @@ const PurchaseOrderManager = () => {
 
       setPurchaseOrders(data || []);
       
-      // Charger le nombre de livraisons pour chaque BA
+      // Charger le résumé des factures (envoyées au client) pour chaque BA
       if (data && data.length > 0) {
-        await fetchDeliveryCounts(data.map(po => po.id));
+        await fetchInvoiceSummaries();
       }
       
       console.log('✅ ' + (data?.length || 0) + ' bons d\'achat chargés');
@@ -81,36 +89,81 @@ const PurchaseOrderManager = () => {
     }
   };
 
-  // Charger le nombre de livraisons pour chaque BA
-  const fetchDeliveryCounts = async (purchaseOrderIds) => {
+  // Charger, en UNE requête, le résumé des factures liées à chaque BA (via ses BT/BL)
+  const fetchInvoiceSummaries = async () => {
     try {
-      const { data: deliveries, error: deliveryError } = await supabase
-        .from('delivery_slips')
-        .select('purchase_order_id')
-        .in('purchase_order_id', purchaseOrderIds);
-
-      if (deliveryError) {
-        console.error('Erreur chargement livraisons:', deliveryError);
-        return;
+      const res = await fetch('/api/purchase-orders/invoices-summary', { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `HTTP ${res.status}`);
       }
-
-      // Compter les livraisons par BA
-      const counts = {};
-      purchaseOrderIds.forEach(id => counts[id] = 0);
-      
-      if (deliveries) {
-        deliveries.forEach(delivery => {
-          if (delivery.purchase_order_id) {
-            counts[delivery.purchase_order_id] = (counts[delivery.purchase_order_id] || 0) + 1;
-          }
-        });
-      }
-
-      setDeliveryCounts(counts);
-      
+      setInvoiceSummaries(json.data || {});
+      setInvoiceSummariesLoaded(true);
     } catch (err) {
-      console.error('Erreur fetchDeliveryCounts:', err);
+      console.error('Erreur fetchInvoiceSummaries:', err);
+      setInvoiceSummariesLoaded(true);
     }
+  };
+
+  const INVOICE_STATUS_LABELS = {
+    draft: 'Brouillon',
+    sent: 'Envoyée',
+    partial: 'Partiellement payée',
+    paid: 'Payée',
+  };
+
+  // Pastille « Factures » d'un BA: couleur + texte + infobulle
+  const getInvoiceBadge = (summary) => {
+    const base = 'flex items-center gap-0.5 px-1.5 py-0.5 rounded-full flex-shrink-0 transition-colors';
+    if (!invoiceSummariesLoaded || !summary) {
+      return {
+        className: `${base} bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400`,
+        text: invoiceSummariesLoaded ? '0' : '…',
+        title: invoiceSummariesLoaded ? 'Aucune facture envoyée au client pour ce BA' : 'Chargement des factures…',
+      };
+    }
+    const lines = (summary.invoices || []).map(inv => {
+      const status = INVOICE_STATUS_LABELS[inv.status] || inv.status;
+      const src = inv.source_number ? ` (${inv.source_number})` : '';
+      return `Facture ${inv.invoice_number} — ${status} — ${formatCurrency(inv.total)}${src}`;
+    });
+    (summary.external || []).forEach(d => lines.push(`${d.source_number} — facturé dans Acomba`));
+    (summary.deductions || []).forEach(d => lines.push(`${d.source_number} — déduction « Varia » (aucune facture)`));
+
+    if (summary.sent > 0) {
+      const allPaid = summary.paid === summary.sent;
+      return {
+        className: `${base} bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60`,
+        text: `${summary.sent}${allPaid ? ' ✓' : ''}`,
+        title: `${summary.sent} facture${summary.sent > 1 ? 's' : ''} envoyée${summary.sent > 1 ? 's' : ''} au client${allPaid ? ' (toutes payées)' : ''}${summary.draft > 0 ? ` + ${summary.draft} brouillon${summary.draft > 1 ? 's' : ''}` : ''}\n${lines.join('\n')}`,
+      };
+    }
+    if (summary.draft > 0) {
+      return {
+        className: `${base} bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60`,
+        text: `${summary.draft} br.`,
+        title: `${summary.draft} brouillon${summary.draft > 1 ? 's' : ''} de facture NON envoyé${summary.draft > 1 ? 's' : ''}\n${lines.join('\n')}`,
+      };
+    }
+    if ((summary.external || []).length > 0) {
+      return {
+        className: `${base} bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60`,
+        text: 'Acomba',
+        title: `Facturé dans Acomba\n${lines.join('\n')}`,
+      };
+    }
+    if ((summary.deductions || []).length > 0) {
+      return {
+        className: `${base} bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/60`,
+        text: 'Varia',
+        title: `Déduction « Varia » — aucune facture\n${lines.join('\n')}`,
+      };
+    }
+    return {
+      className: `${base} bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600`,
+      text: '0',
+      title: 'Aucune facture envoyée au client pour ce BA',
+    };
   };
 
   // Nouvelle fonction pour mettre à jour le statut directement
@@ -212,14 +265,16 @@ const PurchaseOrderManager = () => {
     fetchPurchaseOrders();
   }, []);
 
-  const handleEditPO = (po) => {
+  const handleEditPO = (po, initialTab = null) => {
     setSelectedPO(po);
+    setModalInitialTab(initialTab);
     setShowCreateModal(true);
   };
 
   const handleModalClose = () => {
     setShowCreateModal(false);
     setSelectedPO(null);
+    setModalInitialTab(null);
     fetchPurchaseOrders(); // Rafraîchir après modification
   };
 
@@ -492,11 +547,22 @@ const PurchaseOrderManager = () => {
                     )}
                   </div>
 
-                  {/* LIVRAISON */}
-                  <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                    <Truck className="w-3 h-3 text-gray-600 dark:text-gray-400" />
-                    <span className="text-[10px] sm:text-xs font-medium text-gray-700 dark:text-gray-300">{deliveryCounts[po.id] || 0}</span>
-                  </div>
+                  {/* FACTURES envoyées au client pour ce BA (tap → onglet Docs du dossier BA) */}
+                  {(() => {
+                    const badge = getInvoiceBadge(invoiceSummaries[po.id]);
+                    return (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleEditPO(po, 'documents'); }}
+                        className={badge.className}
+                        title={badge.title}
+                        aria-label={badge.title}
+                      >
+                        <Receipt className="w-3 h-3" />
+                        <span className="text-[10px] sm:text-xs font-medium whitespace-nowrap">{badge.text}</span>
+                      </button>
+                    );
+                  })()}
                 </div>
 
                 {/* LIGNE 2 (mobile seulement): Nom du client complet */}
@@ -531,6 +597,7 @@ const PurchaseOrderManager = () => {
           isOpen={showCreateModal}
           onClose={handleModalClose}
           editingPO={selectedPO}
+          initialTab={modalInitialTab}
           onRefresh={fetchPurchaseOrders}
         />
       )}
