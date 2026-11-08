@@ -881,6 +881,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - Escompte 2 % sur sous-total (taxes complètes — Revenu Québec); intérêt = solde × taux × jours/365; relevé open-item; aging Courant/1-30/31-60/61-90/90+
     - **Reste:** exécuter la migration SQL `20260614_create_invoice_payments.sql` dans Supabase Dashboard
     - **Amélioration (2026-10-02):** `ClientStatementView.js` v1.10.0 — après un paiement enregistré, écran « Paiement enregistré » (montant, mode, N° de facture(s)) ~3 s puis fermeture automatique de la fiche → retour à la liste des états de compte; boutons « Fermer maintenant » / « Rester sur ce client »
+    - **Amélioration (2026-11-08):** `StatementManager.js` v1.2.0 — outil de tri de la liste des clients: **Nom (A-Z)** (fr-CA), **Montant dû** (décroissant, défaut = ordre actuel), **En retard** (montant en retard décroissant, puis retard le plus ancien, puis solde). Boutons dans la barre (44 px sur mobile) + en-têtes Client / En retard / Solde dû cliquables (desktop); choix mémorisé (localStorage). Tri côté client, aucune migration
 
 21. ~~**Rapports comptables (Ventes + Paiements)**~~ - ✅ COMPLÉTÉ (2026-06-14)
     - `supabase/migrations/20260614b_add_accountant_email.sql` — colonne `settings.accountant_email`

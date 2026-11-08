@@ -2508,6 +2508,20 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   - `components/PurchaseOrderModal.js` v1.5.0 — prop `initialTab`
 - Aucune migration SQL requise
 
+### 2026-11-08 - État de compte: outil de tri (Nom / Montant dû / En retard) ✅ COMPLETE (2026-11-08)
+- **Besoin (Martin):** dans Facturation → onglet État de compte, pouvoir trier la liste des clients:
+  ordre alphabétique, montant dû, en retard.
+- **Implementation:** `components/invoices/StatementManager.js` v1.2.0
+  - 3 boutons de tri dans la barre de recherche (icône + libellé, 44 px sur mobile): **Nom (A-Z)**
+    (collation fr-CA, accents/casse ignorés), **Montant dû** (décroissant — défaut, = ordre actuel de l'API),
+    **En retard** (montant en retard décroissant, puis nombre de jours de retard le plus élevé, puis solde,
+    puis nom)
+  - Desktop: en-têtes **Client**, **En retard**, **Solde dû** cliquables (même tri), flèche mise en évidence
+    sur la colonne active
+  - Choix mémorisé dans `localStorage` (`statements_sort`); tri côté client sur la liste déjà chargée
+    (aucun appel API supplémentaire, fonctionne aussi avec la recherche et « Tous les clients »)
+- Aucune migration SQL requise
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-08 par Claude AI*
