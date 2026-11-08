@@ -5,9 +5,11 @@
  *              - Orchestre filtres, rapport de ventes et export PDF
  *              - Gère l'état des données et la communication avec l'API
  *              - Responsive: desktop tableau, mobile cartes
- * @version 2.1.0
- * @date 2026-10-02
+ * @version 2.2.0
+ * @date 2026-11-08
  * @changelog
+ *   2.2.0 - Filtre « Facturation » transmis à l'API; export PDF complet (limit 5000); note explicative
+ *           « la facture fait foi » + coûts M.O.
  *   2.1.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
  *   2.0.0 - Ajout sous-onglets Opérationnel/Financier (Phase D)
  *   1.0.0 - Version initiale - Phase 1 MVP
@@ -65,6 +67,7 @@ export default function StatisticsManager() {
       if (filters.documentNumber) params.set('documentNumber', filters.documentNumber);
       if (filters.search) params.set('search', filters.search);
       if (filters.productId) params.set('productId', filters.productId);
+      if (filters.invoiced && filters.invoiced !== 'all') params.set('invoiced', filters.invoiced);
       params.set('sortBy', filters.sortBy);
       params.set('sortOrder', filters.sortOrder);
       params.set('page', String(page));
@@ -110,10 +113,11 @@ export default function StatisticsManager() {
       if (filters.documentNumber) params.set('documentNumber', filters.documentNumber);
       if (filters.search) params.set('search', filters.search);
       if (filters.productId) params.set('productId', filters.productId);
+      if (filters.invoiced && filters.invoiced !== 'all') params.set('invoiced', filters.invoiced);
       params.set('sortBy', filters.sortBy);
       params.set('sortOrder', filters.sortOrder);
       params.set('page', '0');
-      params.set('limit', '1000'); // Tous les résultats pour le PDF
+      params.set('limit', '5000'); // Tous les résultats pour le PDF (l'API accepte jusqu'à 5000)
 
       const response = await fetch(`/api/statistics?${params.toString()}`);
       const result = await response.json();
@@ -220,8 +224,13 @@ export default function StatisticsManager() {
           {/* Note informative */}
           <div className="mt-4 text-xs text-gray-400 dark:text-gray-500">
             <p>
-              Note: Les coûts des BT et BL sont basés sur le prix coûtant actuel des produits dans l'inventaire.
-              Si les prix ont changé depuis la création du document, les marges peuvent être approximatives.
+              <strong>La facture fait foi:</strong> un BT/BL facturé affiche le sous-total (avant taxes) de sa facture
+              (main d&apos;oeuvre, déplacements, matériaux, forfait). Un BT/BL non facturé est marqué « Estimé »: heures × taux
+              du client (surcharges incluses) + déplacements + matériaux au prix du document.
+            </p>
+            <p className="mt-1">
+              Coûts: matériaux au coûtant actuel de la fiche produit (par code) + main d&apos;oeuvre × coût horaire interne
+              (Paramètres → Facturation). Les soumissions sont listées pour information mais exclues des totaux de ventes.
             </p>
           </div>
         </>
