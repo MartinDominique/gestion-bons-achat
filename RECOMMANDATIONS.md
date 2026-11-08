@@ -1411,6 +1411,16 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-05-19:
   - `app/(protected)/parametres/page.js` v2.2.0 — Champ "Marge de profit minimale" (section Facturation)
   - `components/invoices/InvoiceEditor.js` v2.5.0 — Carré prix vendant rouge + icône ⚠️ + bandeau
 - ⚠️ **Migration SQL à exécuter manuellement dans Supabase Dashboard**
+- **Amélioration (2026-11-08) — vendant à 0 $:** ✅ COMPLETE (2026-11-08)
+  - **Besoin (Martin):** un matériau dont le vendant ET le coûtant sont à 0 $ passait sans aucun
+    signal (le calcul de marge exigeait un coûtant > 0). Faire comme quand le vendant est hors
+    des marges du coûtant: carré rouge bien visible.
+  - `components/invoices/InvoiceEditor.js` v2.18.0 — `isLowMargin()` signale toute ligne matériau
+    au vendant 0 $ (champ vide compris, coûtant à 0 ou inconnu compris): carré rouge + icône ⚠️,
+    infobulle « Prix vendant à 0 $ — à vérifier », suffixe « (0 $) » après « Marge: », bandeau
+    « n article(s) avec un prix vendant à 0 $ [et m sous la marge minimale] ». S'applique aux
+    lignes de la facture et au « Détail du forfait » (Prix Jobé). Un prix **négatif** (facture de
+    crédit) n'est pas signalé. Toujours interne (jamais sur le PDF client). Aucune migration requise
 
 ### 2026-06-02 - Recherche dans l'onglet Facturation (factures)
 - **Besoin (Martin):** Dans l'onglet Facturation, pouvoir rechercher les factures par # BT,
@@ -2482,6 +2492,82 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   journalier/hebdomadaire par courriel (liste des BT)
 - Aucune migration SQL requise
 
+### 2026-11-08 - Liste des BA: pastille « Factures » à la place du camion ✅ COMPLETE (2026-11-08)
+- **Besoin (Martin):** dans la liste des BA, le petit camion (nombre de livraisons) ne sert jamais. Voir
+  plutôt s'il y a une ou des factures envoyées au client pour ce BA.
+- **Implementation:**
+  - `app/api/purchase-orders/invoices-summary/route.js` (nouveau) — résumé par BA en UNE requête (tous les BA
+    ou `?ids=`): BT/BL rattachés (`linked_po_id`) → factures créées depuis ces documents OU référencées par
+    `invoice_id` (même union robuste que l'onglet Docs); compte envoyées (sent/partial/paid), brouillons,
+    payées, liste courte (N°, statut, total, N° BT/BL); BT/BL « Acomba » (-1) et « Varia » (-2). supabaseAdmin
+    (RLS), paginé, `force-dynamic`, `no-store`
+  - `components/PurchaseOrderManager.js` v1.3.0 — pastille « Factures » (icône reçu): **vert** = n factures
+    envoyées (« ✓ » si toutes payées), **ambre** = n brouillons non envoyés (« n br. ») ou « Acomba »,
+    **violet** = « Varia », **gris « 0 »** sinon; infobulle détaillée; tap → dossier BA sur l'onglet Docs.
+    Compteur `delivery_slips` et icône camion retirés
+  - `components/PurchaseOrderModal.js` v1.5.0 — prop `initialTab`
+- Aucune migration SQL requise
+
+### 2026-11-08 - État de compte: outil de tri (Nom / Montant dû / En retard) ✅ COMPLETE (2026-11-08)
+- **Besoin (Martin):** dans Facturation → onglet État de compte, pouvoir trier la liste des clients:
+  ordre alphabétique, montant dû, en retard.
+- **Implementation:** `components/invoices/StatementManager.js` v1.2.0
+  - 3 boutons de tri dans la barre de recherche (icône + libellé, 44 px sur mobile): **Nom (A-Z)**
+    (collation fr-CA, accents/casse ignorés), **Montant dû** (décroissant — défaut, = ordre actuel de l'API),
+    **En retard** (montant en retard décroissant, puis nombre de jours de retard le plus élevé, puis solde,
+    puis nom)
+  - Desktop: en-têtes **Client**, **En retard**, **Solde dû** cliquables (même tri), flèche mise en évidence
+    sur la colonne active
+  - Choix mémorisé dans `localStorage` (`statements_sort`); tri côté client sur la liste déjà chargée
+    (aucun appel API supplémentaire, fonctionne aussi avec la recherche et « Tous les clients »)
+- Aucune migration SQL requise
+
+### 2026-11-08 - Statistiques opérationnelles: chiffres faux (Revenu 107 $ / coûts 1 $ pour un BT de ~3 500 $) ✅ COMPLETE (2026-11-08)
+- **Besoin (Martin):** vérifier le module Statistiques à fond (fait avant la Facturation): un BT récent de
+  ~3 500 $ affichait « Revenu 107 $, coûts 1 $ ». Doit être fonctionnel à 110 %. Et pouvoir voir les
+  documents envoyés (Factures, Soumissions, BT/BL) depuis ce module.
+- **Causes trouvées (`app/api/statistics/route.js` v1):**
+  1. Revenu BT = **matériaux seulement**: `time_entries` (heures × taux) et frais de déplacement jamais comptés
+     → 107 $ = juste les matériaux du BT.
+  2. Coûtant cherché par `product_id` **seul** dans `products`: les SKU texte sont souvent stockés dans
+     `product_code` avec `product_id` NULL (bug connu WorkOrderForm) et les non-inventaire sont dans
+     `non_inventory_items` → coûtant 0 presque partout (→ 1 $).
+  3. La **facture** (qui contient le vrai montant facturé, Prix Jobé compris) n'était jamais consultée.
+  4. Soumissions additionnées aux BT/BL dans les totaux (double compte d'une même job).
+  5. Filtre « Produit / Item » sans effet (TODO jamais fait); `limit` plafonné à 100 → l'export PDF
+     « tous les résultats » n'avait que 100 lignes; erreurs Supabase avalées (liste vide « réussie »).
+- **Implementation:**
+  - `lib/services/statistics-data.js` (nouveau) — **la facture fait foi**: BT/BL facturé → sous-total avant
+    taxes de la/les facture(s) liée(s) (par source ou `invoice_id`, notes de crédit déduites), ventilation
+    M.O./déplacements/matériaux/forfait via `salesBreakdown` (même logique que les rapports compta);
+    non facturé (ou Acomba/Varia) → **estimation** identique au pré-remplissage de facture (heures × taux
+    client, surcharges soir/sam./dim. 1,5× et férié 2×, frais de déplacement par session, matériaux qté ×
+    vendant, item importé d'un AF → vendant inventaire), `estimated: true`. Coûts: matériaux par
+    `product_id` OU `product_code` (products puis non_inventory_items, casse ignorée; Prix Jobé → coûtants
+    figés du détail du forfait) + **M.O. = heures × `settings.labor_cost_hourly_rate`** (0 = non compté, avis
+    affiché). Soumissions: valeur/coût listés, **exclues des totaux** (`summary.soumValue`). Produits sans
+    fiche comptés (`unknownProducts`) et signalés. Lecture paginée, requêtes par lots de 150 ids
+  - `app/api/statistics/route.js` v2.0.0 — délègue au service; filtre `invoiced` (all/invoiced/not_invoiced);
+    filtre produit fonctionnel (code ou description, matériaux + lignes de facture); `limit` jusqu'à 5000;
+    erreurs → HTTP 500 avec message; `no-store`
+  - `app/api/invoices/[id]/pdf-url/route.js` (nouveau) — URL signée fraîche du PDF (Storage) ou `has_pdf:false`
+  - `components/statistics/SalesReport.js` v2.0.0 — pastilles **Estimé** / **Acomba** / Varia à côté du N°;
+    revenus et coûts ventilés (sous-ligne + infobulle); colonne **« Documents »**: `Fact. 23080` (vert; ambre
+    si brouillon; « Crédit » rose) → tap = **PDF de la facture** (généré via `pdf_only` s'il n'existe pas
+    encore, fenêtre ouverte avant l'appel pour ne pas être bloquée sur tablette), `BA …` et `Soum. …` →
+    panneau SplitView; le N° du BT/BL ouvre déjà son panneau. Résumé: documents de vente (facturés /
+    estimés), revenus facturé vs estimé, coûts Mat. + M.O. (ou « M.O. non configurée »), Soumissions (valeur)
+    à part, ligne de ventilation, avertissement produits sans fiche. Cartes mobile: mêmes infos
+  - `components/statistics/StatisticsFilters.js` v1.1.0 — boutons **Facturation**: Tous / Facturés / Non facturés
+  - `components/statistics/StatisticsManager.js` v2.2.0 — paramètre transmis, PDF complet (5000), note explicative
+  - `components/statistics/StatisticsPDFExport.js` v2.0.0 — colonne « Facture », résumé ventilé, soumissions à part
+- **Vérification:** banc d'essai sur base simulée (20 cas): BT facturé 3 500 $ − crédit 100 $ = 3 400 $ avec
+  ventilation exacte et coûts (CI71 par product_code, P1-540 en non_inventory, M.O. 5,5 h × 40 $); BT non
+  facturé férié 3 h × 95 $ × 2 + 45 $ + matériaux = 745 $; Varia estimé au taux par défaut; BL 10 × 60 $;
+  filtres produit/facturation/client; soumissions hors totaux. `next build` complet OK (routes ƒ Dynamic)
+- **Pour que le coût M.O. compte:** saisir « Coût horaire interne (main d'oeuvre) » dans Paramètres → Facturation
+- Aucune migration SQL requise
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-07 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-08 par Claude AI*

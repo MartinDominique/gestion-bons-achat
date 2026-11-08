@@ -6,10 +6,16 @@
  *              - Bandeau résumé (total dû, en retard, intérêts)
  *              - Clic sur un client → vue détaillée (ClientStatementView)
  *              - Notes de crédit (factures négatives): pastille « crédit » et solde net
+ *              - Tri: Nom (A-Z) / Montant dû / En retard — boutons dans la barre (tous appareils)
+ *                + en-têtes cliquables du tableau desktop, choix mémorisé (localStorage)
  *              - Mobile-first (cartes) + tableau desktop
- * @version 1.1.0
- * @date 2026-09-02
+ * @version 1.2.0
+ * @date 2026-11-08
  * @changelog
+ *   1.2.0 - Outil de tri: Nom (ordre alphabétique, fr-CA), Montant dû (décroissant), En retard
+ *           (montant en retard décroissant, puis ancienneté du retard, puis solde). Boutons dans
+ *           la barre de recherche + en-têtes Client / En retard / Solde dû cliquables (desktop).
+ *           Défaut = Montant dû (ordre actuel), choix mémorisé dans localStorage
  *   1.1.0 - Crédits au dossier affichés (pastille « X $ en crédit ») et solde créditeur
  *           en vert; un client au solde nul mais avec crédit reste listé
  *   1.0.0 - Version initiale (module État de compte client)
@@ -17,8 +23,8 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Search, X, RefreshCw, AlertCircle, Users, Clock, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, X, RefreshCw, AlertCircle, Users, Clock, ChevronRight, ArrowDownAZ, ArrowDown01, ArrowUpDown } from 'lucide-react';
 import ClientStatementView from './ClientStatementView';
 
 const fmtCurrency = (amount) =>
@@ -30,6 +36,56 @@ const balanceClass = (balance) =>
     ? 'text-emerald-600 dark:text-emerald-400'
     : 'text-gray-900 dark:text-gray-100';
 
+// Tri de la liste des clients (mémorisé entre les visites)
+const STORAGE_KEY_SORT = 'statements_sort';
+const SORT_OPTIONS = [
+  { value: 'name', label: 'Nom (A-Z)', short: 'Nom', Icon: ArrowDownAZ, title: 'Ordre alphabétique du client' },
+  { value: 'balance', label: 'Montant dû', short: 'Montant', Icon: ArrowDown01, title: 'Solde dû, du plus élevé au plus bas' },
+  { value: 'overdue', label: 'En retard', short: 'Retard', Icon: Clock, title: 'Montant en retard, du plus élevé au plus bas (puis retard le plus ancien)' },
+];
+const DEFAULT_SORT = 'balance';
+const collator = new Intl.Collator('fr-CA', { sensitivity: 'base', numeric: true });
+
+const sortClients = (list, sortBy) => {
+  const arr = [...list];
+  switch (sortBy) {
+    case 'name':
+      arr.sort((a, b) => collator.compare(a.client_name || '', b.client_name || ''));
+      break;
+    case 'overdue':
+      arr.sort((a, b) =>
+        (b.overdue_balance || 0) - (a.overdue_balance || 0)
+        || (b.max_days_overdue || 0) - (a.max_days_overdue || 0)
+        || (b.balance || 0) - (a.balance || 0)
+        || collator.compare(a.client_name || '', b.client_name || ''));
+      break;
+    case 'balance':
+    default:
+      arr.sort((a, b) =>
+        (b.balance || 0) - (a.balance || 0)
+        || collator.compare(a.client_name || '', b.client_name || ''));
+  }
+  return arr;
+};
+
+// En-tête de colonne cliquable (desktop): active le tri correspondant
+function SortableHeader({ label, value, sortBy, onSort, align = 'left' }) {
+  const active = sortBy === value;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(value)}
+      title={`Trier par ${label.toLowerCase()}`}
+      className={`inline-flex items-center gap-1 hover:text-emerald-700 dark:hover:text-emerald-300 ${align === 'right' ? 'flex-row-reverse' : ''} ${
+        active ? 'text-emerald-700 dark:text-emerald-300' : ''
+      }`}
+    >
+      {label}
+      <ArrowUpDown className={`w-3.5 h-3.5 ${active ? 'opacity-100' : 'opacity-30'}`} aria-hidden="true" />
+    </button>
+  );
+}
+
 export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed }) {
   const [clients, setClients] = useState([]);
   const [totals, setTotals] = useState(null);
@@ -39,6 +95,20 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
   const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [openClientId, setOpenClientId] = useState(null);
+  const [sortBy, setSortBy] = useState(() => {
+    if (typeof window === 'undefined') return DEFAULT_SORT;
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY_SORT);
+      return SORT_OPTIONS.some(o => o.value === saved) ? saved : DEFAULT_SORT;
+    } catch { return DEFAULT_SORT; }
+  });
+
+  const changeSort = (value) => {
+    setSortBy(value);
+    try { window.localStorage.setItem(STORAGE_KEY_SORT, value); } catch { /* stockage indisponible */ }
+  };
+
+  const sortedClients = useMemo(() => sortClients(clients, sortBy), [clients, sortBy]);
 
   // Debounce recherche
   useEffect(() => {
@@ -129,6 +199,31 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
             </button>
           )}
         </div>
+        {/* Tri */}
+        <div className="flex items-center gap-1 flex-shrink-0" role="group" aria-label="Trier par">
+          <ArrowUpDown className="w-3.5 h-3.5 text-gray-400 hidden sm:block" aria-hidden="true" />
+          {SORT_OPTIONS.map(opt => {
+            const active = sortBy === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => changeSort(opt.value)}
+                title={opt.title}
+                aria-pressed={active}
+                className={`min-h-[44px] sm:min-h-0 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap inline-flex items-center gap-1.5 flex-1 sm:flex-none justify-center ${
+                  active
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <opt.Icon className="w-3.5 h-3.5" />
+                <span className="sm:hidden">{opt.short}</span>
+                <span className="hidden sm:inline">{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>
         <button
           onClick={() => setIncludeAll(v => !v)}
           className={`px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
@@ -170,7 +265,7 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
         <>
           {/* Mobile */}
           <div className="lg:hidden">
-            {clients.map(c => (
+            {sortedClients.map(c => (
               <button
                 key={c.client_id || c.client_name}
                 onClick={() => c.client_id && setOpenClientId(c.client_id)}
@@ -204,16 +299,22 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
             <table className="w-full">
               <thead className="bg-gradient-to-r from-gray-50 to-emerald-50 dark:from-gray-800 dark:to-gray-800">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Client</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <SortableHeader label="Client" value="name" sortBy={sortBy} onSort={changeSort} />
+                  </th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">Factures</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">En retard</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <SortableHeader label="En retard" value="overdue" sortBy={sortBy} onSort={changeSort} align="right" />
+                  </th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Intérêts</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">Solde dû</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <SortableHeader label="Solde dû" value="balance" sortBy={sortBy} onSort={changeSort} align="right" />
+                  </th>
                   <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700 dark:text-gray-300"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {clients.map((c, index) => (
+                {sortedClients.map((c, index) => (
                   <tr
                     key={c.client_id || c.client_name}
                     onClick={() => c.client_id && setOpenClientId(c.client_id)}

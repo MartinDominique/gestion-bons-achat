@@ -4,9 +4,12 @@
  *              - Utilise pdf-common.js pour l'en-tête/footer standardisé
  *              - Tableau des documents avec revenus/coûts/marges
  *              - Bandeau résumé des totaux
- * @version 1.1.0
- * @date 2026-11-07
+ * @version 2.0.0
+ * @date 2026-11-08
  * @changelog
+ *   2.0.0 - Colonne « Facture » (N° de facture(s) liée(s), ou Estimé / Acomba / Varia); résumé: BT+BL
+ *           seulement (facturé vs estimé), ventilation M.O./dépl./matériaux/forfait, coûts matériaux +
+ *           M.O., soumissions (valeur) à part; filtre Facturation dans la ligne des filtres actifs
  *   1.1.0 - Mention « Varia » après le N° d'un BT/BL fermé par déduction (aucune facture)
  *   1.0.0 - Version initiale - Phase 1 MVP
  */
@@ -77,6 +80,8 @@ export async function generateStatisticsPDF({ documents, summary, filters, clien
   if (filters.documentNumber) activeFilters.push('N° Doc: ' + filters.documentNumber);
   if (filters.search) activeFilters.push('Description: ' + filters.search);
   if (filters.productId) activeFilters.push('Produit: ' + filters.productId);
+  if (filters.invoiced === 'invoiced') activeFilters.push('Facturés seulement');
+  if (filters.invoiced === 'not_invoiced') activeFilters.push('Non facturés seulement');
 
   if (activeFilters.length > 0) {
     doc.setFont('helvetica', 'italic');
@@ -95,10 +100,18 @@ export async function generateStatisticsPDF({ documents, summary, filters, clien
     doc.setFontSize(FONT.body);
     doc.setFont('helvetica', 'normal');
 
+    const rb = summary.revenueBreakdown || {};
+    const cb = summary.costBreakdown || {};
     const summaryLines = [
-      `Documents: ${summary.documentCount} (${summary.btCount} BT, ${summary.blCount} BL, ${summary.soumCount} Soum.)`,
-      `Revenus: ${pdfFormatCurrency(summary.totalRevenue)}    Coûts: ${pdfFormatCurrency(summary.totalCost)}    Marge: ${pdfFormatCurrency(summary.totalMargin)} (${summary.marginPercent.toFixed(1)}%)`,
+      `Documents de vente: ${summary.salesCount ?? (summary.btCount + summary.blCount)} (${summary.btCount} BT, ${summary.blCount} BL) — ${summary.invoicedCount ?? 0} facturé(s), ${summary.estimatedCount ?? 0} estimé(s)`,
+      `Revenus (avant taxes): ${pdfFormatCurrency(summary.totalRevenue)}    Coûts: ${pdfFormatCurrency(summary.totalCost)}    Marge: ${pdfFormatCurrency(summary.totalMargin)} (${summary.marginPercent.toFixed(1)}%)`,
+      `Ventilation revenus — M.O.: ${pdfFormatCurrency(rb.labor || 0)}   Déplacements: ${pdfFormatCurrency(rb.transport || 0)}   Matériaux: ${pdfFormatCurrency(rb.materials || 0)}   Forfait/autre: ${pdfFormatCurrency(rb.forfait || 0)}`,
+      `Coûts — Matériaux: ${pdfFormatCurrency(cb.materials || 0)}   M.O.: ${summary.laborCostIncluded ? `${pdfFormatCurrency(cb.labor || 0)} (${cb.hours || 0} h)` : 'non configurée (Paramètres)'}`,
+      `Soumissions (hors totaux): ${summary.soumCount} — valeur ${pdfFormatCurrency(summary.soumValue || 0)}`,
     ];
+    if (summary.unknownProductsCount > 0) {
+      summaryLines.push(`Attention: ${summary.unknownProductsCount} ligne(s) de matériaux sans fiche produit (coûtant compté à 0 $)`);
+    }
 
     summaryLines.forEach(line => {
       doc.text(line, PAGE.margin.left, yPos);
@@ -119,8 +132,17 @@ export async function generateStatisticsPDF({ documents, summary, filters, clien
       { header: 'Coûts', dataKey: 'cost' },
       { header: 'Marge $', dataKey: 'margin' },
       { header: 'Marge %', dataKey: 'marginPct' },
+      { header: 'Facture', dataKey: 'invoice' },
       { header: 'Statut', dataKey: 'status' },
     ];
+
+    const invoiceCell = (d) => {
+      if (d.type === 'Soum.') return '—';
+      if (d.invoices && d.invoices.length > 0) return d.invoices.map(i => `${i.is_credit ? 'Cr. ' : ''}${i.invoice_number}`).join(', ');
+      if (d.source === 'external') return 'Acomba';
+      if (d.isDeduction) return DEDUCTION_LABEL;
+      return 'Estimé';
+    };
 
     const statusLabels = {
       draft: 'Brouillon',
@@ -142,6 +164,7 @@ export async function generateStatisticsPDF({ documents, summary, filters, clien
       cost: pdfFormatCurrency(d.cost),
       margin: pdfFormatCurrency(d.margin),
       marginPct: d.marginPercent.toFixed(1) + '%',
+      invoice: invoiceCell(d),
       status: statusLabels[d.status] || d.status,
     }));
 
@@ -168,15 +191,16 @@ export async function generateStatisticsPDF({ documents, summary, filters, clien
         fontSize: 7,
       },
       columnStyles: {
-        type: { cellWidth: 12, halign: 'center' },
-        docNum: { cellWidth: 28, halign: 'left', font: 'courier' },
-        date: { cellWidth: 22, halign: 'center' },
-        client: { cellWidth: 30 },
-        revenue: { cellWidth: 22, halign: 'right', font: 'courier' },
-        cost: { cellWidth: 22, halign: 'right', font: 'courier' },
-        margin: { cellWidth: 22, halign: 'right', font: 'courier' },
-        marginPct: { cellWidth: 16, halign: 'right', font: 'courier' },
-        status: { cellWidth: 18, halign: 'center' },
+        type: { cellWidth: 11, halign: 'center' },
+        docNum: { cellWidth: 26, halign: 'left', font: 'courier' },
+        date: { cellWidth: 20, halign: 'center' },
+        client: { cellWidth: 28 },
+        revenue: { cellWidth: 21, halign: 'right', font: 'courier' },
+        cost: { cellWidth: 20, halign: 'right', font: 'courier' },
+        margin: { cellWidth: 21, halign: 'right', font: 'courier' },
+        marginPct: { cellWidth: 14, halign: 'right', font: 'courier' },
+        invoice: { cellWidth: 20, halign: 'center' },
+        status: { cellWidth: 17, halign: 'center' },
       },
       margin: { left: PAGE.margin.left, right: PAGE.margin.right },
       showHead: 'everyPage',
@@ -208,7 +232,7 @@ export async function generateStatisticsPDF({ documents, summary, filters, clien
     doc.setFontSize(9);
     const rightX = PAGE.width - PAGE.margin.right;
 
-    doc.text('TOTAL REVENUS:', rightX - 65, yPos);
+    doc.text('TOTAL REVENUS (BT + BL):', rightX - 65, yPos);
     doc.text(pdfFormatCurrency(summary.totalRevenue), rightX, yPos, { align: 'right' });
     yPos += 5;
 

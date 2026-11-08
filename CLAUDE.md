@@ -436,6 +436,7 @@ const total = subtotal + tps + tvq;
 /api/purchase-orders                   → CRUD BA Client
 /api/purchase-orders/[id]/send-confirmation → Envoi BCC (confirmation commande)
 /api/purchase-orders/[id]/invoices     → Factures liées au BA (via BT/BL rattachés) + URL signée PDF (onglet Docs du dossier BA)
+/api/purchase-orders/invoices-summary  → Résumé des factures par BA en UNE requête (envoyées/brouillons/Acomba/Varia) — pastille « Factures » de la liste BA
 /api/clients                           → CRUD clients
 /api/products                          → CRUD produits
 /api/products/search                   → Recherche serveur inventaire (modes: search, all, group)
@@ -446,12 +447,13 @@ const total = subtotal + tps + tvq;
 /api/items-to-order                    → Liste À Commander (GET par statut, enrichi inventaire vivant qté/en commande/coûtant/vendant + POST ajout enrichi/fusion)
 /api/items-to-order/[id]               → GET/PUT/DELETE item à commander
 /api/items-to-order/mark-ordered       → Marque un lot commandé + lie l'AF (après création AF)
-/api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres)
+/api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres) — v2: la facture fait foi, sinon estimation complète; calcul dans lib/services/statistics-data.js
 /api/statistics/financial              → Statistiques financières (GET: par mois, par client, en attente)
 /api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
 /api/invoices                          → CRUD Factures (GET liste + POST création)
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
+/api/invoices/[id]/pdf-url              → URL signée fraîche du PDF de la facture (Storage) — « voir la facture » depuis Statistiques
 /api/invoices/relink                   → Réparation liens BT/BL ↔ facture manquants (GET aperçu / POST appliquer; auto au chargement « À facturer »)
 /api/invoices/[id]/sync-inventory      → Ajuste l'inventaire selon les matériaux facturés vs BT/BL (POST; { revert:true } = retour à l'état du BT/BL)
 /api/invoices/deduction                → Déduction « Varia » (POST): ferme un BT/BL depuis la fiche de facturation SANS créer de facture (inventaire ajusté + invoice_id = -2)
@@ -473,6 +475,7 @@ lib/services/email-service.js       → Génération PDF + envoi email (BT + BL 
 lib/services/pdf-common.js          → En-tête/footer PDF standardisé
 lib/services/client-signature.js    → Gestion signatures (BT + BL)
 lib/services/statement-data.js      → État de compte à une date donnée (as_of), partagé écran/PDF/courriel
+lib/services/statistics-data.js     → Statistiques opérationnelles: revenu/coût par BT/BL (facture liée si elle existe, sinon estimation M.O. + déplacements + matériaux), coûtant par code, soumissions à part
 lib/services/invoice-inventory.js   → Sync inventaire ↔ facture (delta = facturé − BT/BL − déjà appliqué, mouvements 'invoice', idempotent) + déduction « Varia » (mouvements 'deduction', réf. N° BT/BL)
 lib/constants/deduction.js          → Déduction « Varia »: libellé, sentinelles invoice_id (-1 Acomba, -2 Varia), helpers isDeduction()/invoiceIndicator()
 lib/utils/holidays.js               → Jours fériés Québec (calcul dynamique)
@@ -764,6 +767,20 @@ CRON_SECRET                   # Auth pour cron jobs
    - `app/(protected)/statistiques/page.js` — Page protégée
    - `components/Navigation.js` — Ajout onglet Statistiques (icône BarChart3)
    - Note: Coûts BT/BL basés sur cost_price actuel des produits (approximatif si prix changé)
+   - **Refonte (2026-11-08) — chiffres faux (BT ~3 500 $ affiché « Revenu 107 $, coûts 1 $ »):** la v1 ne comptait
+     que les matériaux (M.O. + transport ignorés) et cherchait le coûtant par `product_id` seul (souvent NULL → 0).
+     `lib/services/statistics-data.js` (nouveau) + `app/api/statistics/route.js` v2.0.0: **la facture fait foi** (BT/BL
+     facturé → sous-total avant taxes de la/les facture(s) liée(s), crédits déduits, ventilation M.O./dépl./mat./forfait);
+     non facturé → **estimation complète** comme le pré-remplissage de facture (heures × taux client avec surcharges
+     1,5×/2×, déplacements, matériaux; AF-importé → vendant inventaire), pastille **« Estimé »**; Acomba/Varia estimés aussi.
+     Coûts: matériaux par `product_id` **ou** `product_code` (products puis non_inventory_items; Prix Jobé → coûtants figés
+     du détail du forfait) + **M.O. × `settings.labor_cost_hourly_rate`** (si 0: avis « M.O. non configurée »). Soumissions
+     listées mais **exclues des totaux** (valeur à part). Filtre « Produit / Item » enfin fonctionnel (code ou description,
+     matériaux + lignes de facture), filtre **Facturation** (Tous / Facturés / Non facturés), limit PDF 5000, lecture
+     paginée, erreurs remontées. Colonne **« Documents »** (`SalesReport.js` v2.0.0): factures liées cliquables →
+     **PDF de la facture** (`/api/invoices/[id]/pdf-url`, généré via `pdf_only` s'il n'existe pas), BA et soumission liés
+     (SplitView); BT/BL via leur N° (SplitView). `StatisticsPDFExport.js` v2.0.0 (colonne Facture, résumé ventilé),
+     `StatisticsFilters.js` v1.1.0, `StatisticsManager.js` v2.2.0. Vérifié sur base simulée (20 cas). Aucune migration
 
 10. ~~**Phase A Fondations — Taux horaires, Tarification, Settings**~~ - ✅ COMPLÉTÉ 2026-02-27
     - `supabase/migrations/20260227_add_settings_and_tarification.sql` — Table settings + colonnes clients
@@ -838,6 +855,9 @@ CRON_SECRET                   # Auth pour cron jobs
     - `components/invoices/InvoiceEditor.js` v2.5.0 — Carré du prix vendant en rouge + icône ⚠️ + bandeau récapitulatif quand marge < seuil
     - Alerte 100% interne (écran de saisie), jamais sur la facture client (PDF sans coûtant/marge)
     - Note: Migration SQL à exécuter manuellement dans Supabase Dashboard
+    - **Amélioration (2026-11-08):** `InvoiceEditor.js` v2.18.0 — un matériau au **vendant 0 $** (coûtant à 0 ou
+      inconnu compris) est signalé comme une marge faible (carré rouge + icône + bandeau « n article(s) avec un
+      prix vendant à 0 $ »). Avant, 0 $ / 0 $ passait sans signal. Prix négatif (crédit) non signalé
 
 18. ~~**Consultation BA / Soumission depuis l'éditeur de facture**~~ - ✅ COMPLÉTÉ (2026-06-04)
     - `components/invoices/InvoiceReferencePanel.js` v1.0.0 — Panneau lecture seule (BA via
@@ -877,6 +897,7 @@ CRON_SECRET                   # Auth pour cron jobs
     - Escompte 2 % sur sous-total (taxes complètes — Revenu Québec); intérêt = solde × taux × jours/365; relevé open-item; aging Courant/1-30/31-60/61-90/90+
     - **Reste:** exécuter la migration SQL `20260614_create_invoice_payments.sql` dans Supabase Dashboard
     - **Amélioration (2026-10-02):** `ClientStatementView.js` v1.10.0 — après un paiement enregistré, écran « Paiement enregistré » (montant, mode, N° de facture(s)) ~3 s puis fermeture automatique de la fiche → retour à la liste des états de compte; boutons « Fermer maintenant » / « Rester sur ce client »
+    - **Amélioration (2026-11-08):** `StatementManager.js` v1.2.0 — outil de tri de la liste des clients: **Nom (A-Z)** (fr-CA), **Montant dû** (décroissant, défaut = ordre actuel), **En retard** (montant en retard décroissant, puis retard le plus ancien, puis solde). Boutons dans la barre (44 px sur mobile) + en-têtes Client / En retard / Solde dû cliquables (desktop); choix mémorisé (localStorage). Tri côté client, aucune migration
 
 21. ~~**Rapports comptables (Ventes + Paiements)**~~ - ✅ COMPLÉTÉ (2026-06-14)
     - `supabase/migrations/20260614b_add_accountant_email.sql` — colonne `settings.accountant_email`
@@ -1058,6 +1079,12 @@ CRON_SECRET                   # Auth pour cron jobs
     - `app/api/invoices/[id]/send-email/route.js` v1.9.0 — mode `pdf_only` (PDF + Storage, statut intact)
     - `components/PurchaseOrderModal.js` v1.3.0 — onglet Docs: section « Factures liées » (Voir / Télécharger / Générer le PDF), compteur dans la pastille
     - Les factures déjà existantes apparaissent automatiquement (liste calculée en direct). Aucune migration requise
+    - **Amélioration (2026-11-08) — liste des BA:** la pastille « camion » (nombre de livraisons `delivery_slips`, jamais
+      utilisée) est remplacée par une pastille **« Factures »** (`PurchaseOrderManager.js` v1.3.0): vert = n factures
+      **envoyées** au client (« ✓ » si toutes payées), ambre = brouillons non envoyés ou « Acomba », violet = « Varia »,
+      gris « 0 » sinon; infobulle N°/statut/montant; tap → dossier BA ouvert sur l'onglet Docs (`PurchaseOrderModal.js`
+      v1.5.0, prop `initialTab`). Données: `app/api/purchase-orders/invoices-summary/route.js` (nouveau, 1 requête
+      pour tous les BA, supabaseAdmin, paginé). Aucune migration requise
 
 38. ~~**Déduction « Varia » (fiche de facturation sans facture)**~~ - ✅ COMPLÉTÉ (2026-11-07)
     - Cas (rare, ~1/1000): le client règle sans facture alors que le BT/BL est déjà fait. Flux: Martin signe

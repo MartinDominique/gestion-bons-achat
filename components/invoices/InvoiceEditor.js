@@ -8,7 +8,8 @@
  *              - Code produit cliquable ouvrant le vrai modal d'inventaire (éditable)
  *              - Actions: sauvegarder, envoyer, annuler
  *              - Voyant marge faible: carré du prix vendant en rouge si marge < seuil
- *                (seuil configurable dans Paramètres, défaut 10%) + bandeau récapitulatif.
+ *                (seuil configurable dans Paramètres, défaut 10%) OU si le prix vendant
+ *                est à 0 $ (même coûtant à 0 / inconnu) + bandeau récapitulatif.
  *                Alerte interne seulement — n'apparaît JAMAIS sur la facture client (PDF).
  *              - Sélection des destinataires d'envoi: liste des emails du client (cases
  *                à cocher) + ajout d'une adresse personnalisée, au-dessus des boutons d'action.
@@ -36,9 +37,13 @@
  *                ajuste l'inventaire selon les quantités de la fiche et marque le BT/BL
  *                « Varia » (invoice_id = -2). « Imprimer » et « Sauvegarder & Envoyer » restent
  *                affichés mais répondent « NE FONCTIONNE PAS ».
- * @version 2.17.1
- * @date 2026-11-07
+ * @version 2.18.0
+ * @date 2026-11-08
  * @changelog
+ *   2.18.0 - Voyant rouge aussi quand le prix vendant d'un matériau est à 0 $ (coûtant à 0 ou
+ *            inconnu compris): carré rouge + icône + bandeau « n article(s) avec un prix
+ *            vendant à 0 $ », infobulle « Prix vendant à 0 $ — à vérifier ». Avant, un item
+ *            à 0 $ / 0 $ passait sans aucun signal. Prix négatif (crédit) non signalé.
  *   2.17.1 - La case s'appelle « Varia » (même mot que la mention), plus « Déduction »
  *   2.17.0 - Déduction « Varia »: case + fenêtre de confirmation, sauvegarde sans facture
  *            (inventaire ajusté + BT/BL marqué), Imprimer/Envoyer neutralisés avec mention
@@ -1316,8 +1321,15 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     return `${(((selling - cost) / cost) * 100).toFixed(1)}%`;
   };
 
-  // True si la marge est sous le seuil minimal (coûtant connu et > 0 requis)
+  // True si le prix vendant est à 0 $ (champ vide compris). Un prix négatif (facture de
+  // crédit) n'est pas signalé.
+  const isZeroPrice = (sellingPrice) => (parseFloat(sellingPrice) || 0) === 0;
+
+  // True si la ligne doit être signalée en rouge:
+  //   - prix vendant à 0 $ (même si le coûtant est 0 ou inconnu — oubli de prix probable)
+  //   - sinon marge sous le seuil minimal (coûtant connu et > 0 requis)
   const isLowMargin = (costPrice, sellingPrice) => {
+    if (isZeroPrice(sellingPrice)) return true;
     const cost = parseFloat(costPrice) || 0;
     const selling = parseFloat(sellingPrice) || 0;
     if (cost <= 0) return false;
@@ -1325,25 +1337,37 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
     return margin < minMarginPercent;
   };
 
+  // Infobulle du carré rouge selon la raison
+  const priceAlertTitle = (sellingPrice) => isZeroPrice(sellingPrice)
+    ? 'Prix vendant à 0 $ — à vérifier'
+    : `Marge sous le seuil de ${minMarginPercent}%`;
+
+  // Suffixe affiché après « Marge: » quand la ligne est signalée
+  const marginSuffix = (sellingPrice) => isZeroPrice(sellingPrice)
+    ? ' (0 $)'
+    : ` (< ${minMarginPercent}%)`;
+
   // Helper: get product info for a material line
   const getProductInfo = (line) => {
     const pid = line.product_id || line.detail;
     return pid ? productDataMap[pid] : null;
   };
 
-  // Nombre de lignes matériaux dont la marge est sous le seuil
-  // (lignes de la facture + détail interne du forfait quand Prix Jobé)
-  const lowMarginCount = useMemo(() => {
+  // Nombre de lignes matériaux signalées: vendant à 0 $ (zeroPrice) ou marge sous le seuil
+  // (lowMargin). Lignes de la facture + détail interne du forfait quand Prix Jobé.
+  const priceAlerts = useMemo(() => {
     const lines = isPrixJobe ? [...lineItems, ...jobeDetail] : lineItems;
-    return lines.reduce((count, line) => {
-      if (line.type !== 'material') return count;
+    return lines.reduce((acc, line) => {
+      if (line.type !== 'material') return acc;
       const pid = line.product_id || line.detail;
       const info = pid ? productDataMap[pid] : null;
       const cost = info ? info.cost_price : line.cost_price;
-      if (cost != null && isLowMargin(cost, line.unit_price)) return count + 1;
-      return count;
-    }, 0);
+      if (isZeroPrice(line.unit_price)) acc.zeroPrice += 1;
+      else if (cost != null && isLowMargin(cost, line.unit_price)) acc.lowMargin += 1;
+      return acc;
+    }, { zeroPrice: 0, lowMargin: 0 });
   }, [lineItems, jobeDetail, isPrixJobe, productDataMap, minMarginPercent]);
+  const lowMarginCount = priceAlerts.zeroPrice + priceAlerts.lowMargin;
 
   // Coûtant unitaire d'une ligne du détail:
   //   - matériau: fiche produit (vivant) sinon coûtant figé à la sauvegarde
@@ -1500,12 +1524,20 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
             </div>
           )}
 
-          {/* Bandeau alerte marge faible (interne — jamais sur la facture client) */}
+          {/* Bandeau alerte prix vendant (interne — jamais sur la facture client):
+              vendant à 0 $ et/ou marge sous le seuil */}
           {lowMarginCount > 0 && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>
-                <strong>{lowMarginCount} article{lowMarginCount > 1 ? 's' : ''}</strong> sous la marge minimale de {minMarginPercent}&nbsp;% (carré du prix vendant en rouge).
+                {priceAlerts.zeroPrice > 0 && (
+                  <><strong>{priceAlerts.zeroPrice} article{priceAlerts.zeroPrice > 1 ? 's' : ''}</strong> avec un prix vendant à 0&nbsp;$</>
+                )}
+                {priceAlerts.zeroPrice > 0 && priceAlerts.lowMargin > 0 && ' et '}
+                {priceAlerts.lowMargin > 0 && (
+                  <><strong>{priceAlerts.lowMargin} article{priceAlerts.lowMargin > 1 ? 's' : ''}</strong> sous la marge minimale de {minMarginPercent}&nbsp;%</>
+                )}
+                {' '}(carré du prix vendant en rouge).
                 Vérifiez le prix vendant ou laissez tel quel si c&apos;est voulu. Cette alerte reste interne et n&apos;apparaît pas sur la facture client.
               </span>
             </div>
@@ -1600,7 +1632,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
               lineItems.map((line, index) => {
                 const productInfo = line.type === 'material' ? getProductInfo(line) : null;
                 const productCode = line.product_id || line.detail;
-                const lowMargin = !!(productInfo && isLowMargin(productInfo.cost_price, line.unit_price));
+                const lowMargin = line.type === 'material' && isLowMargin(productInfo?.cost_price, line.unit_price);
 
                 return (
                 <div
@@ -1674,7 +1706,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                           onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
                           onFocus={(e) => e.target.select()}
                           readOnly={isLocked}
-                          title={lowMargin ? `Marge sous le seuil de ${minMarginPercent}%` : undefined}
+                          title={lowMargin ? priceAlertTitle(line.unit_price) : undefined}
                           className={`w-full px-2 py-1.5 border rounded text-sm text-right ${isLocked ? 'opacity-60' : ''} ${
                             lowMargin
                               ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 font-semibold'
@@ -1770,7 +1802,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                             onChange={(e) => updateLine(index, 'unit_price', e.target.value)}
                             onFocus={(e) => e.target.select()}
                             readOnly={isLocked}
-                            title={lowMargin ? `Marge sous le seuil de ${minMarginPercent}%` : undefined}
+                            title={lowMargin ? priceAlertTitle(line.unit_price) : undefined}
                             className={`w-full px-2 py-1.5 border rounded text-sm text-right ${isLocked ? 'opacity-60' : ''} ${
                               lowMargin
                                 ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 font-semibold pr-7'
@@ -1812,7 +1844,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                           <span className={`font-medium flex items-center gap-1 ${lowMargin ? 'text-red-600 dark:text-red-400' : getMarginColor(productInfo.cost_price, line.unit_price)}`}>
                             {lowMargin && <AlertTriangle className="w-3 h-3" />}
                             Marge: {getMarginPercentage(productInfo.cost_price, line.unit_price)}
-                            {lowMargin && ` (< ${minMarginPercent}%)`}
+                            {lowMargin && marginSuffix(line.unit_price)}
                           </span>
                           {productInfo.supplier && (
                             <span>Fourn.: <span className="font-medium text-gray-700 dark:text-gray-300">{productInfo.supplier}</span></span>
@@ -1935,7 +1967,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                   const cost = getDetailCost(line);
                   const productInfo = line.type === 'material' ? getProductInfo(line) : null;
                   const productCode = line.type === 'material' ? (line.product_id || line.detail) : null;
-                  const lowMargin = line.type === 'material' && cost !== null && isLowMargin(cost, line.unit_price);
+                  const lowMargin = line.type === 'material' && isLowMargin(cost, line.unit_price);
                   const qtyNum = parseFloat(line.quantity) || 0;
                   const inputBase = `border rounded bg-white dark:bg-gray-800 dark:text-gray-200 text-sm ${isLocked ? 'opacity-60' : ''}`;
                   const priceClass = lowMargin
@@ -2059,7 +2091,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                           <div className="col-span-2">
                             <div className="relative">
                               <input type="number" value={line.unit_price} onChange={(e) => updateDetailLine(index, 'unit_price', e.target.value)} onFocus={(e) => e.target.select()} readOnly={isLocked}
-                                title={lowMargin ? `Marge sous le seuil de ${minMarginPercent}%` : undefined}
+                                title={lowMargin ? priceAlertTitle(line.unit_price) : undefined}
                                 className={`w-full px-2 py-1 text-right ${inputBase} ${priceClass} ${lowMargin ? 'pr-7' : ''}`} inputMode="decimal" step="0.01" autoCorrect="off" autoCapitalize="off" spellCheck={false} />
                               {lowMargin && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />}
                             </div>
@@ -2086,7 +2118,7 @@ export default function InvoiceEditor({ source, invoice, settings, onClose }) {
                               <span className={`font-medium flex items-center gap-1 ${lowMargin ? 'text-red-600 dark:text-red-400' : getMarginColor(cost, line.unit_price)}`}>
                                 {lowMargin && <AlertTriangle className="w-3 h-3" />}
                                 Marge: {getMarginPercentage(cost, line.unit_price)}
-                                {lowMargin && ` (< ${minMarginPercent}%)`}
+                                {lowMargin && marginSuffix(line.unit_price)}
                               </span>
                               {productInfo?.supplier && <span>Fourn.: <span className="font-medium text-gray-700 dark:text-gray-300">{productInfo.supplier}</span></span>}
                             </div>

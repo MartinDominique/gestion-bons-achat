@@ -4,9 +4,10 @@
  *              - Filtres: type document, période, client, n° document, description, produit
  *              - Combinaison AND des filtres
  *              - Bouton réinitialiser
- * @version 1.0.1
- * @date 2026-03-07
+ * @version 1.1.0
+ * @date 2026-11-08
  * @changelog
+ *   1.1.0 - Filtre « Facturation »: Tous / Facturés / Non facturés (BT/BL; revenu estimé quand non facturé)
  *   1.0.1 - Ajout attributs autoCorrect/autoCapitalize/spellCheck sur champs texte
  *   1.0.0 - Version initiale - Phase 1 MVP
  */
@@ -34,6 +35,7 @@ const DEFAULT_FILTERS = {
   documentNumber: '',
   search: '',
   productId: '',
+  invoiced: 'all', // all | invoiced | not_invoiced
   sortBy: 'date',
   sortOrder: 'desc',
 };
@@ -103,6 +105,32 @@ export default function StatisticsFilters({ filters, onFiltersChange, onSearch, 
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                   filters.types.includes(key)
                     ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Facturation */}
+        <div className="flex-shrink-0">
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Facturation</label>
+          <div className="flex gap-1">
+            {[
+              { key: 'all', label: 'Tous' },
+              { key: 'invoiced', label: 'Facturés', title: 'BT/BL avec facture (app ou Acomba) ou fermés « Varia »' },
+              { key: 'not_invoiced', label: 'Non facturés', title: 'BT/BL sans facture (revenu estimé)' },
+            ].map(({ key, label, title }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleChange('invoiced', key)}
+                title={title}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                  (filters.invoiced || 'all') === key
+                    ? 'bg-emerald-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
