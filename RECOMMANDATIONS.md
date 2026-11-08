@@ -1411,6 +1411,16 @@ Basees sur les reponses et decisions (2026-02-07), mis a jour 2026-05-19:
   - `app/(protected)/parametres/page.js` v2.2.0 — Champ "Marge de profit minimale" (section Facturation)
   - `components/invoices/InvoiceEditor.js` v2.5.0 — Carré prix vendant rouge + icône ⚠️ + bandeau
 - ⚠️ **Migration SQL à exécuter manuellement dans Supabase Dashboard**
+- **Amélioration (2026-11-08) — vendant à 0 $:** ✅ COMPLETE (2026-11-08)
+  - **Besoin (Martin):** un matériau dont le vendant ET le coûtant sont à 0 $ passait sans aucun
+    signal (le calcul de marge exigeait un coûtant > 0). Faire comme quand le vendant est hors
+    des marges du coûtant: carré rouge bien visible.
+  - `components/invoices/InvoiceEditor.js` v2.18.0 — `isLowMargin()` signale toute ligne matériau
+    au vendant 0 $ (champ vide compris, coûtant à 0 ou inconnu compris): carré rouge + icône ⚠️,
+    infobulle « Prix vendant à 0 $ — à vérifier », suffixe « (0 $) » après « Marge: », bandeau
+    « n article(s) avec un prix vendant à 0 $ [et m sous la marge minimale] ». S'applique aux
+    lignes de la facture et au « Détail du forfait » (Prix Jobé). Un prix **négatif** (facture de
+    crédit) n'est pas signalé. Toujours interne (jamais sur le PDF client). Aucune migration requise
 
 ### 2026-06-02 - Recherche dans l'onglet Facturation (factures)
 - **Besoin (Martin):** Dans l'onglet Facturation, pouvoir rechercher les factures par # BT,
@@ -2484,4 +2494,4 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-07 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-08 par Claude AI*

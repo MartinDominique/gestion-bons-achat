@@ -838,6 +838,9 @@ CRON_SECRET                   # Auth pour cron jobs
     - `components/invoices/InvoiceEditor.js` v2.5.0 — Carré du prix vendant en rouge + icône ⚠️ + bandeau récapitulatif quand marge < seuil
     - Alerte 100% interne (écran de saisie), jamais sur la facture client (PDF sans coûtant/marge)
     - Note: Migration SQL à exécuter manuellement dans Supabase Dashboard
+    - **Amélioration (2026-11-08):** `InvoiceEditor.js` v2.18.0 — un matériau au **vendant 0 $** (coûtant à 0 ou
+      inconnu compris) est signalé comme une marge faible (carré rouge + icône + bandeau « n article(s) avec un
+      prix vendant à 0 $ »). Avant, 0 $ / 0 $ passait sans signal. Prix négatif (crédit) non signalé
 
 18. ~~**Consultation BA / Soumission depuis l'éditeur de facture**~~ - ✅ COMPLÉTÉ (2026-06-04)
     - `components/invoices/InvoiceReferencePanel.js` v1.0.0 — Panneau lecture seule (BA via
