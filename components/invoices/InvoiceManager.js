@@ -7,9 +7,22 @@
  *              - Numéros de référence cliquables (SplitView)
  *              - Onglet "État de compte": soldes clients, paiements, relevés
  *              - Onglet "Rapports compta": ventes + paiements (PDF + envoi au comptable)
- * @version 2.8.0
- * @date 2026-11-07
+ *              - Onglet "Factures": pastille « Payée le … · Chèque #… » → fenêtre « Paiements »
+ *                (date, mode, N° chèque/virement, note, factures réglées par le même paiement)
+ * @version 2.9.0
+ * @date 2026-11-10
  * @changelog
+ *   2.9.0 - FIX recherche onglet « Factures »: le champ perdait le focus à chaque frappe.
+ *           Cause: pendant le chargement (déclenché 400 ms après la frappe), le spinner
+ *           remplaçait TOUT le contenu de l'onglet, champ de recherche compris → champ
+ *           démonté/remonté, focus perdu, et le select-au-focus faisait repartir la saisie
+ *           à zéro (« 23 » → « 230 » → « 2304 », jamais le numéro complet). Les filtres
+ *           restent montés; seul le tableau affiche le spinner.
+ *         - Paiements par facture: pastille « Payée le 5 fév. 2026 · Chèque #1234 » (ou
+ *           « Reçu x $ le … » si partielle) sous le statut, desktop + mobile → fenêtre
+ *           InvoicePaymentsModal (date, mode, N°, note, escompte, factures réglées par le
+ *           même paiement, suppression avec confirmation). Liste chargée avec
+ *           ?with_payments=1 (1 requête groupée)
  *   2.8.0 - Fermeture de l'éditeur avec message personnalisé (toast « Déduction appliquée … Varia »
  *           quand la fiche n'a produit aucune facture)
  *   2.7.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
@@ -52,6 +65,7 @@ import InvoiceEditor from './InvoiceEditor';
 import Toast from '../Toast';
 import StatementManager from './StatementManager';
 import AccountingReports from './AccountingReports';
+import InvoicePaymentsModal, { paymentSummary } from './InvoicePaymentsModal';
 import { ReferenceLink } from '../SplitView';
 
 export default function InvoiceManager() {
@@ -98,6 +112,9 @@ export default function InvoiceManager() {
 
   // État de compte: ouverture auto d'un client (depuis l'indicateur de facture)
   const [autoOpenClientId, setAutoOpenClientId] = useState(null);
+
+  // Fenêtre « Paiements » d'une facture (onglet Factures)
+  const [paymentsInvoice, setPaymentsInvoice] = useState(null);
 
   // Ouvrir l'état de compte d'un client (depuis le rond de statut d'une facture)
   const openClientStatement = (clientId) => {
@@ -188,6 +205,7 @@ export default function InvoiceManager() {
         // Charger les factures
         const params = new URLSearchParams();
         params.set('limit', '100');
+        params.set('with_payments', '1');
         if (invoiceFilter !== 'all') {
           params.set('status', invoiceFilter);
         }
@@ -444,6 +462,41 @@ export default function InvoiceManager() {
     );
   };
 
+  // Pastille « Payée le … · Chèque #… » (payée) / « Reçu x $ le … » (partielle):
+  // ouvre la fenêtre « Paiements » de la facture (détail complet + autres factures réglées
+  // par le même paiement). Rien pour une facture due ou en brouillon.
+  const renderPaymentChip = (invoice, className = '') => {
+    if (invoice.status !== 'paid' && invoice.status !== 'partial') return null;
+    const pays = invoice.payments || [];
+    const last = pays[0] || null;
+    const isPaid = invoice.status === 'paid';
+    let text;
+    if (last) {
+      const received = pays.reduce((s, p) => s + (Number(p.amount) || 0) + (Number(p.discount_applied) || 0), 0);
+      text = isPaid
+        ? `Payée le ${paymentSummary(last)}`
+        : `Reçu ${formatCurrency(received)} le ${paymentSummary(last)}`;
+      if (pays.length > 1) text += ` (+${pays.length - 1})`;
+    } else {
+      text = isPaid ? 'Payée — détail du paiement' : 'Partielle — détail';
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => setPaymentsInvoice(invoice)}
+        className={`inline-flex items-center gap-1 max-w-full px-2 py-0.5 rounded-md text-[11px] leading-tight font-medium transition-colors ${
+          isPaid
+            ? 'bg-green-50 text-green-800 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-300 dark:hover:bg-green-900/40'
+            : 'bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40'
+        } ${className}`}
+        title="Voir les paiements de cette facture"
+      >
+        <Wallet className="w-3 h-3 flex-shrink-0" />
+        <span className="truncate">{text}</span>
+      </button>
+    );
+  };
+
   // Helper: déterminer le type SplitView à partir du source_type ou du préfixe du numéro
   const getRefLinkProps = (sourceNumber, sourceType) => {
     if (sourceType === 'work_order' || (sourceNumber && sourceNumber.startsWith('BT-'))) {
@@ -600,14 +653,14 @@ export default function InvoiceManager() {
           ) : activeTab === 'reports' ? (
             /* ===== ONGLET "RAPPORTS COMPTA" ===== */
             <AccountingReports settings={settings} />
-          ) : loading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
-              <p className="mt-3 text-gray-600 dark:text-gray-400">Chargement...</p>
-            </div>
           ) : activeTab === 'to_invoice' ? (
             /* ===== ONGLET "À FACTURER" ===== */
-            toInvoiceItems.length === 0 ? (
+            loading ? (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
+                <p className="mt-3 text-gray-600 dark:text-gray-400">Chargement...</p>
+              </div>
+            ) : toInvoiceItems.length === 0 ? (
               <div className="p-8 text-center">
                 <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-3" />
                 <p className="text-gray-600 dark:text-gray-400 text-lg">Tout est facturé!</p>
@@ -970,7 +1023,14 @@ export default function InvoiceManager() {
                 </div>
               </div>
 
-              {invoices.length === 0 ? (
+              {/* Le spinner ne remplace QUE la liste: la barre de recherche ci-dessus reste
+                  montée, donc le champ garde le focus pendant le chargement (v2.9.0) */}
+              {loading ? (
+                <div className="p-8 text-center" aria-live="polite">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
+                  <p className="mt-3 text-gray-600 dark:text-gray-400">Chargement...</p>
+                </div>
+              ) : invoices.length === 0 ? (
                 <div className="p-8 text-center">
                   <Receipt className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                   <p className="text-gray-600 dark:text-gray-400">
@@ -1006,6 +1066,7 @@ export default function InvoiceManager() {
                           <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(invoice.invoice_date)}</span>
                           <span className="font-semibold text-sm text-gray-900 dark:text-gray-100">{formatCurrency(invoice.total)}</span>
                         </div>
+                        {renderPaymentChip(invoice, 'mt-1.5 min-h-[44px] w-full justify-start')}
                         <div className="flex gap-2 mt-2">
                           <button
                             onClick={() => handleViewInvoice(invoice)}
@@ -1098,7 +1159,10 @@ export default function InvoiceManager() {
                               {formatCurrency(invoice.total)}
                             </td>
                             <td className="px-6 py-3 text-center">
-                              {getStatusBadge(invoice.status)}
+                              <div className="flex flex-col items-center gap-1">
+                                {getStatusBadge(invoice.status)}
+                                {renderPaymentChip(invoice, 'min-h-[32px] max-w-[220px]')}
+                              </div>
                             </td>
                             <td className="px-6 py-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
@@ -1166,6 +1230,15 @@ export default function InvoiceManager() {
           )}
         </div>
       </div>
+
+      {/* Fenêtre « Paiements » d'une facture */}
+      <InvoicePaymentsModal
+        open={!!paymentsInvoice}
+        invoice={paymentsInvoice}
+        onClose={() => setPaymentsInvoice(null)}
+        onOpenStatement={openClientStatement}
+        onChanged={fetchData}
+      />
 
       {/* Modal InvoiceEditor */}
       {showEditor && (

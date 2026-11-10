@@ -2570,4 +2570,55 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-08 par Claude AI*
+### 2026-11-10 - Bug: recherche de l'onglet « Factures » — impossible de taper un N° complet ✅ CORRIGÉ (2026-11-10)
+- **Symptôme (Martin):** taper « 23 » pour trouver la facture 23042 → la page « se rafraîchit » et il faut
+  recommencer; ensuite seulement « 230 », puis « 2304 » — jamais le numéro entier
+- **Reproduit** en Playwright sur l'ancien code: après « 23 », le champ n'a plus le focus pendant le chargement,
+  les touches « 042 » sont perdues, la valeur reste « 23 »
+- **Cause:** dans `components/invoices/InvoiceManager.js`, le spinner « Chargement... » remplaçait TOUT le contenu
+  de l'onglet (barre de recherche comprise). La recherche étant côté serveur (debounce 400 ms → `fetch` →
+  `loading=true`), le champ était démonté/remonté à chaque frappe → focus perdu; au clic suivant, le
+  select-au-focus faisait repartir la saisie
+- **Correctif:** `InvoiceManager.js` v2.9.0 — les filtres restent montés, seul le tableau affiche le spinner.
+  Vérifié en Playwright: « 23 » + attente + « 042 » → valeur « 23042 », focus conservé pendant le chargement
+- **Audit des autres outils de recherche du code** (demandé): Inventaire (`InventoryManager`), État de compte
+  (`StatementManager`), Notes, liste BT/BL (`bons-travail/page.js`), BA (`PurchaseOrderManager`), AF
+  (`SupplierPurchaseManager`), Soumissions, Clients, Statistiques (bouton Rechercher), À Commander,
+  `MaterialSelector`, `ClientSelect`, `PanelSoumissionsList`, `WorkOrderList` → tous gardent leur champ monté
+  pendant le chargement (spinner limité à la liste) ou filtrent côté client sans rechargement → **aucun autre
+  cas à corriger**
+- **Règle retenue:** un spinner de chargement ne doit jamais englober le champ de recherche qui l'a déclenché
+- Aucune migration SQL requise
+
+### 2026-11-10 - Paiements visibles par facture (onglet Factures) ✅ COMPLETE (2026-11-10)
+- **Besoin (Martin):** voir les données de paiement rattachées à chaque facture payée: date, mode, N° de
+  chèque/virement, note, et la ou les factures payées dans ce paiement. Question: où le mettre dans le module?
+- **Constat:** l'état de compte est « open item » — une facture payée en disparaît, donc ses paiements n'étaient
+  plus consultables (seul le rapport de paiements compta les listait, sans lien par facture)
+- **Emplacement retenu:** onglet **Factures** (là où on cherche une facture par son numéro), pastille sous le
+  statut: « **Payée le 5 fév. 2026 · Chèque #1234** » (payée) ou « **Reçu 40,00 $ le … · Interac · #C1A2B3** »
+  (partielle), « (+n) » s'il y a plusieurs paiements; desktop (colonne Statut) + mobile (carte, 44 px). Un tap
+  ouvre la fenêtre **« Paiements »**
+- **Fenêtre « Paiements »** (`components/invoices/InvoicePaymentsModal.js`, nouveau, portail z-[80], Échap/fond/X):
+  en-tête N° facture + client + BT/BL; sommaire **Total facture / Crédité (encaissé + escompte) / Solde** + statut;
+  par paiement: date, montant, mode, N° de référence (« aucun N° » sinon), escompte, note (italique), et si la
+  saisie couvrait plusieurs factures: encadré « **Paiement global de 944,00 $ (+ escompte 6,00 $) réparti sur
+  3 factures : 23042 150 $ · 23040 500 $ · 23041 300 $** »; suppression d'un paiement (confirmation explicite,
+  avertit que les autres factures du même paiement ne sont pas touchées; statut recalculé via l'API existante);
+  bouton « État de compte du client »; message spécifique pour une facture marquée payée avant le module
+  (juin 2026): « aucun détail enregistré »
+- **Implementation:**
+  - `app/api/invoices/[id]/payments/route.js` (nouveau) — facture + paiements + « sœurs »: la saisie multi-factures
+    de l'état de compte écrit UNE ligne `invoice_payments` PAR facture (même client, date, mode, référence, créées
+    à quelques secondes d'intervalle) → regroupement par cette signature + `created_at` ± 2 min; référence
+    comparée sans espaces/casse; jamais un autre client; `legacy_paid`; `force-dynamic`
+  - `app/api/invoices/route.js` v1.6.0 — `?with_payments=1`: les paiements de toute la page en 1 requête groupée
+  - `components/invoices/InvoiceManager.js` v2.9.0 — pastille + fenêtre, `onChanged` recharge la liste
+- **Vérification:** tests API sur base simulée (regroupement 3 factures/chèque #1234, escompte, virement sans N°
+  non regroupé avec une saisie 10 min plus tard, autre client exclu, 404/400, facture « legacy ») + Playwright
+  (pastille, fenêtre, Échap, mobile 412 px sans débordement). `next build` OK (route ƒ Dynamic)
+- Aucune migration SQL requise; aucune nouvelle table (backup inchangé)
+
+---
+
+*Document genere le 2026-02-05, mis a jour le 2026-11-10 par Claude AI*
