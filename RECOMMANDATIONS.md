@@ -2637,6 +2637,30 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   défilement horizontal (0 px), hauteurs ≥ 44 px sous 640 px. Régression recherche (focus conservé) re-vérifiée
 - Aucune migration SQL requise
 
+### 2026-11-10 - Fenêtre « Paiements »: poubelle derrière une option de Paramètres (consultation par défaut) ✅ COMPLETE (2026-11-10)
+- **Décision Martin:** la fenêtre « Paiements » d'une facture (onglet Factures) est un écran de consultation.
+  La suppression d'un paiement y est « louche » par défaut: un paiement complet ne doit pas pouvoir être défait
+  d'un tap depuis la liste des factures. Précision: la poubelle existait déjà dans l'état de compte (depuis
+  juin 2026), mais seulement sur les factures encore ouvertes — une facture payée au complet n'y figure plus
+- **Correctif:** Paramètres → Facturation → case **« Permettre la suppression d'un paiement depuis la fenêtre
+  « Paiements » (onglet Factures) »**, **décochée par défaut**. Décochée: aucune poubelle, rappel « Consultation
+  seulement… » sous le sommaire. Cochée: poubelle rouge par paiement (confirmation explicite, ligne retirée,
+  statut recalculé → « Envoyée »/« Partielle », facture de retour à l'état de compte). Conseil affiché: cocher le
+  temps d'une correction puis décocher
+- **Implementation:**
+  - `supabase/migrations/20261110_add_allow_payment_delete_from_invoices.sql` (nouveau) — `settings.allow_payment_delete_from_invoices BOOLEAN NOT NULL DEFAULT false`
+  - `app/api/settings/route.js` v1.8.0 — champ autorisé + défaut false; si la colonne n'existe pas encore, les
+    autres paramètres sont sauvegardés quand même et la réponse porte un `warning` explicite (pas d'écran rouge
+    sur toute la page Paramètres)
+  - `app/(protected)/parametres/page.js` v2.9.0 — case + explication; affiche le `warning`
+  - `components/invoices/InvoicePaymentsModal.js` v1.2.0 — prop `allowDelete` (défaut false)
+  - `components/invoices/InvoiceManager.js` v2.9.2 — transmet `settings.allow_payment_delete_from_invoices`
+- **Vérification:** Playwright — option absente/false → aucune poubelle + rappel visible; option true → poubelle
+  visible. `next build` OK. Table `settings` déjà dans le backup (aucune nouvelle table)
+- **Reste:** exécuter la migration SQL `20261110_add_allow_payment_delete_from_invoices.sql` dans Supabase
+  Dashboard (sans elle: la poubelle reste masquée — comportement par défaut voulu — et la case ne se mémorise pas,
+  avec avertissement à la sauvegarde)
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-10 par Claude AI*

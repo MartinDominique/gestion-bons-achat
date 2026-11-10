@@ -9,11 +9,15 @@
  *              - « Paiement global réparti sur n factures »: tableau des factures réglées
  *                par le même paiement (saisie multi-factures de l'état de compte): N° de
  *                facture · date de la facture · montant payé · solde restant, total en pied
- *              - Suppression d'un paiement (confirmation) → statut de la facture recalculé
+ *              - Suppression d'un paiement (confirmation) → statut de la facture recalculé —
+ *                UNIQUEMENT si allowDelete (option Paramètres), sinon consultation seulement
  *              - Lien vers l'état de compte du client; portail z-[80]; touch targets 44 px
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-11-10
  * @changelog
+ *   1.2.0 - Écran de consultation par défaut: la poubelle « supprimer ce paiement » n'apparaît que
+ *           si la prop allowDelete est vraie (Paramètres → Facturation → case dédiée, décochée
+ *           par défaut). Sinon, rappel « consultation seulement » en pied (décision Martin)
  *   1.1.0 - Factures réglées par le même paiement: tableau (N° · Date · Payé · Solde) au lieu de
  *           bulles, facture courante surlignée, total payé en pied (demande Martin 2026-11-10)
  *   1.0.0 - Version initiale (détail des paiements par facture)
@@ -56,8 +60,9 @@ export function paymentSummary(p) {
  *  - invoice: { id, invoice_number, client_id, client_name } (ligne de la liste)
  *  - onOpenStatement(clientId): ouvre l'état de compte du client (optionnel)
  *  - onChanged(): appelé après la suppression d'un paiement (recharger la liste)
+ *  - allowDelete: afficher la poubelle (défaut false = consultation seulement)
  */
-export default function InvoicePaymentsModal({ open, invoice, onClose, onOpenStatement, onChanged }) {
+export default function InvoicePaymentsModal({ open, invoice, onClose, onOpenStatement, onChanged, allowDelete = false }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
@@ -215,6 +220,12 @@ export default function InvoicePaymentsModal({ open, invoice, onClose, onOpenSta
 
               {/* Liste des paiements */}
               <div className="p-4 space-y-3">
+                {!allowDelete && payments.length > 0 && (
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 -mt-1">
+                    Consultation seulement. Pour corriger un paiement: état de compte du client
+                    (facture encore ouverte), ou activer l'option dans Paramètres → Facturation.
+                  </p>
+                )}
                 {payments.length === 0 ? (
                   <div className="text-center py-6">
                     <Receipt className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
@@ -330,15 +341,17 @@ export default function InvoicePaymentsModal({ open, invoice, onClose, onOpenSta
                             })()}
                           </div>
 
-                          <button
-                            onClick={() => deletePayment(p)}
-                            disabled={busyId === p.id}
-                            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 flex-shrink-0"
-                            title="Supprimer ce paiement"
-                            aria-label="Supprimer ce paiement"
-                          >
-                            {busyId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                          </button>
+                          {allowDelete && (
+                            <button
+                              onClick={() => deletePayment(p)}
+                              disabled={busyId === p.id}
+                              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 flex-shrink-0"
+                              title="Supprimer ce paiement"
+                              aria-label="Supprimer ce paiement"
+                            >
+                              {busyId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

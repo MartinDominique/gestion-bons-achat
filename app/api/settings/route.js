@@ -4,9 +4,13 @@
  *              - GET: Récupère les paramètres (taux horaires, taxes, facturation)
  *              - PUT: Met à jour les paramètres
  *              - Table singleton (id=1 toujours)
- * @version 1.7.0
- * @date 2026-11-04
+ * @version 1.8.0
+ * @date 2026-11-10
  * @changelog
+ *   1.8.0 - Ajout allow_payment_delete_from_invoices (booléen, défaut false): affiche la poubelle
+ *           « supprimer ce paiement » dans la fenêtre « Paiements » de l'onglet Factures. Si la
+ *           colonne n'existe pas encore (migration 20261110 non passée), la sauvegarde des autres
+ *           paramètres réussit quand même + warning
  *   1.7.0 - Défauts default_payment_terms / late_interest_annual_rate tirés de
  *           lib/constants/paymentTerms (source unique); default_payment_terms validé
  *           contre la liste canonique
@@ -62,6 +66,7 @@ export async function GET() {
             late_interest_annual_rate: DEFAULT_LATE_INTEREST_ANNUAL_RATE,
             statement_footer_note: '',
             accountant_email: '',
+            allow_payment_delete_from_invoices: false,
             usd_fx_fee_percent: 3.5,
             usd_cad_rate: null,
             usd_cad_rate_date: null,
@@ -108,6 +113,7 @@ export async function PUT(request) {
       'late_interest_annual_rate',
       'statement_footer_note',
       'accountant_email',
+      'allow_payment_delete_from_invoices',
       'usd_fx_fee_percent',
     ];
 
@@ -116,6 +122,10 @@ export async function PUT(request) {
       if (field in body) {
         updates[field] = body[field];
       }
+    }
+    if (updates.allow_payment_delete_from_invoices !== undefined) {
+      updates.allow_payment_delete_from_invoices = updates.allow_payment_delete_from_invoices === true
+        || updates.allow_payment_delete_from_invoices === 'true';
     }
 
     // Validations de base
@@ -181,16 +191,25 @@ export async function PUT(request) {
       );
     }
 
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from('settings')
       .update(updates)
       .eq('id', 1)
       .select()
       .single();
 
+    // Colonne de la migration 20261110 absente: sauvegarder le reste quand même + avertir
+    let warning = null;
+    if (error && 'allow_payment_delete_from_invoices' in updates
+        && (error.code === '42703' || /allow_payment_delete_from_invoices/.test(error.message || '') || /PGRST204/.test(error.code || ''))) {
+      const { allow_payment_delete_from_invoices: _omit, ...rest } = updates;
+      ({ data, error } = await supabaseAdmin.from('settings').update(rest).eq('id', 1).select().single());
+      warning = 'L\'option « poubelle dans la fenêtre Paiements » n\'a pas été enregistrée: la migration SQL 20261110_add_allow_payment_delete_from_invoices.sql n\'a pas encore été exécutée dans Supabase. Les autres paramètres sont sauvegardés.';
+    }
+
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data, ...(warning ? { warning } : {}) });
   } catch (error) {
     console.error('PUT /api/settings error:', error);
     return NextResponse.json(

@@ -1128,8 +1128,13 @@ CRON_SECRET                   # Auth pour cron jobs
       « Paiements » (`components/invoices/InvoicePaymentsModal.js`, nouveau): total / crédité / solde, puis par
       paiement: date, montant, mode, N° (« aucun N° » sinon), escompte, note, et « **Paiement global de 944 $
       réparti sur 3 factures** » + **tableau** N° facture · Date · Payé · Solde (facture courante surlignée,
-      total en pied; bulles remplacées à la demande de Martin); suppression d'un paiement (confirmation, statut
-      recalculé); bouton « État de compte du client »
+      total en pied; bulles remplacées à la demande de Martin); bouton « État de compte du client ».
+      **Consultation seulement par défaut** (décision Martin 2026-11-10): la poubelle « supprimer ce paiement »
+      n'apparaît que si **Paramètres → Facturation → « Permettre la suppression d'un paiement depuis la fenêtre
+      Paiements »** est cochée (`settings.allow_payment_delete_from_invoices`, migration
+      `20261110_add_allow_payment_delete_from_invoices.sql`, défaut false; API settings v1.8.0 tolère la colonne
+      absente avec `warning`). Suppression = confirmation, ligne retirée, statut recalculé, facture de retour à
+      l'état de compte. Note: la poubelle de l'état de compte (juin 2026) ne couvre que les factures ouvertes
     - `app/api/invoices/[id]/payments/route.js` (nouveau) — regroupement des factures d'une même saisie
       multi-factures par signature (même client, date, mode, référence) + `created_at` ± 2 min (la saisie de
       l'état de compte écrit une ligne `invoice_payments` par facture); `legacy_paid` pour les factures marquées

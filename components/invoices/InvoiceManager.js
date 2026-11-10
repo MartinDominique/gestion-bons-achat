@@ -9,9 +9,10 @@
  *              - Onglet "Rapports compta": ventes + paiements (PDF + envoi au comptable)
  *              - Onglet "Factures": pastille « Payée le … · Chèque #… » → fenêtre « Paiements »
  *                (date, mode, N° chèque/virement, note, factures réglées par le même paiement)
- * @version 2.9.1
+ * @version 2.9.2
  * @date 2026-11-10
  * @changelog
+ *   2.9.2 - Fenêtre « Paiements »: poubelle visible seulement si settings.allow_payment_delete_from_invoices
  *   2.9.1 - Cellulaire (< 640 px): la rangée des 4 onglets passe à la ligne (flex-wrap, 44 px) et
  *           les filtres « Du / au » prennent toute la largeur (champs date en flex-1, min-w-0,
  *           bouton Réinitialiser pleine largeur, champs recherche/date 44 px) — avant, l'onglet
@@ -1244,6 +1245,7 @@ export default function InvoiceManager() {
         onClose={() => setPaymentsInvoice(null)}
         onOpenStatement={openClientStatement}
         onChanged={fetchData}
+        allowDelete={!!settings?.allow_payment_delete_from_invoices}
       />
 
       {/* Modal InvoiceEditor */}
