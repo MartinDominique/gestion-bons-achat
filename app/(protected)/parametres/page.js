@@ -5,9 +5,12 @@
  *              - Section Taux & Tarifs horaires (taux régulier, 1.5x, 2x, augmentation)
  *              - Section Facturation (numéros taxes, taux TPS/TVQ, conditions, N° facture)
  *              - Section Sauvegarde & Restauration (procédure + lien vers /admin/restore)
- * @version 2.8.0
- * @date 2026-11-04
+ * @version 2.9.0
+ * @date 2026-11-10
  * @changelog
+ *   2.9.0 - Section Facturation: case « Permettre la suppression d'un paiement depuis la fenêtre
+ *           Paiements (onglet Factures) » (allow_payment_delete_from_invoices, décochée par défaut);
+ *           avertissement affiché si la migration SQL n'est pas passée (warning serveur)
  *   2.8.0 - Sélecteur « Conditions de paiement par défaut » alimenté par la liste canonique
  *           lib/constants/paymentTerms (même source que la fiche client, l'éditeur de facture
  *           et le calcul de l'échéance)
@@ -109,7 +112,12 @@ export default function ParametresPage() {
       if (json.success) {
         setSettings(json.data);
         setDirty(false);
-        setSuccessMsg('Paramètres sauvegardés');
+        if (json.warning) {
+          setError(json.warning);
+          setSuccessMsg('Paramètres sauvegardés (sauf l\'option signalée)');
+        } else {
+          setSuccessMsg('Paramètres sauvegardés');
+        }
         setTimeout(() => setSuccessMsg(''), 3000);
       } else {
         setError(json.error || 'Erreur lors de la sauvegarde');
@@ -701,6 +709,30 @@ export default function ParametresPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Affiché en gras au bas de la facture PDF.
               </p>
+            </div>
+
+            {/* Poubelle dans la fenêtre « Paiements » (onglet Factures) */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <label className="flex items-start gap-3 cursor-pointer max-w-2xl">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-emerald-600 focus:ring-emerald-500"
+                  checked={!!settings?.allow_payment_delete_from_invoices}
+                  onChange={(e) => updateField('allow_payment_delete_from_invoices', e.target.checked)}
+                />
+                <span>
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Permettre la suppression d&apos;un paiement depuis la fenêtre « Paiements » (onglet Factures)
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Décochée (défaut): la fenêtre « Paiements » d&apos;une facture est en <strong>consultation
+                    seulement</strong>, aucune poubelle. Cochée: une poubelle rouge apparaît sur chaque paiement;
+                    la suppression (après confirmation) retire la ligne de paiement et la facture redevient due
+                    (« Envoyée » ou « Partielle »), donc réapparaît à l&apos;état de compte. Irréversible: le paiement
+                    doit être ressaisi. Conseil: cocher le temps d&apos;une correction, puis décocher.
+                  </span>
+                </span>
+              </label>
             </div>
 
             {/* Courriel du comptable (rapports comptables) */}
