@@ -3,9 +3,12 @@
  * @description API CRUD pour les Factures (Phase B — Facturation MVP)
  *              - POST: Créer une nouvelle facture à partir d'un BT ou BL
  *              - GET: Lister les factures avec filtres, tri et pagination
- * @version 1.5.0
- * @date 2026-11-04
+ * @version 1.6.0
+ * @date 2026-11-10
  * @changelog
+ *   1.6.0 - GET: paramètre with_payments=1 → chaque facture porte son tableau `payments`
+ *           (invoice_payments triés du plus récent au plus ancien, 1 seule requête groupée)
+ *           pour afficher « Payée le … · Chèque #… » dans l'onglet Factures
  *   1.5.0 - Échéance calculée par computeDueDate() (lib/constants/paymentTerms): même
  *           définition « Net 30 jours » = date de facture + 30 jours que le libellé affiché
  *           sur les documents; condition résolue via resolvePaymentTerms() (défaut partagé)
@@ -275,6 +278,7 @@ export async function GET(request) {
     const date_from = searchParams.get('date_from'); // Format: YYYY-MM-DD
     const date_to = searchParams.get('date_to');     // Format: YYYY-MM-DD
     const month = searchParams.get('month'); // Format: YYYY-MM
+    const withPayments = ['1', 'true'].includes(searchParams.get('with_payments') || '');
 
     let query = supabaseAdmin
       .from('invoices')
@@ -355,9 +359,38 @@ export async function GET(request) {
       );
     }
 
+    let rows = data || [];
+
+    // Paiements rattachés (onglet Factures): une requête groupée pour toute la page
+    if (withPayments && rows.length > 0) {
+      const ids = rows.map(r => r.id);
+      const { data: pays, error: payErr } = await supabaseAdmin
+        .from('invoice_payments')
+        .select('id, invoice_id, payment_date, amount, discount_applied, method, reference, notes, created_at')
+        .in('invoice_id', ids)
+        .order('payment_date', { ascending: false })
+        .order('id', { ascending: false });
+      if (payErr) {
+        console.error('Erreur lecture paiements (with_payments):', payErr);
+        return NextResponse.json(
+          { success: false, error: 'Erreur récupération des paiements', details: payErr.message },
+          { status: 500 }
+        );
+      }
+      const byInvoice = {};
+      for (const p of pays || []) {
+        (byInvoice[p.invoice_id] ||= []).push({
+          ...p,
+          amount: Number(p.amount) || 0,
+          discount_applied: Number(p.discount_applied) || 0,
+        });
+      }
+      rows = rows.map(r => ({ ...r, payments: byInvoice[r.id] || [] }));
+    }
+
     return NextResponse.json({
       success: true,
-      data: data || [],
+      data: rows,
       pagination: {
         page,
         limit,

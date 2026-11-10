@@ -450,10 +450,11 @@ const total = subtotal + tps + tvq;
 /api/statistics                        → Rapports & Statistiques de ventes (GET avec filtres) — v2: la facture fait foi, sinon estimation complète; calcul dans lib/services/statistics-data.js
 /api/statistics/financial              → Statistiques financières (GET: par mois, par client, en attente)
 /api/settings                          → Paramètres globaux (GET + PUT, singleton id=1)
-/api/invoices                          → CRUD Factures (GET liste + POST création)
+/api/invoices                          → CRUD Factures (GET liste + POST création; GET ?with_payments=1 joint les paiements de chaque facture)
 /api/invoices/[id]                     → GET/PUT/DELETE facture individuelle
 /api/invoices/[id]/send-email          → Envoi facture PDF par email au client
 /api/invoices/[id]/pdf-url              → URL signée fraîche du PDF de la facture (Storage) — « voir la facture » depuis Statistiques
+/api/invoices/[id]/payments             → Paiements d'une facture (date, mode, N° chèque/virement, note, escompte) + autres factures réglées par le même paiement — fenêtre « Paiements » de l'onglet Factures
 /api/invoices/relink                   → Réparation liens BT/BL ↔ facture manquants (GET aperçu / POST appliquer; auto au chargement « À facturer »)
 /api/invoices/[id]/sync-inventory      → Ajuste l'inventaire selon les matériaux facturés vs BT/BL (POST; { revert:true } = retour à l'état du BT/BL)
 /api/invoices/deduction                → Déduction « Varia » (POST): ferme un BT/BL depuis la fiche de facturation SANS créer de facture (inventaire ajusté + invoice_id = -2)
@@ -521,6 +522,7 @@ components/invoices/InvoiceManager.js         → Module Facturation (2 onglets:
 components/invoices/InvoiceEditor.js          → Éditeur facture (lignes éditables + calculs auto TPS/TVQ + badges BA/Soumission cliquables)
 components/invoices/InvoiceReferencePanel.js  → Panneau lecture seule BA/Soumission liés (consultation prix de vente client)
 components/invoices/InvoiceProductSearch.js   → Recherche d'article (tolérante) pour ajouter un matériau à la facture / au détail du forfait
+components/invoices/InvoicePaymentsModal.js   → Fenêtre « Paiements » d'une facture (onglet Factures): date, mode, N° chèque/virement, note, factures réglées par le même paiement, suppression
 components/invoices/AccountingReports.js      → Onglet Rapports compta (ventes + paiements, PDF + envoi comptable)
 components/notes/NotesManager.js              → Tableau de bord Notes (page d'ouverture, recherche, filtre, CRUD)
 components/notes/NoteCard.js                  → Carte note (couleur urgence, checkbox, badge projet cliquable)
@@ -1057,6 +1059,9 @@ CRON_SECRET                   # Auth pour cron jobs
     - Tableaux larges (BT/BL, Factures, État de compte, Statistiques, AF, BA): déjà dans des conteneurs `overflow-x-auto` → défilement **interne** au tableau, jamais de la page; inchangés
     - Non modifié: contenu des modules, formulaires BT/BL (aucun débordement mesuré)
     - **Amélioration (2026-10-02):** largeur étendue sur desktop grand écran (≥ 1536 px, breakpoint Tailwind `2xl`) — conteneur principal `ClientSplitViewWrapper.js` v2.1.0 de 1152 à 1800 px + `2xl:max-w-none` sur les conteneurs internes (Soumissions, Inventaire, AF, BA, Statistiques, À Commander, Achat, BT/BL, Facturation). Fin du défilement horizontal du tableau « Produits sélectionnés » de la Soumission (colonne As). Tablette/cellulaire (< 1536 px): inchangés
+    - **Correctif (2026-11-10) — Facturation sur cellulaire:** les 4 onglets et la ligne « Du / au » (2 champs date)
+      dépassaient la carte à 390-412 px (coupés, sans défilement). `InvoiceManager.js` v2.9.1: onglets `flex-wrap`,
+      dates pleine largeur (`flex-1 min-w-0`), 44 px; ≥ 640 px inchangé. Mesuré à 6 largeurs × 2 onglets
 
 36. ~~**Conditions de paiement + intérêts unifiés (Soumission, Facture, État de compte)**~~ - ✅ COMPLÉTÉ (2026-11-04)
     - `lib/constants/paymentTerms.js` (nouveau) — **source unique**: liste `PAYMENT_TERMS` (libellé + jours nets),
@@ -1114,6 +1119,22 @@ CRON_SECRET                   # Auth pour cron jobs
     - Décisions (Martin, 2026-11-07): pas de « Retirer la mention » (si le client change d'idée → facture
       globale sans items); aucune ligne dans `invoices`. Aucune migration SQL requise
 
+39. ~~**Paiements visibles par facture (onglet Factures)**~~ - ✅ COMPLÉTÉ (2026-11-10)
+    - Besoin (Martin): voir, pour chaque facture **payée**, la date du paiement, le mode, le N° de chèque/virement,
+      la note et la ou les factures réglées par ce paiement. L'état de compte est « open item »: une facture
+      payée en disparaît, donc ses paiements n'étaient plus consultables nulle part (sauf Rapports compta)
+    - Emplacement retenu: onglet **Factures** → pastille sous le statut « **Payée le 5 fév. 2026 · Chèque #1234** »
+      (ou « Reçu x $ le … » si partielle, « (+n) » s'il y a plusieurs paiements), desktop + mobile → fenêtre
+      « Paiements » (`components/invoices/InvoicePaymentsModal.js`, nouveau): total / crédité / solde, puis par
+      paiement: date, montant, mode, N° (« aucun N° » sinon), escompte, note, et encadré « **Paiement global de
+      944 $ réparti sur 3 factures : 23042 · 23040 · 23041** »; suppression d'un paiement (confirmation, statut
+      recalculé); bouton « État de compte du client »
+    - `app/api/invoices/[id]/payments/route.js` (nouveau) — regroupement des factures d'une même saisie
+      multi-factures par signature (même client, date, mode, référence) + `created_at` ± 2 min (la saisie de
+      l'état de compte écrit une ligne `invoice_payments` par facture); `legacy_paid` pour les factures marquées
+      payées avant juin 2026 (aucun détail). `app/api/invoices/route.js` v1.6.0 — `?with_payments=1` (1 requête
+      groupée). `InvoiceManager.js` v2.9.0. Vérifié: tests API (base simulée) + Playwright. Aucune migration
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
@@ -1125,6 +1146,10 @@ CRON_SECRET                   # Auth pour cron jobs
      Reste: vérification visuelle sur tablette
 
 ### Bugs connus (corrigés)
+- ~~Facturation → Factures: impossible de taper un N° de facture complet dans la recherche (« 23 » → la page se rafraîchit → recommencer)~~ → Corrigé (2026-11-10)
+  - Symptôme: taper « 23 », la liste se recharge et le champ perd le focus; on retape, on obtient « 230 », puis « 2304 », jamais « 23042 ». Reproduit en Playwright sur l'ancien code (valeur restée à « 23 », focus perdu).
+  - Cause: `InvoiceManager.js` affichait le spinner « Chargement... » à la place de **tout** le contenu de l'onglet, barre de recherche comprise. La recherche étant serveur (debounce 400 ms → `fetch` → `loading=true`), le champ était **démonté puis remonté** à chaque frappe → focus perdu; au clic suivant, le select-au-focus faisait repartir la saisie.
+  - Correctif: `InvoiceManager.js` v2.9.0 — les filtres restent montés, seul le tableau affiche le spinner. **Audit des autres recherches** (Inventaire, État de compte, Notes, BT/BL, BA, AF, Soumissions, Clients, Statistiques, À Commander, MaterialSelector, ClientSelect): toutes gardent leur champ monté pendant le chargement ou filtrent côté client → aucun autre cas. Règle: un spinner de chargement ne doit **jamais** englober le champ de recherche qui l'a déclenché. Aucune migration requise.
 - ~~Inventaire: « Réservé −0 » / « En commande +0 » figés alors que le BT brouillon contient bien l'item (JBX884, BT-2026-207)~~ → Corrigé (2026-11-03)
   - Symptôme: BT sauvegardé en brouillon, non signé, ligne présente dans `work_order_materials` (vérifié en SQL), mais la fiche Inventaire affiche « Réservé −0 ».
   - Cause: `app/api/inventory/reservations/route.js` était une route `GET()` sans paramètre et sans `export const dynamic = 'force-dynamic'` → **cache statique Next.js 14**: la réponse était calculée une fois au déploiement Vercel et servie telle quelle jusqu'au déploiement suivant. Les chiffres étaient justes juste après chaque déploiement, puis dérivaient en silence.
