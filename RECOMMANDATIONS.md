@@ -2619,6 +2619,19 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   (pastille, fenêtre, Échap, mobile 412 px sans débordement). `next build` OK (route ƒ Dynamic)
 - Aucune migration SQL requise; aucune nouvelle table (backup inchangé)
 
+### 2026-11-10 - Facturation: débordement des onglets et des filtres « Du / au » sur cellulaire ✅ CORRIGÉ (2026-11-10)
+- **Symptôme (capture Playwright 412 px, lors du travail sur la recherche):** la rangée des 4 onglets (« Rapports
+  compta » hors de la carte) et la ligne « Du [date] au [date] » (deux `<input type="date">` à largeur intrinsèque
+  ~144 px) dépassaient la carte blanche et étaient tronquées à 390-412 px, dans les onglets « À facturer » ET
+  « Factures ». La page ne défilait pas (filet `html { overflow-x: hidden }`), le contenu était simplement coupé
+- **Correctif:** `components/invoices/InvoiceManager.js` v2.9.1 — onglets en `flex-wrap` (2 lignes sur cellulaire)
+  et 44 px; rangée de dates en pleine largeur sous 640 px (`w-full`, champs `flex-1 min-w-0`, 44 px), bouton
+  « Réinitialiser » pleine largeur; champs de recherche 44 px. Au-delà de 640 px (tablette/desktop): aucun changement
+- **Vérification (Playwright, mesures DOM):** 390 / 412 / 768 / 820 / 1024 / 1366 px × 2 onglets, filtre actif
+  (bouton Réinitialiser visible): tous les onglets, champs de date et bouton entièrement dans la carte, page sans
+  défilement horizontal (0 px), hauteurs ≥ 44 px sous 640 px. Régression recherche (focus conservé) re-vérifiée
+- Aucune migration SQL requise
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-10 par Claude AI*

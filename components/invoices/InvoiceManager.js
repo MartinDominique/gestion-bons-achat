@@ -9,9 +9,14 @@
  *              - Onglet "Rapports compta": ventes + paiements (PDF + envoi au comptable)
  *              - Onglet "Factures": pastille « Payée le … · Chèque #… » → fenêtre « Paiements »
  *                (date, mode, N° chèque/virement, note, factures réglées par le même paiement)
- * @version 2.9.0
+ * @version 2.9.1
  * @date 2026-11-10
  * @changelog
+ *   2.9.1 - Cellulaire (< 640 px): la rangée des 4 onglets passe à la ligne (flex-wrap, 44 px) et
+ *           les filtres « Du / au » prennent toute la largeur (champs date en flex-1, min-w-0,
+ *           bouton Réinitialiser pleine largeur, champs recherche/date 44 px) — avant, l'onglet
+ *           « Rapports compta » et les champs de date dépassaient la carte et étaient coupés à
+ *           390-412 px (onglets Factures + À facturer). Desktop/tablette (≥ 640 px) inchangés
  *   2.9.0 - FIX recherche onglet « Factures »: le champ perdait le focus à chaque frappe.
  *           Cause: pendant le chargement (déclenché 400 ms après la frappe), le spinner
  *           remplaçait TOUT le contenu de l'onglet, champ de recherche compris → champ
@@ -584,11 +589,12 @@ export default function InvoiceManager() {
         <Toast message={success} type="success" onClose={clearSuccess} />
         <Toast message={error} type="error" onClose={clearError} />
 
-        {/* Onglets */}
-        <div className="flex gap-2 mb-4">
+        {/* Onglets — flex-wrap: sur cellulaire les 4 onglets passent sur 2 lignes au lieu de
+            déborder de la carte (v2.9.1); 44 px tactile */}
+        <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={() => setActiveTab('to_invoice')}
-            className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+            className={`min-h-[44px] px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
               activeTab === 'to_invoice'
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -608,7 +614,7 @@ export default function InvoiceManager() {
           </button>
           <button
             onClick={() => setActiveTab('invoices')}
-            className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+            className={`min-h-[44px] px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
               activeTab === 'invoices'
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -619,7 +625,7 @@ export default function InvoiceManager() {
           </button>
           <button
             onClick={() => setActiveTab('statements')}
-            className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+            className={`min-h-[44px] px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
               activeTab === 'statements'
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -630,7 +636,7 @@ export default function InvoiceManager() {
           </button>
           <button
             onClick={() => setActiveTab('reports')}
-            className={`px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
+            className={`min-h-[44px] px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center gap-2 ${
               activeTab === 'reports'
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
                 : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -685,7 +691,7 @@ export default function InvoiceManager() {
                         autoCorrect="off"
                         autoCapitalize="off"
                         spellCheck={false}
-                        className="w-full pl-9 pr-9 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        className="w-full min-h-[44px] sm:min-h-0 pl-9 pr-9 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       />
                       {tiSearch && (
                         <button
@@ -698,27 +704,27 @@ export default function InvoiceManager() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Du</span>
                       <input
                         type="date"
                         value={tiDateFrom}
                         onChange={(e) => setTiDateFrom(e.target.value)}
-                        className="px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        className="flex-1 sm:flex-none min-w-0 min-h-[44px] sm:min-h-0 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       />
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">au</span>
                       <input
                         type="date"
                         value={tiDateTo}
                         onChange={(e) => setTiDateTo(e.target.value)}
-                        className="px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        className="flex-1 sm:flex-none min-w-0 min-h-[44px] sm:min-h-0 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       />
                     </div>
 
                     {hasActiveToInvoiceFilters && (
                       <button
                         onClick={resetToInvoiceFilters}
-                        className="px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+                        className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
                         title="Réinitialiser les filtres"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -932,7 +938,7 @@ export default function InvoiceManager() {
                       autoCorrect="off"
                       autoCapitalize="off"
                       spellCheck={false}
-                      className="w-full pl-9 pr-9 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full min-h-[44px] sm:min-h-0 pl-9 pr-9 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     />
                     {searchInput && (
                       <button
@@ -946,27 +952,27 @@ export default function InvoiceManager() {
                   </div>
 
                   {/* Plage de dates */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto min-w-0">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Du</span>
                     <input
                       type="date"
                       value={dateFrom}
                       onChange={(e) => setDateFrom(e.target.value)}
-                      className="px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="flex-1 sm:flex-none min-w-0 min-h-[44px] sm:min-h-0 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">au</span>
                     <input
                       type="date"
                       value={dateTo}
                       onChange={(e) => setDateTo(e.target.value)}
-                      className="px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="flex-1 sm:flex-none min-w-0 min-h-[44px] sm:min-h-0 px-2 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     />
                   </div>
 
                   {hasActiveSearchFilters && (
                     <button
                       onClick={resetInvoiceFilters}
-                      className="px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+                      className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0 px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
                       title="Réinitialiser les filtres"
                     >
                       <X className="w-3.5 h-3.5" />

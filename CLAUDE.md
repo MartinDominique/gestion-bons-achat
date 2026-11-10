@@ -1059,6 +1059,9 @@ CRON_SECRET                   # Auth pour cron jobs
     - Tableaux larges (BT/BL, Factures, État de compte, Statistiques, AF, BA): déjà dans des conteneurs `overflow-x-auto` → défilement **interne** au tableau, jamais de la page; inchangés
     - Non modifié: contenu des modules, formulaires BT/BL (aucun débordement mesuré)
     - **Amélioration (2026-10-02):** largeur étendue sur desktop grand écran (≥ 1536 px, breakpoint Tailwind `2xl`) — conteneur principal `ClientSplitViewWrapper.js` v2.1.0 de 1152 à 1800 px + `2xl:max-w-none` sur les conteneurs internes (Soumissions, Inventaire, AF, BA, Statistiques, À Commander, Achat, BT/BL, Facturation). Fin du défilement horizontal du tableau « Produits sélectionnés » de la Soumission (colonne As). Tablette/cellulaire (< 1536 px): inchangés
+    - **Correctif (2026-11-10) — Facturation sur cellulaire:** les 4 onglets et la ligne « Du / au » (2 champs date)
+      dépassaient la carte à 390-412 px (coupés, sans défilement). `InvoiceManager.js` v2.9.1: onglets `flex-wrap`,
+      dates pleine largeur (`flex-1 min-w-0`), 44 px; ≥ 640 px inchangé. Mesuré à 6 largeurs × 2 onglets
 
 36. ~~**Conditions de paiement + intérêts unifiés (Soumission, Facture, État de compte)**~~ - ✅ COMPLÉTÉ (2026-11-04)
     - `lib/constants/paymentTerms.js` (nouveau) — **source unique**: liste `PAYMENT_TERMS` (libellé + jours nets),
