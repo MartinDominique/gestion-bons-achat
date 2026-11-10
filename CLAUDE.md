@@ -1126,8 +1126,9 @@ CRON_SECRET                   # Auth pour cron jobs
     - Emplacement retenu: onglet **Factures** → pastille sous le statut « **Payée le 5 fév. 2026 · Chèque #1234** »
       (ou « Reçu x $ le … » si partielle, « (+n) » s'il y a plusieurs paiements), desktop + mobile → fenêtre
       « Paiements » (`components/invoices/InvoicePaymentsModal.js`, nouveau): total / crédité / solde, puis par
-      paiement: date, montant, mode, N° (« aucun N° » sinon), escompte, note, et encadré « **Paiement global de
-      944 $ réparti sur 3 factures : 23042 · 23040 · 23041** »; suppression d'un paiement (confirmation, statut
+      paiement: date, montant, mode, N° (« aucun N° » sinon), escompte, note, et « **Paiement global de 944 $
+      réparti sur 3 factures** » + **tableau** N° facture · Date · Payé · Solde (facture courante surlignée,
+      total en pied; bulles remplacées à la demande de Martin); suppression d'un paiement (confirmation, statut
       recalculé); bouton « État de compte du client »
     - `app/api/invoices/[id]/payments/route.js` (nouveau) — regroupement des factures d'une même saisie
       multi-factures par signature (même client, date, mode, référence) + `created_at` ± 2 min (la saisie de

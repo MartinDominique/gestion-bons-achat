@@ -9,9 +9,11 @@
  *                référence, créées à quelques secondes d'intervalle). Les « sœurs » d'un
  *                paiement sont donc retrouvées par cette signature + created_at ± 2 min.
  *                Aucune colonne ni migration requise.
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-11-10
  * @changelog
+ *   1.1.0 - Factures sœurs: ajout invoice_date, amount_paid, balance (solde restant) et status pour
+ *           l'affichage en tableau (N° · date · payé · solde) dans la fenêtre « Paiements »
  *   1.0.0 - Version initiale (détail des paiements par facture)
  */
 
@@ -82,7 +84,7 @@ export async function GET(request, { params }) {
     if (siblingInvoiceIds.length > 0) {
       const { data: sibInv, error: sibErr } = await supabaseAdmin
         .from('invoices')
-        .select('id, invoice_number, total, status')
+        .select('id, invoice_number, invoice_date, total, amount_paid, status')
         .in('id', siblingInvoiceIds);
       if (sibErr) throw sibErr;
       for (const inv of sibInv || []) invoiceById[inv.id] = inv;
@@ -101,7 +103,13 @@ export async function GET(request, { params }) {
           payment_id: c.id,
           invoice_id: c.invoice_id,
           invoice_number: invoiceById[c.invoice_id]?.invoice_number || `#${c.invoice_id}`,
-          invoice_total: invoiceById[c.invoice_id]?.total ?? null,
+          invoice_date: invoiceById[c.invoice_id]?.invoice_date || null,
+          invoice_total: invoiceById[c.invoice_id]?.total != null ? Number(invoiceById[c.invoice_id].total) : null,
+          status: invoiceById[c.invoice_id]?.status || null,
+          // Solde restant de la facture sœur (total − crédité), 0 si réglée
+          balance: invoiceById[c.invoice_id]
+            ? Math.round(((Number(invoiceById[c.invoice_id].total) || 0) - (Number(invoiceById[c.invoice_id].amount_paid) || 0)) * 100) / 100
+            : null,
           amount: Number(c.amount) || 0,
           discount_applied: Number(c.discount_applied) || 0,
         }))
