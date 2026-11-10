@@ -6,14 +6,16 @@
  *              - En-tête: N° facture, client, total / crédité / solde, statut
  *              - Par paiement: date, montant, mode (Chèque, Virement, Interac…), N° de
  *                chèque/virement (référence), escompte, note
- *              - « Ce paiement règle aussi »: les autres factures réglées par le même
- *                paiement (saisie multi-factures de l'état de compte), avec le total du
- *                paiement global
+ *              - « Paiement global réparti sur n factures »: tableau des factures réglées
+ *                par le même paiement (saisie multi-factures de l'état de compte): N° de
+ *                facture · date de la facture · montant payé · solde restant, total en pied
  *              - Suppression d'un paiement (confirmation) → statut de la facture recalculé
  *              - Lien vers l'état de compte du client; portail z-[80]; touch targets 44 px
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-11-10
  * @changelog
+ *   1.1.0 - Factures réglées par le même paiement: tableau (N° · Date · Payé · Solde) au lieu de
+ *           bulles, facture courante surlignée, total payé en pied (demande Martin 2026-11-10)
  *   1.0.0 - Version initiale (détail des paiements par facture)
  */
 
@@ -144,7 +146,7 @@ export default function InvoicePaymentsModal({ open, invoice, onClose, onOpenSta
       aria-label="Paiements de la facture"
     >
       <div
-        className="bg-white dark:bg-gray-900 w-full sm:max-w-xl max-h-[92vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
+        className="bg-white dark:bg-gray-900 w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* En-tête */}
@@ -232,7 +234,7 @@ export default function InvoicePaymentsModal({ open, invoice, onClose, onOpenSta
                   payments.map(p => {
                     const credited = p.amount + p.discount_applied;
                     return (
-                      <div key={p.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-3">
+                      <div key={p.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 p-2.5 sm:p-3">
                         <div className="flex items-start gap-3">
                           <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
@@ -268,32 +270,64 @@ export default function InvoicePaymentsModal({ open, invoice, onClose, onOpenSta
                               </div>
                             )}
 
-                            {/* Factures réglées par le même paiement */}
-                            {p.siblings && p.siblings.length > 0 && (
-                              <div className="mt-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40 p-2 text-xs">
-                                <div className="font-medium text-emerald-800 dark:text-emerald-300">
-                                  Paiement global de {fmtCurrency(p.group_amount)}
-                                  {p.group_discount > 0 && ` (+ escompte ${fmtCurrency(p.group_discount)})`}
-                                  {' '}réparti sur {p.group_invoice_count} factures :
+                            {/* Factures réglées par le même paiement: tableau N° · Date · Payé · Solde */}
+                            {p.siblings && p.siblings.length > 0 && (() => {
+                              const rows = [
+                                { key: 'self', invoice_number: inv.invoice_number, invoice_date: inv.invoice_date, paid: credited, balance: inv.balance, self: true },
+                                ...p.siblings.map(s => ({ key: s.payment_id, invoice_number: s.invoice_number, invoice_date: s.invoice_date, paid: s.amount + s.discount_applied, balance: s.balance, self: false })),
+                              ];
+                              const totalPaid = p.group_amount + p.group_discount;
+                              return (
+                                <div className="mt-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40 overflow-hidden text-[11px] sm:text-xs">
+                                  <div className="px-2 py-1.5 font-medium text-emerald-800 dark:text-emerald-300">
+                                    Paiement global de {fmtCurrency(p.group_amount)}
+                                    {p.group_discount > 0 && ` (+ escompte ${fmtCurrency(p.group_discount)})`}
+                                    {' '}réparti sur {p.group_invoice_count} factures
+                                  </div>
+                                  {/* Défilement interne au tableau si l'écran est trop étroit (jamais la page) */}
+                                  <div className="overflow-x-auto">
+                                  <table className="w-full">
+                                    <thead>
+                                      <tr className="text-[10px] uppercase tracking-wide text-emerald-700/80 dark:text-emerald-400/80 border-t border-emerald-100 dark:border-emerald-800/40">
+                                        <th className="text-left font-semibold px-1.5 sm:px-2 py-1">N° facture</th>
+                                        <th className="text-left font-semibold px-1.5 sm:px-2 py-1">Date</th>
+                                        <th className="text-right font-semibold px-1.5 sm:px-2 py-1">Payé</th>
+                                        <th className="text-right font-semibold px-1.5 sm:px-2 py-1">Solde</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {rows.map(r => {
+                                        const hasBalance = r.balance != null && Math.abs(r.balance) > 0.005;
+                                        return (
+                                          <tr
+                                            key={r.key}
+                                            className={`border-t border-emerald-100 dark:border-emerald-800/40 ${r.self ? 'bg-emerald-100/70 dark:bg-emerald-800/30 font-semibold' : 'bg-white/60 dark:bg-gray-900/30'}`}
+                                          >
+                                            <td className="px-1.5 sm:px-2 py-1.5 font-mono text-gray-900 dark:text-gray-100 whitespace-nowrap" title={r.self ? 'Cette facture' : undefined}>
+                                              {r.invoice_number}
+                                              {r.self && <span className="ml-1 font-sans text-[10px] text-emerald-700 dark:text-emerald-300 hidden sm:inline">(celle-ci)</span>}
+                                            </td>
+                                            <td className="px-1.5 sm:px-2 py-1.5 text-gray-700 dark:text-gray-300 whitespace-nowrap">{fmtPaymentDate(r.invoice_date)}</td>
+                                            <td className="px-1.5 sm:px-2 py-1.5 text-right text-gray-900 dark:text-gray-100 whitespace-nowrap">{fmtCurrency(r.paid)}</td>
+                                            <td className={`px-1.5 sm:px-2 py-1.5 text-right whitespace-nowrap ${hasBalance ? 'text-amber-700 dark:text-amber-300 font-semibold' : 'text-gray-400 dark:text-gray-500'}`}>
+                                              {r.balance == null ? '—' : hasBalance ? fmtCurrency(r.balance) : 'Réglée'}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                    <tfoot>
+                                      <tr className="border-t-2 border-emerald-200 dark:border-emerald-700 font-bold text-emerald-900 dark:text-emerald-200">
+                                        <td className="px-1.5 sm:px-2 py-1.5" colSpan={2}>Total du paiement</td>
+                                        <td className="px-1.5 sm:px-2 py-1.5 text-right whitespace-nowrap">{fmtCurrency(totalPaid)}</td>
+                                        <td className="px-1.5 sm:px-2 py-1.5" />
+                                      </tr>
+                                    </tfoot>
+                                  </table>
+                                  </div>
                                 </div>
-                                <div className="mt-1 flex flex-wrap gap-1.5">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white font-mono">
-                                    {inv.invoice_number}
-                                    <span className="font-sans">{fmtCurrency(credited)}</span>
-                                  </span>
-                                  {p.siblings.map(s => (
-                                    <span
-                                      key={s.payment_id}
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 font-mono"
-                                      title={s.invoice_total != null ? `Total de la facture: ${fmtCurrency(s.invoice_total)}` : undefined}
-                                    >
-                                      {s.invoice_number}
-                                      <span className="font-sans">{fmtCurrency(s.amount + s.discount_applied)}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </div>
 
                           <button

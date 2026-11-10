@@ -2603,17 +2603,22 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   en-tête N° facture + client + BT/BL; sommaire **Total facture / Crédité (encaissé + escompte) / Solde** + statut;
   par paiement: date, montant, mode, N° de référence (« aucun N° » sinon), escompte, note (italique), et si la
   saisie couvrait plusieurs factures: encadré « **Paiement global de 944,00 $ (+ escompte 6,00 $) réparti sur
-  3 factures : 23042 150 $ · 23040 500 $ · 23041 300 $** »; suppression d'un paiement (confirmation explicite,
+  3 factures** » suivi d'un **tableau** (demande Martin, même jour — remplace les bulles): une ligne par facture
+  **N° de facture · Date de la facture · Payé (par ce paiement) · Solde** (montant restant en ambre, « Réglée »
+  sinon), facture courante surlignée, ligne « Total du paiement »; défilement interne au tableau sur cellulaire;
+  suppression d'un paiement (confirmation explicite,
   avertit que les autres factures du même paiement ne sont pas touchées; statut recalculé via l'API existante);
   bouton « État de compte du client »; message spécifique pour une facture marquée payée avant le module
   (juin 2026): « aucun détail enregistré »
 - **Implementation:**
-  - `app/api/invoices/[id]/payments/route.js` (nouveau) — facture + paiements + « sœurs »: la saisie multi-factures
+  - `app/api/invoices/[id]/payments/route.js` (nouveau, v1.1.0) — facture + paiements + « sœurs » (N°, date,
+    total, solde restant = total − crédité, statut): la saisie multi-factures
     de l'état de compte écrit UNE ligne `invoice_payments` PAR facture (même client, date, mode, référence, créées
     à quelques secondes d'intervalle) → regroupement par cette signature + `created_at` ± 2 min; référence
     comparée sans espaces/casse; jamais un autre client; `legacy_paid`; `force-dynamic`
   - `app/api/invoices/route.js` v1.6.0 — `?with_payments=1`: les paiements de toute la page en 1 requête groupée
   - `components/invoices/InvoiceManager.js` v2.9.0 — pastille + fenêtre, `onChanged` recharge la liste
+  - `components/invoices/InvoicePaymentsModal.js` v1.1.0 — tableau des factures du même paiement (au lieu de bulles)
 - **Vérification:** tests API sur base simulée (regroupement 3 factures/chèque #1234, escompte, virement sans N°
   non regroupé avec une saisie 10 min plus tard, autre client exclu, 404/400, facture « legacy ») + Playwright
   (pastille, fenêtre, Échap, mobile 412 px sans débordement). `next build` OK (route ƒ Dynamic)
