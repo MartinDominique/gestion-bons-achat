@@ -3,9 +3,12 @@
  * @description API serveur pour calculer les quantités "En commande" (AF) et "Réservé" (BT/BL non signés)
  *              par product_id, ainsi que le détail des documents qui réservent chaque item.
  *              Utilise supabaseAdmin pour bypass RLS (notamment sur work_order_materials).
- * @version 1.2.0
- * @date 2026-11-03
+ * @version 1.3.0
+ * @date 2026-11-17
  * @changelog
+ *   1.3.0 - `details[].linked_po_id` (BA lié du BT/BL) pour que le BCC puisse exclure
+ *           les réservations faites pour le MÊME BA (un BL brouillon du dossier en cours
+ *           ne rend pas le stock indisponible pour ce client) et déduire les autres.
  *   1.2.0 - Fix "Réservé -0" sur un BT brouillon valide (BT-2026-207 / JBX884):
  *           - `export const dynamic = 'force-dynamic'`: sans cette directive, Next.js 14
  *             traite une route GET() sans paramètre comme STATIQUE et sert la réponse
@@ -116,7 +119,7 @@ export async function GET(request) {
     const workOrders = await fetchAll('work_orders', () =>
       supabaseAdmin
         .from('work_orders')
-        .select('id, bt_number, status, client:clients(name, company)')
+        .select('id, bt_number, status, linked_po_id, client:clients(name, company)')
         .in('status', ['draft', 'ready_for_signature'])
         .order('id', { ascending: true })
     );
@@ -150,6 +153,7 @@ export async function GET(request) {
           status: wo?.status || '?',
           client: wo?.client?.company || wo?.client?.name || '—',
           quantity: qty,
+          linked_po_id: wo?.linked_po_id ?? null,
         });
         if (matchesDebug(pid)) {
           debugRows.work_orders.push({
@@ -167,7 +171,7 @@ export async function GET(request) {
     const deliveryNotes = await fetchAll('delivery_notes', () =>
       supabaseAdmin
         .from('delivery_notes')
-        .select('id, bl_number, status, client_name, client:clients(name, company)')
+        .select('id, bl_number, status, linked_po_id, client_name, client:clients(name, company)')
         .in('status', ['draft', 'ready_for_signature'])
         .order('id', { ascending: true })
     );
@@ -198,6 +202,7 @@ export async function GET(request) {
           status: bl?.status || '?',
           client: bl?.client?.company || bl?.client?.name || bl?.client_name || '—',
           quantity: qty,
+          linked_po_id: bl?.linked_po_id ?? null,
         });
         if (matchesDebug(pid)) {
           debugRows.delivery_notes.push({

@@ -2661,6 +2661,32 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   Dashboard (sans elle: la poubelle reste masquée — comportement par défaut voulu — et la case ne se mémorise pas,
   avec avertissement à la sauvegarde)
 
+### 2026-11-17 - BCC: « En Main » ignorait les réservations BT/BL (stock réservé affiché comme disponible) ✅ CORRIGÉ (2026-11-17)
+- **Symptôme (Martin, captures):** BA client PO 4515 (92 m de 104SOOW) → AF commandé (168 m « En commande ») →
+  BCC: « En Main 151 », « B/O 0 ». Or les 151 m en stock étaient déjà sur un **BL brouillon** (152 m, PO 4460).
+  La confirmation envoyée au client affirmait donc « en main » du matériel déjà promis à un autre dossier
+- **Cause:** `BCCConfirmationModal.js` lisait `products.stock_qty` brut et ne consultait jamais
+  `/api/inventory/reservations` (source du « Réservé (BT/BL non signés) » de l'Inventaire). Le B/O ne
+  dépendait que des AF liés au BA (commandé − reçu): un AF non lié au BA ou un simple manque de stock
+  donnaient B/O 0
+- **Règle retenue (Martin):** du matériel réservé sur un BT/BL non signé **n'est pas disponible** pour la vente,
+  la livraison ni le BCC. Exception logique: les BT/BL liés au **même BA** ne sont pas déduits (c'est
+  précisément la commande qu'on confirme à ce client)
+- **Implementation:**
+  - `app/api/inventory/reservations/route.js` v1.3.0 — `details[].linked_po_id` sur les entrées BT et BL
+  - `components/PurchaseOrder/BCCConfirmationModal.js` v1.8.0 — colonne **« Dispo »** (écran) = en main − réservé
+    (autres dossiers), sous-ligne « 151 en main − 152 rés. » + infobulle; **B/O = min(qté cmd, max(B/O
+    fournisseur, qté cmd − livrée − dispo))**; cartes mobile « Dispo: x » + pastille réservé; légende sous le
+    tableau; bandeau ambre + repli sur le stock brut si l'API réservations échoue. Le PDF client
+    (`send-confirmation`, inchangé) reçoit la quantité disponible dans sa colonne « En Main »
+- **Vérification:** formule testée (cas Martin → Dispo 0, B/O 92; stock suffisant → B/O 0; manque sans AF →
+  B/O = manque; tout livré → B/O 0; AF en surplus → plafonné à la qté cmd). `next build` OK. Aucune migration
+- **Non couvert / à surveiller:** le sélecteur de matériaux BT/BL (`MaterialSelector.js`) affiche encore
+  « En main » brut + « En commande » (pas le réservé). À faire si Martin le souhaite, en excluant le document
+  en cours d'édition. Dans la capture, l'Inventaire montrait « Réservé −0 » pour 104SOOW alors que le BL
+  affichait 152 m: à vérifier avec `/api/inventory/reservations?code=104SOOW` (si le BL est `signed`/`sent`,
+  son stock est déjà sorti et il n'est plus « réservé », ce qui est normal)
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-10 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-17 par Claude AI*
