@@ -443,6 +443,7 @@ const total = subtotal + tps + tvq;
 /api/products/recalc-usd               → Recalcul des coûtants achetés en USD (GET aperçu / POST appliquer)
 /api/exchange-rate                     → Taux USD→CAD (Banque du Canada + replis + cache settings)
 /api/products/groups                   → Groupes de produits distincts
+/api/products/delete                   → Suppression d'une fiche produit (GET vérification: mouvements, hist. prix, documents, doublons / POST supprimer)
 /api/inventory/reservations            → En commande (AF) + Réservé (BT/BL non signés) + détail par doc
 /api/items-to-order                    → Liste À Commander (GET par statut, enrichi inventaire vivant qté/en commande/coûtant/vendant + POST ajout enrichi/fusion)
 /api/items-to-order/[id]               → GET/PUT/DELETE item à commander
@@ -1140,6 +1141,17 @@ CRON_SECRET                   # Auth pour cron jobs
       l'état de compte écrit une ligne `invoice_payments` par facture); `legacy_paid` pour les factures marquées
       payées avant juin 2026 (aucun détail). `app/api/invoices/route.js` v1.6.0 — `?with_payments=1` (1 requête
       groupée). `InvoiceManager.js` v2.9.0. Vérifié: tests API (base simulée) + Playwright. Aucune migration
+
+40. ~~**Inventaire: suppression d'une fiche produit (doublons)**~~ - ✅ COMPLÉTÉ (2026-11-19)
+    - Fiche produit → petit bouton rouge **« Supprimer »** à gauche d'« Annuler » → fenêtre rouge: vérification
+      serveur (autres fiches du même code, en main/réservé/en commande, lignes BT/BL/BA, historique de prix,
+      **liste des mouvements**) puis confirmation explicite. Aucune suppression sans vérification réussie
+    - `app/api/products/delete/route.js` (nouveau) — GET vérification / POST suppression d'UNE fiche
+      (`products` par `product_id`, `non_inventory_items` par `id` car le même code peut y exister 2 fois)
+    - `components/InventoryManager.js` v3.17.0
+    - **Règle:** les mouvements d'inventaire et les lignes de documents ne sont jamais effacés (rattachés au
+      code: ils restent sur l'autre fiche du doublon). Liens « As » retirés seulement si plus aucune fiche ne
+      porte le code. Aucune migration requise
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

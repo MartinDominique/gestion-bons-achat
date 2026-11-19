@@ -2687,6 +2687,25 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   affichait 152 m: à vérifier avec `/api/inventory/reservations?code=104SOOW` (si le BL est `signed`/`sent`,
   son stock est déjà sorti et il n'est plus « réservé », ce qui est normal)
 
+### 2026-11-19 - Inventaire: suppression d'une fiche produit (nettoyage des doublons) ✅ COMPLETE (2026-11-19)
+- **Besoin (Martin):** des doublons dans l'Inventaire, impossibles à effacer de la base. Demande: petit bouton
+  rouge près d'« Annuler » au bas de la fiche, avertissement avant de procéder, vérification des mouvements et
+  de l'historique de prix, et **voir les mouvements** avant de confirmer
+- **Constat (base réelle, lecture seule):** 29 codes existent à la fois dans `products` et `non_inventory_items`,
+  2 codes en double dans `non_inventory_items` (clé primaire `id`, pas le code), 1 doublon de casse dans `products`
+- **Implementation:**
+  - `app/api/products/delete/route.js` (nouveau) — GET = vérification (mouvements listés, historique de prix,
+    lignes de BT/BL/BA, liens « As », liste À Commander, autres fiches du même code); POST = suppression d'UNE
+    fiche (`products` par `product_id`, `non_inventory_items` par `id`), vérifiée par `.select()`. Les mouvements
+    et les documents ne sont jamais effacés; les liens « As » ne sont retirés que si plus aucune fiche ne porte le
+    code. `supabaseAdmin`, `force-dynamic`, erreurs remontées
+  - `components/InventoryManager.js` v3.17.0 — bouton rouge « Supprimer » (44 px) à gauche d'« Annuler »; fenêtre
+    rouge de confirmation: autres fiches du même code (conservées), avertissements (en main ≠ 0, réservé,
+    en commande, documents), historique de prix, liste des mouvements; bouton « J'ai vu les mouvements —
+    Supprimer » / « Supprimer définitivement », spinner, aucune suppression sans vérification réussie
+- **Vérification:** `next build` OK (route `ƒ Dynamic`). Non testé contre la base réelle (aucune suppression faite)
+- Aucune migration SQL requise, aucune nouvelle table (backup inchangé)
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-17 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-19 par Claude AI*
