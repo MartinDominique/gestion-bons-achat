@@ -7,9 +7,10 @@
  *                le stock additionné et l'historique de prix fusionné
  *              - Confirmation explicite, puis POST /api/products/merge
  *              Portail (z-80), feuille en bas sur cellulaire, touch targets 44 px.
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-11-19
  * @changelog
+ *   1.1.0 - Prop `suggestions`: les fiches au code semblable sont proposées d'emblée (« Codes semblables »)
  *   1.0.0 - Version initiale
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -73,7 +74,7 @@ function ChoiceCard({ selected, onSelect, title, subtitle, disabled }) {
   );
 }
 
-export default function ProductMergeModal({ item, onClose, onMerged }) {
+export default function ProductMergeModal({ item, suggestions = [], onClose, onMerged }) {
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState(item?.product_id || '');
   const [results, setResults] = useState([]);
@@ -114,7 +115,7 @@ export default function ProductMergeModal({ item, onClose, onMerged }) {
         const result = await res.json().catch(() => ({}));
         if (seq !== searchSeq.current) return;
         if (!res.ok || !result.success) throw new Error(result.error || 'Recherche impossible');
-        setResults((result.data || []).filter((p) => !sameItem(p, item)));
+        setResults((result.data || []).filter((p) => !sameItem(p, item) && !suggestions.some((sug) => sameItem(sug, p))));
         setError('');
       } catch (err) {
         if (seq === searchSeq.current) setError(err.message || 'Recherche impossible');
@@ -123,6 +124,7 @@ export default function ProductMergeModal({ item, onClose, onMerged }) {
       }
     }, 300);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, other, item]);
 
   const kept = keepCode === 'a' ? item : other;
@@ -257,7 +259,26 @@ export default function ProductMergeModal({ item, onClose, onMerged }) {
                 />
                 {searching && <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />}
               </div>
-              {search.trim().length >= 2 && !searching && results.length === 0 && (
+              {suggestions.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">Codes semblables</div>
+                  {suggestions.map((p) => (
+                    <button
+                      key={`sug-${p._source}-${p.id ?? p.product_id}`}
+                      type="button"
+                      onClick={() => { setOther(p); setKeepCode('a'); setKeepDesc('a'); setError(''); }}
+                      className="w-full text-left min-h-[44px] px-3 py-2 border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+                    >
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words">
+                        {p.product_id} — {p.description}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{cardSubtitle(p)}</div>
+                    </button>
+                  ))}
+                  <div className="text-xs text-gray-500 dark:text-gray-400 pt-1">Ou chercher une autre fiche:</div>
+                </div>
+              )}
+              {search.trim().length >= 2 && !searching && results.length === 0 && suggestions.length === 0 && (
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   Aucune autre fiche trouvée. Essayez une partie du code ou de la description.
                 </div>
