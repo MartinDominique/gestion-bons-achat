@@ -2748,6 +2748,20 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
   description n'est pas comparée)
 - Aucune migration SQL requise
 
+### 2026-11-19 - BT/BL: avis « produit en double » ✅ COMPLETE (2026-11-19)
+**Constat:** l'ajout par la recherche refuse un produit déjà présent (« Ce produit est déjà dans la liste »),
+mais la comparaison (`m.product_id === product.id`) ne tient plus après une sauvegarde/rechargement, et les
+imports (soumission, AF) ne vérifient rien → un même produit peut se retrouver sur plusieurs lignes.
+Décision Martin: on laisse faire, mais on le signale clairement.
+
+**Implementation completee (2026-11-19):**
+- `lib/utils/duplicateMaterials.js` (nouveau) - `materialCodeKey()` + `findDuplicateMaterials()` (code normalisé, nb de lignes, qté totale)
+- `components/work-orders/DuplicateMaterialsFlag.js` (nouveau) - bandeau rose (fuchsia) + pastille « ×n » + classe de ligne partagée
+- `components/work-orders/WorkOrderForm.js` v1.6.0 - bandeau au haut de « Matériaux et Produits »
+- `components/delivery-notes/DeliveryNoteForm.js` v3.6.0 - bandeau au haut de « Matériaux livrés » + lignes du tableau B/O surlignées
+- `components/work-orders/MaterialSelector.js` v1.10.0 - lignes en double surlignées + pastille « ×n » (prop `allMaterials`)
+- Signalement seulement: aucun blocage, aucune fusion. Aucune migration SQL requise
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-19 par Claude AI*

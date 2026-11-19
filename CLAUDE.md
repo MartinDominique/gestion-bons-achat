@@ -1171,6 +1171,16 @@ CRON_SECRET                   # Auth pour cron jobs
     - **Règle:** toute nouvelle table qui porte un code produit en texte doit être ajoutée à `CODE_COLUMNS` /
       `JSON_COLUMNS` de `merge/route.js` (et à la cascade de `/api/products/rename`). Aucune migration requise
 
+42. ~~**BT/BL: avis « produit en double »**~~ - ✅ COMPLÉTÉ (2026-11-19)
+    - Un même produit peut se retrouver sur plusieurs lignes d'un BT/BL (imports soumission/AF, ou ajout après
+      rechargement: le garde « déjà dans la liste » de la recherche ne compare que `product_id === product.id`).
+      Décision Martin: on le laisse, mais on le signale
+    - Bandeau **rose (fuchsia)** au haut de « Matériaux et Produits » (BT) / « Matériaux livrés » (BL): code,
+      nombre de lignes, quantité totale; chaque ligne concernée est surlignée + pastille « ×n » (cartes
+      MaterialSelector et tableau B/O du BL). Rien n'est bloqué ni fusionné
+    - `lib/utils/duplicateMaterials.js` + `components/work-orders/DuplicateMaterialsFlag.js` (nouveaux),
+      `WorkOrderForm.js` v1.6.0, `DeliveryNoteForm.js` v3.6.0, `MaterialSelector.js` v1.10.0. Aucune migration
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)

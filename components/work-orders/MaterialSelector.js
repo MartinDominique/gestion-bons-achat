@@ -8,9 +8,12 @@
  *              - Affichage stock en main + quantité en commande (AF) dans la recherche
  *              - Affichage "En main" (stock) dans le modal d'ajout, le modal d'édition
  *                et la liste des matériaux ajoutés (BT + BL)
- * @version 1.9.1
- * @date 2026-10-09
+ * @version 1.10.0
+ * @date 2026-11-19
  * @changelog
+ *   1.10.0 - Produit en double: une ligne dont le produit apparaît plus d'une fois dans le BT/BL
+ *            est surlignée en rose (fuchsia) avec une pastille « ×n ». Prop optionnelle
+ *            `allMaterials` (BL: inclut les lignes du tableau B/O). Aucun blocage, aucune fusion.
  *   1.9.1 - Mode sombre: pastille « Stock faible »
  *   1.9.0 - Items associés: carré « As » sur chaque ligne de matériau (BT + BL). Un tap ouvre
  *           la liste des associés (cases décochées par défaut, qté = défaut × qté du parent,
@@ -43,6 +46,8 @@ import { supabase } from '../../lib/supabase';
 import AddToOrderButton from '../order-list/AddToOrderButton';
 import AssociatedItemsButton from '../associations/AssociatedItemsButton';
 import { matchesNormalized } from '../../lib/utils/productSearch';
+import { materialCodeKey, findDuplicateMaterials } from '../../lib/utils/duplicateMaterials';
+import { DuplicateLineBadge, DUPLICATE_ROW_CLASS } from './DuplicateMaterialsFlag';
 
 // Composant clavier numérique personnalisé
 function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
@@ -155,8 +160,15 @@ export default function MaterialSelector({
   sourceType,      // 'work_order' | 'delivery_note'
   sourceId,        // id du BT/BL
   sourceNumber,    // ex: 'BT-2607-012'
-  sourceClientName // nom du client
+  sourceClientName, // nom du client
+  // Liste complète du document pour repérer les produits en double (optionnel).
+  // BL: inclut les lignes du tableau B/O, absentes de `materials`.
+  allMaterials
 }) {
+  // Produits présents sur plus d'une ligne: code → nombre de lignes
+  const duplicateCounts = new Map(
+    findDuplicateMaterials(allMaterials || materials).map((d) => [d.code, d.count])
+  );
   // États principaux (pattern InventoryManager)
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -729,7 +741,9 @@ const deleteMaterialFromModal = () => {
             <div 
               key={material.id} 
               onClick={() => startEditMaterial(material)}
-              className="p-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer active:bg-blue-100 dark:active:bg-blue-900/50 transition-colors"
+              className={`p-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer active:bg-blue-100 dark:active:bg-blue-900/50 transition-colors ${
+                duplicateCounts.has(materialCodeKey(material)) ? DUPLICATE_ROW_CLASS : ''
+              }`}
             >
               {/* Vue compacte - 2 lignes max */}
               <div className="flex items-start justify-between gap-2">
@@ -740,6 +754,7 @@ const deleteMaterialFromModal = () => {
                       <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-mono font-semibold">
                         {material.product?.product_id || 'N/A'}
                       </span>
+                      <DuplicateLineBadge count={duplicateCounts.get(materialCodeKey(material))} />
                       {material.showPrice && (
                         <span className="text-green-600 dark:text-green-400 text-xs font-semibold">
                           {formatCurrency(material.product?.selling_price || 0)}
