@@ -8,9 +8,13 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.18.0
+ * @version 3.19.0
  * @date 2026-11-19
  * @changelog
+ *   3.19.0 - Détection des doublons (/api/products/duplicates): le bouton « Fusionner » n'apparaît que si
+ *            une autre fiche porte un code semblable (tirets/espaces/casse ignorés); pastille « Doublon »
+ *            cliquable sur les lignes de la liste; bouton « Doublons (n) » dans la barre d'outils pour
+ *            les afficher tous; les fiches semblables sont proposées d'emblée dans la fenêtre de fusion
  *   3.18.0 - Fusion de doublons: bouton « Fusionner » au bas de la fiche (et dans la fenêtre de suppression)
  *            → ProductMergeModal: choix du N° de produit et de la description à garder; mouvements,
  *            documents et historique de prix fusionnés, stock additionné, l'autre fiche supprimée
@@ -102,6 +106,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildPriceShiftUpdates } from '../lib/utils/priceShift';
 import { unitOptionsWith } from '../lib/constants/units';
+import { normalizeSearchKey } from '../lib/utils/productSearch';
 import { DEDUCTION_LABEL } from '../lib/constants/deduction';
 import AddToOrderButton from './order-list/AddToOrderButton';
 import AssociatedItemsButton from './associations/AssociatedItemsButton';
@@ -189,6 +194,8 @@ export default function InventoryManager() {
 
   // Fusion de doublons (ProductMergeModal)
   const [mergeItem, setMergeItem] = useState(null);
+  // Doublons détectés: { [code normalisé]: [fiches] } — codes semblables (tirets/espaces/casse ignorés)
+  const [duplicateGroups, setDuplicateGroups] = useState({});
 
   // Utilisateur authentifié (pour traçabilité mouvements manuels)
   const [currentUser, setCurrentUser] = useState(null);
@@ -199,8 +206,65 @@ export default function InventoryManager() {
     setTimeout(() => setToast(null), 2000);
   }, []);
 
+  // ===== DOUBLONS (codes semblables) =====
+  const loadDuplicates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/products/duplicates', { cache: 'no-store' });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) throw new Error(result.error || 'Erreur doublons');
+      const map = {};
+      for (const group of result.data.groups || []) map[group.key] = group.items;
+      setDuplicateGroups(map);
+      return map;
+    } catch (err) {
+      console.error('Erreur chargement doublons:', err);
+      return null;
+    }
+  }, []);
+
+  // Autres fiches dont le code ressemble à celui de `item` (vide = pas de doublon)
+  const getDuplicatesOf = (item) => {
+    if (!item) return [];
+    const group = duplicateGroups[normalizeSearchKey(item.product_id)] || [];
+    return group.filter(p => !(
+      p._source === item._source &&
+      (item._source !== 'products' && item.id != null && p.id != null
+        ? p.id === item.id
+        : p.product_id === item.product_id)
+    ));
+  };
+
+  const duplicateItemsCount = Object.values(duplicateGroups).reduce((sum, items) => sum + items.length, 0);
+
+  const loadDuplicatesOnly = async () => {
+    setLoading(true);
+    try {
+      const map = await loadDuplicates();
+      if (!map) {
+        showToast('Erreur lors de la recherche des doublons', 'error');
+        return;
+      }
+      const items = Object.keys(map).sort().flatMap(key => map[key]);
+      if (items.length === 0) {
+        showToast('Aucun doublon trouvé', 'success');
+        return;
+      }
+      setSearchTerm('');
+      setDisplayItems(items);
+      setLoadMode('duplicates');
+      setItemCount({
+        products: items.filter(i => i._source === 'products').length,
+        nonInventory: items.filter(i => i._source !== 'products').length,
+      });
+      loadQuantities();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ===== CHARGEMENT INITIAL (groupes + quantités + user) =====
   useEffect(() => {
+    loadDuplicates();
     loadProductGroups();
     loadQuantities();
     // Récupérer l'utilisateur authentifié
@@ -852,6 +916,7 @@ export default function InventoryManager() {
       setDeleteTarget(null);
       setDeleteCheck(null);
       closeEditModal();
+      loadDuplicates();
       showToast(`Produit ${item.product_id} supprimé`);
     } catch (err) {
       console.error('Erreur suppression produit:', err);
@@ -882,6 +947,7 @@ export default function InventoryManager() {
     setDeleteCheck(null);
     closeEditModal();
     loadQuantities();
+    loadDuplicates();
     showToast(`${removed.product_id} fusionné dans ${kept.product_id}`);
   };
 
@@ -906,6 +972,8 @@ export default function InventoryManager() {
         return 'Tous les produits';
       case 'group':
         return `Groupe: ${selectedLoadGroup}`;
+      case 'duplicates':
+        return 'Doublons (codes semblables)';
       case 'reserved':
         return 'Items avec réservations (BT/BL non signés)';
       default:
@@ -1033,6 +1101,21 @@ export default function InventoryManager() {
             Avec réservé
           </button>
 
+          {/* Doublons: fiches dont les codes se ressemblent */}
+          <button
+            onClick={loadDuplicatesOnly}
+            disabled={loading}
+            className={`px-4 py-3 border rounded-lg text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2 min-w-[140px] ${
+              duplicateItemsCount > 0
+                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50'
+                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+            title="Afficher les fiches dont les codes se ressemblent (tirets, espaces et majuscules ignorés)"
+          >
+            <GitMerge className="w-4 h-4" />
+            Doublons ({duplicateItemsCount})
+          </button>
+
           {/* Recalcul des coûtants des articles achetés en USD */}
           <button
             onClick={openUsdRecalc}
@@ -1147,6 +1230,17 @@ export default function InventoryManager() {
                             {isProduct ? 'Inventaire' : 'Non-inv.'}
                           </span>
                           <UsdBadge currency={item.purchase_currency} costPriceUsd={item.cost_price_usd} />
+                          {getDuplicatesOf(item).length > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setMergeItem(item); }}
+                              title={`Code semblable à: ${getDuplicatesOf(item).map(d => d.product_id).join(', ')} — toucher pour fusionner`}
+                              className="px-2 py-1 rounded text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 inline-flex items-center gap-1"
+                            >
+                              <GitMerge className="w-3 h-3" />
+                              Doublon
+                            </button>
+                          )}
                           <AssociatedItemsButton
                             code={item.product_id}
                             hideWhenEmpty
@@ -1795,7 +1889,9 @@ export default function InventoryManager() {
                 <Trash2 className="w-4 h-4" />
                 Supprimer
               </button>
-              {/* Fusion de doublons: garde un N° + une description, fusionne mouvements et historique de prix */}
+              {/* Visible seulement si une autre fiche porte un code semblable.
+                  Fusion de doublons: garde un N° + une description, fusionne mouvements et historique de prix */}
+              {getDuplicatesOf(editingItem).length > 0 && (
               <button
                 type="button"
                 onClick={() => setMergeItem(editingItem)}
@@ -1806,6 +1902,7 @@ export default function InventoryManager() {
                 <GitMerge className="w-4 h-4" />
                 Fusionner
               </button>
+              )}
               <button
                 onClick={closeEditModal}
                 disabled={saving}
@@ -2252,10 +2349,11 @@ export default function InventoryManager() {
                       )}
                     </div>
 
-                    {/* Alternative: fusionner au lieu de supprimer (rien n'est perdu) */}
+                    {/* Alternative: fusionner au lieu de supprimer (rien n'est perdu) — si un code semblable existe */}
+                    {getDuplicatesOf(item).length > 0 && (
                     <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center gap-2">
                       <div className="flex-1 text-xs text-indigo-900 dark:text-indigo-200">
-                        <b>C'est un doublon d'une autre fiche ?</b> Fusionnez-les plutôt: les mouvements, les documents
+                        <b>Code semblable trouvé: {getDuplicatesOf(item).map(d => d.product_id).join(', ')}.</b> Fusionnez-les plutôt: les mouvements, les documents
                         et l'historique de prix sont regroupés sur la fiche que vous gardez.
                       </div>
                       <button
@@ -2268,6 +2366,7 @@ export default function InventoryManager() {
                         Fusionner…
                       </button>
                     </div>
+                    )}
 
                     <div className="text-xs text-red-700 dark:text-red-400 font-medium">
                       La suppression est définitive: la fiche est effacée de la base de données et ne peut pas être récupérée.
@@ -2302,6 +2401,7 @@ export default function InventoryManager() {
       {mergeItem && (
         <ProductMergeModal
           item={mergeItem}
+          suggestions={getDuplicatesOf(mergeItem)}
           onClose={() => setMergeItem(null)}
           onMerged={handleMerged}
         />

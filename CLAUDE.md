@@ -443,6 +443,7 @@ const total = subtotal + tps + tvq;
 /api/products/recalc-usd               → Recalcul des coûtants achetés en USD (GET aperçu / POST appliquer)
 /api/exchange-rate                     → Taux USD→CAD (Banque du Canada + replis + cache settings)
 /api/products/groups                   → Groupes de produits distincts
+/api/products/duplicates               → Doublons de l'Inventaire: groupes de fiches aux codes semblables (normalisés, 2 tables)
 /api/products/merge                    → Fusion de 2 fiches en double (GET aperçu / POST: N° + description gardés, mouvements/documents/hist. prix fusionnés)
 /api/products/delete                   → Suppression d'une fiche produit (GET vérification: mouvements, hist. prix, documents, doublons / POST supprimer)
 /api/inventory/reservations            → En commande (AF) + Réservé (BT/BL non signés) + détail par doc
@@ -1162,6 +1163,11 @@ CRON_SECRET                   # Auth pour cron jobs
       de prix fusionné** (3 prix précédents les plus récents des deux fiches); l'autre fiche est supprimée à la fin
     - `app/api/products/merge/route.js` (nouveau, GET aperçu / POST fusion, relançable si interrompue),
       `components/inventory/ProductMergeModal.js` (nouveau), `components/InventoryManager.js` v3.18.0
+    - **Détection (même jour):** `app/api/products/duplicates/route.js` (nouveau) — codes « semblables » =
+      identiques une fois normalisés (`normalizeSearchKey`: casse, accents, tirets, espaces ignorés), 2 tables
+      confondues. `InventoryManager.js` v3.19.0: « Fusionner » visible **seulement** s'il existe un code semblable,
+      pastille « Doublon » sur les lignes, bouton « Doublons (n) » dans la barre d'outils;
+      `ProductMergeModal.js` v1.1.0 propose les codes semblables d'emblée
     - **Règle:** toute nouvelle table qui porte un code produit en texte doit être ajoutée à `CODE_COLUMNS` /
       `JSON_COLUMNS` de `merge/route.js` (et à la cascade de `/api/products/rename`). Aucune migration requise
 

@@ -2729,6 +2729,25 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
 - **Non transféré:** texte des factures déjà émises (les lignes de facture ne portent pas de code produit)
 - Aucune migration SQL requise, aucune nouvelle table (backup inchangé)
 
+### 2026-11-19 - Inventaire: détection des doublons (bouton « Fusionner » conditionnel) ✅ COMPLETE (2026-11-19)
+- **Demande (Martin):** le bouton « Fusionner » ne doit apparaître que s'il existe plus d'un code qui se
+  ressemble — pour savoir d'un coup d'œil s'il y a des doublons
+- **Règle « codes semblables »:** identiques une fois normalisés (`normalizeSearchKey`: casse, accents, tirets,
+  espaces, points et symboles ignorés) → `P1-540` = `p1540` = `P1 540`; inclut le même code dans Inventaire et
+  Non-inventaire
+- **Implementation:**
+  - `app/api/products/duplicates/route.js` (nouveau) — lecture paginée des codes des 2 tables, groupes de codes
+    semblables, fiches complètes des seuls doublons; `force-dynamic`, erreurs remontées
+  - `components/InventoryManager.js` v3.19.0 — « Fusionner » (fiche + fenêtre de suppression) visible seulement
+    s'il y a un code semblable; pastille **« Doublon »** cliquable sur les lignes de la liste (infobulle: codes
+    semblables); bouton **« Doublons (n) »** dans la barre d'outils → affiche toutes les fiches en double,
+    regroupées; liste des doublons rechargée après une fusion ou une suppression
+  - `components/inventory/ProductMergeModal.js` v1.1.0 — section « Codes semblables » proposée d'emblée
+- **Vérification:** `next build` OK. Non testé à l'écran
+- **Limite:** deux fiches du même article avec des codes vraiment différents ne sont pas détectées (la
+  description n'est pas comparée)
+- Aucune migration SQL requise
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-19 par Claude AI*
