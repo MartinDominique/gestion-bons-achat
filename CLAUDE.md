@@ -1181,6 +1181,16 @@ CRON_SECRET                   # Auth pour cron jobs
     - `lib/utils/duplicateMaterials.js` + `components/work-orders/DuplicateMaterialsFlag.js` (nouveaux),
       `WorkOrderForm.js` v1.6.0, `DeliveryNoteForm.js` v3.6.0, `MaterialSelector.js` v1.10.0. Aucune migration
 
+43. ~~**BT/BL: ajustement d'inventaire rapide (bouton « Ajuster stock »)**~~ - ✅ COMPLÉTÉ (2026-11-19)
+    - Bouton orange en haut à droite des fenêtres « Quantité » (ajout) et « Modifier matériau » (`MaterialSelector.js`
+      v1.11.0) → `components/inventory/QuickStockAdjustModal.js` (nouveau): même effet que Achat → Réception directe →
+      Ajustement, pour UN produit (stock relu avant l'écriture, ajustement +/− **ou** quantité comptée, bouton « +/− »,
+      mouvement `direct_receipt` avec note « Ajustement inventaire (depuis BT-…) »). Prix jamais modifiés; stock jamais
+      sous 0; masqué pour les non-inventaire. Le « En main » du BT/BL est mis à jour aussitôt
+    - **Fix saisie négative** (`DirectReceiptModal.js` v1.8.2): `updateItemQuantity` rejetait toute valeur non
+      numérique (`isNaN → return`), donc ni « − » seul ni champ vide → impossible de commencer par le signe.
+      Texte tapé conservé (`_qty_input`) + bouton « +/− » 44 px en mode Ajustement. Aucune migration
+
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)

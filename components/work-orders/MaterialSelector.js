@@ -8,9 +8,13 @@
  *              - Affichage stock en main + quantité en commande (AF) dans la recherche
  *              - Affichage "En main" (stock) dans le modal d'ajout, le modal d'édition
  *                et la liste des matériaux ajoutés (BT + BL)
- * @version 1.10.0
+ * @version 1.11.0
  * @date 2026-11-19
  * @changelog
+ *   1.11.0 - Bouton « Ajuster stock » en haut à droite des fenêtres « Quantité » (ajout) et
+ *            « Modifier matériau »: ouvre un ajustement d'inventaire rapide pour ce produit
+ *            (QuickStockAdjustModal) sans quitter le BT/BL. Le « En main » affiché est mis à
+ *            jour aussitôt. Masqué pour les produits non-inventaire.
  *   1.10.0 - Produit en double: une ligne dont le produit apparaît plus d'une fois dans le BT/BL
  *            est surlignée en rose (fuchsia) avec une pastille « ×n ». Prop optionnelle
  *            `allMaterials` (BL: inclut les lignes du tableau B/O). Aucun blocage, aucune fusion.
@@ -48,6 +52,7 @@ import AssociatedItemsButton from '../associations/AssociatedItemsButton';
 import { matchesNormalized } from '../../lib/utils/productSearch';
 import { materialCodeKey, findDuplicateMaterials } from '../../lib/utils/duplicateMaterials';
 import { DuplicateLineBadge, DUPLICATE_ROW_CLASS } from './DuplicateMaterialsFlag';
+import QuickStockAdjustModal from '../inventory/QuickStockAdjustModal';
 
 // Composant clavier numérique personnalisé
 function NumericKeypad({ value, onChange, onEnter, shouldReplace = false }) {
@@ -186,6 +191,8 @@ export default function MaterialSelector({
 
   // Modal d'édition complet
   const [editingMaterial, setEditingMaterial] = useState(null);
+  // Produit en cours d'ajustement d'inventaire rapide ({ product_id, description, unit })
+  const [stockAdjustTarget, setStockAdjustTarget] = useState(null);
   const [editForm, setEditForm] = useState({
     quantity: '',
     notes: '',
@@ -523,6 +530,51 @@ const deleteMaterialFromModal = () => {
     if (!found) return null;
     if (found.product_group === 'Non-Inventaire') return null;
     return found.stock_qty ?? 0;
+  };
+
+  // ===== Ajustement d'inventaire rapide =====
+  // Reporte le nouveau stock partout où il est affiché: liste de recherche (et son cache),
+  // fenêtre « Quantité » et snapshot produit des matériaux déjà dans le document.
+  const applyStockAdjustment = ({ code, newStock }) => {
+    const key = String(code || '').trim().toUpperCase();
+    const same = (p) => String(p?.product_id || '').trim().toUpperCase() === key;
+    const patch = (list) => (list || []).map((p) => (same(p) ? { ...p, stock_qty: newStock } : p));
+
+    setProducts(patch);
+    setCachedProducts(patch);
+    setFilteredCache({});
+    setPendingProduct((prev) => (prev && same(prev) ? { ...prev, stock_qty: newStock } : prev));
+
+    const safeMaterials = materials || [];
+    if (safeMaterials.some((m) => m.product && same(m.product))) {
+      onMaterialsChange(
+        safeMaterials.map((m) =>
+          m.product && same(m.product) ? { ...m, product: { ...m.product, stock_qty: newStock } } : m
+        )
+      );
+    }
+  };
+
+  // Bouton d'en-tête des fenêtres « Quantité » / « Modifier matériau »
+  const renderStockAdjustButton = (prod) => {
+    if (!prod?.product_id || prod.product_group === 'Non-Inventaire') return null;
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          setStockAdjustTarget({
+            product_id: prod.product_id,
+            description: prod.description || '',
+            unit: prod.unit || '',
+          })
+        }
+        className="min-h-[44px] px-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold flex items-center gap-1 flex-shrink-0"
+        title="Corriger la quantité en main de ce produit"
+      >
+        <Package size={16} />
+        Ajuster stock
+      </button>
+    );
   };
 
   // ===== Items associés (« As ») =====
@@ -994,8 +1046,11 @@ const deleteMaterialFromModal = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-[60] overflow-y-auto">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md my-4 max-h-[calc(100vh-2rem)] flex flex-col">
             {/* Header - Fixe */}
-            <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0">
+            <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0 flex items-center justify-between gap-2">
               <h3 className="text-lg font-semibold dark:text-gray-100">Modifier matériau</h3>
+              {renderStockAdjustButton(
+                (materials || []).find(m => m.id === editingMaterial)?.product
+              )}
             </div>
             
             {/* Contenu - Scrollable */}
@@ -1159,12 +1214,22 @@ const deleteMaterialFromModal = () => {
       )}
 
         {/* Modal de quantité - ADAPTÉ TABLETTE + TOGGLE PRIX */}
+      {stockAdjustTarget && (
+        <QuickStockAdjustModal
+          product={stockAdjustTarget}
+          sourceLabel={sourceNumber || (sourceType === 'delivery_note' ? 'un BL' : 'un BT')}
+          onClose={() => setStockAdjustTarget(null)}
+          onAdjusted={applyStockAdjustment}
+        />
+      )}
+
       {pendingProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-[60] overflow-y-auto">
           <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-md my-4 max-h-[calc(100vh-2rem)] flex flex-col">
             {/* Header - Fixe */}
-            <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0">
+            <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0 flex items-center justify-between gap-2">
               <h3 className="text-lg font-semibold dark:text-gray-100">Quantité</h3>
+              {renderStockAdjustButton(pendingProduct)}
             </div>
             
             {/* Contenu - Scrollable */}

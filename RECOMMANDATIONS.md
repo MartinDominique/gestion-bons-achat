@@ -2762,6 +2762,16 @@ Décision Martin: on laisse faire, mais on le signale clairement.
 - `components/work-orders/MaterialSelector.js` v1.10.0 - lignes en double surlignées + pastille « ×n » (prop `allMaterials`)
 - Signalement seulement: aucun blocage, aucune fusion. Aucune migration SQL requise
 
+### 2026-11-19 - BT/BL: ajustement d'inventaire rapide depuis l'ajout/la modification d'un matériau ✅ COMPLETE (2026-11-19)
+**Besoin (Martin):** en préparant un BT/BL, le « En main » affiché révèle des erreurs d'inventaire; pouvoir
+les corriger sur place, sans passer par Achat → Réception directe → Ajustement.
+
+**Implementation completee (2026-11-19):**
+- `components/inventory/QuickStockAdjustModal.js` (nouveau) - ajustement d'UN produit: stock relu à l'ouverture et avant l'écriture, ajustement (+/−) ou quantité comptée (liés), bouton « +/− », notes; écrit `stock_qty` + mouvement `direct_receipt` (« Ajustement inventaire (depuis BT-…) »). Prix jamais modifiés
+- `components/work-orders/MaterialSelector.js` v1.11.0 - bouton « Ajuster stock » en haut à droite des fenêtres « Quantité » et « Modifier matériau »; « En main » rafraîchi aussitôt; masqué pour les non-inventaire
+- `components/DirectReceiptModal.js` v1.8.2 - **fix saisie négative**: le champ refusait « − » seul et le champ vide (`isNaN → return`); texte tapé conservé + bouton « +/− » 44 px en mode Ajustement
+- Aucune migration SQL requise
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-19 par Claude AI*
