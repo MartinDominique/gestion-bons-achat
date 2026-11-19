@@ -443,6 +443,7 @@ const total = subtotal + tps + tvq;
 /api/products/recalc-usd               → Recalcul des coûtants achetés en USD (GET aperçu / POST appliquer)
 /api/exchange-rate                     → Taux USD→CAD (Banque du Canada + replis + cache settings)
 /api/products/groups                   → Groupes de produits distincts
+/api/products/merge                    → Fusion de 2 fiches en double (GET aperçu / POST: N° + description gardés, mouvements/documents/hist. prix fusionnés)
 /api/products/delete                   → Suppression d'une fiche produit (GET vérification: mouvements, hist. prix, documents, doublons / POST supprimer)
 /api/inventory/reservations            → En commande (AF) + Réservé (BT/BL non signés) + détail par doc
 /api/items-to-order                    → Liste À Commander (GET par statut, enrichi inventaire vivant qté/en commande/coûtant/vendant + POST ajout enrichi/fusion)
@@ -1152,6 +1153,17 @@ CRON_SECRET                   # Auth pour cron jobs
     - **Règle:** les mouvements d'inventaire et les lignes de documents ne sont jamais effacés (rattachés au
       code: ils restent sur l'autre fiche du doublon). Liens « As » retirés seulement si plus aucune fiche ne
       porte le code. Aucune migration requise
+
+41. ~~**Inventaire: fusion de doublons**~~ - ✅ COMPLÉTÉ (2026-11-19)
+    - Fiche produit → bouton **« Fusionner »** (aussi offert dans la fenêtre de suppression) → chercher l'autre
+      fiche → choisir le **N° de produit** et la **description** à garder → résumé → confirmation
+    - Fusionné sur le code gardé: mouvements, matériaux BT/BL, lignes de BA, À Commander, articles des AF et des
+      soumissions, détail de forfait des factures, liens « As »; stock additionné (case à cocher); **historique
+      de prix fusionné** (3 prix précédents les plus récents des deux fiches); l'autre fiche est supprimée à la fin
+    - `app/api/products/merge/route.js` (nouveau, GET aperçu / POST fusion, relançable si interrompue),
+      `components/inventory/ProductMergeModal.js` (nouveau), `components/InventoryManager.js` v3.18.0
+    - **Règle:** toute nouvelle table qui porte un code produit en texte doit être ajoutée à `CODE_COLUMNS` /
+      `JSON_COLUMNS` de `merge/route.js` (et à la cascade de `/api/products/rename`). Aucune migration requise
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
