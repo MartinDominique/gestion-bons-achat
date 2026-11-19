@@ -2706,6 +2706,29 @@ suppression du brouillon (stock non diminué), « Marquer facturé (Acomba) » (
 - **Vérification:** `next build` OK (route `ƒ Dynamic`). Non testé contre la base réelle (aucune suppression faite)
 - Aucune migration SQL requise, aucune nouvelle table (backup inchangé)
 
+### 2026-11-19 - Inventaire: outil de fusion de doublons ✅ COMPLETE (2026-11-19)
+- **Besoin (Martin):** impossible d'effacer un des 2 doublons quand des mouvements d'inventaire le relient à des
+  BT/BL. Demande: un outil de fusion qui demande **quelle description et quel N° de produit garder**, et qui
+  **fusionne l'historique de prix et les mouvements**
+- **Implementation:**
+  - `app/api/products/merge/route.js` (nouveau) — GET aperçu (nombre de lignes à transférer) / POST fusion.
+    Transféré vers le code gardé: `inventory_movements`, `work_order_materials` et `delivery_note_materials`
+    (`product_id` + `product_code`), `client_po_items`, `items_to_order`, articles JSON des AF
+    (`supplier_purchases.items`) et des soumissions (`submissions.items`), `invoices.jobe_detail_items`, liens
+    « As » (liens devenus doublons ou auto-référents retirés). Stock additionné (option), description choisie,
+    **historique de prix fusionné** (prix actuel de la fiche gardée inchangé; les 3 prix précédents les plus
+    récents des deux fiches, répétitions retirées). La fiche retirée n'est supprimée qu'à la fin; une erreur en
+    route laisse les 2 fiches et la fusion peut être relancée (transferts idempotents)
+  - `components/inventory/ProductMergeModal.js` (nouveau) — recherche de l'autre fiche (pré-remplie avec le
+    code, tolérante), cartes « N° de produit à garder » et « Description à garder », résumé du résultat, case
+    « Additionner les quantités en main », confirmation, spinner; portail, 44 px, feuille en bas sur cellulaire
+  - `components/InventoryManager.js` v3.18.0 — bouton « Fusionner » au bas de la fiche (à côté de « Supprimer »)
+    et dans la fenêtre de suppression; pied de fiche en `flex-wrap` (4 boutons sur cellulaire)
+- **Vérification:** fusion testée sur base simulée (mouvements, BT/BL, AF JSON, liens « As », stock 5+3=8,
+  historique de prix, refus de fusionner une fiche avec elle-même). `next build` OK. Non testé contre la base réelle
+- **Non transféré:** texte des factures déjà émises (les lignes de facture ne portent pas de code produit)
+- Aucune migration SQL requise, aucune nouvelle table (backup inchangé)
+
 ---
 
 *Document genere le 2026-02-05, mis a jour le 2026-11-19 par Claude AI*

@@ -8,9 +8,12 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.17.0
+ * @version 3.18.0
  * @date 2026-11-19
  * @changelog
+ *   3.18.0 - Fusion de doublons: bouton « Fusionner » au bas de la fiche (et dans la fenêtre de suppression)
+ *            → ProductMergeModal: choix du N° de produit et de la description à garder; mouvements,
+ *            documents et historique de prix fusionnés, stock additionné, l'autre fiche supprimée
  *   3.17.0 - Suppression d'une fiche (nettoyage des doublons): petit bouton rouge « Supprimer » au bas
  *            de la fiche, près d'« Annuler ». Vérification serveur AVANT de procéder (/api/products/delete):
  *            mouvements d'inventaire affichés, historique de prix, stock, réservé / en commande,
@@ -103,13 +106,14 @@ import { DEDUCTION_LABEL } from '../lib/constants/deduction';
 import AddToOrderButton from './order-list/AddToOrderButton';
 import AssociatedItemsButton from './associations/AssociatedItemsButton';
 import ProductAssociationsPanel from './associations/ProductAssociationsPanel';
+import ProductMergeModal from './inventory/ProductMergeModal';
 import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
 import { CURRENCY_CAD, CURRENCY_USD, safeCurrencyUpdates, formatRate, formatRateDate } from '../lib/utils/currency';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
   Eye, Plus, Trash2, RotateCcw, Upload, ShoppingCart, Clock,
-  History, ArrowDownCircle, ArrowUpCircle, Loader2, FolderOpen, List, Link2
+  History, ArrowDownCircle, ArrowUpCircle, Loader2, FolderOpen, List, Link2, GitMerge
 } from 'lucide-react';
 
 export default function InventoryManager() {
@@ -182,6 +186,9 @@ export default function InventoryManager() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  // Fusion de doublons (ProductMergeModal)
+  const [mergeItem, setMergeItem] = useState(null);
 
   // Utilisateur authentifié (pour traçabilité mouvements manuels)
   const [currentUser, setCurrentUser] = useState(null);
@@ -852,6 +859,30 @@ export default function InventoryManager() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  // ===== FUSION DE DOUBLONS =====
+  const isSameListItem = (a, b) => {
+    if (!a || !b || a._source !== b._source || a.product_id !== b.product_id) return false;
+    if (a._source !== 'products' && a.id != null && b.id != null) return a.id === b.id;
+    return true;
+  };
+
+  const handleMerged = ({ removed, kept, product }) => {
+    // Retirer la fiche supprimée, rafraîchir la fiche conservée si elle est à l'écran
+    setDisplayItems(prev => prev
+      .filter(p => !isSameListItem(p, removed))
+      .map(p => (isSameListItem(p, kept) && product ? { ...product, _source: kept._source } : p)));
+    setItemCount(prev => ({
+      products: Math.max(0, prev.products - (removed._source === 'products' ? 1 : 0)),
+      nonInventory: Math.max(0, prev.nonInventory - (removed._source === 'products' ? 0 : 1)),
+    }));
+    setMergeItem(null);
+    setDeleteTarget(null);
+    setDeleteCheck(null);
+    closeEditModal();
+    loadQuantities();
+    showToast(`${removed.product_id} fusionné dans ${kept.product_id}`);
   };
 
   const movementTypeLabel = (type) => ({
@@ -1752,7 +1783,7 @@ export default function InventoryManager() {
             </div>
 
             {/* Footer avec boutons */}
-            <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex gap-3 border-t dark:border-gray-700">
+            <div className="bg-gray-50 dark:bg-gray-800 px-3 sm:px-6 py-4 flex flex-wrap gap-2 sm:gap-3 border-t dark:border-gray-700">
               {/* Suppression de la fiche (doublons) — vérification + confirmation avant d'effacer */}
               <button
                 type="button"
@@ -1764,10 +1795,21 @@ export default function InventoryManager() {
                 <Trash2 className="w-4 h-4" />
                 Supprimer
               </button>
+              {/* Fusion de doublons: garde un N° + une description, fusionne mouvements et historique de prix */}
+              <button
+                type="button"
+                onClick={() => setMergeItem(editingItem)}
+                disabled={saving}
+                title="Fusionner ce produit avec son doublon (mouvements, documents et historique de prix regroupés)"
+                className="shrink-0 min-h-[44px] px-3 py-2 text-xs font-medium border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50 flex items-center gap-1"
+              >
+                <GitMerge className="w-4 h-4" />
+                Fusionner
+              </button>
               <button
                 onClick={closeEditModal}
                 disabled={saving}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 disabled:opacity-50"
+                className="flex-1 min-w-[120px] min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 disabled:opacity-50"
               >
                 {modalTab === 'edit' ? 'Annuler' : 'Fermer'}
               </button>
@@ -1775,7 +1817,7 @@ export default function InventoryManager() {
                 <button
                   onClick={saveChanges}
                   disabled={saving || !editForm.selling_price}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  className="flex-1 min-w-[120px] min-h-[44px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                   {saving ? (
                     <>
@@ -2210,6 +2252,23 @@ export default function InventoryManager() {
                       )}
                     </div>
 
+                    {/* Alternative: fusionner au lieu de supprimer (rien n'est perdu) */}
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+                      <div className="flex-1 text-xs text-indigo-900 dark:text-indigo-200">
+                        <b>C'est un doublon d'une autre fiche ?</b> Fusionnez-les plutôt: les mouvements, les documents
+                        et l'historique de prix sont regroupés sur la fiche que vous gardez.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setMergeItem(item)}
+                        disabled={deleting}
+                        className="shrink-0 min-h-[44px] px-3 py-2 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                      >
+                        <GitMerge className="w-4 h-4" />
+                        Fusionner…
+                      </button>
+                    </div>
+
                     <div className="text-xs text-red-700 dark:text-red-400 font-medium">
                       La suppression est définitive: la fiche est effacée de la base de données et ne peut pas être récupérée.
                     </div>
@@ -2238,6 +2297,15 @@ export default function InventoryManager() {
           </div>
         );
       })()}
+
+      {/* Fenêtre de fusion de doublons */}
+      {mergeItem && (
+        <ProductMergeModal
+          item={mergeItem}
+          onClose={() => setMergeItem(null)}
+          onMerged={handleMerged}
+        />
+      )}
 
       {/* Toast notification */}
       {toast && (
