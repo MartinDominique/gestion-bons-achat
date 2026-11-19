@@ -8,9 +8,14 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.16.0
- * @date 2026-11-07
+ * @version 3.17.0
+ * @date 2026-11-19
  * @changelog
+ *   3.17.0 - Suppression d'une fiche (nettoyage des doublons): petit bouton rouge « Supprimer » au bas
+ *            de la fiche, près d'« Annuler ». Vérification serveur AVANT de procéder (/api/products/delete):
+ *            mouvements d'inventaire affichés, historique de prix, stock, réservé / en commande,
+ *            utilisation dans BT/BL/BA, autres fiches du même code. Confirmation explicite obligatoire.
+ *            Les mouvements et les documents ne sont jamais effacés
  *   3.16.0 - Historique: libellé « Varia » pour les mouvements reference_type 'deduction' (fiche de facturation sans facture)
  *   3.15.1 - Mode sombre: pastilles groupe/fournisseur/non-inv./stock faible, section « En main » du modal, onglet Historique des mouvements (cartes IN/OUT, libellés)
  *   3.15.0 - Desktop grand écran (≥ 1536 px): largeur étendue (2xl:max-w-none) pour profiter de l'espace sur les côtés; tablette/cellulaire inchangés
@@ -170,6 +175,13 @@ export default function InventoryManager() {
   // États pour l'historique des mouvements (chargé dans le modal unifié)
   const [historyMovements, setHistoryMovements] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Suppression d'une fiche (doublons): vérification serveur puis confirmation
+  const [deleteTarget, setDeleteTarget] = useState(null);   // item visé (fenêtre ouverte si non null)
+  const [deleteCheck, setDeleteCheck] = useState(null);     // résultat de la vérification
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Utilisateur authentifié (pour traçabilité mouvements manuels)
   const [currentUser, setCurrentUser] = useState(null);
@@ -765,6 +777,94 @@ export default function InventoryManager() {
       setSaving(false);
     }
   };
+
+  // ===== SUPPRESSION D'UNE FICHE (DOUBLONS) =====
+  const deleteParams = (item) => {
+    const params = { source: item._source === 'products' ? 'products' : 'non_inventory', code: item.product_id };
+    if (item._source !== 'products' && item.id != null) params.id = item.id;
+    return params;
+  };
+
+  // Ouvre la fenêtre et lance la vérification (mouvements, historique de prix, documents)
+  const openDeleteModal = async (item) => {
+    if (!item) return;
+    setDeleteTarget(item);
+    setDeleteCheck(null);
+    setDeleteError('');
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/products/delete?${new URLSearchParams(deleteParams(item))}`, { cache: 'no-store' });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) {
+        throw new Error([result.error, result.details].filter(Boolean).join(' — ') || 'Vérification impossible');
+      }
+      setDeleteCheck(result.data);
+    } catch (err) {
+      console.error('Erreur vérification suppression:', err);
+      setDeleteError(err.message || 'Vérification impossible');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) return;
+    setDeleteTarget(null);
+    setDeleteCheck(null);
+    setDeleteError('');
+  };
+
+  const confirmDeleteProduct = async () => {
+    // Jamais de suppression sans vérification réussie affichée à l'écran
+    if (!deleteTarget || !deleteCheck || deleting) return;
+    const item = deleteTarget;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const res = await fetch('/api/products/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(deleteParams(item)),
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success) {
+        throw new Error([result.error, result.details].filter(Boolean).join(' — ') || 'Suppression refusée');
+      }
+
+      // Retirer UNIQUEMENT la fiche supprimée (un doublon du même code reste affiché)
+      setDisplayItems(prev => prev.filter(p => {
+        if (p._source !== item._source || p.product_id !== item.product_id) return true;
+        if (item._source !== 'products' && item.id != null) return p.id !== item.id;
+        return false;
+      }));
+      setItemCount(prev => ({
+        products: Math.max(0, prev.products - (item._source === 'products' ? 1 : 0)),
+        nonInventory: Math.max(0, prev.nonInventory - (item._source === 'products' ? 0 : 1)),
+      }));
+
+      setDeleteTarget(null);
+      setDeleteCheck(null);
+      closeEditModal();
+      showToast(`Produit ${item.product_id} supprimé`);
+    } catch (err) {
+      console.error('Erreur suppression produit:', err);
+      setDeleteError(err.message || 'Suppression refusée');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const movementTypeLabel = (type) => ({
+    supplier_purchase: 'Achat fournisseur',
+    work_order: 'Bon de travail',
+    delivery_note: 'Bon de livraison',
+    delivery_slip: 'Bon de livraison',
+    direct_receipt: 'Réception directe',
+    adjustment: 'Ajustement',
+    manual_edit: 'Modification manuelle',
+    invoice: 'Facture (correction)',
+    deduction: DEDUCTION_LABEL,
+  }[type] || type || '');
 
   // ===== LABEL DU MODE ACTIF =====
   const getModeLabel = () => {
@@ -1653,6 +1753,17 @@ export default function InventoryManager() {
 
             {/* Footer avec boutons */}
             <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex gap-3 border-t dark:border-gray-700">
+              {/* Suppression de la fiche (doublons) — vérification + confirmation avant d'effacer */}
+              <button
+                type="button"
+                onClick={() => openDeleteModal(editingItem)}
+                disabled={saving}
+                title="Supprimer ce produit de la base de données (vérification avant de procéder)"
+                className="shrink-0 min-h-[44px] px-3 py-2 text-xs font-medium border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 flex items-center gap-1"
+              >
+                <Trash2 className="w-4 h-4" />
+                Supprimer
+              </button>
               <button
                 onClick={closeEditModal}
                 disabled={saving}
@@ -1917,6 +2028,210 @@ export default function InventoryManager() {
                   className="px-4 py-2 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
                 >
                   Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Fenêtre de suppression d'une fiche (doublons): vérification puis confirmation */}
+      {deleteTarget && (() => {
+        const item = deleteTarget;
+        const check = deleteCheck;
+        const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
+        const stock = parseFloat(item.stock_qty) || 0;
+        const movements = check?.movements || [];
+        const movementsTotal = check?.movements_total || 0;
+        const twins = check?.twins || [];
+        const usage = check?.usage || {};
+        const docLines = [
+          usage.work_order_lines > 0 && `${usage.work_order_lines} ligne(s) de BT`,
+          usage.delivery_note_lines > 0 && `${usage.delivery_note_lines} ligne(s) de BL`,
+          usage.purchase_order_lines > 0 && `${usage.purchase_order_lines} ligne(s) de BA`,
+        ].filter(Boolean);
+        const priceLevels = check?.has_price_history
+          ? [['n-1', '1st'], ['n-2', '2nd'], ['n-3', '3rd']].filter(([, k]) =>
+              check.product[`cost_price_${k}`] != null || check.product[`selling_price_${k}`] != null)
+          : [];
+        const sourceLabel = (src) => (src === 'products' ? 'Inventaire' : 'Non-inventaire');
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-end sm:items-center justify-center z-[70] p-0 sm:p-4">
+            <div className="bg-white dark:bg-gray-900 rounded-t-lg sm:rounded-lg w-full max-w-xl max-h-[92vh] flex flex-col">
+              <div className="bg-red-600 text-white px-5 py-3 rounded-t-lg flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="font-semibold flex items-center gap-2">
+                    <Trash2 className="w-5 h-5 shrink-0" />
+                    Supprimer ce produit ?
+                  </div>
+                  <div className="text-xs opacity-90 truncate">
+                    {item.product_id} — {item.description} ({sourceLabel(item._source)})
+                  </div>
+                </div>
+                <button
+                  onClick={closeDeleteModal}
+                  disabled={deleting}
+                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-white/20 disabled:opacity-50"
+                  aria-label="Fermer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
+                {deleteLoading && (
+                  <div className="flex items-center justify-center py-10 text-gray-600 dark:text-gray-400">
+                    <Loader2 className="w-6 h-6 animate-spin mr-3" />
+                    Vérification des mouvements et de l'historique…
+                  </div>
+                )}
+
+                {deleteError && (
+                  <div className="bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-200 rounded-lg p-3">
+                    <div className="font-medium">{deleteError}</div>
+                    {!check && !deleteLoading && (
+                      <button
+                        onClick={() => openDeleteModal(item)}
+                        className="mt-2 min-h-[44px] px-3 py-2 text-xs border border-red-300 dark:border-red-600 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50"
+                      >
+                        Revérifier
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {check && (
+                  <>
+                    {/* Doublons du même code */}
+                    {twins.length > 0 ? (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+                        <div className="font-medium text-blue-900 dark:text-blue-200">
+                          {twins.length} autre(s) fiche(s) avec le même code — elle(s) sera(ont) conservée(s):
+                        </div>
+                        <ul className="mt-1 space-y-0.5 text-xs text-blue-800 dark:text-blue-300">
+                          {twins.map((t, i) => (
+                            <li key={`${t._source}-${t.id ?? t.product_id}-${i}`}>
+                              • {t.product_id} — {t.description || '(sans description)'} · {sourceLabel(t._source)} · en main {parseFloat(t.stock_qty) || 0} · vendant {formatCurrency(t.selling_price)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 rounded-lg p-3">
+                        <span className="font-medium">Aucune autre fiche ne porte ce code.</span>{' '}
+                        Ce n'est pas un doublon de code: après suppression, ce produit n'existera plus du tout.
+                      </div>
+                    )}
+
+                    {/* Avertissements stock / documents */}
+                    {(stock !== 0 || qty.reserved > 0 || qty.onOrder > 0 || docLines.length > 0 ||
+                      usage.associations > 0 || usage.items_to_order_pending > 0) && (
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 rounded-lg p-3">
+                        <div className="font-medium flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 shrink-0" /> À vérifier avant de supprimer
+                        </div>
+                        <ul className="mt-1 space-y-0.5 text-xs">
+                          {stock !== 0 && <li>• Quantité en main: <b>{stock}</b> — elle disparaît avec la fiche</li>}
+                          {qty.reserved > 0 && <li>• Réservé dans des BT/BL non signés: <b>{qty.reserved}</b></li>}
+                          {qty.onOrder > 0 && <li>• En commande (AF): <b>{qty.onOrder}</b></li>}
+                          {docLines.length > 0 && <li>• Utilisé dans {docLines.join(', ')} (les documents ne sont pas modifiés)</li>}
+                          {usage.items_to_order_pending > 0 && <li>• {usage.items_to_order_pending} ligne(s) dans la liste « À Commander »</li>}
+                          {usage.associations > 0 && (
+                            <li>• {usage.associations} lien(s) « As »{twins.length === 0 ? ' — ils seront retirés' : ' (conservés pour l\'autre fiche)'}</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Historique de prix */}
+                    <div className="border dark:border-gray-700 rounded-lg p-3">
+                      <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                        <DollarSign className="w-4 h-4" /> Historique de prix
+                      </div>
+                      {priceLevels.length === 0 ? (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Aucun historique de prix.</div>
+                      ) : (
+                        <ul className="mt-1 space-y-0.5 text-xs text-gray-700 dark:text-gray-300">
+                          {priceLevels.map(([label, k]) => (
+                            <li key={k}>
+                              • {label}: coûtant {check.product[`cost_price_${k}`] != null ? formatCurrency(check.product[`cost_price_${k}`]) : '-'}
+                              {' · '}vendant {check.product[`selling_price_${k}`] != null ? formatCurrency(check.product[`selling_price_${k}`]) : '-'}
+                              {check.product[`price_updated_at_${k}`] ? ` · ${formatPriceDate(check.product[`price_updated_at_${k}`])}` : ''}
+                            </li>
+                          ))}
+                          <li className="text-red-700 dark:text-red-400">Cet historique sera perdu avec la fiche.</li>
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Mouvements d'inventaire */}
+                    <div className="border dark:border-gray-700 rounded-lg p-3">
+                      <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
+                        <History className="w-4 h-4" /> Mouvements d'inventaire ({movementsTotal})
+                      </div>
+                      {movementsTotal === 0 ? (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Aucun mouvement pour ce code.</div>
+                      ) : (
+                        <>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 mb-2">
+                            Les mouvements sont rattachés au <b>code</b> {item.product_id}
+                            {twins.length > 0 ? ' (partagés avec l\'autre fiche du même code)' : ''}. Ils restent dans la base après la suppression.
+                          </div>
+                          <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                            {movements.map((m, i) => {
+                              const isIn = m.movement_type === 'IN';
+                              return (
+                                <div
+                                  key={m.id || i}
+                                  className={`border rounded p-2 text-xs ${isIn
+                                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
+                                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'}`}
+                                >
+                                  <div className="flex justify-between gap-2">
+                                    <span className="font-bold text-gray-900 dark:text-gray-100">
+                                      {isIn ? '+' : '−'}{parseFloat(m.quantity).toFixed(2)} {m.unit}
+                                      <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">{movementTypeLabel(m.reference_type)}</span>
+                                    </span>
+                                    <span className="shrink-0 text-gray-700 dark:text-gray-300">{formatMovementDate(m.created_at)}</span>
+                                  </div>
+                                  <div className="text-gray-600 dark:text-gray-400 truncate">
+                                    {m.notes || m.reference_number || '-'}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {movementsTotal > movements.length && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                              {movements.length} plus récents affichés sur {movementsTotal}.
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="text-xs text-red-700 dark:text-red-400 font-medium">
+                      La suppression est définitive: la fiche est effacée de la base de données et ne peut pas être récupérée.
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 flex gap-3 border-t dark:border-gray-700 rounded-b-lg">
+                <button
+                  onClick={closeDeleteModal}
+                  disabled={deleting}
+                  className="flex-1 min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={confirmDeleteProduct}
+                  disabled={!check || deleteLoading || deleting}
+                  className="flex-1 min-h-[44px] px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  {deleting ? 'Suppression…' : (movementsTotal > 0 ? 'J\'ai vu les mouvements — Supprimer' : 'Supprimer définitivement')}
                 </button>
               </div>
             </div>
