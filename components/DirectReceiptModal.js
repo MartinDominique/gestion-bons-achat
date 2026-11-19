@@ -7,9 +7,13 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire
  *              - Décalage historique prix (price shift) si cost_price change
- * @version 1.8.1
- * @date 2026-09-08
+ * @version 1.8.2
+ * @date 2026-11-19
  * @changelog
+ *   1.8.2 - Fix saisie d'un ajustement négatif: le champ refusait le « − » seul et le champ vide
+ *           (il fallait taper un chiffre, ajouter le « − », puis effacer le chiffre). Le texte
+ *           tapé est maintenant conservé tel quel + bouton « +/− » (44 px) en mode Ajustement,
+ *           car le signe moins est absent de plusieurs claviers numériques tactiles.
  *   1.8.1 - Bascule « CAD | USD » à deux segments (CurrencyToggle partagé) au lieu du
  *           bouton « USD » seul: la devise active du coûtant est visible d'un coup d'œil.
  *   1.8.0 - Achats en USD: bascule CAD/USD sur le coûtant de chaque ligne. Le montant
@@ -286,14 +290,30 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
 
   // Mettre à jour la quantité d'un item
   const updateItemQuantity = (productId, value) => {
-    const qty = parseFloat(value);
-    if (isNaN(qty)) return;
+    // On garde le texte tapé (« - », « », « 1. ») pour ne pas bloquer la saisie;
+    // la quantité numérique vaut 0 tant que le texte n'est pas un nombre.
+    const raw = String(value ?? '').replace(',', '.').trim();
+    if (!/^-?\d*\.?\d*$/.test(raw)) return;
+    const qty = parseFloat(raw);
 
     setReceiptItems(prev => prev.map(item =>
       item.product_id === productId
-        ? { ...item, quantity: qty }
+        ? { ...item, quantity: Number.isFinite(qty) ? qty : 0, _qty_input: raw }
         : item
     ));
+  };
+
+  // Inverse le signe de l'ajustement (bouton « +/− »)
+  const toggleItemQuantitySign = (productId) => {
+    setReceiptItems(prev => prev.map(item => {
+      if (item.product_id !== productId) return item;
+      const qty = parseFloat(item.quantity) || 0;
+      if (qty === 0) {
+        const wasNegative = String(item._qty_input ?? '').startsWith('-');
+        return { ...item, quantity: 0, _qty_input: wasNegative ? '' : '-' };
+      }
+      return { ...item, quantity: -qty, _qty_input: String(-qty) };
+    }));
   };
 
   // Mettre à jour le prix coûtant d'un item (recalcule vendant si % marge actif)
@@ -996,22 +1016,37 @@ export default function DirectReceiptModal({ isOpen, onClose, onReceiptComplete 
                         <label className="text-xs text-gray-500 dark:text-gray-400 block mb-0.5">
                           {isAdjustment ? 'Ajust. (+/-)' : 'Qté'}
                         </label>
-                        <input
-                          type="number"
-                          step="1"
-                          min={isAdjustment ? undefined : "0"}
-                          inputMode="numeric"
-                          value={item.quantity || ''}
-                          onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
-                          onFocus={(e) => e.target.select()}
-                          autoCorrect="off"
-                          autoCapitalize="off"
-                          spellCheck={false}
-                          className={`w-full px-2 py-1.5 border rounded text-center font-medium text-sm ${
-                            item.quantity < 0 ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-                          }`}
-                          placeholder="0"
-                        />
+                        <div className="flex items-stretch gap-1">
+                          {isAdjustment && (() => {
+                            const negative = item.quantity < 0 || String(item._qty_input ?? '').startsWith('-');
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => toggleItemQuantitySign(item.product_id)}
+                                className={`min-w-[44px] min-h-[44px] rounded text-lg font-bold text-white ${
+                                  negative ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                                }`}
+                                title="Changer le signe: ajouter (+) ou retirer (−)"
+                              >
+                                {negative ? '−' : '+'}
+                              </button>
+                            );
+                          })()}
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={item._qty_input ?? (item.quantity || '')}
+                            onChange={(e) => updateItemQuantity(item.product_id, e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
+                            className={`w-full px-2 py-1.5 border rounded text-center font-medium text-sm ${
+                              item.quantity < 0 ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                            }`}
+                            placeholder="0"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
