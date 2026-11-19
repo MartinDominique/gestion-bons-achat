@@ -9,9 +9,12 @@
  *              - Matériaux (réutilise MaterialSelector)
  *              - Support Backorder (BO): colonnes commandé/livré/BO, bandeau, liens parent/child
  *              Mobile-first: 95% usage tablette/mobile
- * @version 3.5.0
- * @date 2026-08-11
+ * @version 3.6.0
+ * @date 2026-11-19
  * @changelog
+ *   3.6.0 - Avis « produit en double » au haut de la section « Matériaux livrés »: bandeau rose
+ *           listant les produits présents sur plus d'une ligne (tableau B/O + items manuels
+ *           confondus); lignes concernées surlignées + pastille « ×n ». Signalement seulement.
  *   3.5.0 - Import Achats Fournisseurs identique au BT: charge TOUS les achats fournisseurs
  *           (plus seulement ceux liés au client) + barre de recherche + filtre optionnel
  *           "achats liés au client". Permet d'importer un item commandé chez un fournisseur
@@ -80,6 +83,8 @@ import {
 } from 'lucide-react';
 import ClientModal from '../ClientModal';
 import MaterialSelector from '../work-orders/MaterialSelector';
+import DuplicateMaterialsFlag, { DuplicateLineBadge, DUPLICATE_ROW_CLASS } from '../work-orders/DuplicateMaterialsFlag';
+import { materialCodeKey, findDuplicateMaterials } from '../../lib/utils/duplicateMaterials';
 import DisablePullToRefresh from '../DisablePullToRefresh';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -1254,6 +1259,8 @@ export default function DeliveryNoteForm({
           )}
         </h2>
 
+        <DuplicateMaterialsFlag materials={materials} className="mb-4" />
+
         <div className="flex flex-wrap gap-2 mb-4">
           <button
             type="button"
@@ -1283,6 +1290,8 @@ export default function DeliveryNoteForm({
         {(() => {
           const boMaterials = materials.filter(m => m.ordered_quantity != null);
           if (boMaterials.length === 0) return null;
+          // Produits présents sur plus d'une ligne du BL (B/O + manuels): code → nb de lignes
+          const dupCounts = new Map(findDuplicateMaterials(materials).map(d => [d.code, d.count]));
 
           return (
             <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto mb-4">
@@ -1308,12 +1317,14 @@ export default function DeliveryNoteForm({
                       const code = m.code || m.product_code || m.product?.product_id || m.product_id || '';
 
                       return (
-                        <tr key={idx}>
+                        <tr key={idx} className={dupCounts.has(materialCodeKey(m)) ? DUPLICATE_ROW_CLASS : ''}>
                           <td className="px-2 py-2">
                             <div className="flex items-start gap-2">
                               <div className="flex-1 min-w-0">
                                 {code && (
-                                  <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">{code}</span>
+                                  <span className="font-mono text-[10px] font-bold text-blue-700 dark:text-blue-300 block">
+                                    {code} <DuplicateLineBadge count={dupCounts.get(materialCodeKey(m))} />
+                                  </span>
                                 )}
                                 <span className="text-xs text-gray-900 dark:text-gray-100 line-clamp-2">
                                   {m.description || m.product?.description || 'Article'}
@@ -1427,9 +1438,10 @@ export default function DeliveryNoteForm({
                       const matIndex = materials.findIndex(mat => mat === m);
 
                       return (
-                        <tr key={idx}>
+                        <tr key={idx} className={dupCounts.has(materialCodeKey(m)) ? DUPLICATE_ROW_CLASS : ''}>
                           <td className="px-2 py-2 font-mono text-xs font-bold text-gray-900 dark:text-gray-100">
                             {m.code || m.product_code || m.product?.product_id || m.product_id || '—'}
+                            {' '}<DuplicateLineBadge count={dupCounts.get(materialCodeKey(m))} />
                           </td>
                           <td className="px-2 py-2 text-gray-900 dark:text-gray-100 truncate max-w-[180px]">
                             {m.description || m.product?.description || 'Article'}
@@ -1531,6 +1543,7 @@ export default function DeliveryNoteForm({
           return (
             <MaterialSelector
               materials={nonBoMaterials}
+              allMaterials={materials}
               onMaterialsChange={(newNonBo) => {
                 setMaterials([...boMaterials, ...newNonBo]);
                 onFormChange?.();

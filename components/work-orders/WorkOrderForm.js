@@ -5,9 +5,10 @@
  *              - Intégration TimeTracker (suivi temps) et MaterialSelector (matériaux)
  *              - Import depuis soumissions et achats fournisseurs
  *              - Gestion emails et workflow signature client
- * @version 1.5.0
- * @date 2026-07-15
+ * @version 1.6.0
+ * @date 2026-11-19
  * @changelog
+ *   1.6.0 - Avis « produit en double » au haut de la section « Matériaux et Produits »: bandeau rose listant les produits présents sur plus d'une ligne (code, nombre de lignes, quantité totale). Signalement seulement, rien n'est bloqué ni fusionné.
  *   1.5.0 - Bloque la présentation client (« Présenter au client ») tant qu'une session de temps est en cours. Évite qu'une session soit envoyée au client sans total (0h). L'utilisateur doit d'abord appuyer sur « Terminer » (et vérifier les cases Retour/Transport).
  *   1.4.0 - Désactive le pull-to-refresh natif pendant la saisie (DisablePullToRefresh) pour éviter la perte de données sur mobile/tablette
  *   1.3.1 - Saisie manuelle du BA Client forcée en MAJUSCULES (CSS textTransform + onBlur, autoCapitalize="characters" pour clavier mobile)
@@ -23,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Save, X, Calendar, FileText, User, AlertCircle, Plus, Trash2, Package, Mail, Check, PenTool, Search, Play } from 'lucide-react';
 import MaterialSelector from './MaterialSelector';
+import DuplicateMaterialsFlag from './DuplicateMaterialsFlag';
 import TimeTracker from './TimeTracker';
 import DisablePullToRefresh from '../DisablePullToRefresh';
 import ClientModal from '../ClientModal';
@@ -1759,6 +1761,8 @@ const getFilteredSupplierPurchases = () => {
             </div>
             Matériaux et Produits
           </h3>
+
+          <DuplicateMaterialsFlag materials={materials} className="mb-3" />
           
           <div className="flex flex-wrap gap-2 mb-4">
             <button
