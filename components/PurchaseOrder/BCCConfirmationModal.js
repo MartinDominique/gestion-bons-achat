@@ -5,9 +5,18 @@
  *              - Permet d'ajouter un délai de livraison par article
  *              - Sélection des destinataires email (contacts client)
  *              - Génère un PDF BCC et l'envoie par email via l'API
- * @version 1.7.0
- * @date 2026-09-14
+ * @version 1.8.0
+ * @date 2026-11-17
  * @changelog
+ *   1.8.0 - Fix inventaire: « En Main » affichait le stock BRUT (stock_qty) même si ce stock était
+ *           déjà réservé sur un BT/BL non signé d'un autre dossier (ex. 151 m de fil « en main »
+ *           alors que 152 m étaient sur un BL brouillon). Désormais:
+ *           - Colonne « Dispo » = en main − réservé (BT/BL draft/ready_for_signature) via
+ *             /api/inventory/reservations; les réservations des BT/BL liés au MÊME BA sont
+ *             exclues (c'est la commande de ce client). Détail « x en main − y rés. » affiché.
+ *           - B/O = max(B/O fournisseur, manque réel = qté cmd − livrée − dispo), plafonné à la
+ *             qté commandée. Le PDF client reçoit la quantité disponible dans « En Main ».
+ *           - Si les réservations ne se chargent pas: avertissement + stock brut (ancien calcul).
  *   1.7.0 - Destinataires: TOUS les courriels du dossier client sont proposés (Facturation,
  *           Principal, Contact #2, Contact #3, Administration, adresses supplémentaires) —
  *           le contact #3 et les adresses supplémentaires n'apparaissaient pas
@@ -44,6 +53,9 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
   // Données du client
   const [clientData, setClientData] = useState(null);
 
+  // Réservations BT/BL non chargées (repli sur le stock brut)
+  const [reservationsWarning, setReservationsWarning] = useState('');
+
   // Charger les données au montage
   useEffect(() => {
     if (isOpen && purchaseOrder) {
@@ -62,6 +74,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
     try {
       setIsLoading(true);
       setError('');
+      setReservationsWarning('');
 
       // 1. Charger le client pour les contacts email
       let client = null;
@@ -207,6 +220,35 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
         });
       }
 
+      // 3c. Réservé sur BT/BL non signés (draft / ready_for_signature) — calcul serveur
+      //     (supabaseAdmin, même source que « Réservé » de l'Inventaire). Un matériau
+      //     réservé n'est PAS disponible pour ce client. Exception: les BT/BL liés au
+      //     MÊME BA (c'est précisément la commande qu'on confirme), ignorés ici.
+      //     Clé insensible à la casse: le BT/BL stocke product_id || product_code.
+      const reservedByCode = {};
+      try {
+        const resResponse = await fetch('/api/inventory/reservations', { cache: 'no-store' });
+        const resResult = resResponse.ok ? await resResponse.json() : null;
+        if (!resResult?.success) {
+          throw new Error(resResult?.error || `HTTP ${resResponse.status}`);
+        }
+        const currentPoId = purchaseOrder?.id != null ? String(purchaseOrder.id) : null;
+        Object.entries(resResult.details || {}).forEach(([pid, docs]) => {
+          const key = String(pid).trim().toUpperCase();
+          (docs || []).forEach(d => {
+            if (d.type !== 'BT' && d.type !== 'BL') return;
+            if (currentPoId && d.linked_po_id != null && String(d.linked_po_id) === currentPoId) return;
+            reservedByCode[key] = (reservedByCode[key] || 0) + (parseFloat(d.quantity) || 0);
+          });
+        });
+      } catch (resErr) {
+        console.error('Erreur chargement réservations BT/BL (BCC):', resErr);
+        setReservationsWarning(
+          'Réservations BT/BL non chargées: la colonne « Dispo » affiche le stock brut (en main), ' +
+          'sans déduire les BT/BL non signés. Détail: ' + (resErr.message || resErr)
+        );
+      }
+
       // 4. Construire les items BCC à partir des articles du BA
       const bccData = (baItems || []).map(item => {
         const code = item.product_id || '';
@@ -214,10 +256,18 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
         const unitPrice = parseFloat(item.selling_price || 0);
         const qtyDelivered = deliveredQuantities[code] || 0;
         const afInfo = afQuantities[code] || { ordered: 0, received: 0 };
+        const qtyOnHand = stockByProduct[code] || 0;
+        const qtyReserved = reservedByCode[String(code).trim().toUpperCase()] || 0;
+        // Disponible réel pour CE client = en main − réservé par d'autres BT/BL non signés
+        const qtyAvailable = Math.max(0, qtyOnHand - qtyReserved);
+        // B/O fournisseur: commandé à l'AF mais pas encore reçu
+        const afBackorder = Math.max(0, afInfo.ordered - afInfo.received);
+        // Manque réel: ce qu'il reste à livrer moins ce qui est disponible
+        const shortage = Math.max(0, qtyCmd - qtyDelivered - qtyAvailable);
         // Le B/O affiché au client ne doit JAMAIS dépasser ce qu'il a commandé.
         // (On peut commander plus d'unités au fournisseur pour l'inventaire, mais
         //  ces unités supplémentaires ne concernent pas le client.)
-        const qtyBackorder = Math.min(qtyCmd, Math.max(0, afInfo.ordered - afInfo.received));
+        const qtyBackorder = Math.min(qtyCmd, Math.max(afBackorder, shortage));
 
         return {
           code: code,
@@ -226,7 +276,9 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
           unit: item.unit || 'unité',
           unit_price: unitPrice,
           line_price: qtyCmd * unitPrice,
-          qty_in_stock: stockByProduct[code] || 0,
+          qty_on_hand: qtyOnHand,
+          qty_reserved: qtyReserved,
+          qty_in_stock: qtyAvailable, // « Dispo » à l'écran, « En Main » sur le PDF client
           qty_backorder: qtyBackorder,
           qty_delivered: qtyDelivered,
           delivery_estimate: '',
@@ -376,6 +428,12 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
 
   // Formater montant
   const fmt = (amount) => '$' + (parseFloat(amount) || 0).toFixed(2);
+
+  // Infobulle de la colonne « Dispo »
+  const stockTitle = (item) =>
+    item.qty_reserved > 0
+      ? `En main: ${item.qty_on_hand} · Réservé sur BT/BL non signés (autres dossiers): ${item.qty_reserved} · Disponible: ${item.qty_in_stock}`
+      : `En main: ${item.qty_on_hand ?? item.qty_in_stock} (aucune réservation BT/BL)`;
 
   // Emails disponibles du client (tous les contacts)
   const availableEmails = useMemo(() => {
@@ -561,6 +619,13 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                   Articles de la commande
                 </h3>
 
+                {reservationsWarning && (
+                  <div className="mb-3 flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{reservationsWarning}</span>
+                  </div>
+                )}
+
                 {/* Table desktop */}
                 <div className="hidden sm:block overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
                   <table className="w-full text-sm">
@@ -581,7 +646,7 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">Qte Cmd</th>
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">Prix Unit.</th>
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">Prix Ligne</th>
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">En Main</th>
+                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400" title="Disponible = en main − réservé sur BT/BL non signés (autres dossiers)">Dispo</th>
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">B/O</th>
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400">Livree</th>
                         <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Delai</th>
@@ -625,11 +690,16 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                           <td className="px-2 py-2 text-center text-xs font-medium text-green-700 dark:text-green-400">
                             {fmt(item.line_price)}
                           </td>
-                          <td className="px-2 py-2 text-center">
+                          <td className="px-2 py-2 text-center" title={stockTitle(item)}>
                             {item.qty_in_stock > 0 ? (
                               <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{item.qty_in_stock}</span>
                             ) : (
                               <span className="text-xs text-gray-400 dark:text-gray-500">0</span>
+                            )}
+                            {item.qty_reserved > 0 && (
+                              <div className="text-[10px] leading-tight text-orange-600 dark:text-orange-400 whitespace-nowrap">
+                                {item.qty_on_hand} en main − {item.qty_reserved} rés.
+                              </div>
                             )}
                           </td>
                           <td className="px-2 py-2 text-center">
@@ -665,6 +735,11 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                     </tbody>
                   </table>
                 </div>
+
+                <p className="hidden sm:block mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  Dispo = en main − réservé sur BT/BL non signés d'autres dossiers (les BT/BL de ce BA ne sont pas déduits).
+                  Sur le PDF client, cette quantité apparaît dans la colonne « En Main ».
+                </p>
 
                 {/* Cards mobile */}
                 <div className="sm:hidden space-y-3">
@@ -707,9 +782,14 @@ const BCCConfirmationModal = ({ isOpen, onClose, purchaseOrder, items: baItems, 
                             <span className="bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
                               {fmt(item.unit_price)}/u
                             </span>
-                            <span className={`px-1.5 py-0.5 rounded ${item.qty_in_stock > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-medium' : 'bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`}>
-                              Main: {item.qty_in_stock}
+                            <span className={`px-1.5 py-0.5 rounded ${item.qty_in_stock > 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-medium' : 'bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}`} title={stockTitle(item)}>
+                              Dispo: {item.qty_in_stock}
                             </span>
+                            {item.qty_reserved > 0 && (
+                              <span className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded">
+                                {item.qty_on_hand} en main − {item.qty_reserved} rés.
+                              </span>
+                            )}
                             {item.qty_backorder > 0 && (
                               <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-1.5 py-0.5 rounded font-medium">
                                 B/O: {item.qty_backorder}
