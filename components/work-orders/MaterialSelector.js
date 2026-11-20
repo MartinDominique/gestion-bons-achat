@@ -8,9 +8,11 @@
  *              - Affichage stock en main + quantité en commande (AF) dans la recherche
  *              - Affichage "En main" (stock) dans le modal d'ajout, le modal d'édition
  *                et la liste des matériaux ajoutés (BT + BL)
- * @version 1.11.0
- * @date 2026-11-19
+ * @version 1.12.0
+ * @date 2026-11-20
  * @changelog
+ *   1.12.0 - Produits non-inventaire traités comme les produits inventaire: « En main » affiché
+ *            (ajout, modification, liste) et bouton « Ajuster stock » offert pour eux aussi.
  *   1.11.0 - Bouton « Ajuster stock » en haut à droite des fenêtres « Quantité » (ajout) et
  *            « Modifier matériau »: ouvre un ajustement d'inventaire rapide pour ce produit
  *            (QuickStockAdjustModal) sans quitter le BT/BL. Le « En main » affiché est mis à
@@ -515,11 +517,10 @@ const deleteMaterialFromModal = () => {
   // Retourne la quantité en main (stock) pour un matériau déjà ajouté.
   // Priorise le stock embarqué dans le snapshot produit, sinon cherche le
   // stock à jour dans la liste des produits chargés (par product_id ou id).
-  // Retourne null si non applicable (produit non-inventaire ou introuvable).
+  // Retourne null si le produit est introuvable. Inventaire et non-inventaire: même traitement.
   const getMaterialStock = (material) => {
     if (!material) return null;
     const prod = material.product;
-    if (prod?.product_group === 'Non-Inventaire') return null;
     if (prod && prod.stock_qty != null) return prod.stock_qty;
     const key =
       prod?.product_id || material.product_code || material.product_id;
@@ -528,7 +529,6 @@ const deleteMaterialFromModal = () => {
       (p) => p.product_id === key || p.id === key
     );
     if (!found) return null;
-    if (found.product_group === 'Non-Inventaire') return null;
     return found.stock_qty ?? 0;
   };
 
@@ -557,7 +557,7 @@ const deleteMaterialFromModal = () => {
 
   // Bouton d'en-tête des fenêtres « Quantité » / « Modifier matériau »
   const renderStockAdjustButton = (prod) => {
-    if (!prod?.product_id || prod.product_group === 'Non-Inventaire') return null;
+    if (!prod?.product_id) return null;
     return (
       <button
         type="button"
@@ -1252,7 +1252,7 @@ const deleteMaterialFromModal = () => {
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Unité: {pendingProduct.unit || 'pcs'}
                 </p>
-                {pendingProduct.product_group !== 'Non-Inventaire' && (
+                {(
                   <p className={`text-xs mt-1 font-medium ${
                     (pendingProduct.stock_qty || 0) <= 0
                       ? 'text-red-600 dark:text-red-400'

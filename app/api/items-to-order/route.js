@@ -7,9 +7,10 @@
  *                table products/non_inventory_items (les lignes BT/BL/Soum. ne portent
  *                pas ces champs). Fusionne les doublons en attente (même code produit)
  *                en additionnant les quantités.
- * @version 1.2.0
- * @date 2026-08-06
+ * @version 1.3.0
+ * @date 2026-11-20
  * @changelog
+ *   1.3.0 - Produits non-inventaire traités comme les produits inventaire: quantité en main et fournisseur suggéré lus aussi dans non_inventory_items.
  *   1.2.0 - Ajout « En commande » (inv_on_order): quantité sur les AF actifs
  *           (ordered/partial), même logique que /api/inventory/reservations.
  *   1.1.0 - GET enrichit chaque item avec l'inventaire vivant (qté en main + coûtant
@@ -45,14 +46,15 @@ async function lookupProduct(code) {
 
   if (data) return { ...data, _source: 'products' };
 
-  // 2. Non-inventaire (supplier absent de cette table → null)
-  const { data: ni } = await supabaseAdmin
+  // 2. Non-inventaire: même traitement (fournisseur suggéré compris)
+  const { data: niRows } = await supabaseAdmin
     .from('non_inventory_items')
-    .select('product_id, description, unit, cost_price')
+    .select('product_id, description, unit, cost_price, supplier')
     .eq('product_id', codeStr)
-    .maybeSingle();
+    .limit(1);
+  const ni = niRows && niRows[0];
 
-  if (ni) return { ...ni, supplier: null, _source: 'non_inventory' };
+  if (ni) return { ...ni, supplier: ni.supplier || null, _source: 'non_inventory' };
 
   return null;
 }
@@ -110,7 +112,7 @@ export async function GET(request) {
           .in('product_id', codes),
         supabaseAdmin
           .from('non_inventory_items')
-          .select('product_id, cost_price, selling_price')
+          .select('product_id, stock_qty, cost_price, selling_price')
           .in('product_id', codes),
         // « En commande »: quantités sur les AF actifs (ordered/partial), items en JSONB.
         // Même logique que /api/inventory/reservations (clé = product_id || product_code).
@@ -141,12 +143,12 @@ export async function GET(request) {
           is_non_inventory: false,
         });
       });
-      // Non-inventaire: pas de stock; ne pas écraser un produit d'inventaire existant.
+      // Non-inventaire: même traitement (stock compris); ne pas écraser un produit d'inventaire existant.
       (nonInvRes.data || []).forEach((n) => {
         const key = String(n.product_id).trim();
         if (!invMap.has(key)) {
           invMap.set(key, {
-            stock_qty: null,
+            stock_qty: n.stock_qty,
             cost_price: n.cost_price,
             selling_price: n.selling_price,
             is_non_inventory: true,

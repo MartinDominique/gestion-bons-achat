@@ -11,9 +11,10 @@
  *                /api/products/search, quantité par défaut, note) + suppression avec
  *                confirmation. Met à jour le compteur du carré « As » (associationsCache).
  *              - showParents: section « Suggéré par » (les produits qui suggèrent celui-ci)
- * @version 1.0.0
- * @date 2026-09-10
+ * @version 1.0.1
+ * @date 2026-11-20
  * @changelog
+ *   1.0.1 - « En main » affiché aussi pour les produits non-inventaire (même traitement que l'inventaire).
  *   1.0.0 - Version initiale (Items associés MVP)
  */
 
@@ -384,7 +385,7 @@ export default function ProductAssociationsPanel({
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-3">
                       <span>× {l.default_quantity} par unité</span>
-                      {p?.is_inventory && (
+                      {p && (
                         <span className={p.stock_qty <= 0 ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
                           📦 En main: {p.stock_qty} {p.unit || ''}
                         </span>
@@ -518,9 +519,7 @@ export default function ProductAssociationsPanel({
                               {p.product_id}
                             </span>
                             <span className="text-sm text-gray-800 dark:text-gray-200">{p.description}</span>
-                            {p._source === 'products' && (
-                              <span className="ml-2 text-xs text-gray-500">En main: {p.stock_qty ?? 0}</span>
-                            )}
+                            <span className="ml-2 text-xs text-gray-500">En main: {p.stock_qty ?? 0}</span>
                           </button>
                         </li>
                       ))}

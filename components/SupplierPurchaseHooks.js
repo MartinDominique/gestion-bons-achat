@@ -3,9 +3,10 @@
  * @description Hook principal de la gestion des achats fournisseurs (AF): états, chargement,
  *              recherche produits, lignes d'AF (ajout/quantité/prix/devise), sauvegarde,
  *              marquage « À commander », réception, fournisseurs et adresses.
- * @version 1.2.0
- * @date 2026-10-02
+ * @version 1.3.0
+ * @date 2026-11-20
  * @changelog
+ *   1.3.0 - Produits non-inventaire traités comme les produits inventaire: mise à jour du prix et du « dernier fournisseur » en cherchant la fiche par son code dans les 2 tables (plus selon le drapeau is_non_inventory).
  *   1.2.0 - Fix coûtant USD enregistré comme CAD dans l'inventaire: taper le prix dans la case
  *           « $ CAD » puis appuyer sur la bascule « USD » ouvrait la fenêtre « Mise à jour prix
  *           inventaire » avec le montant tapé (ex. 377 $ US) comme coûtant CAD. La vérification
@@ -885,19 +886,33 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       }
     
       try {
-        const tableName = priceUpdateItem.is_non_inventory ? 'non_inventory_items' : 'products';
         const newCost = parseFloat(priceUpdateForm.newCostPrice);
         const newSelling = parseFloat(priceUpdateForm.newSellingPrice);
 
         // Charger le produit courant pour décaler correctement l'historique des prix
         // (sinon l'ancien prix est écrasé et « Hist. Prix » reste vide).
-        const { data: current, error: fetchError } = await supabase
-          .from(tableName)
-          .select('cost_price, selling_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price_1st, selling_price_2nd, selling_price_3rd, price_updated_at, price_updated_at_1st, price_updated_at_2nd, price_updated_at_3rd')
-          .eq('product_id', priceUpdateItem.product_id)
-          .single();
-
-        if (fetchError) throw fetchError;
+        // Inventaire ou non-inventaire: même traitement, la fiche est cherchée par son code
+        // dans les 2 tables (le drapeau is_non_inventory ne sert qu'à choisir par où commencer).
+        const priceCols = 'cost_price, selling_price, cost_price_1st, cost_price_2nd, cost_price_3rd, selling_price_1st, selling_price_2nd, selling_price_3rd, price_updated_at, price_updated_at_1st, price_updated_at_2nd, price_updated_at_3rd';
+        const tablesToTry = priceUpdateItem.is_non_inventory
+          ? ['non_inventory_items', 'products']
+          : ['products', 'non_inventory_items'];
+        let tableName = null;
+        let current = null;
+        for (const candidate of tablesToTry) {
+          const { data: rows, error: lookupError } = await supabase
+            .from(candidate)
+            .select(priceCols)
+            .eq('product_id', priceUpdateItem.product_id)
+            .limit(1);
+          if (lookupError) throw lookupError;
+          if (rows && rows.length > 0) {
+            tableName = candidate;
+            current = rows[0];
+            break;
+          }
+        }
+        if (!tableName) throw new Error(`Produit ${priceUpdateItem.product_id} introuvable dans l'inventaire`);
 
         const updates = {
           cost_price: newCost,
@@ -1163,8 +1178,9 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       // Mettre à jour "Dernier fournisseur" sur tous les produits de cet AF
       if (purchaseData.supplier_name && selectedItems.length > 0) {
         const supplierUpper = purchaseData.supplier_name.toUpperCase();
-        const productIds = selectedItems.filter(i => !i.is_non_inventory).map(i => i.product_id);
-        const nonInvIds = selectedItems.filter(i => i.is_non_inventory).map(i => i.product_id);
+        // Inventaire ou non-inventaire: même traitement — chaque code est mis à jour là où il existe
+        const productIds = [...new Set(selectedItems.map(i => i.product_id).filter(Boolean))];
+        const nonInvIds = productIds;
 
         if (productIds.length > 0) {
           supabase.from('products').update({ supplier: supplierUpper }).in('product_id', productIds).then(() => {});

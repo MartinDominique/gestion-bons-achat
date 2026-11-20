@@ -487,6 +487,7 @@ lib/utils/priceShift.js             → Décalage historique prix (3 niveaux)
 lib/utils/currency.js               → Conversion USD→CAD (taux + frais bancaires), cost_price toujours en CAD
 lib/constants/paymentTerms.js       → Source unique conditions de paiement (liste, défaut, échéance) + mention d'intérêts (Soum./Facture/État de compte — jamais BT/BL)
 lib/utils/productSearch.js          → Recherche produits tolérante (tirets/accents ignorés)
+lib/services/product-lookup.js      → findProductRow(code): fiche d'un produit dans products puis non_inventory_items (inventaire et non-inventaire: même traitement)
 lib/services/product-associations.js → Helpers serveur items associés (lookupProducts par code, normalizeCode)
 lib/utils/associationsCache.js      → Cache client des compteurs « As » (1 requête groupée par écran) + hook useAssociationCount
 lib/supabase.js                     → Client Supabase (browser)
@@ -1190,6 +1191,21 @@ CRON_SECRET                   # Auth pour cron jobs
     - **Fix saisie négative** (`DirectReceiptModal.js` v1.8.2): `updateItemQuantity` rejetait toute valeur non
       numérique (`isNaN → return`), donc ni « − » seul ni champ vide → impossible de commencer par le signe.
       Texte tapé conservé (`_qty_input`) + bouton « +/− » 44 px en mode Ajustement. Aucune migration
+
+44. ~~**Produits non-inventaire traités comme les produits inventaire**~~ - ✅ COMPLÉTÉ (2026-11-20)
+    - **Règle (Martin, 2026-11-20):** un produit « non-inventaire » (`non_inventory_items`) est un produit comme un
+      autre, créé à la volée depuis un BT/BL/Soumission/AF. Stock, ajustement, réception, alertes: **même traitement**.
+      Ne jamais masquer une fonction ni choisir la table d'après `is_non_inventory` / `product_group` porté par une
+      ligne de document: chercher la fiche par son code dans les 2 tables (`lib/services/product-lookup.js` côté
+      serveur, `products` puis `non_inventory_items`)
+    - **Bug corrigé:** signature/envoi BT et BL — une ligne sans `product_id` (code texte) ne sortait jamais le stock
+      d'un produit non-inventaire (table `products` par défaut → introuvable; mouvement inscrit quand même). Mesuré:
+      76 lignes de BT signés sur 117. Routes `work-orders/[id]/complete-signature` v1.5.0 + `send-email` v1.3.0,
+      `delivery-notes/[id]/complete-signature` v1.7.0 + `send-email` v1.4.0
+    - Aussi: `MaterialSelector.js` v1.12.0 (« En main » + « Ajuster stock »), `SupplierReceiptModal.js` v1.4.0,
+      `SupplierPurchaseHooks.js` v1.3.0 (prix + dernier fournisseur), `PurchaseOrderModal.js` v1.6.0 (recherche BA),
+      `app/api/items-to-order/route.js` v1.3.0, `ProductAssociationsPanel.js` v1.0.1, `InventoryManager.js` v3.19.1
+    - **Reste:** rattrapage du stock des lignes passées (à confirmer par Martin). Aucune migration
 
 ### À faire (priorité utilisateur)
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA

@@ -2,6 +2,8 @@
 // API ROUTE CORRIGÉE - ENVOI EMAIL BONS DE TRAVAIL
 // Fichier: app/api/work-orders/[id]/send-email/route.js
 // Structure: id=integer, client_id=integer, user_id=uuid
+// v1.3.0 - 2026-11-20 - Produits non-inventaire traités comme les produits inventaire: fiche localisée par son
+//                        code (products puis non_inventory_items, findProductRow), plus par le drapeau is_non_inventory
 // v1.2.0 - 2026-04-21 - Fix fallback product_code si product_id NULL (WorkOrderForm.js:1135-1159)
 // v1.1.0 - 2026-04-13 - Fix mouvement inventaire: colonne 'name' → 'reference_number' (BT number)
 //                        + vérification erreur INSERT inventory_movements
@@ -10,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { WorkOrderEmailService } from '../../../../../lib/services/email-service.js';
+import { findProductRow } from '../../../../../lib/services/product-lookup';
 
 // Client Supabase avec clés service (pour contourner RLS)
 const supabaseAdmin = createClient(
@@ -201,15 +204,12 @@ export async function POST(request, { params }) {
           const absQty = Math.abs(qty);
           const movementType = isCredit ? 'IN' : 'OUT';
 
-          const isNonInventory = material.product?.is_non_inventory || false;
-          const tableName = isNonInventory ? 'non_inventory_items' : 'products';
-
           try {
-            const { data: product, error: productError } = await supabaseAdmin
-              .from(tableName)
-              .select('stock_qty')
-              .eq('product_id', pid)
-              .single();
+            // Inventaire ou non-inventaire: même traitement, la fiche est cherchée par son code
+            const found = await findProductRow(pid, 'product_id, stock_qty');
+            const tableName = found?.table || 'products';
+            const product = found?.row || null;
+            const productError = null;
 
             if (!productError && product) {
               const currentStock = parseFloat(product.stock_qty) || 0;

@@ -6,9 +6,10 @@
  *              - Gestion des bons de livraison liés
  *              - Modal BCC (confirmation de commande)
  *              - Onglet Docs: factures liées au BA (via BT/BL rattachés) avec PDF (voir / télécharger / générer)
- * @version 1.5.0
- * @date 2026-11-08
+ * @version 1.6.0
+ * @date 2026-11-20
  * @changelog
+ *   1.6.0 - Recherche d'articles du BA: les produits non-inventaire sont trouvés comme les produits inventaire (2 tables).
  *   1.5.0 - Prop `initialTab` (ex. 'documents'): onglet affiché à l'ouverture d'un BA existant
  *           (pastille « Factures » de la liste des BA → onglet Docs directement)
  *   1.4.0 - Onglet Docs: BT/BL fermés par déduction « Varia » (aucune facture) signalés sous les factures liées
@@ -33,6 +34,28 @@ import { searchWithFallback } from '../lib/utils/productSearch';
 import { DEDUCTION_LABEL } from '../lib/constants/deduction';
 import DeliverySlipModal from './DeliverySlipModal';
 import BCCConfirmationModal from './PurchaseOrder/BCCConfirmationModal';
+
+// Recherche d'articles pour un BA: produits inventaire ET non-inventaire, même traitement.
+// Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés).
+async function searchAllProducts(term) {
+  const run = (table) =>
+    searchWithFallback(
+      (orFilter) =>
+        supabase.from(table).select('*').or(orFilter).order('product_id').limit(10),
+      term,
+      ['product_id', 'description']
+    );
+  const [inv, nonInv] = await Promise.all([run('products'), run('non_inventory_items')]);
+  if (inv.error) return { data: null, error: inv.error };
+  if (nonInv.error) console.error('Recherche non_inventory_items:', nonInv.error.message);
+  const seen = new Set();
+  const data = [...(inv.data || []), ...(nonInv.data || [])].filter((p) => {
+    if (seen.has(p.product_id)) return false;
+    seen.add(p.product_id);
+    return true;
+  });
+  return { data, error: null };
+}
 
 const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, panelMode = false, prefillData = null, keepOpenAfterCreate = false, initialTab = null }) => {
   // État principal du formulaire
@@ -846,17 +869,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
     const timeoutId = setTimeout(async () => {
       try {
         // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
-        const { data, error } = await searchWithFallback(
-          (orFilter) =>
-            supabase
-              .from('products')
-              .select('*')
-              .or(orFilter)
-              .order('product_id')
-              .limit(10),
-          term,
-          ['product_id', 'description']
-        );
+        const { data, error } = await searchAllProducts(term);
 
         if (error) throw error;
 
@@ -887,17 +900,7 @@ const PurchaseOrderModal = ({ isOpen, onClose, editingPO = null, onRefresh, pane
 
       try {
         // Recherche tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
-        const { data, error } = await searchWithFallback(
-          (orFilter) =>
-            supabase
-              .from('products')
-              .select('*')
-              .or(orFilter)
-              .order('product_id')
-              .limit(10),
-          term,
-          ['product_id', 'description']
-        );
+        const { data, error } = await searchAllProducts(term);
 
         if (error) throw error;
 

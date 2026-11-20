@@ -2772,6 +2772,26 @@ les corriger sur place, sans passer par Achat → Réception directe → Ajustem
 - `components/DirectReceiptModal.js` v1.8.2 - **fix saisie négative**: le champ refusait « − » seul et le champ vide (`isNaN → return`); texte tapé conservé + bouton « +/− » 44 px en mode Ajustement
 - Aucune migration SQL requise
 
+### 2026-11-20 - Produits non-inventaire traités comme les produits inventaire ✅ COMPLETE (2026-11-20)
+**Règle (Martin):** un produit « non-inventaire » est un produit comme un autre, simplement créé à la volée
+depuis un BT/BL/Soumission/AF. Stock, ajustements, réceptions et alertes: même traitement.
+
+**Bug trouvé à l'audit:** à la signature/envoi d'un BT ou BL, la table était choisie d'après
+`material.product.is_non_inventory`. Une ligne sans `product_id` (code texte seulement) n'a pas de fiche
+jointe → table `products` par défaut → fiche introuvable → **stock jamais sorti** pour un produit
+non-inventaire (le mouvement, lui, était inscrit). Mesuré en base: 76 lignes de BT signés sur 117.
+
+**Implementation completee (2026-11-20):**
+- `lib/services/product-lookup.js` (nouveau) - `findProductRow(code)`: products puis non_inventory_items
+- `app/api/work-orders/[id]/complete-signature/route.js` v1.5.0, `work-orders/[id]/send-email/route.js` v1.3.0, `delivery-notes/[id]/complete-signature/route.js` v1.7.0, `delivery-notes/[id]/send-email/route.js` v1.4.0 - sortie de stock via `findProductRow`
+- `components/work-orders/MaterialSelector.js` v1.12.0 - « En main » + bouton « Ajuster stock » pour les non-inventaire
+- `components/SupplierReceiptModal.js` v1.4.0 - réception AF: stock lu/écrit en cherchant dans les 2 tables
+- `components/SupplierPurchaseHooks.js` v1.3.0 - mise à jour du prix et du dernier fournisseur dans les 2 tables
+- `components/PurchaseOrderModal.js` v1.6.0 - recherche d'articles du BA dans les 2 tables
+- `app/api/items-to-order/route.js` v1.3.0 - En main + fournisseur suggéré pour les non-inventaire
+- `components/associations/ProductAssociationsPanel.js` v1.0.1, `components/InventoryManager.js` v3.19.1 - En main / « Stock faible » pour tous
+- **Reste:** rattrapage du stock des lignes passées (non fait: écriture en base à confirmer par Martin). Aucune migration SQL requise
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-19 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-20 par Claude AI*

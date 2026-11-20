@@ -5,9 +5,10 @@
  *              - Met à jour le stock (products / non_inventory_items)
  *              - Crée les mouvements d'inventaire (IN)
  *              - Décale l'historique des prix (shift) si le cost_price change
- * @version 1.3.0
- * @date 2026-08-27
+ * @version 1.4.0
+ * @date 2026-11-20
  * @changelog
+ *   1.4.0 - Produits non-inventaire traités comme les produits inventaire: stock affiché et mis à jour en cherchant la fiche par son code dans les 2 tables (le drapeau is_non_inventory de la ligne d'AF n'est plus décisif).
  *   1.3.0 - Achats en USD: la devise d'achat de la ligne d'AF (et le coûtant USD) est
  *           reportée sur la fiche produit à la réception, pour garder le badge USD
  *           et permettre le recalcul quand le taux change.
@@ -107,40 +108,25 @@ export default function SupplierReceiptModal({
         });
       });
       
-      // Charger le stock actuel de tous les produits concernés (products)
-      const productIds = (purchase.items || []).filter(item => !item.is_non_inventory).map(item => item.product_id);
-      const nonInventoryIds = (purchase.items || []).filter(item => item.is_non_inventory).map(item => item.product_id);
-      
+      // Charger le stock actuel de tous les produits concernés.
+      // Inventaire ou non-inventaire: même traitement — on cherche chaque code dans les 2 tables
+      // (products prioritaire) au lieu de se fier au drapeau is_non_inventory de la ligne d'AF.
+      const allIds = [...new Set((purchase.items || []).map(item => item.product_id).filter(Boolean))];
+
       let stockByProduct = {};
-      
-      // Charger stock des products
-      if (productIds.length > 0) {
-        const { data: productsStock, error: stockError } = await supabase
-          .from('products')
-          .select('product_id, stock_qty')
-          .in('product_id', productIds);
-        
-        if (stockError) {
-          console.error('Erreur chargement stock products:', stockError);
-        }
-        
-        (productsStock || []).forEach(p => {
+
+      if (allIds.length > 0) {
+        const [nonInvRes, productsRes] = await Promise.all([
+          supabase.from('non_inventory_items').select('product_id, stock_qty').in('product_id', allIds),
+          supabase.from('products').select('product_id, stock_qty').in('product_id', allIds),
+        ]);
+        if (nonInvRes.error) console.error('Erreur chargement stock non_inventory:', nonInvRes.error);
+        if (productsRes.error) console.error('Erreur chargement stock products:', productsRes.error);
+
+        (nonInvRes.data || []).forEach(p => {
           stockByProduct[p.product_id] = parseFloat(p.stock_qty) || 0;
         });
-      }
-      
-      // Charger stock des non_inventory_items
-      if (nonInventoryIds.length > 0) {
-        const { data: nonInventoryStock, error: nonInvError } = await supabase
-          .from('non_inventory_items')
-          .select('product_id, stock_qty')
-          .in('product_id', nonInventoryIds);
-        
-        if (nonInvError) {
-          console.error('Erreur chargement stock non_inventory:', nonInvError);
-        }
-        
-        (nonInventoryStock || []).forEach(p => {
+        (productsRes.data || []).forEach(p => {
           stockByProduct[p.product_id] = parseFloat(p.stock_qty) || 0;
         });
       }
@@ -299,14 +285,28 @@ export default function SupplierReceiptModal({
       
       // 3. Mettre à jour le stock + décalage prix dans la bonne table (products ou non_inventory_items)
       for (const item of itemsToReceive) {
-        const tableName = item.is_non_inventory ? 'non_inventory_items' : 'products';
-
-        // Récupérer le produit actuel (stock + prix pour le shift)
-        const { data: product, error: productError } = await supabase
-          .from(tableName)
-          .select('stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd, price_updated_at, price_updated_at_1st, price_updated_at_2nd, price_updated_at_3rd')
-          .eq('product_id', item.product_id)
-          .single();
+        // Inventaire ou non-inventaire: même traitement. La fiche est cherchée par son code
+        // (products puis non_inventory_items); le drapeau is_non_inventory de la ligne ne sert
+        // qu'à choisir par où commencer.
+        const receiptCols = 'stock_qty, cost_price, cost_price_1st, cost_price_2nd, cost_price_3rd, price_updated_at, price_updated_at_1st, price_updated_at_2nd, price_updated_at_3rd';
+        const tablesToTry = item.is_non_inventory
+          ? ['non_inventory_items', 'products']
+          : ['products', 'non_inventory_items'];
+        let tableName = tablesToTry[0];
+        let product = null;
+        for (const candidate of tablesToTry) {
+          const { data: rows, error: lookupError } = await supabase
+            .from(candidate)
+            .select(receiptCols)
+            .eq('product_id', item.product_id)
+            .limit(1);
+          if (!lookupError && rows && rows.length > 0) {
+            tableName = candidate;
+            product = rows[0];
+            break;
+          }
+        }
+        const productError = null;
 
         if (!productError && product) {
           const currentStock = parseFloat(product.stock_qty) || 0;

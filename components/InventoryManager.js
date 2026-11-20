@@ -8,9 +8,10 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.19.0
- * @date 2026-11-19
+ * @version 3.19.1
+ * @date 2026-11-20
  * @changelog
+ *   3.19.1 - Produits non-inventaire traités comme les produits inventaire: pastille « Stock faible » et quantité en rouge pour eux aussi.
  *   3.19.0 - Détection des doublons (/api/products/duplicates): le bouton « Fusionner » n'apparaît que si
  *            une autre fiche porte un code semblable (tirets/espaces/casse ignorés); pastille « Doublon »
  *            cliquable sur les lignes de la liste; bouton « Doublons (n) » dans la barre d'outils pour
@@ -1248,7 +1249,7 @@ export default function InventoryManager() {
                             className="-my-2"
                             onClick={() => openEditModal(item, 'associations')}
                           />
-                          {stockQty < 10 && isProduct && (
+                          {stockQty < 10 && (
                             <span className="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 px-2 py-1 rounded text-xs">
                               Stock faible
                             </span>
@@ -1267,7 +1268,7 @@ export default function InventoryManager() {
 
                       {/* Quantités */}
                       <div className="flex flex-col items-center mx-3 min-w-[70px] text-xs space-y-0.5">
-                        <div className={`font-semibold ${stockQty < 10 && isProduct ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>
+                        <div className={`font-semibold ${stockQty < 10 ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>
                           {stockQty}
                         </div>
                         <div className="text-[10px] text-gray-400 uppercase tracking-wide">en main</div>

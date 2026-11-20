@@ -1,9 +1,10 @@
 /**
  * @file app/api/delivery-notes/[id]/complete-signature/route.js
  * @description Signature complète + envoi automatique du BL + création BL suivi backorder
- * @version 1.6.0
- * @date 2026-04-21
+ * @version 1.7.0
+ * @date 2026-11-20
  * @changelog
+ *   1.7.0 - Produits non-inventaire traités comme les produits inventaire: la fiche est localisée par son code (products puis non_inventory_items, findProductRow) au lieu du drapeau is_non_inventory de la ligne. Une ligne sans product_id (code texte seulement) ne sortait jamais le stock d'un produit non-inventaire.
  *   1.6.0 - Fix: fallback sur product_code si product_id est NULL (même pattern que BT).
  *           Sans ce fallback, les matériaux avec SKU texte non résolu étaient skippés
  *           → pas de décrément de stock, pas de mouvement d'inventaire.
@@ -26,6 +27,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { DeliveryNoteEmailService } from '../../../../../lib/services/email-service.js';
+import { findProductRow } from '../../../../../lib/services/product-lookup';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -154,15 +156,12 @@ export async function POST(request, { params }) {
           const absQty = Math.abs(qty);
           const movementType = isCredit ? 'IN' : 'OUT';
 
-          const isNonInventory = material.product?.is_non_inventory || false;
-          const tableName = isNonInventory ? 'non_inventory_items' : 'products';
-
           try {
-            const { data: product } = await supabaseAdmin
-              .from(tableName)
-              .select('stock_qty')
-              .eq('product_id', pid)
-              .single();
+            // Inventaire ou non-inventaire: même traitement, la fiche est cherchée par son code
+            const found = await findProductRow(pid, 'product_id, stock_qty');
+            const tableName = found?.table || 'products';
+            const product = found?.row || null;
+            const productError = null;
 
             if (product) {
               const currentStock = parseFloat(product.stock_qty) || 0;

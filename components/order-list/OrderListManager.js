@@ -56,7 +56,7 @@ function formatMoney(v) {
   return n.toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' });
 }
 
-// Qté en main (stock). '—' pour un article non-inventaire (pas de stock suivi).
+// Qté en main (stock). '—' si la fiche est introuvable. Inventaire et non-inventaire: même traitement.
 function formatStock(v) {
   if (v == null || v === '') return '—';
   const n = parseFloat(v);
