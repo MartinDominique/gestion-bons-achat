@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panneau PGF2701</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: atelier, précis, sans flafla — un outil de technicien.
+   IDEA: le plan de fond de panneau qu'on trace avant de percer la tôle.
+   PICTURE: le fond de panneau à l'échelle, pièces glissables, dégagements en pointillé.
+   COLOUR and TYPE: pierre, noir, brique pour les conflits; Schibsted Grotesk.
+   LAYOUT: panneau en haut pleine largeur, résultat du boîtier à côté, puis édition et listes. */
+:root{color-scheme:light dark;--bg:light-dark(#e7e4df,#171513);--ink:light-dark(#141414,#ece9e4);--mute:light-dark(#5c5853,#a39e97);
+--panel:light-dark(#ffffff,#221f1c);--plate:light-dark(#f6f6f3,#2c2a27);--grid:light-dark(#e2e1dc,#383531);--line:light-dark(#141414,#ece9e4);
+--brick:#c8371e;--pow:light-dark(#2a2a2a,#d9d5cf);--powtx:light-dark(#fff,#141414);--ctl:light-dark(#fff,#3a3632);--duct:light-dark(#cfcac2,#4a4640);--ok:light-dark(#2f6b3a,#7fc48c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Schibsted Grotesk",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(20px,3vw,40px) max(4vw,14px)}
+h1{font-size:clamp(28px,4vw,42px);line-height:1.05;margin:0 0 6px;font-weight:700;text-wrap:balance}
+h2{font-size:20px;margin:0 0 10px}
+.sub{color:var(--mute);margin:0 0 18px;max-width:75ch}
+.top{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+@media(max-width:900px){.top{grid-template-columns:minmax(0,1fr)}}
+.stage{background:var(--panel);border:1px solid var(--line);padding:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center}
+button,input,select{font:inherit;font-size:15px;color:var(--ink)}
+button{min-height:40px;padding:0 14px;border:1px solid var(--line);background:var(--panel);cursor:pointer}
+button:hover{background:var(--bg)}button.pri{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--brick);outline-offset:2px}
+input[type=number],input[type=text]{width:100%;min-height:38px;padding:4px 8px;border:1px solid var(--mute);background:var(--panel);font-size:16px}
+#plate{position:relative;background-color:var(--plate);border:2px solid var(--line);touch-action:none;user-select:none;overflow:visible}
+.it{position:absolute;border:1.5px solid var(--line);font-size:11px;line-height:1.1;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;cursor:grab;padding:1px}
+.it.pow{background:var(--pow);color:var(--powtx)}.it.ctl{background:var(--ctl)}
+.it.duct{background:repeating-linear-gradient(90deg,var(--duct) 0 6px,transparent 6px 9px);border-color:var(--mute);color:var(--mute);z-index:0}
+.it.duct.v{background:repeating-linear-gradient(0deg,var(--duct) 0 6px,transparent 6px 9px)}
+.it.rail{background:repeating-linear-gradient(90deg,#9a9690 0 2px,#bdb9b2 2px 10px);border-color:#77736d;z-index:0;color:#222}
+.it.sel{outline:3px solid var(--brick);outline-offset:1px;z-index:5}
+.it.bad{background:var(--brick)!important;color:#fff!important}
+.it.vt span{writing-mode:vertical-rl;transform:rotate(180deg)}
+.clr{position:absolute;border:1px dashed var(--mute);pointer-events:none;z-index:1}
+.clr.bad{border-color:var(--brick);background:color-mix(in srgb,var(--brick) 12%,transparent)}
+.it.ctl,.it.pow{z-index:2}
+.res{background:var(--ink);color:var(--bg);padding:18px}
+.big{font-size:clamp(26px,3vw,32px);font-weight:700;line-height:1.1}
+.res small{display:block;opacity:.75;font-size:13px}
+.res .row{display:flex;justify-content:space-between;gap:8px;border-top:1px solid color-mix(in srgb,var(--bg) 30%,transparent);padding:7px 0;font-size:14px}
+.res .row b{white-space:nowrap}
+.res label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;margin:6px 0}
+.res input{width:80px;background:transparent;color:var(--bg);border-color:var(--bg)}
+.encl{list-style:none;padding:0;margin:8px 0 0;font-size:14px}
+.encl li{padding:5px 0;border-top:1px solid color-mix(in srgb,var(--bg) 25%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.warn{color:var(--brick);font-weight:500}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:800px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);padding:16px}
+.form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.form label{font-size:13px;color:var(--mute)}.form .w2{grid-column:span 2}.form .w4{grid-column:span 4}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{font-weight:500;color:var(--mute);border-bottom:1.5px solid var(--line)}
+td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{font-size:12px;padding:1px 6px;border:1px solid currentColor;white-space:nowrap}
+.tag.f{color:var(--ok)}.tag.a{color:#b07a12}.tag.g{color:var(--brick)}
+.list li{margin:4px 0}.list{padding-left:18px;margin:6px 0 14px}
+.scroll{overflow-x:auto}
+.note{font-size:13px;color:var(--mute)}
+#msgs li{margin:3px 0}
+@media(max-width:600px){table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mute)}.stack td:empty{display:none}}
+</style><script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script></head>
+<body>
+<div class="band">
+<h1>Fond de panneau PGF2701 — coupe caillebotis</h1>
+<p class="sub">Glisse les pièces sur le fond (paysage). Les pointillés montrent les dégagements. Une pièce en brique est en conflit. Le boîtier minimal se recalcule à chaque déplacement. Flèches du clavier : 1 mm (Maj : 10 mm).</p>
+<div class="top">
+ <div class="stage">
+  <div class="bar">
+   <label class="note" for="pw">Fond L×H (mm)</label>
+   <input id="pw" type="number" style="width:90px" step="5"><input id="ph" type="number" style="width:90px" step="5">
+   <button id="addRail">+ Rail DIN</button><button id="addDuct">+ Goulotte</button><button id="addDuctV">+ Goulotte vert.</button><button id="addFree">+ Pièce</button>
+   <button id="fit" class="pri">Ajuster le fond</button><button id="reset">Réinitialiser</button>
+  </div>
+  <div id="plate"></div>
+  <ul id="msgs" class="note"></ul>
+ </div>
+ <aside class="res" aria-live="polite">
+  <small>Fond minimal requis</small>
+  <div class="big" id="need">—</div>
+  <small id="needIn"></small>
+  <label>Marge au bord (mm) <input id="marg" type="number" value="15" step="5"></label>
+  <label>Réserve en largeur (%) <input id="spare" type="number" value="0" step="5"></label>
+  <label>Profondeur arrière HMI (mm) <input id="hmiD" type="number" value="50" step="5"></label>
+  <div class="row"><span>Profondeur int. min.</span><b id="depth">—</b></div>
+  <div class="row"><span>Chaleur connue</span><b id="heat">—</b></div>
+  <div class="row"><span>Espace sous la machine</span><b>41 × 26,5 po</b></div>
+  <small style="margin-top:6px">Monte la réserve à 15-20 % pour voir l'effet d'un espace d'expansion.</small>
+  <small style="margin-top:12px">Boîtiers standards qui conviennent (H × L × P, po)</small>
+  <ul class="encl" id="encl"></ul>
+  <small style="margin-top:8px">Fond ≈ boîtier − 3 po; à valider au catalogue (Hoffman, Hammond, Saginaw).</small>
+ </aside>
+</div>
+</div>
+
+<div class="band" style="padding-top:0">
+<div class="grid2">
+ <div class="card">
+  <h2>Pièce sélectionnée</h2>
+  <div id="edit" class="note">Clique une pièce sur le fond.</div>
+ </div>
+ <div class="card">
+  <h2>Pas sur le fond de panneau</h2>
+  <p class="note" style="margin-top:0">Tiré de l'onglet Coûtant. Ces items ne prennent pas de place sur le fond.</p>
+  <b>Porte du boîtier</b>
+  <ul class="list"><li>HMI CM5T7W 7 po (découpe dans la porte; prévoir sa profondeur arrière)</li><li>Poignée de sectionneur L11PY</li><li>Arrêt d'urgence D7MMT44 + collier, blocs NO/NC, étiquette 60 mm — porte ou poste opérateur</li><li>Bouton lumineux D7MLF9 + cap D7ALF4 + LED D7NUR — porte ou poste opérateur</li></ul>
+  <b>Parois du boîtier</b>
+  <ul class="list"><li>Ventilateur 120 mm MC19683 + protecteur MC32668 + rallonge MC32650</li><li>2 filtres de sortie Rittal 3238-300 (148,5 mm) : paroi assez haute et profonde</li></ul>
+  <b>Terrain (machine)</b>
+  <ul class="list"><li>6 × SICK STR1-SASM0AC8 (portes)</li><li>2 × prox IME18 (HOME + fin de course)</li><li>Moteurs 5 HP et 1 HP, gearbox, capteurs Scorpion</li><li>Câbles M12, câble VFD blindé</li></ul>
+  <b>Dans une autre pièce ou accessoire</b>
+  <ul class="list"><li>3 × fusibles AJT30 (dans le sectionneur)</li><li>Tige L11S1 263 mm (vérifier avec la profondeur choisie)</li><li>2 × borne P2-RTB-1, carte microSD (sur le PLC)</li><li>Câble USB HDCAB10-SP, outil Wirefox, boîtier Rittal 1034000 (à remplacer)</li></ul>
+  <b>À décider</b>
+  <ul class="list"><li>Résistances de freinage : souvent à l'extérieur ou sur le dessus (chaleur). Ajoute-les avec « + Pièce » si elles vont dedans.</li><li>Contacteurs de coupure : pas placés, car le GS20 a le STO intégré. Ajoute-les si tu ne retiens pas le STO.</li></ul>
+ </div>
+</div>
+</div>
+
+<div class="band" style="padding-top:0">
+<div class="card">
+ <h2>Dimensions utilisées</h2>
+ <p class="note" style="margin-top:0"><span class="tag f">fiche</span> lu sur la fiche ou le manuel · <span class="tag a">approx.</span> lu sur un dessin non annoté ou un équivalent · <span class="tag g">gabarit</span> pièce pas encore choisie, taille typique</p>
+ <div class="scroll"><table class="stack"><thead><tr><th>Pièce</th><th>No</th><th class="n">L × H × P (mm)</th><th class="n">Dégag. H/B/G/D</th><th>Source</th><th>Note</th></tr></thead><tbody id="tbl"></tbody></table></div>
+ <p class="note">Disposition sauvegardée dans ce navigateur seulement. <button id="copy">Copier la disposition (JSON)</button> <span id="copied"></span></p>
+</div>
+</div>
+
+<script>
+{
+const KEY='pgf2701-layout-v2';
+const DEF={plate:{w:838,h:533},items:[
+{id:'d1',k:'duct',lab:'Goulotte',x:20,y:20,w:798,h:40,d:60},
+{id:'d2',k:'duct',lab:'Goulotte',x:20,y:250,w:798,h:40,d:60},
+{id:'d3',k:'duct',lab:'Goulotte',x:20,y:455,w:798,h:40,d:60},
+{id:'r1',k:'rail',lab:'Rail DIN 35',x:20,y:352,w:808,h:35,d:7.5},
+{id:'disc',k:'pow',lab:'Sectionneur 30 A cl. J',pn:'L11J301753',x:30,y:75,w:106,h:113,d:104,c:[10,10,10,10],src:'a',note:'Taille d\'un 30 A cl. J 3P (Mersen M30J12). Confirmer le modèle exact.'},
+{id:'fb1',k:'pow',lab:'Fus. VFD 5 HP',pn:'à choisir',x:156,y:75,w:54,h:81,d:76,c:[5,5,5,5],src:'g',note:'Porte-fusibles 3P selon le manuel du GS20.'},
+{id:'fb2',k:'pow',lab:'Fus. VFD 1 HP',pn:'à choisir',x:220,y:75,w:54,h:81,d:76,c:[5,5,5,5],src:'g',note:'Porte-fusibles 3P selon le manuel du GS20.'},
+{id:'lr5',k:'pow',lab:'Inductance 5 HP',pn:'LR2-55P0',x:300,y:75,w:113,h:96,d:108,c:[20,20,20,20],src:'a',note:'Dessin AutomationDirect sans étiquettes. Dégagement de 20 mm choisi pour la chaleur.'},
+{id:'lr1',k:'pow',lab:'Inductance 1 HP',pn:'LR2-51P0',x:440,y:75,w:113,h:92,d:113,c:[20,20,20,20],src:'a',note:'Dessin AutomationDirect sans étiquettes.'},
+{id:'v5',k:'pow',lab:'GS20 5 HP',pn:'GS23-55P0',x:590,y:75,w:87,h:157,d:152,c:[50,50,30,30],src:'f',W:106.1,note:'Châssis C. Dégagement 50 mm haut/bas et 30 mm côtés (manuel GS20). Perte 106 W.'},
+{id:'v1',k:'pow',lab:'GS20 1 HP',pn:'GS23-51P0',x:740,y:75,w:68,h:128,d:143,c:[50,50,30,30],src:'f',W:36,note:'Châssis A5. Perte 36 W.'},
+{id:'tx',k:'pow',lab:'Transfo 600/120 V',pn:'à choisir',x:30,y:322,w:102,h:95,d:100,c:[10,10,10,10],src:'g',note:'Pour le 120 V (alim. 24 V, ventilateur). Taille typique 150 VA.'},
+{id:'cb',k:'ctl',lab:'Disj. contrôle',pn:'à choisir',x:150,y:327,u:{b:0,p:18,n:3},h:85,d:75,c:[5,5,5,5],src:'g',note:'Largeur = nombre × 18 mm.'},
+{id:'psu',k:'ctl',lab:'Alim. 24 V 120 W',pn:'Phoenix 1110466',x:215,y:305,w:35,h:130,d:129,c:[30,30,10,10],src:'f',W:9,note:'UNO2-PS/1AC/24DC/120W. Dégagements choisis par prudence: vérifier la fiche.'},
+{id:'sr',k:'ctl',lab:'Relais sécurité',pn:'à choisir',x:265,y:320,w:22.5,h:100,d:120,c:[0,0,0,0],src:'g',note:'Taille typique d\'un relais de sécurité 22,5 mm.'},
+{id:'sw',k:'ctl',lab:'Switch 5 ports',pn:'Phoenix 1085039',x:295,y:311.5,w:22.5,h:117,d:123,c:[0,0,0,0],src:'f',note:'84 mm de profond, 123 mm avec connecteur.'},
+{id:'plc',k:'ctl',lab:'PLC P1-412 + modules',pn:'P1-412, P1-16ND3 ×2, P1-15TD2',x:370,y:323,u:{b:26.6,p:17.2,n:3},h:93.6,d:91.6,c:[50,50,50,50],src:'f',note:'CPU 26,6 mm + 17,2 mm par module. Manuel : 50 mm de chaque côté et 76 mm jusqu\'à une goulotte (non vérifié ici).'},
+{id:'tb',k:'ctl',lab:'Borniers PT 2,5',pn:'3209510',x:505,y:346,u:{b:0,p:5.2,n:48},h:48.5,d:35.3,c:[0,0,0,0],src:'f',note:'Largeur = nombre × 5,2 mm. Ajuste le nombre (E/S, communs, 24 V).'},
+{id:'tbp',k:'pow',lab:'Borniers moteurs',pn:'à choisir',x:762,y:342,u:{b:0,p:8.2,n:8},h:56,d:42,c:[0,0,0,0],src:'g',note:'U V W PE × 2 moteurs, taille PT 6 typique.'},
+{id:'gnd',k:'pow',lab:'Barre de terre',pn:'à choisir',x:30,y:210,w:100,h:25,d:30,c:[0,0,0,0],src:'g'}
+]};
+let S,sel=null,sc=1;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const W=i=>i.u?+(i.u.b+i.u.p*i.u.n).toFixed(1):i.w;
+const box=i=>{const w=i.rot?i.h:W(i),h=i.rot?W(i):i.h;return{x:i.x,y:i.y,w,h}};
+const isComp=i=>i.k==='pow'||i.k==='ctl';
+const clrBox=i=>{const b=box(i),c=i.c||[0,0,0,0];return{x:b.x-c[2],y:b.y-c[0],w:b.w+c[2]+c[3],h:b.h+c[0]+c[1]}};
+const hit=(a,b)=>a.x<b.x+b.w-0.01&&b.x<a.x+a.w-0.01&&a.y<b.y+b.h-0.01&&b.y<a.y+a.h-0.01;
+const inch=mm=>(mm/25.4).toFixed(1).replace('.',',');
+const f0=n=>Math.round(n).toLocaleString('fr-CA');
+function load(){try{const t=localStorage.getItem(KEY);if(t){S=JSON.parse(t);return}}catch(e){}S=JSON.parse(JSON.stringify(DEF))}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function check(){const bad=new Set(),clb=new Set(),msgs=[];const comps=S.items.filter(isComp);
+ for(const a of comps){const ba=box(a);
+  if(ba.x<0||ba.y<0||ba.x+ba.w>S.plate.w||ba.y+ba.h>S.plate.h){bad.add(a.id);msgs.push(a.lab+' dépasse le fond')}
+  for(const b of S.items){if(a===b)continue;const bb=box(b);
+   if(b.k==='rail')continue;
+   if(hit(ba,bb)&&(isComp(b)?a.id<b.id:true)){bad.add(a.id);if(isComp(b))bad.add(b.id);msgs.push(a.lab+' chevauche '+b.lab)}
+   if(isComp(b)&&hit(clrBox(a),bb)){clb.add(a.id);bad.add(b.id);msgs.push(b.lab+' est dans le dégagement de '+a.lab)}}}
+ return{bad,clb,msgs:[...new Set(msgs)]}}
+function render(){const P=$('plate'),r=P.parentElement.clientWidth-28;sc=Math.max(0.3,r/S.plate.w);
+ P.style.width=S.plate.w*sc+'px';P.style.height=S.plate.h*sc+'px';
+ const g=25*sc;P.style.backgroundImage=`linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px)`;P.style.backgroundSize=g+'px '+g+'px';
+ const ck=check();let h='';
+ for(const i of S.items){const b=box(i);
+  if(isComp(i)&&i.c&&i.c.some(v=>v>0)){const c=clrBox(i);h+=`<div class="clr${ck.clb.has(i.id)?' bad':''}" style="left:${c.x*sc}px;top:${c.y*sc}px;width:${c.w*sc}px;height:${c.h*sc}px"></div>`}
+  const vt=b.w*sc<46&&b.h>b.w;const cls=['it',i.k,i.k==='duct'&&b.h>b.w?'v':'',sel===i.id?'sel':'',ck.bad.has(i.id)?'bad':'',vt?'vt':''].join(' ');
+  const lab=i.k==='rail'||i.k==='duct'?`${esc(i.lab)} ${f0(b.w>b.h?b.w:b.h)}`:esc(i.lab)+(i.u?` (${i.u.n})`:'');
+  h+=`<div class="${cls}" data-id="${esc(i.id)}" tabindex="0" style="left:${b.x*sc}px;top:${b.y*sc}px;width:${b.w*sc}px;height:${b.h*sc}px"><span>${b.w*sc>16&&b.h*sc>12?lab:''}</span></div>`}
+ P.innerHTML=h;$('msgs').innerHTML=ck.msgs.length?ck.msgs.map(m=>`<li class="warn">${esc(m)}</li>`).join(''):'<li style="color:var(--ok)">Aucun conflit.</li>';
+ $('pw').value=S.plate.w;$('ph').value=S.plate.h;calc();table();edit()}
+function bbox(){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const i of S.items){const b=box(i);x0=Math.min(x0,b.x);y0=Math.min(y0,b.y);x1=Math.max(x1,b.x+b.w);y1=Math.max(y1,b.y+b.h)}return{x0,y0,x1,y1}}
+function calc(){const m=+$('marg').value||0,sp=(+$('spare').value||0)/100,bb=bbox();
+ const nw=(bb.x1-bb.x0)*(1+sp)+2*m,nh=(bb.y1-bb.y0)+2*m;
+ $('need').textContent=f0(nw)+' × '+f0(nh)+' mm';$('needIn').textContent=inch(nw)+' × '+inch(nh)+' po (L × H), réserve incluse';
+ const md=Math.max(...S.items.filter(isComp).map(i=>i.d||0));const dep=md+25+(+$('hmiD').value||0);
+ $('depth').textContent=f0(dep)+' mm ('+inch(dep)+' po)';
+ const ht=S.items.reduce((s,i)=>s+(i.W||0),0);$('heat').textContent='≥ '+f0(ht)+' W';
+ const L=[];for(const H of [16,20,24])for(const Wd of [16,20,24,30,36])for(const D of [8,10,12]){
+  if(Wd<H)continue;const pw=(Wd-3)*25.4,ph=(H-3)*25.4;if(pw<nw||ph<nh||(D-0.5)*25.4<dep)continue;if(Wd>41||H>26.5)continue;L.push({H,Wd,D,a:H*Wd*D})}
+ L.sort((a,b)=>a.a-b.a);
+ $('encl').innerHTML=L.length?L.slice(0,5).map((e,k)=>`<li>${k===0?'<b>':''}${e.H} × ${e.Wd} × ${e.D}${k===0?'</b> — le plus petit':''} <span style="opacity:.7">(fond ≈ ${e.H-3} × ${e.Wd-3})</span></li>`).join(''):'<li class="warn">Aucun boîtier standard ≤ 41 × 26,5 po. Revoir la disposition.</li>'}
+function table(){$('tbl').innerHTML=S.items.filter(isComp).map(i=>{const b=box(i),c=i.c||[0,0,0,0];const t=i.src==='f'?'<span class="tag f">fiche</span>':i.src==='a'?'<span class="tag a">approx.</span>':'<span class="tag g">gabarit</span>';
+ return`<tr><td>${esc(i.lab)}</td><td>${esc(i.pn)}</td><td class="n">${b.w} × ${b.h} × ${i.d}</td><td class="n">${c.join('/')}</td><td>${t}</td><td class="note">${esc(i.note)}</td></tr>`}).join('')}
+function edit(){const i=S.items.find(x=>x.id===sel);const E=$('edit');if(!i){E.innerHTML='Clique une pièce sur le fond.';return}
+ const c=i.c||[0,0,0,0];const lenF=i.k==='rail'||i.k==='duct';
+ let h=`<div class="form"><div class="w4"><label>Nom</label><input type="text" id="e_lab" value="${esc(i.lab)}"></div>`;
+ if(i.u)h+=`<div><label>Nombre</label><input type="number" id="e_n" value="${i.u.n}" min="1"></div><div><label>mm par unité</label><input type="number" id="e_p" value="${i.u.p}" step="0.1"></div>`;
+ else h+=`<div><label>${lenF&&i.h<=i.w?'Longueur':'Largeur'} (mm)</label><input type="number" id="e_w" value="${i.w}"></div>`;
+ h+=`<div><label>Hauteur (mm)</label><input type="number" id="e_h" value="${i.h}"></div>`;
+ if(!lenF)h+=`<div><label>Profondeur</label><input type="number" id="e_d" value="${i.d||0}"></div>`;
+ if(isComp(i))h+=['Dégag. haut','Dégag. bas','Dégag. gauche','Dégag. droite'].map((l,k)=>`<div><label>${l}</label><input type="number" id="e_c${k}" value="${c[k]}"></div>`).join('');
+ h+=`<div><label>X (mm)</label><input type="number" id="e_x" value="${i.x}"></div><div><label>Y (mm)</label><input type="number" id="e_y" value="${i.y}"></div></div>
+ <div class="bar" style="margin-top:10px"><button id="e_rot">Pivoter 90°</button><button id="e_dup">Dupliquer</button><button id="e_del">Supprimer</button></div>${i.note?`<p class="note">${esc(i.note)}</p>`:''}`;
+ E.innerHTML=h;
+ E.querySelectorAll('input').forEach(n=>n.addEventListener('change',()=>{const v=+n.value;switch(n.id){
+  case'e_lab':i.lab=n.value;break;case'e_n':i.u.n=Math.max(1,v);break;case'e_p':i.u.p=v;break;case'e_w':i.w=v;break;case'e_h':i.h=v;break;case'e_d':i.d=v;break;
+  case'e_x':i.x=v;break;case'e_y':i.y=v;break;default:if(n.id.startsWith('e_c')){i.c=i.c||[0,0,0,0];i.c[+n.id.slice(3)]=v}}save();render()}));
+ $('e_rot').onclick=()=>{if(i.u){i.rot=!i.rot}else if(i.k==='rail'||i.k==='duct'){[i.w,i.h]=[i.h,i.w]}else{i.rot=!i.rot;if(i.c)i.c=[i.c[2],i.c[3],i.c[0],i.c[1]]}save();render()};
+ $('e_dup').onclick=()=>{const n=JSON.parse(JSON.stringify(i));n.id='x'+Date.now();n.x+=20;n.y+=20;S.items.push(n);sel=n.id;save();render()};
+ $('e_del').onclick=()=>{S.items=S.items.filter(x=>x!==i);sel=null;save();render()}}
+const P=$('plate');let drag=null;
+P.addEventListener('pointerdown',e=>{const el=e.target.closest('.it');if(!el){sel=null;render();return}
+ const i=S.items.find(x=>x.id===el.dataset.id);sel=i.id;drag={i,sx:e.clientX,sy:e.clientY,ox:i.x,oy:i.y,el};P.setPointerCapture(e.pointerId);
+ document.querySelectorAll('.it.sel').forEach(n=>n.classList.remove('sel'));el.classList.add('sel');edit()});
+P.addEventListener('pointermove',e=>{if(!drag)return;const i=drag.i;
+ i.x=Math.round((drag.ox+(e.clientX-drag.sx)/sc)/5)*5;i.y=Math.round((drag.oy+(e.clientY-drag.sy)/sc)/5)*5;
+ drag.el.style.left=i.x*sc+'px';drag.el.style.top=i.y*sc+'px'});
+const end=()=>{if(!drag)return;drag=null;save();render()};P.addEventListener('pointerup',end);P.addEventListener('pointercancel',end);
+document.addEventListener('keydown',e=>{if(!sel||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)||e.target.tagName==='INPUT')return;
+ const i=S.items.find(x=>x.id===sel);const s=e.shiftKey?10:1;e.preventDefault();
+ if(e.key==='ArrowLeft')i.x-=s;if(e.key==='ArrowRight')i.x+=s;if(e.key==='ArrowUp')i.y-=s;if(e.key==='ArrowDown')i.y+=s;save();render();
+ const n=P.querySelector(`[data-id="${CSS.escape(sel)}"]`);if(n)n.focus()});
+$('pw').onchange=()=>{S.plate.w=+$('pw').value;save();render()};$('ph').onchange=()=>{S.plate.h=+$('ph').value;save();render()};
+['marg','spare','hmiD'].forEach(k=>$(k).addEventListener('input',calc));
+const add=o=>{o.id='x'+Date.now();S.items.push(o);sel=o.id;save();render()};
+$('addRail').onclick=()=>add({k:'rail',lab:'Rail DIN 35',x:20,y:20,w:300,h:35,d:7.5});
+$('addDuct').onclick=()=>add({k:'duct',lab:'Goulotte',x:20,y:20,w:300,h:40,d:60});
+$('addDuctV').onclick=()=>add({k:'duct',lab:'Goulotte',x:20,y:20,w:40,h:300,d:60});
+$('addFree').onclick=()=>add({k:'ctl',lab:'Nouvelle pièce',pn:'',x:30,y:30,w:50,h:80,d:80,c:[0,0,0,0],src:'g'});
+$('fit').onclick=()=>{const m=+$('marg').value||0,bb=bbox();for(const i of S.items){i.x=+(i.x-bb.x0+m).toFixed(1);i.y=+(i.y-bb.y0+m).toFixed(1)}S.plate.w=Math.ceil((bb.x1-bb.x0+2*m)/5)*5;S.plate.h=Math.ceil((bb.y1-bb.y0+2*m)/5)*5;save();render()};
+$('reset').onclick=()=>{S=JSON.parse(JSON.stringify(DEF));sel=null;save();render()};
+$('copy').onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(S));$('copied').textContent='Copié.'}catch(e){$('copied').textContent='Copie refusée par le navigateur.'}};
+load();const ro=new ResizeObserver(()=>render());ro.observe(P.parentElement);render();
+}
+</script>
+</body>
+</html>
