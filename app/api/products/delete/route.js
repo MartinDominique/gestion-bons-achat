@@ -11,14 +11,17 @@
  *                (traçabilité): si un doublon du même code reste, ils y demeurent rattachés
  *              - Les liens « As » ne sont retirés que si plus aucune fiche ne porte ce code
  *              - supabaseAdmin (bypass RLS: work_order_materials est illisible côté client)
- * @version 1.0.0
- * @date 2026-11-19
+ * @version 1.1.0
+ * @date 2026-11-25
  * @changelog
+ *   1.1.0 - Retire aussi la fiche « Panneau virtuel » (panel_specs + photos) quand plus aucune fiche
+ *           produit ne porte le code
  *   1.0.0 - Version initiale
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { deleteSpecForCode } from '../../../../lib/services/panel-specs';
 
 export const dynamic = 'force-dynamic';
 
@@ -216,6 +219,9 @@ export async function POST(request) {
         }
       }
     }
+
+    // Plus aucune fiche avec ce code → la fiche « Panneau virtuel » (et ses photos) n'a plus de produit
+    if (twins.length === 0) await deleteSpecForCode(target.product_id);
 
     console.log(`🗑️ Produit supprimé: ${target.product_id} (${table}) — ${target.description || ''}`);
 

@@ -2797,4 +2797,59 @@ Supabase Dashboard. Les AF déjà envoyés n'ont pas de destinataires enregistr�
 
 ---
 
+## Panneau virtuel — disposition de panneaux de contrôle et choix du boîtier (EN COURS, 4 PR)
+
+Module demandé par Martin (2026-11-25): à partir d'une liste de matériel (soumission, BT ou sélection
+manuelle), placer à l'échelle les pièces sur le fond de panneau (backplate) et trouver quel boîtier de la
+base fait l'affaire. Découpé en 4 PR.
+
+### PR 1 — ~~Fiches techniques dans l'Inventaire~~ ✅ COMPLETE (2026-11-25)
+**Implementation completee (2026-11-25):**
+- `supabase/migrations/20261125b_create_panel_specs.sql` — table `panel_specs` (une fiche par CODE produit,
+  inventaire ou non-inventaire, sans FK; mesures en mm; RLS authenticated) + bucket privé `panel-photos`.
+  **Appliquée** via le MCP Supabase. Aucune colonne de `products` / `non_inventory_items` touchée
+- `supabase/migrations/20261125c_drop_unused_quotes.sql` — retire `quotes` / `quote_items` (vides, jamais
+  utilisées). **À exécuter APRÈS le déploiement de cette PR** (sinon le backup en production, qui les liste
+  encore, tombe en « INCOMPLET »)
+- `lib/panel/specs.ts` — module pur: listes (type, montage, source, catégorie), mm ↔ pouces,
+  `missingDimensions()`, `panelStatus()`, `parseDimensionsFromDescription()`, `sanitizeSpecPayload()`
+- `lib/services/panel-specs.js` — helpers serveur (lecture paginée, URL signées, cascades)
+- `app/api/panel-specs/route.js` — GET (fiche / statuts / produits filtrés) + PUT (upsert par code)
+- `app/api/panel-specs/photo/route.js` — POST / DELETE des 2 photos (face + 3 faces)
+- `components/panel/PanelSpecPanel.js` + `PanelSpecPreview.js` + `usePanelUnit.js` — formulaire
+  Composant / Boîtier, aperçu SVG à l'échelle, bascule mm / po mémorisée, photos réduites à 1600 px
+- `components/InventoryManager.js` v3.20.0 — case « Panneau virtuel », onglet « Panneau », pastille sur
+  les lignes (ambre = dimensions manquantes), filtre oui / non / dimensions manquantes
+- `app/api/products/rename` v1.2.0, `merge` v1.1.0, `delete` v1.1.0 — la fiche suit le code
+- `app/api/cron/backup/route.ts` v3.1.0 — `panel_specs` ajoutée, `quotes` / `quote_items` retirées
+- Données de départ PGF2701: 28 fiches insérées (les 28 codes existent; 8 sont des non-inventaire)
+
+**Non couvert:** les photos (bucket Storage) ne sont PAS dans le backup quotidien par courriel — comme les
+PDF de factures. À traiter avant de dépendre des photos.
+
+### PR 2 — Éditeur de disposition (à faire)
+- [ ] Tables `panel_layouts`, `panel_layout_items`, `panel_layout_versions` (+ backup)
+- [ ] Module de calculs pur (boîte englobante, conflits, suggestions de boîtiers, orientation) + tests
+      unitaires (cas PGF2701: fond requis ≈ 838 × 505 mm, profondeur ≈ 227 mm, chaleur ≥ 151 W, zéro conflit)
+- [ ] Page `/panneaux` + éditeur plein écran `/panneaux/[id]` (plan SVG, glisser-déposer, aimantation, rails
+      DIN, goulottes, dégagements, conflits, annuler/rétablir, sauvegarde automatique)
+- [ ] Survol d'une pièce: N° de pièce + description (demande de Martin), dimensions, source, photo
+- [ ] Desktop d'abord; la tablette doit rester utilisable; pas de version cellulaire
+
+### PR 3 — Import et hors fond (à faire)
+- [ ] Création depuis une soumission (`submissions.items`) ou un BT (`work_order_materials`)
+- [ ] Onglets « À placer », « Hors fond » (porte / paroi / terrain / accessoire / ignoré) + mini-plan de porte
+- [ ] Orientations du boîtier (portrait, paysage, couché gauche / droite), bibliothèque, dupliquer
+
+### PR 4 — Sorties (à faire)
+- [ ] PDF de la disposition (plan à l'échelle, tableau des pièces, alertes)
+- [ ] Historique de versions, « Envoyer le boîtier à la soumission », mode sombre de l'éditeur
+
+### À faire plus tard — uniformiser inventaire / non-inventaire
+La table `non_inventory_items` date de l'import Acomba (plus utilisé). Martin veut tout ramener dans une
+seule table (ou renommer). Chantier à part: voir `MIGRATION_FUSION_INVENTAIRE.md`. Le Panneau virtuel
+référence les produits par code, donc il suivra sans changement.
+
+---
+
 *Document genere le 2026-02-05, mis a jour le 2026-11-25 par Claude AI*

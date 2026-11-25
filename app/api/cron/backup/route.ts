@@ -13,9 +13,11 @@
  *              - Une table en erreur ou incomplète ⇒ courriel « INCOMPLET » + HTTP 500 (le workflow
  *                GitHub passe au rouge au lieu d'un faux « succès »)
  *              - Tri par created_at avec repli automatique pour les tables sans cette colonne (ex: settings)
- * @version 3.0.0
- * @date 2026-09-21
+ * @version 3.1.0
+ * @date 2026-11-25
  * @changelog
+ *   3.1.0 - Table `panel_specs` ajoutée (Panneau virtuel); tables `quotes` et `quote_items` retirées
+ *           (supprimées de la base: vides et jamais utilisées par le code)
  *   3.0.0 - Pagination (fin de la coupure à 1000 lignes: products, work_order_materials,
  *           inventory_movements), exclusion de purchase_orders.files (fin du « statement timeout »
  *           sur les BA), lecture par lots de 3 tables, contrôle d'intégrité (lu vs compte exact),
@@ -218,12 +220,11 @@ export async function GET(request: Request) {
       'invoices',                  // Factures
       'non_inventory_items',
       'notes',                     // Système de notes (page d'ouverture)
+      'panel_specs',               // Panneau virtuel: fiches techniques (composants + boîtiers)
       'product_associations',      // Items associés (« As »), sens unique parent → enfant
       'products',                  // Inventaire (produits)
       'purchase_order_files',
       'purchase_orders',           // BA clients — colonne `files` (PDF base64) EXCLUE, voir EXCLUDED_COLUMNS
-      'quote_items',
-      'quotes',
       'settings',                  // Paramètres globaux (singleton id=1, PAS de created_at)
       'shipping_addresses',
       'submissions',
@@ -238,7 +239,7 @@ export async function GET(request: Request) {
     const backup: any = {
       date: new Date().toISOString(),
       project: 'Services TMT',
-      version: '3.0.0',
+      version: '3.1.0',
       tables: {}
     };
 

@@ -17,14 +17,17 @@
  *              Historique de prix: FUSIONNÉ — le prix actuel de la fiche conservée reste le prix
  *              actuel; les prix précédents des 2 fiches + le prix actuel de la fiche retirée sont
  *              classés du plus récent au plus ancien et les 3 plus récents sont gardés (n-1/n-2/n-3).
- * @version 1.0.0
- * @date 2026-11-19
+ * @version 1.1.0
+ * @date 2026-11-25
  * @changelog
+ *   1.1.0 - Fiche « Panneau virtuel » (panel_specs) transférée au code gardé (celle du code gardé
+ *           prime si les deux en ont une); table quote_items retirée (supprimée de la base, jamais utilisée)
  *   1.0.0 - Version initiale
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { mergeSpecCode } from '../../../../lib/services/panel-specs';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -39,7 +42,6 @@ const CODE_COLUMNS = [
   { table: 'client_po_items', column: 'product_id', key: 'purchase_order_lines' },
   { table: 'items_to_order', column: 'product_id', key: 'items_to_order' },
   { table: 'items_to_order', column: 'product_code', key: 'items_to_order' },
-  { table: 'quote_items', column: 'product_id', key: 'quote_lines', optional: true },
 ];
 
 // Colonnes JSONB (tableau d'articles) dont chaque article porte product_id
@@ -331,6 +333,7 @@ export async function POST(request) {
       const assoc = await moveAssociations(oldCode, newCode);
       moved.associations = assoc.moved;
       moved.associations_removed = assoc.removed;
+      moved.panel_specs = await mergeSpecCode(oldCode, newCode);
     }
 
     // 2. Fiche conservée: stock additionné, description choisie, historique de prix fusionné

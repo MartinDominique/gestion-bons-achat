@@ -8,9 +8,14 @@
  *              - Badge visuel Inventaire vs Non-inventaire
  *              - En main (stock_qty), En commande (AF), Réservé (BT/BL)
  *              - Modal unifié : Édition + Historique mouvements + Historique prix
- * @version 3.19.0
- * @date 2026-11-19
+ * @version 3.20.0
+ * @date 2026-11-25
  * @changelog
+ *   3.20.0 - Panneau virtuel (PR 1): case « Panneau virtuel » dans la fiche (activation immédiate, décocher
+ *            ne supprime rien) → onglet « Panneau » (PanelSpecPanel: dimensions, montage, dégagements,
+ *            boîtier/fond de panneau, photos, aperçu à l'échelle); pastille « Panneau » sur les lignes
+ *            (ambre = dimensions manquantes); filtre « Panneau virtuel: oui / non / dimensions manquantes »
+ *            dans la barre d'outils (/api/panel-specs). Aucune colonne de products n'est touchée
  *   3.19.0 - Détection des doublons (/api/products/duplicates): le bouton « Fusionner » n'apparaît que si
  *            une autre fiche porte un code semblable (tirets/espaces/casse ignorés); pastille « Doublon »
  *            cliquable sur les lignes de la liste; bouton « Doublons (n) » dans la barre d'outils pour
@@ -112,13 +117,14 @@ import AddToOrderButton from './order-list/AddToOrderButton';
 import AssociatedItemsButton from './associations/AssociatedItemsButton';
 import ProductAssociationsPanel from './associations/ProductAssociationsPanel';
 import ProductMergeModal from './inventory/ProductMergeModal';
+import PanelSpecPanel from './panel/PanelSpecPanel';
 import CostPriceField, { useExchangeRate, UsdBadge } from './currency/CostPriceField';
 import { CURRENCY_CAD, CURRENCY_USD, safeCurrencyUpdates, formatRate, formatRateDate } from '../lib/utils/currency';
 import {
   Search, Package, Edit, DollarSign, Filter, X,
   ChevronDown, Save, AlertCircle, TrendingUp, TrendingDown,
   Eye, Plus, Trash2, RotateCcw, Upload, ShoppingCart, Clock,
-  History, ArrowDownCircle, ArrowUpCircle, Loader2, FolderOpen, List, Link2, GitMerge
+  History, ArrowDownCircle, ArrowUpCircle, Loader2, FolderOpen, List, Link2, GitMerge, Ruler
 } from 'lucide-react';
 
 export default function InventoryManager() {
@@ -172,7 +178,13 @@ export default function InventoryManager() {
   const exchange = useExchangeRate();
   const [saving, setSaving] = useState(false);
   const [marginPercent, setMarginPercent] = useState('');
-  const [modalTab, setModalTab] = useState('edit'); // 'edit', 'history', 'prices', 'associations'
+  const [modalTab, setModalTab] = useState('edit'); // 'edit', 'history', 'prices', 'associations', 'panel'
+
+  // Panneau virtuel: statut par code ('ok' | 'missing' | 'inactive'), filtre de liste, état de la fiche
+  const [panelStatuses, setPanelStatuses] = useState({});
+  const [panelFilter, setPanelFilter] = useState('');        // '' | 'yes' | 'no' | 'missing'
+  const [panelToggling, setPanelToggling] = useState(false);
+  const [panelDirty, setPanelDirty] = useState(false);
 
   // États pour l'upload d'inventaire
   const [showInventoryUpload, setShowInventoryUpload] = useState(false);
@@ -267,6 +279,7 @@ export default function InventoryManager() {
     loadDuplicates();
     loadProductGroups();
     loadQuantities();
+    loadPanelStatuses();
     // Récupérer l'utilisateur authentifié
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCurrentUser(user);
@@ -395,6 +408,105 @@ export default function InventoryManager() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ===== PANNEAU VIRTUEL =====
+  const isPanelActive = (code) => panelStatuses[code] === 'ok' || panelStatuses[code] === 'missing';
+
+  const matchesPanelFilter = (item) => {
+    if (!panelFilter) return true;
+    const status = panelStatuses[item.product_id];
+    if (panelFilter === 'yes') return status === 'ok' || status === 'missing';
+    if (panelFilter === 'missing') return status === 'missing';
+    return status !== 'ok' && status !== 'missing'; // 'no'
+  };
+
+  const loadPanelStatuses = async () => {
+    try {
+      const response = await fetch('/api/panel-specs?mode=status');
+      const result = await response.json();
+      if (response.ok && result.success) setPanelStatuses(result.statuses || {});
+      else console.error('Erreur statuts Panneau virtuel:', result.error);
+    } catch (error) {
+      console.error('Erreur statuts Panneau virtuel:', error);
+    }
+  };
+
+  // Filtre « oui » / « dimensions manquantes »: charge toutes les fiches concernées.
+  // Filtre « non »: s'applique à la liste déjà affichée (recherche, groupe, tout).
+  const changePanelFilter = async (value) => {
+    setPanelFilter(value);
+    if (value !== 'yes' && value !== 'missing') {
+      if (loadMode === 'panel') clearResults();
+      if (value === 'no' && (loadMode === 'idle' || loadMode === 'panel')) {
+        showToast('Cherchez un produit ou chargez un groupe: le filtre s\'applique à la liste affichée', 'success');
+      }
+      return;
+    }
+    try {
+      setLoading(true);
+      setSearchTerm('');
+      loadQuantities();
+      const response = await fetch(`/api/panel-specs?mode=products&filter=${value}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Erreur');
+      setPanelStatuses(result.statuses || {});
+      setDisplayItems(result.data);
+      setLoadMode('panel');
+      setItemCount({
+        products: result.data.filter(i => i._source === 'products').length,
+        nonInventory: result.data.filter(i => i._source === 'non_inventory').length,
+      });
+    } catch (error) {
+      console.error('Erreur filtre Panneau virtuel:', error);
+      showToast('Erreur lors du chargement des fiches Panneau virtuel', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Case « Panneau virtuel » de la fiche: enregistrée tout de suite.
+  // Décocher met la fiche inactive — les dimensions saisies sont conservées.
+  const togglePanelActive = async (item, active) => {
+    if (panelToggling) return;
+    if (!active && panelDirty && !window.confirm('La fiche Panneau virtuel a des modifications non enregistrées. Continuer ?')) return;
+    setPanelToggling(true);
+    try {
+      const body = { product_code: item.product_id, active, updated_by: currentUser?.id || null };
+      // Nouvelle fiche: un « BOITIER » démarre en type Boîtier
+      if (active && !panelStatuses[item.product_id] && /bo[iî]tier|enclosure/i.test(item.description || '')) {
+        body.kind = 'enclosure';
+      }
+      const response = await fetch('/api/panel-specs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error([result.error, result.details].filter(Boolean).join(' — ') || 'Erreur');
+      setPanelStatuses(prev => ({ ...prev, [item.product_id]: result.status }));
+      if (active) {
+        setModalTab('panel');
+      } else {
+        setPanelDirty(false);
+        if (modalTab === 'panel') setModalTab('edit');
+      }
+    } catch (error) {
+      console.error('Erreur case Panneau virtuel:', error);
+      showToast(`Panneau virtuel: ${error.message}`, 'error');
+    } finally {
+      setPanelToggling(false);
+    }
+  };
+
+  // Changement d'onglet: ne pas perdre une fiche Panneau virtuel en cours de saisie
+  const switchModalTab = (tab) => {
+    if (tab === modalTab) return;
+    if (modalTab === 'panel' && panelDirty) {
+      if (!window.confirm('La fiche Panneau virtuel a des modifications non enregistrées. Quitter l\'onglet sans enregistrer ?')) return;
+      setPanelDirty(false);
+    }
+    setModalTab(tab);
   };
 
   // ===== EFFACER / RETOUR IDLE =====
@@ -647,6 +759,8 @@ export default function InventoryManager() {
   };
 
   const closeEditModal = () => {
+    if (panelDirty && !window.confirm('La fiche Panneau virtuel a des modifications non enregistrées. Fermer sans enregistrer ?')) return;
+    setPanelDirty(false);
     setEditingItem(null);
     setEditForm({
       code: '',
@@ -917,6 +1031,7 @@ export default function InventoryManager() {
       setDeleteCheck(null);
       closeEditModal();
       loadDuplicates();
+      loadPanelStatuses();
       showToast(`Produit ${item.product_id} supprimé`);
     } catch (err) {
       console.error('Erreur suppression produit:', err);
@@ -948,6 +1063,7 @@ export default function InventoryManager() {
     closeEditModal();
     loadQuantities();
     loadDuplicates();
+    loadPanelStatuses();
     showToast(`${removed.product_id} fusionné dans ${kept.product_id}`);
   };
 
@@ -963,6 +1079,9 @@ export default function InventoryManager() {
     deduction: DEDUCTION_LABEL,
   }[type] || type || '');
 
+  // Liste affichée, après le filtre « Panneau virtuel »
+  const visibleItems = panelFilter ? displayItems.filter(matchesPanelFilter) : displayItems;
+
   // ===== LABEL DU MODE ACTIF =====
   const getModeLabel = () => {
     switch (loadMode) {
@@ -976,6 +1095,8 @@ export default function InventoryManager() {
         return 'Doublons (codes semblables)';
       case 'reserved':
         return 'Items avec réservations (BT/BL non signés)';
+      case 'panel':
+        return panelFilter === 'missing' ? 'Panneau virtuel: dimensions manquantes' : 'Panneau virtuel: fiches actives';
       default:
         return null;
     }
@@ -1116,6 +1237,24 @@ export default function InventoryManager() {
             Doublons ({duplicateItemsCount})
           </button>
 
+          {/* Filtre Panneau virtuel */}
+          <select
+            value={panelFilter}
+            onChange={(e) => changePanelFilter(e.target.value)}
+            disabled={loading}
+            title="Filtrer selon la case « Panneau virtuel » de la fiche"
+            className={`px-3 py-3 border rounded-lg text-sm font-medium disabled:opacity-50 min-w-[140px] ${
+              panelFilter
+                ? 'bg-teal-50 dark:bg-teal-900/30 border-teal-400 dark:border-teal-700 text-teal-800 dark:text-teal-200'
+                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200'
+            }`}
+          >
+            <option value="">Panneau virtuel: tous</option>
+            <option value="yes">Panneau virtuel: oui</option>
+            <option value="no">Panneau virtuel: non</option>
+            <option value="missing">Panneau: dim. manquantes</option>
+          </select>
+
           {/* Recalcul des coûtants des articles achetés en USD */}
           <button
             onClick={openUsdRecalc}
@@ -1145,7 +1284,7 @@ export default function InventoryManager() {
               {itemCount.nonInventory} non-inv.
             </span>
             <span className="text-xs text-gray-500">
-              ({displayItems.length} total)
+              ({panelFilter ? `${visibleItems.length} affichés sur ${displayItems.length}` : `${displayItems.length} total`})
             </span>
           </div>
         )}
@@ -1184,7 +1323,7 @@ export default function InventoryManager() {
       {/* Liste des produits */}
       {!loading && loadMode !== 'idle' && (
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md overflow-hidden">
-          {displayItems.length === 0 ? (
+          {visibleItems.length === 0 ? (
             <div className="text-center py-12">
               <Package className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
               <p className="text-gray-500 dark:text-gray-400 text-lg">
@@ -1198,7 +1337,7 @@ export default function InventoryManager() {
             </div>
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {displayItems.map((item) => {
+              {visibleItems.map((item) => {
                 const qty = quantityMap[item.product_id] || { onOrder: 0, reserved: 0 };
                 const isProduct = item._source === 'products';
                 const stockQty = parseInt(item.stock_qty) || 0;
@@ -1248,6 +1387,23 @@ export default function InventoryManager() {
                             className="-my-2"
                             onClick={() => openEditModal(item, 'associations')}
                           />
+                          {isPanelActive(item.product_id) && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openEditModal(item, 'panel'); }}
+                              title={panelStatuses[item.product_id] === 'missing'
+                                ? 'Panneau virtuel: dimensions manquantes — toucher pour compléter'
+                                : 'Panneau virtuel: fiche complète'}
+                              className={`px-2 py-1 rounded text-[10px] font-semibold border inline-flex items-center gap-1 ${
+                                panelStatuses[item.product_id] === 'missing'
+                                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                                  : 'bg-teal-100 dark:bg-teal-900/40 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-700'
+                              }`}
+                            >
+                              <Ruler className="w-3 h-3" />
+                              Panneau
+                            </button>
+                          )}
                           {stockQty < 10 && isProduct && (
                             <span className="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 px-2 py-1 rounded text-xs">
                               Stock faible
@@ -1346,7 +1502,7 @@ export default function InventoryManager() {
             {/* Onglets */}
             <div className="flex border-b dark:border-gray-700">
               <button
-                onClick={() => setModalTab('edit')}
+                onClick={() => switchModalTab('edit')}
                 className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
                   modalTab === 'edit'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950'
@@ -1357,7 +1513,7 @@ export default function InventoryManager() {
                 Modifier
               </button>
               <button
-                onClick={() => setModalTab('history')}
+                onClick={() => switchModalTab('history')}
                 className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
                   modalTab === 'history'
                     ? 'border-gray-700 dark:border-gray-300 text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800'
@@ -1368,7 +1524,7 @@ export default function InventoryManager() {
                 Mouvements
               </button>
               <button
-                onClick={() => setModalTab('prices')}
+                onClick={() => switchModalTab('prices')}
                 className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
                   modalTab === 'prices'
                     ? 'border-green-500 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950'
@@ -1379,7 +1535,7 @@ export default function InventoryManager() {
                 Hist. Prix
               </button>
               <button
-                onClick={() => setModalTab('associations')}
+                onClick={() => switchModalTab('associations')}
                 className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
                   modalTab === 'associations'
                     ? 'border-purple-500 text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950'
@@ -1389,6 +1545,19 @@ export default function InventoryManager() {
                 <Link2 className="w-4 h-4 inline mr-1" />
                 Associés
               </button>
+              {isPanelActive(editingItem.product_id) && (
+                <button
+                  onClick={() => switchModalTab('panel')}
+                  className={`flex-1 py-2.5 px-3 text-sm font-medium border-b-2 transition-colors ${
+                    modalTab === 'panel'
+                      ? 'border-teal-500 text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <Ruler className="w-4 h-4 inline mr-1" />
+                  Panneau
+                </button>
+              )}
             </div>
 
             {/* Contenu scrollable */}
@@ -1397,6 +1566,32 @@ export default function InventoryManager() {
               {/* === ONGLET MODIFIER === */}
               {modalTab === 'edit' && (
                 <div className="space-y-4">
+                  {/* Case « Panneau virtuel »: enregistrée tout de suite, ouvre l'onglet « Panneau » */}
+                  <label className="flex items-center gap-3 min-h-[44px] px-3 py-2 rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 cursor-pointer">
+                    {panelToggling ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-teal-600 flex-shrink-0" />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        checked={isPanelActive(editingItem.product_id)}
+                        onChange={(e) => togglePanelActive(editingItem, e.target.checked)}
+                        className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-teal-600 focus:ring-teal-500 flex-shrink-0"
+                      />
+                    )}
+                    <span className="text-sm text-teal-900 dark:text-teal-200">
+                      <span className="font-medium">Panneau virtuel</span>
+                      <span className="block text-xs text-teal-700 dark:text-teal-400">
+                        {isPanelActive(editingItem.product_id)
+                          ? (panelStatuses[editingItem.product_id] === 'missing'
+                            ? 'Dimensions manquantes — voir l\'onglet « Panneau »'
+                            : 'Fiche complète — voir l\'onglet « Panneau »')
+                          : (panelStatuses[editingItem.product_id] === 'inactive'
+                            ? 'Décoché: les dimensions déjà saisies sont conservées'
+                            : 'Cette pièce (ou ce boîtier) sert dans un panneau de contrôle')}
+                      </span>
+                    </span>
+                  </label>
+
                   {/* Code (product_id) + Unité côte à côte */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -1637,6 +1832,18 @@ export default function InventoryManager() {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* === ONGLET PANNEAU VIRTUEL === */}
+              {modalTab === 'panel' && isPanelActive(editingItem.product_id) && (
+                <PanelSpecPanel
+                  key={editingItem.product_id}
+                  productCode={editingItem.product_id}
+                  productDescription={editingItem.description || ''}
+                  userId={currentUser?.id || null}
+                  onDirtyChange={setPanelDirty}
+                  onSaved={(spec, status) => setPanelStatuses(prev => ({ ...prev, [editingItem.product_id]: status }))}
+                />
               )}
 
               {/* === ONGLET ITEMS ASSOCIÉS === */}
