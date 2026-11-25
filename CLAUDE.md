@@ -469,6 +469,8 @@ const total = subtotal + tps + tvq;
 /api/reports/payments/send-email       → Envoi rapport de paiements PDF au comptable (CC bureau)
 /api/product-associations              → Items associés « As » (GET ?parent= / ?child= / ?codes=&mode=counts, POST création)
 /api/product-associations/[id]         → PUT (quantité par défaut, note) / DELETE lien associé
+/api/panel-specs                       → Panneau virtuel: fiche technique par code (GET ?code= / ?mode=status / ?mode=products&filter=yes|missing, PUT upsert)
+/api/panel-specs/photo                 → Panneau virtuel: 2 photos par fiche (POST multipart / DELETE), bucket privé panel-photos
 /api/health                            → Ping base de données (ok/slow/down + latence) — voyant BD de la navigation
 /api/cron/backup                       → Backup quotidien
 ```
@@ -489,6 +491,8 @@ lib/constants/paymentTerms.js       → Source unique conditions de paiement (li
 lib/utils/productSearch.js          → Recherche produits tolérante (tirets/accents ignorés)
 lib/services/product-associations.js → Helpers serveur items associés (lookupProducts par code, normalizeCode)
 lib/utils/associationsCache.js      → Cache client des compteurs « As » (1 requête groupée par écran) + hook useAssociationCount
+lib/panel/specs.ts                  → Panneau virtuel: module pur (listes, mm ↔ po, dimensions manquantes, validation)
+lib/services/panel-specs.js         → Panneau virtuel: helpers serveur (URL signées des photos, cascades renommage/fusion/suppression)
 lib/supabase.js                     → Client Supabase (browser)
 lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
 ```
@@ -655,6 +659,31 @@ dans la fenêtre « As » d'un module (« Associer un produit à … », retrait
 **Pas de champ contexte vente/achat** (décision 2026-09-10): mêmes liens partout, l'utilisateur coche.
 **Renommage de code:** `/api/products/rename` cascade `parent_code` + `child_code`.
 **RLS:** authenticated (liste partagée). **Backup:** table dans `app/api/cron/backup/route.ts`.
+
+### panel_specs (Panneau virtuel — fiches techniques)
+```sql
+id (UUID), product_code (TEXT UNIQUE, sans FK), active, kind ('component'|'enclosure'),
+width_mm, height_mm, depth_mm,            -- composant: corps; boîtier: EXTÉRIEUR
+mounting ('din'|'backplate'|'door'|'wall'|'field'|'accessory'),
+clearance_top_mm, clearance_bottom_mm, clearance_left_mm, clearance_right_mm,
+must_stay_vertical, stack_group, is_repeated, unit_width_mm, default_quantity,
+heat_loss_w, visual_category ('power'|'control'), rear_depth_mm,
+source ('datasheet'|'approx'|'template'),
+backplate_width_mm, backplate_height_mm, usable_depth_mm, unusable_margin_mm,   -- boîtier
+rating, material, allow_portrait, allow_landscape,
+datasheet_url, photo_front_path, photo_iso_path, notes,
+created_at, updated_at, updated_by
+```
+**Clé:** le CODE produit (comme `product_associations`): une seule fiche par code, que le produit vive dans
+`products` ou `non_inventory_items`. Code exact (trim seulement, PAS de mise en majuscules).
+**`active`** = la case « Panneau virtuel » de la fiche Inventaire. Décocher ne supprime jamais les données.
+**Unités:** tout est stocké en **mm**; l'affichage mm / po est une bascule du navigateur (`usePanelUnit`).
+**Dimensions manquantes** (`missingDimensions()` dans `lib/panel/specs.ts`): composant sur le fond (rail DIN /
+vissé) sans L × H × P; boîtier sans fond de panneau L × H ou sans profondeur utile. Les pièces hors fond
+(porte, paroi, terrain, accessoire) n'ont aucune dimension obligatoire.
+**Photos:** bucket Storage **privé** `panel-photos`, sans policy (serveur seulement, URL signées 1 h).
+**NON incluses dans le backup quotidien.**
+**Cascades:** `/api/products/rename`, `merge` et `delete` appellent `lib/services/panel-specs.js`.
 
 ### products / non_inventory_items
 ```sql
@@ -1191,7 +1220,24 @@ CRON_SECRET                   # Auth pour cron jobs
       numérique (`isNaN → return`), donc ni « − » seul ni champ vide → impossible de commencer par le signe.
       Texte tapé conservé (`_qty_input`) + bouton « +/− » 44 px en mode Ajustement. Aucune migration
 
+44. **Panneau virtuel (disposition de panneaux + choix du boîtier)** - EN COURS, 4 PR. Plan détaillé: RECOMMANDATIONS.md
+    - ~~**PR 1 — Fiches techniques dans l'Inventaire**~~ ✅ COMPLÉTÉ (2026-11-25): table `panel_specs` + bucket
+      `panel-photos` (migration `20261125b`, **déjà appliquée**), `lib/panel/specs.ts`, `/api/panel-specs` (+ `/photo`),
+      `components/panel/*`, `InventoryManager.js` v3.20.0 (case, onglet « Panneau », pastille, filtre), cascades
+      rename/merge/delete, backup v3.1.0. 28 fiches de départ (projet PGF2701)
+    - **Reste (PR 1):** après le déploiement, exécuter `20261125c_drop_unused_quotes.sql` (retire `quotes` /
+      `quote_items`, vides et inutilisées — PAS avant, le backup en production les liste encore)
+    - PR 2: éditeur de disposition + module de calculs testé · PR 3: import soumission/BT, hors fond, orientations ·
+      PR 4: PDF, versions, envoi du boîtier à la soumission
+    - Décisions (Martin, 2026-11-25): 4 PR; 2 photos par produit (face + 3 faces); pas de version cellulaire,
+      la tablette doit rester utilisable; survol d'une pièce = N° + description; calculs en TypeScript (`lib/panel`),
+      composants en `.js` comme le reste; plan en SVG
+    - **Règle:** toute nouvelle table qui porte un code produit doit suivre le renommage/fusion/suppression
+      (voir item 41)
+
 ### À faire (priorité utilisateur)
+10. **Uniformiser inventaire / non-inventaire** - `non_inventory_items` date de l'import Acomba (plus utilisé);
+    tout ramener dans une seule table ou renommer. Voir `MIGRATION_FUSION_INVENTAIRE.md`
 6. **Statut soumissions** - Import partiel + changement auto "Acceptée" + ref croisée BA
 7. **Bandeau alertes** - BA orphelins / AF reçus sans livraison (reste Phase 3)
 8. **Multi-utilisateurs** - Préparer système permissions/RLS
