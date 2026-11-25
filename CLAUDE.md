@@ -1202,6 +1202,10 @@ CRON_SECRET                   # Auth pour cron jobs
      Reste: vérification visuelle sur tablette
 
 ### Bugs connus (corrigés)
+- ~~AF: mauvais contact/courriel sur le PDF quand un autre contact que le principal est coché + cases « Destinataire(s) courriel » oubliées à la réouverture~~ → Corrigé (2026-11-25)
+  - Causes: les cases cochées n'étaient qu'un état local (jamais enregistré) → retour au contact principal à chaque réouverture, donc PDF réimprimé avec le principal; et avec plusieurs contacts cochés, le PDF (v1.8.1) n'imprimait que le 1er (le principal s'il restait coché).
+  - Correctif: `supabase/migrations/20261125_add_recipient_emails_to_supplier_purchases.sql` (colonne `supplier_purchases.recipient_emails` JSONB, NULL = principal); `SupplierPurchaseForms.js` v1.11.0 (cases lues/écrites dans `purchaseForm.recipient_emails`; PDF: tous les contacts cochés imprimés), `SupplierPurchaseHooks.js` v1.3.0 (2 chemins de sauvegarde), `SupplierPurchaseServices.js` v2.5.0 (PDF multi-contacts + sauvegarde tolérante si la colonne manque).
+  - **Reste:** exécuter la migration SQL `20261125_add_recipient_emails_to_supplier_purchases.sql` dans Supabase Dashboard (sans elle: l'AF se sauvegarde, mais les cases ne sont pas mémorisées).
 - ~~BCC: « En Main » montre le stock brut même si ce stock est réservé sur un BT/BL non signé (fil 104SOOW: 151 « en main » alors que 152 m sont sur un BL brouillon)~~ → Corrigé (2026-11-17)
   - Symptôme: BA client → AF commandé → BCC: la colonne « En Main » (écran + PDF client) affichait `products.stock_qty` tel quel et « B/O » 0, alors que le fil était déjà réservé sur un BL brouillon d'un autre dossier. Le client recevait donc une confirmation « en main » pour du matériel déjà promis ailleurs.
   - Cause: `BCCConfirmationModal.js` lisait `stock_qty` directement et ne consultait jamais `/api/inventory/reservations` (la source du « Réservé (BT/BL non signés) » de l'Inventaire). Le B/O ne dépendait que des AF liés au BA (commandé − reçu), jamais du manque réel.

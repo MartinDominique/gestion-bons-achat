@@ -2,9 +2,12 @@
  * @file components/SupplierPurchaseServices.js
  * @description Services pour la gestion des achats fournisseurs (AF)
  *              PDF standardisé via pdf-common.js, envoi email, CRUD Supabase
- * @version 2.4.0
- * @date 2026-08-27
+ * @version 2.5.0
+ * @date 2026-11-25
  * @changelog
+ *   2.5.0 - PDF AF: plusieurs destinataires cochés → tous imprimés (supplier.pdf_contacts).
+ *           create/updateSupplierPurchase: enregistrent recipient_emails; si la colonne
+ *           n'existe pas encore (migration non passée), l'AF est sauvegardé sans elle
  *   2.4.0 - Recherche produits tolérante: « p1540 » trouve « P1-540 » (tirets/accents ignorés)
  *   2.3.0 - Ajout fetchClients (sélecteur « Ou Client »); PDF affiche « Client » au lieu de « BA Acomba »
  *   2.2.0 - PDF: ajout Transporteur + N° Compte sous adresse livraison, fix date N/A
@@ -228,43 +231,43 @@ export const fetchSupplierPurchases = async () => {
   }
 };
 
-// Créer un nouvel achat fournisseur - MODIFIÉ avec BA Acomba
+// Colonne recipient_emails absente (migration 20261125 non passée) → on sauvegarde
+// quand même l'AF, sans mémoriser les destinataires cochés.
+const isMissingRecipientColumn = (error) =>
+  !!error && /recipient_emails/i.test(`${error.message || ''} ${error.details || ''}`);
+
+const writeSupplierPurchase = async (run, purchaseData) => {
+  const row = { ...purchaseData, ba_acomba: purchaseData.ba_acomba || '' };
+  let { data, error } = await run(row);
+  if (isMissingRecipientColumn(error) && 'recipient_emails' in row) {
+    console.warn('⚠️ supplier_purchases.recipient_emails absente — destinataires non mémorisés (migration à exécuter)');
+    const { recipient_emails, ...rest } = row;
+    ({ data, error } = await run(rest));
+  }
+  if (error) throw error;
+  return data;
+};
+
+// Créer un nouvel achat fournisseur
 export const createSupplierPurchase = async (purchaseData) => {
   try {
-    const { data, error } = await supabase
-      .from('supplier_purchases')
-      .insert([{
-        ...purchaseData,
-        // S'assurer que ba_acomba est inclus
-        ba_acomba: purchaseData.ba_acomba || ''
-      }])
-      .select()
-      .single();
-      
-    if (error) throw error;
-    return data;
+    return await writeSupplierPurchase(
+      (row) => supabase.from('supplier_purchases').insert([row]).select().single(),
+      purchaseData
+    );
   } catch (error) {
     console.error('Erreur création achat:', error);
     throw error;
   }
 };
 
-// Mettre à jour un achat fournisseur - MODIFIÉ avec BA Acomba
+// Mettre à jour un achat fournisseur
 export const updateSupplierPurchase = async (id, purchaseData) => {
   try {
-    const { data, error } = await supabase
-      .from('supplier_purchases')
-      .update({
-        ...purchaseData,
-        // S'assurer que ba_acomba est inclus
-        ba_acomba: purchaseData.ba_acomba || ''
-      })
-      .eq('id', id)
-      .select()
-      .single();
-      
-    if (error) throw error;
-    return data;
+    return await writeSupplierPurchase(
+      (row) => supabase.from('supplier_purchases').update(row).eq('id', id).select().single(),
+      purchaseData
+    );
   } catch (error) {
     console.error('Erreur mise à jour achat:', error);
     throw error;
@@ -751,12 +754,24 @@ export const generatePurchasePDF = async (purchase, options = {}) => {
   const leftLines = [];
   if (supplier) {
     leftLines.push(supplier.company_name || purchase.supplier_name || 'N/A');
-    if (supplier.contact_name) leftLines.push('Contact: ' + supplier.contact_name);
+    // Plusieurs destinataires cochés dans l'AF → tous imprimés (nom + courriel + tél.)
+    const multiContacts = Array.isArray(supplier.pdf_contacts) && supplier.pdf_contacts.length > 1
+      ? supplier.pdf_contacts
+      : null;
+    if (!multiContacts && supplier.contact_name) leftLines.push('Contact: ' + supplier.contact_name);
     if (supplier.address) leftLines.push(supplier.address);
     if (supplier.city) leftLines.push(`${supplier.city}, ${supplier.province || ''} ${supplier.postal_code || ''}`);
     if (supplier.country) leftLines.push(supplier.country);
-    if (supplier.email) leftLines.push('Email: ' + supplier.email);
-    if (supplier.phone) leftLines.push('Tél: ' + supplier.phone);
+    if (multiContacts) {
+      multiContacts.forEach((c) => {
+        if (c.contactName) leftLines.push('Contact: ' + c.contactName);
+        if (c.email) leftLines.push('Email: ' + c.email);
+        if (c.phone) leftLines.push('Tél: ' + c.phone);
+      });
+    } else {
+      if (supplier.email) leftLines.push('Email: ' + supplier.email);
+      if (supplier.phone) leftLines.push('Tél: ' + supplier.phone);
+    }
   } else {
     leftLines.push(purchase.supplier_name || 'N/A');
   }

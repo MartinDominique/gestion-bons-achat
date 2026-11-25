@@ -2772,6 +2772,29 @@ les corriger sur place, sans passer par Achat → Réception directe → Ajustem
 - `components/DirectReceiptModal.js` v1.8.2 - **fix saisie négative**: le champ refusait « − » seul et le champ vide (`isNaN → return`); texte tapé conservé + bouton « +/− » 44 px en mode Ajustement
 - Aucune migration SQL requise
 
+### 2026-11-25 - Bug: AF — mauvais contact sur le PDF + cases « Destinataire(s) courriel » oubliées ✅ CORRIGÉ (2026-11-25)
+
+**Symptôme:** un autre contact que le principal est coché pour l'envoi d'un AF, mais le PDF affiche
+le contact et le courriel du principal; en rouvrant l'AF, la case cochée est revenue au principal.
+
+**Causes:**
+- Les cases cochées n'étaient qu'un état local du formulaire, jamais enregistré: à chaque
+  réouverture de l'AF → retour au contact principal, donc PDF réimprimé avec le principal.
+- PDF (v1.8.1): avec plusieurs contacts cochés, seul le 1er (ordre principal, #2, #3) était imprimé —
+  donc le principal dès qu'il restait coché en même temps qu'un autre.
+
+**Correctif (2026-11-25):**
+- `supabase/migrations/20261125_add_recipient_emails_to_supplier_purchases.sql` (nouveau) — colonne
+  `supplier_purchases.recipient_emails` JSONB (tableau d'adresses; NULL = contact principal)
+- `components/SupplierPurchaseForms.js` v1.11.0 — cases lues/écrites dans `purchaseForm.recipient_emails`
+  (rappelées à la réouverture); PDF: tous les contacts cochés sont imprimés
+- `components/SupplierPurchaseHooks.js` v1.3.0 — `recipient_emails` enregistré dans les 2 chemins de sauvegarde
+- `components/SupplierPurchaseServices.js` v2.5.0 — PDF multi-contacts (`supplier.pdf_contacts`);
+  sauvegarde tolérante si la colonne n'existe pas encore (AF sauvegardé, destinataires non mémorisés)
+
+**Reste:** exécuter la migration SQL `20261125_add_recipient_emails_to_supplier_purchases.sql` dans
+Supabase Dashboard. Les AF déjà envoyés n'ont pas de destinataires enregistrés (contact principal par défaut).
+
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-19 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-25 par Claude AI*

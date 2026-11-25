@@ -3,9 +3,11 @@
  * @description Hook principal de la gestion des achats fournisseurs (AF): états, chargement,
  *              recherche produits, lignes d'AF (ajout/quantité/prix/devise), sauvegarde,
  *              marquage « À commander », réception, fournisseurs et adresses.
- * @version 1.2.0
- * @date 2026-10-02
+ * @version 1.3.0
+ * @date 2026-11-25
  * @changelog
+ *   1.3.0 - Les destinataires courriel cochés dans l'AF (recipient_emails) sont enregistrés
+ *           avec l'AF (2 chemins de sauvegarde) et donc rappelés à la réouverture
  *   1.2.0 - Fix coûtant USD enregistré comme CAD dans l'inventaire: taper le prix dans la case
  *           « $ CAD » puis appuyer sur la bascule « USD » ouvrait la fenêtre « Mise à jour prix
  *           inventaire » avec le montant tapé (ex. 377 $ US) comme coûtant CAD. La vérification
@@ -1131,6 +1133,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         ba_acomba: purchaseForm.ba_acomba, // Conservé pour compatibilité (champ retiré de l'UI)
         client_id: purchaseForm.client_id || null,
         client_name: purchaseForm.client_name || '',
+        // Destinataires courriel cochés (null = jamais choisi → contact principal)
+        recipient_emails: Array.isArray(purchaseForm.recipient_emails) ? purchaseForm.recipient_emails : null,
         shipping_address_id: purchaseForm.shipping_address_id,
         shipping_company: purchaseForm.shipping_company,
         shipping_account: purchaseForm.shipping_account,
@@ -1219,6 +1223,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
         ba_acomba: purchaseForm.ba_acomba,
         client_id: purchaseForm.client_id || null,
         client_name: purchaseForm.client_name || '',
+        // Destinataires courriel cochés (null = jamais choisi → contact principal)
+        recipient_emails: Array.isArray(purchaseForm.recipient_emails) ? purchaseForm.recipient_emails : null,
         shipping_address_id: purchaseForm.shipping_address_id,
         shipping_company: purchaseForm.shipping_company,
         shipping_account: purchaseForm.shipping_account,
@@ -1368,7 +1374,8 @@ const [priceUpdateForm, setPriceUpdateForm] = useState({
       setPurchaseForm({
         ...purchaseForm,
         supplier_id: newSupplier.id,
-        supplier_name: newSupplier.company_name
+        supplier_name: newSupplier.company_name,
+        recipient_emails: null
       });
       
       setShowSupplierFormModal(false);
