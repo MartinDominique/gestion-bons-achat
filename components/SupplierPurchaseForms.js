@@ -9,9 +9,14 @@
  *              - PriceUpdateModal: modal mise à jour prix
  *              - SupplierFormModal: formulaire fournisseur (dialog)
  *              - QuickSupplierModal: formulaire rapide fournisseur
- * @version 1.10.2
- * @date 2026-10-09
+ * @version 1.11.0
+ * @date 2026-11-25
  * @changelog
+ *   1.11.0 - Destinataire(s) courriel mémorisés avec l'AF (supplier_purchases.recipient_emails):
+ *            en rouvrant l'AF, les cases cochées sont celles de l'envoi (avant: retour au
+ *            contact principal → PDF réimprimé avec le mauvais contact). PDF: si plusieurs
+ *            contacts sont cochés, ils sont TOUS imprimés (avant: seul le 1er, donc le
+ *            principal dès qu'il restait coché)
  *   1.10.2 - Mode sombre (suite): boutons + fournisseur / + adresse, boutons de marge 27/30/35 % (produit non-inventaire + modal prix)
  *   1.10.1 - Mode sombre: formulaire Nouveau/Modifier Fournisseur (libellés, champs, listes, cases,
  *            Annuler), boutons Modifier/Supprimer de la liste des fournisseurs, encadré « Marge »
@@ -233,31 +238,41 @@ export const PurchaseForm = ({
     return list;
   }, [selectedSupplier]);
 
-  // Destinataires cochés (par défaut: le contact principal quand le fournisseur change)
-  const [selectedRecipientEmails, setSelectedRecipientEmails] = React.useState([]);
-  React.useEffect(() => {
-    const primary = supplierContacts[0]?.email;
-    setSelectedRecipientEmails(primary ? [primary] : []);
-  }, [purchaseForm.supplier_id, supplierContacts.length]);
+  // Destinataires cochés — mémorisés AVEC l'AF (purchaseForm.recipient_emails, colonne
+  // supplier_purchases.recipient_emails). Jamais enregistré (null/undefined) → contact
+  // principal par défaut. Une adresse retirée de la fiche fournisseur depuis est ignorée.
+  const selectedRecipientEmails = React.useMemo(() => {
+    const available = supplierContacts.map((c) => c.email);
+    const stored = purchaseForm.recipient_emails;
+    if (Array.isArray(stored)) {
+      const valid = stored.filter((e) => available.includes(e));
+      if (valid.length > 0 || stored.length === 0) return valid;
+    }
+    return available.length > 0 ? [available[0]] : [];
+  }, [purchaseForm.recipient_emails, supplierContacts]);
 
   const toggleRecipient = (email) => {
-    setSelectedRecipientEmails((prev) =>
-      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email]
-    );
+    const next = selectedRecipientEmails.includes(email)
+      ? selectedRecipientEmails.filter((e) => e !== email)
+      : [...selectedRecipientEmails, email];
+    setPurchaseForm((prev) => ({ ...prev, recipient_emails: next }));
   };
 
-  // Fournisseur tel qu'imprimé sur le PDF: le contact affiché (nom + courriel) est
-  // celui coché. Plusieurs cochés → le 1er dans l'ordre (principal, #2, #3) prime.
+  // Fournisseur tel qu'imprimé sur le PDF: le ou les contacts affichés (nom + courriel)
+  // sont ceux cochés, dans l'ordre principal, #2, #3. Un seul coché → format habituel
+  // (Contact / Email / Tél). Plusieurs cochés → tous listés (pdf_contacts).
   // Aucun coché → contact principal de la fiche (comportement d'origine).
   const pdfSupplier = React.useMemo(() => {
     if (!selectedSupplier) return selectedSupplier;
-    const contact = supplierContacts.find((c) => selectedRecipientEmails.includes(c.email));
-    if (!contact || contact.key === 'primary') return selectedSupplier;
+    const checked = supplierContacts.filter((c) => selectedRecipientEmails.includes(c.email));
+    if (checked.length === 0) return selectedSupplier;
+    const first = checked[0];
     return {
       ...selectedSupplier,
-      contact_name: contact.contactName,
-      email: contact.email,
-      phone: contact.phone || selectedSupplier.phone,
+      contact_name: first.contactName,
+      email: first.email,
+      phone: first.phone || selectedSupplier.phone,
+      pdf_contacts: checked.length > 1 ? checked : null,
     };
   }, [selectedSupplier, supplierContacts, selectedRecipientEmails]);
 
@@ -530,7 +545,8 @@ Merci!`;
                         setPurchaseForm({
                           ...purchaseForm,
                           supplier_id: e.target.value,
-                          supplier_name: supplier?.company_name || ''
+                          supplier_name: supplier?.company_name || '',
+                          recipient_emails: null // nouveau fournisseur → contact principal par défaut
                         });
                       }}
                       className={`block flex-1 rounded-lg border-blue-300 dark:border-blue-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-base p-3 ${
