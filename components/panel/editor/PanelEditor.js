@@ -13,9 +13,12 @@
  *                dans les conflits ni dans le calcul du boîtier
  *              - Tous les calculs viennent de lib/panel/layout.ts (module pur, testé)
  *              Desktop d'abord; utilisable au doigt sur tablette (glisser, pincer).
- * @version 1.0.0
- * @date 2026-11-25
+ * @version 1.1.0
+ * @date 2026-11-26
  * @changelog
+ *   1.1.0 - Vue « Porte » (bascule Fond | Porte): pièces de porte placées à l'échelle devant le fond en
+ *           filigrane, alerte de profondeur; orientation du boîtier (debout / couché gauche / couché droit)
+ *           et côté de la charnière; la profondeur requise tient compte des pièces de porte (PR 3)
  *   1.0.0 - Version initiale (Panneau virtuel PR 2)
  */
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -28,8 +31,9 @@ import { usePanelUnit, UnitToggle } from '../usePanelUnit';
 import {
   findConflicts, requiredPlate, requiredDepth, heatLoad, suggestEnclosures, fitPlate, snapToRail,
   alignItems, distributeItems, itemBox, overlaps, snap,
+  doorGeometry, findDoorConflicts, doorRearDepth, enclosureAsInstalled, isLaidDown,
 } from '../../../lib/panel/layout';
-import { itemFromSpec, newRail, newDuct, newFreePiece, newId } from '../../../lib/panel/items';
+import { itemFromSpec, doorItemFromSpec, newRail, newDuct, newFreePiece, newDoorPiece, newId } from '../../../lib/panel/items';
 import { formatLength } from '../../../lib/panel/specs';
 
 const n = (v, fallback = 0) => {
@@ -48,6 +52,7 @@ export default function PanelEditor({ layoutId }) {
   const [loadError, setLoadError] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [multiMode, setMultiMode] = useState(false);
+  const [view, setView] = useState('plate'); // 'plate' (fond de panneau) | 'door' (porte)
   const [panelOpen, setPanelOpen] = useState(true);
   const [saveState, setSaveState] = useState('saved'); // 'saved' | 'dirty' | 'saving' | 'error' | 'conflict'
   const [saveError, setSaveError] = useState('');
@@ -199,42 +204,89 @@ export default function PanelEditor({ layoutId }) {
     () => ({ w: n(layout?.plate_width_mm, 600), h: n(layout?.plate_height_mm, 600) }),
     [layout?.plate_width_mm, layout?.plate_height_mm]
   );
-  const pendingIds = useMemo(() => {
+  const plateItemsAll = useMemo(() => items.filter((i) => i.zone !== 'door'), [items]);
+  const doorItemsAll = useMemo(() => items.filter((i) => i.zone === 'door'), [items]);
+
+  // Boîtier retenu, tel qu'installé (debout ou couché), et porte correspondante
+  const enclosure = useMemo(
+    () => library.find((s) => s.kind === 'enclosure' && s.product_code === layout?.enclosure_code) || null,
+    [library, layout?.enclosure_code]
+  );
+  const installed = useMemo(
+    () => (enclosure ? enclosureAsInstalled(enclosure, layout?.orientation) : null),
+    [enclosure, layout?.orientation]
+  );
+  const door = useMemo(() => doorGeometry(plate, installed?.ext), [plate, installed]);
+  const usableDepth = enclosure && n(enclosure.usable_depth_mm) > 0 ? n(enclosure.usable_depth_mm) : null;
+
+  const platePendingIds = useMemo(() => {
     const plateBox = { x: 0, y: 0, w: plate.w, h: plate.h };
-    return items.filter((i) => !overlaps(itemBox(i), plateBox)).map((i) => i.id);
-  }, [items, plate]);
+    return plateItemsAll.filter((i) => !overlaps(itemBox(i), plateBox)).map((i) => i.id);
+  }, [plateItemsAll, plate]);
+  const doorPendingIds = useMemo(() => {
+    const doorBox = { x: 0, y: 0, w: door.w, h: door.h };
+    return doorItemsAll.filter((i) => !overlaps(itemBox(i), doorBox)).map((i) => i.id);
+  }, [doorItemsAll, door]);
+  const pendingIds = useMemo(() => [...platePendingIds, ...doorPendingIds], [platePendingIds, doorPendingIds]);
+
   const placed = useMemo(() => {
-    const pending = new Set(pendingIds);
-    return items.filter((i) => !pending.has(i.id));
-  }, [items, pendingIds]);
+    const pending = new Set(platePendingIds);
+    return plateItemsAll.filter((i) => !pending.has(i.id));
+  }, [plateItemsAll, platePendingIds]);
+  const doorPlaced = useMemo(() => {
+    const pending = new Set(doorPendingIds);
+    return doorItemsAll.filter((i) => !pending.has(i.id));
+  }, [doorItemsAll, doorPendingIds]);
 
   const report = useMemo(() => findConflicts(placed, plate), [placed, plate]);
+  const doorReport = useMemo(() => findDoorConflicts(doorPlaced, placed, door, usableDepth), [doorPlaced, placed, door, usableDepth]);
   const result = useMemo(() => {
     if (!layout) return null;
     const need = requiredPlate(placed, n(layout.margin_mm, 15), n(layout.spare_percent));
-    const depth = requiredDepth(placed, n(layout.door_rear_depth_mm));
+    const doorRear = Math.max(n(layout.door_rear_depth_mm), doorRearDepth(doorPlaced));
+    const depth = requiredDepth(placed, doorRear);
     const heat = heatLoad(placed);
     const enclosures = library.filter((s) => s.kind === 'enclosure');
     const suggestions = need
       ? suggestEnclosures(enclosures, need, depth, { w: n(layout.avail_width_mm), h: n(layout.avail_height_mm), d: n(layout.avail_depth_mm) })
       : { fits: [], rejected: [], incomplete: enclosures.filter((e) => e.status === 'missing') };
-    return { need, depth, heat, suggestions, enclosureCount: enclosures.length };
-  }, [placed, layout, library]);
+    return { need, depth, doorRear, heat, suggestions, enclosureCount: enclosures.length };
+  }, [placed, doorPlaced, layout, library]);
+
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const doorRef = useRef(door);
+  doorRef.current = door;
+  const libraryRef = useRef(library);
+  libraryRef.current = library;
 
   // ----- Actions sur les pièces -----
   /**
-   * Change la taille du fond. Les pièces « à placer » (à droite ou sous le fond) suivent
-   * le bord pour ne pas se retrouver sur le fond par accident.
+   * Change la taille du fond (et, au besoin, le boîtier / l'orientation).
+   * - Les pièces « à placer » à droite ou sous le fond suivent le bord, pour ne pas se
+   *   retrouver sur le fond par accident.
+   * - La porte change avec le boîtier: les pièces de porte déjà placées restent devant les
+   *   mêmes pièces du fond; celles « à placer » suivent le bord droit de la porte.
    */
   const setPlate = useCallback((w, h, extraLayout = {}, nextItems = null) => {
     const cur = stateRef.current;
-    const dw = w - n(cur.layout.plate_width_mm, 600);
-    const dh = h - n(cur.layout.plate_height_mm, 600);
     const oldW = n(cur.layout.plate_width_mm, 600);
+    const dw = w - oldW;
+    const dh = h - n(cur.layout.plate_height_mm, 600);
+    const nextLayout = { ...cur.layout, ...extraLayout };
+    const nextEnclosure = libraryRef.current.find((s) => s.kind === 'enclosure' && s.product_code === nextLayout.enclosure_code);
+    const oldDoor = doorRef.current;
+    const newDoor = doorGeometry({ w, h }, nextEnclosure ? enclosureAsInstalled(nextEnclosure, nextLayout.orientation).ext : null);
+    const r1 = (v) => Math.round(v * 10) / 10;
     const moved = (nextItems || cur.items).map((i) => {
-      if (!pendingIdsRef.current.has(i.id)) return i;
-      if (i.x >= oldW) return { ...i, x: Math.round((i.x + dw) * 10) / 10 };
-      return { ...i, y: Math.round((i.y + dh) * 10) / 10 };
+      const pending = pendingIdsRef.current.has(i.id);
+      if (i.zone === 'door') {
+        if (!pending) return { ...i, x: r1(i.x + newDoor.plateX - oldDoor.plateX), y: r1(i.y + newDoor.plateY - oldDoor.plateY) };
+        return i.x >= oldDoor.w ? { ...i, x: r1(i.x + newDoor.w - oldDoor.w) } : i;
+      }
+      if (!pending) return i;
+      if (i.x >= oldW) return { ...i, x: r1(i.x + dw) };
+      return { ...i, y: r1(i.y + dh) };
     });
     change({ items: moved, layout: { plate_width_mm: w, plate_height_mm: h, ...extraLayout } }, 'plate');
   }, [change]);
@@ -273,6 +325,18 @@ export default function PanelEditor({ layoutId }) {
   };
 
   const addFromSpec = useCallback((spec, x, y, quantity) => {
+    const step0 = n(stateRef.current.layout?.snap_mm, 5);
+    if (spec.mounting === 'door') {
+      // Pièce de porte: va sur la porte (au centre de la vue si on y est déjà, sinon au centre de la porte)
+      const item = doorItemFromSpec(spec, { description: spec.description });
+      const onDoor = viewRef.current === 'door';
+      const c = x != null && onDoor ? { x: x + item.w / 2, y: y + item.h / 2 }
+        : onDoor ? dropPoint() : { x: doorRef.current.w / 2, y: doorRef.current.h / 2 };
+      addItem({ ...item, x: snap(c.x - item.w / 2, step0), y: snap(c.y - item.h / 2, step0) });
+      setView('door');
+      return;
+    }
+    if (viewRef.current === 'door') setView('plate');
     const p = x == null ? dropPoint() : { x, y };
     const item = itemFromSpec(spec, { description: spec.description, quantity });
     const step = n(stateRef.current.layout?.snap_mm, 5);
@@ -284,20 +348,24 @@ export default function PanelEditor({ layoutId }) {
   /** Ajoute `count` exemplaires d'une fiche dans la zone « à placer » (à droite du fond). */
   const addManyFromSpec = useCallback((spec, count, quantity) => {
     const cur = stateRef.current;
-    const plateW = n(cur.layout.plate_width_mm, 600);
+    const isDoor = spec.mounting === 'door';
+    const plateW = isDoor ? doorRef.current.w : n(cur.layout.plate_width_mm, 600);
     const startY = cur.items
-      .filter((i) => pendingIdsRef.current.has(i.id) && i.x >= plateW)
+      .filter((i) => (i.zone === 'door') === isDoor && pendingIdsRef.current.has(i.id) && i.x >= plateW)
       .reduce((max, i) => Math.max(max, itemBox(i).y + itemBox(i).h + 20), 0);
     const added = [];
     let x = plateW + 40;
+    setView(isDoor ? 'door' : 'plate');
     for (let k = 0; k < Math.max(1, count); k++) {
-      const item = itemFromSpec(spec, { description: spec.description, quantity });
+      const item = isDoor
+        ? doorItemFromSpec(spec, { description: spec.description })
+        : itemFromSpec(spec, { description: spec.description, quantity });
       added.push({ ...item, x, y: startY });
       x += item.w + 15;
     }
     change({ items: [...cur.items, ...added] });
     setSelectedIds(added.map((a) => a.id));
-    setTimeout(() => canvasRef.current?.fit(), 50);
+    setTimeout(() => canvasRef.current?.fit(), 150);
   }, [change]);
 
   const addBasic = useCallback((type) => {
@@ -305,6 +373,7 @@ export default function PanelEditor({ layoutId }) {
     if (type === 'rail') addItem(newRail(p.x - 150, p.y));
     else if (type === 'duct-h') addItem(newDuct(p.x - 150, p.y, false));
     else if (type === 'duct-v') addItem(newDuct(p.x, p.y - 150, true));
+    else if (type === 'door-free') addItem(newDoorPiece(p.x, p.y));
     else addItem(newFreePiece(p.x, p.y));
   }, [addItem]);
 
@@ -344,9 +413,25 @@ export default function PanelEditor({ layoutId }) {
   };
 
   const chooseEnclosure = (fit) => {
-    setPlate(fit.plate.w, fit.plate.h, { enclosure_code: fit.enclosure.product_code, orientation: fit.orientation });
+    // Boîtier couché: on garde le côté déjà choisi (gauche / droit), sinon côté gauche par défaut
+    const orientation = fit.orientation === 'landscape'
+      ? (layout.orientation === 'side_right' ? 'side_right' : 'side_left') : 'portrait';
+    setPlate(fit.plate.w, fit.plate.h, { enclosure_code: fit.enclosure.product_code, orientation });
     setTimeout(() => canvasRef.current?.fit(), 50);
   };
+
+  /** Debout ↔ couché: la largeur et la hauteur du fond permutent (les pièces restent droites). */
+  const setOrientation = (orientation) => {
+    if (orientation === layout.orientation) return;
+    if (isLaidDown(orientation) !== isLaidDown(layout.orientation)) {
+      setPlate(plate.h, plate.w, { orientation });
+      setTimeout(() => canvasRef.current?.fit(), 50);
+    } else {
+      change({ layout: { orientation } });
+    }
+  };
+
+  const clearEnclosure = () => change({ layout: { enclosure_code: null } });
 
   const setSetting = (patch, tag) => {
     setLayout((l) => ({ ...l, ...patch }));
@@ -362,7 +447,11 @@ export default function PanelEditor({ layoutId }) {
       const key = e.key.toLowerCase();
       if (ctrl && key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
       if (ctrl && (key === 'y' || (key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
-      if (ctrl && key === 'a') { e.preventDefault(); setSelectedIds(stateRef.current.items.map((i) => i.id)); return; }
+      if (ctrl && key === 'a') {
+        e.preventDefault();
+        setSelectedIds(stateRef.current.items.filter((i) => (i.zone === 'door') === (viewRef.current === 'door')).map((i) => i.id));
+        return;
+      }
       if (ctrl && key === 'd') { e.preventDefault(); duplicateSelected(); return; }
       if (e.key === 'Escape') { setSelectedIds([]); return; }
       const ids = selectedIdsRef.current;
@@ -399,8 +488,15 @@ export default function PanelEditor({ layoutId }) {
     );
   }
 
-  const conflictCount = report.messages.length;
+  const inDoor = view === 'door';
+  const activeReport = inDoor ? doorReport : report;
+  const activePending = inDoor ? doorPendingIds : platePendingIds;
+  const conflictCount = report.messages.length + doorReport.messages.length;
+  const activeCount = activeReport.messages.length;
+  const otherCount = conflictCount - activeCount;
+  const switchView = (v) => { if (v !== view) { setSelectedIds([]); setView(v); } };
   const best = result?.suggestions.fits[0];
+  const retainedFits = !result?.need || result.suggestions.fits.some((f) => f.enclosure.product_code === layout.enclosure_code);
   const iconBtn = 'min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40';
 
   return (
@@ -422,6 +518,16 @@ export default function PanelEditor({ layoutId }) {
           {[layout.project_code, layout.client_name, layout.submission_number && `Soum. ${layout.submission_number}`].filter(Boolean).join(' · ')}
         </div>
         <div className="flex-1" />
+        <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden" role="group" aria-label="Vue">
+          {[['plate', 'Fond'], ['door', `Porte${doorItemsAll.length ? ` (${doorItemsAll.length})` : ''}`]].map(([v, l]) => (
+            <button
+              key={v} type="button" onClick={() => switchView(v)} aria-pressed={view === v}
+              className={`px-3 min-h-[44px] text-sm font-medium ${view === v ? 'bg-teal-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
         <button type="button" className={iconBtn} onClick={undo} disabled={undoStack.current.length === 0} title="Annuler (Ctrl+Z)"><Undo2 className="w-5 h-5" /></button>
         <button type="button" className={iconBtn} onClick={redo} disabled={redoStack.current.length === 0} title="Rétablir (Ctrl+Y)"><Redo2 className="w-5 h-5" /></button>
         <button type="button" className={iconBtn} onClick={() => canvasRef.current?.fit()} title="Ajuster la vue"><Maximize className="w-5 h-5" /></button>
@@ -461,11 +567,16 @@ export default function PanelEditor({ layoutId }) {
         <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           <div className="flex-1 min-h-0">
             <PanelCanvas
+              key={view}
               ref={canvasRef}
-              items={items} plate={plate} report={report}
-              selectedIds={selectedIds} pendingIds={pendingIds}
+              items={inDoor ? doorItemsAll : plateItemsAll}
+              plate={inDoor ? { w: door.w, h: door.h } : plate}
+              report={activeReport}
+              selectedIds={selectedIds} pendingIds={activePending}
               unit={unit} snapMm={n(layout.snap_mm, 5)} multiMode={multiMode}
-              enclosureLabel={layout.enclosure_code ? `boîtier ${layout.enclosure_code}` : ''}
+              frameName={inDoor ? (door.estimated ? 'Porte estimée (aucun boîtier retenu)' : 'Porte') : 'Fond'}
+              ghost={inDoor ? { items: placed, x: door.plateX, y: door.plateY, w: plate.w, h: plate.h } : null}
+              enclosureLabel={layout.enclosure_code ? `boîtier ${layout.enclosure_code}${isLaidDown(layout.orientation) ? ' (couché)' : ''}` : ''}
               onSelect={setSelectedIds}
               onMove={(ids, dx, dy) => moveItems(ids, dx, dy)}
               onDropSpec={(code, x, y) => { const spec = library.find((s) => s.product_code === code); if (spec) addFromSpec(spec, x, y); }}
@@ -473,17 +584,22 @@ export default function PanelEditor({ layoutId }) {
           </div>
           <div
             className={`flex-shrink-0 px-3 py-1.5 text-xs border-t overflow-x-auto whitespace-nowrap ${
-              conflictCount ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+              activeCount ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
             }`}
           >
-            {conflictCount ? (
+            {activeCount ? (
               <span style={{ color: '#c8371e' }} className="font-medium">
-                {conflictCount} conflit{conflictCount > 1 ? 's' : ''}: {report.messages.slice(0, 6).join(' · ')}{conflictCount > 6 ? ' …' : ''}
+                {activeCount} conflit{activeCount > 1 ? 's' : ''}: {activeReport.messages.slice(0, 6).join(' · ')}{activeCount > 6 ? ' …' : ''}
               </span>
             ) : (
-              <span className="text-green-700 dark:text-green-400">Aucun conflit.</span>
+              <span className="text-green-700 dark:text-green-400">Aucun conflit {inDoor ? 'sur la porte' : 'sur le fond'}.</span>
             )}
-            {pendingIds.length > 0 && <span className="ml-3 text-gray-600 dark:text-gray-300">{pendingIds.length} à placer</span>}
+            {otherCount > 0 && (
+              <button type="button" onClick={() => switchView(inDoor ? 'plate' : 'door')} className="ml-3 underline font-medium" style={{ color: '#c8371e' }}>
+                {otherCount} conflit{otherCount > 1 ? 's' : ''} {inDoor ? 'sur le fond' : 'sur la porte'}
+              </button>
+            )}
+            {activePending.length > 0 && <span className="ml-3 text-gray-600 dark:text-gray-300">{activePending.length} à placer</span>}
           </div>
         </div>
 
@@ -497,8 +613,14 @@ export default function PanelEditor({ layoutId }) {
                 <div className="font-semibold text-sm">{result?.need ? `${formatLength(result.need.w, unit).replace(/ (mm|po)$/, '')} × ${formatLength(result.need.h, unit)}` : '—'}</div>
               </div>
               <div className="min-w-0">
-                <div className="text-teal-800 dark:text-teal-300">Boîtier suggéré</div>
-                <div className="font-semibold text-sm truncate" title={best?.enclosure.description || ''}>{best ? best.enclosure.product_code : (result?.need ? 'Aucun' : '—')}</div>
+                <div className="text-teal-800 dark:text-teal-300">{layout.enclosure_code ? 'Boîtier retenu' : 'Boîtier suggéré'}</div>
+                {layout.enclosure_code ? (
+                  <div className="font-semibold text-sm truncate" style={retainedFits ? undefined : { color: '#c8371e' }} title={retainedFits ? '' : 'Le boîtier retenu ne convient plus (voir l\'onglet Boîtier)'}>
+                    {layout.enclosure_code}{retainedFits ? '' : ' — ne convient plus'}
+                  </div>
+                ) : (
+                  <div className="font-semibold text-sm truncate" title={best?.enclosure.description || ''}>{best ? best.enclosure.product_code : (result?.need ? 'Aucun' : '—')}</div>
+                )}
               </div>
               <div>
                 <div className="text-teal-800 dark:text-teal-300">Conflits</div>
@@ -508,6 +630,9 @@ export default function PanelEditor({ layoutId }) {
             <EditorSidePanel
               layout={layout} items={items} plate={plate} library={library} unit={unit} userId={userId}
               selectedIds={selectedIds} pendingIds={pendingIds} result={result} report={report}
+              view={view} door={door} doorReport={doorReport} doorPendingIds={doorPendingIds}
+              enclosure={enclosure} installed={installed} usableDepth={usableDepth}
+              onSetView={switchView} onSetOrientation={setOrientation} onClearEnclosure={clearEnclosure}
               onSelect={(ids) => { setSelectedIds(ids); }}
               onUpdateItems={updateItems}
               onAddFromSpec={addFromSpec}

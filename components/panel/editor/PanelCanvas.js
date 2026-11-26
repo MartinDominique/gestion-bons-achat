@@ -14,9 +14,11 @@
  *              - Survol: N° de pièce, description, dimensions, source, note
  *              - Les pièces hors du fond (zone « à placer ») sont affichées en plus pâle
  *              Le composant ne modifie rien lui-même: il appelle onMove / onSelect / onDropSpec.
- * @version 1.0.0
- * @date 2026-11-25
+ * @version 1.1.0
+ * @date 2026-11-26
  * @changelog
+ *   1.1.0 - Vue « Porte »: cadre nommé (frameName), fond de panneau et ses pièces en filigrane derrière
+ *           la porte (ghost); photo du produit dans l'infobulle de survol (chargée après 0,4 s, mise en cache)
  *   1.0.0 - Version initiale (Panneau virtuel PR 2)
  */
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
@@ -31,6 +33,35 @@ const MAX_SCALE = 12;
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
+// Photos des fiches: une requête par code, gardée 45 min (l'URL signée vit 1 h)
+const photoCache = new Map();
+const PHOTO_TTL = 45 * 60 * 1000;
+
+/** Photo (face, sinon 3 faces) d'un produit survolé; null tant qu'elle n'est pas chargée ou s'il n'y en a pas. */
+function useHoverPhoto(code) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    setUrl(null);
+    if (!code) return undefined;
+    const cached = photoCache.get(code);
+    if (cached && Date.now() - cached.at < PHOTO_TTL) { setUrl(cached.url); return undefined; }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/panel-specs?code=${encodeURIComponent(code)}`);
+        const json = await res.json();
+        const found = res.ok && json.success && json.spec ? (json.spec.photo_front_url || json.spec.photo_iso_url || null) : null;
+        photoCache.set(code, { url: found, at: Date.now() });
+        if (!cancelled) setUrl(found);
+      } catch (e) {
+        /* pas de photo: l'infobulle reste en texte */
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [code]);
+  return url;
+}
+
 function rulerStep(scale, unit) {
   // pas « rond » d'au moins ~60 px à l'écran
   const steps = unit === 'in'
@@ -41,7 +72,7 @@ function rulerStep(scale, unit) {
 
 const PanelCanvas = forwardRef(function PanelCanvas({
   items, plate, report, selectedIds, pendingIds, unit, snapMm, multiMode,
-  onSelect, onMove, onDropSpec, enclosureLabel,
+  onSelect, onMove, onDropSpec, enclosureLabel, frameName = 'Fond', ghost = null,
 }, ref) {
   const wrapRef = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -275,6 +306,7 @@ const PanelCanvas = forwardRef(function PanelCanvas({
   const tickLabel = (mm) => (unit === 'in' ? (mm / MM_PER_INCH).toLocaleString('fr-CA', { maximumFractionDigits: 2 }) : Math.round(mm).toLocaleString('fr-CA'));
 
   const hovered = hover ? items.find((i) => i.id === hover.id) : null;
+  const hoverPhoto = useHoverPhoto(hovered && !drag ? hovered.product_id : null);
 
   return (
     <div
@@ -306,12 +338,32 @@ const PanelCanvas = forwardRef(function PanelCanvas({
 
         <g transform={`translate(${tx} ${ty}) scale(${scale})`}>
           {/* Fond de panneau */}
-          <rect x="0" y="0" width={plate.w} height={plate.h} fill="#e8eaee" />
+          <rect x="0" y="0" width={plate.w} height={plate.h} fill={ghost ? '#dde1e8' : '#e8eaee'} />
           <rect x="0" y="0" width={plate.w} height={plate.h} fill="url(#pv-grid)" />
           <rect x="0" y="0" width={plate.w} height={plate.h} fill="none" stroke="#4b5563" strokeWidth={px(1.5)} />
           <text x="0" y={-px(6)} fontSize={px(11)} className="fill-gray-700 dark:fill-gray-300">
-            Fond {formatLength(plate.w, unit)} × {formatLength(plate.h, unit)}{enclosureLabel ? ` — ${enclosureLabel}` : ''}
+            {frameName} {formatLength(plate.w, unit)} × {formatLength(plate.h, unit)}{enclosureLabel ? ` — ${enclosureLabel}` : ''}
           </text>
+
+          {/* Vue Porte: le fond de panneau et ses pièces, en filigrane derrière la porte */}
+          {ghost && (
+            <g pointerEvents="none">
+              <rect
+                x={ghost.x} y={ghost.y} width={ghost.w} height={ghost.h} fill="#eef0f3"
+                stroke="#6b7280" strokeWidth={px(1)} strokeDasharray={`${px(6)} ${px(4)}`}
+              />
+              {ghost.items.map((g) => {
+                const b = itemBox(g);
+                return (
+                  <rect
+                    key={`g-${g.id}`} x={ghost.x + b.x} y={ghost.y + b.y} width={b.w} height={b.h}
+                    fill={g.kind === 'duct' || g.kind === 'rail' ? '#c9ced6' : '#9aa1ad'} opacity={g.kind === 'duct' || g.kind === 'rail' ? 0.35 : 0.5}
+                  />
+                );
+              })}
+              <text x={ghost.x + px(4)} y={ghost.y + px(13)} fontSize={px(10)} fill="#4b5563">Fond de panneau (derrière la porte)</text>
+            </g>
+          )}
 
           {/* Dégagements (pointillé) */}
           {sorted.filter((i) => isPiece(i) && hasClearance(i)).map((i) => {
@@ -451,14 +503,19 @@ const PanelCanvas = forwardRef(function PanelCanvas({
       {hovered && !drag && (
         <div
           className="absolute z-10 pointer-events-none max-w-xs rounded-lg shadow-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs text-gray-800 dark:text-gray-100"
-          style={{ left: Math.min(hover.x + 14, size.w - 300), top: Math.min(hover.y + 14, size.h - 130) }}
+          style={{ left: Math.max(4, Math.min(hover.x + 14, size.w - 300)), top: Math.max(4, Math.min(hover.y + 14, size.h - (hoverPhoto ? 240 : 130))) }}
         >
+          {hoverPhoto && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={hoverPhoto} alt="" className="mb-1.5 max-h-24 max-w-full rounded object-contain bg-gray-100 dark:bg-gray-700" />
+          )}
           {hovered.product_id && <div className="font-mono font-semibold text-sm">{hovered.product_id}</div>}
           <div className="font-medium">{hovered.description || hovered.label}</div>
           {hovered.description && hovered.label !== hovered.product_id && <div className="text-gray-500 dark:text-gray-400">{hovered.label}</div>}
           <div className="mt-1 text-gray-600 dark:text-gray-300">
             {formatLength(bodyWidthOf(hovered), unit)} × {formatLength(hovered.h, unit)}
-            {hovered.d != null && isPiece(hovered) ? ` × ${formatLength(hovered.d, unit)}` : ''}
+            {hovered.d != null && isPiece(hovered) && hovered.zone !== 'door' ? ` × ${formatLength(hovered.d, unit)}` : ''}
+            {hovered.zone === 'door' ? ` · arrière ${hovered.rear != null ? formatLength(hovered.rear, unit) : 'à préciser'}` : ''}
             {hovered.repeated ? ` · ${hovered.qty} unités` : ''}
           </div>
           {hovered.kind === 'rail' && (
