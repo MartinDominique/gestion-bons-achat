@@ -2861,8 +2861,8 @@ le flux « soumission → page blanche → disposer → choisir le boîtier » s
 - `quotes` / `quote_items` supprimées de la base (migration `20261125c`, après le déploiement de la PR 1)
 - Disposition « PGF2701 — disposition de référence » créée dans la base (23 pièces)
 
-### PR 3 — Hors fond, BT et orientations (à faire)
-- [ ] Création depuis un BT (`work_order_materials`)
+### PR 3 — Hors fond et orientations (à faire)
+Pas de création depuis un BT (décision Martin, 2026-11-26): une disposition part d'une soumission ou de vide.
 - [ ] Onglet « Hors fond » complet + mini-plan de porte (alerte de profondeur HMI / pièce haute)
 - [ ] Orientations du boîtier (couché gauche / droite), pictogramme porte + charnière
 - [ ] Photo dans l'infobulle de survol

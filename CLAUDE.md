@@ -1261,7 +1261,7 @@ CRON_SECRET                   # Auth pour cron jobs
       glisser-déposer souris + doigt, aimantation, rails DIN, goulottes, dégagements, conflits #c8371e, annuler /
       rétablir, sauvegarde automatique, bibliothèque, zone « à placer », boîtiers suggérés, « Choisir ce boîtier »,
       ventilation estimée), `Navigation.js` v2.5.0, backup v3.2.0
-    - PR 3: création depuis un BT, onglet « Hors fond » + mini-plan de porte, boîtier couché gauche / droite ·
+    - PR 3: onglet « Hors fond » + mini-plan de porte, boîtier couché gauche / droite, photo au survol ·
       PR 4: PDF, versions, envoi du boîtier à la soumission
     - **Flux voulu par Martin (2026-11-25):** monter les pièces d'une soumission sur une page blanche, les
       disposer, PUIS choisir le boîtier. Un boîtier ne s'attribue jamais à une pièce: le type « boîtier » d'une
@@ -1269,6 +1269,8 @@ CRON_SECRET                   # Auth pour cron jobs
     - Décisions (Martin, 2026-11-25): 4 PR; 2 photos par produit (face + 3 faces); pas de version cellulaire,
       la tablette doit rester utilisable; survol d'une pièce = N° + description; calculs en TypeScript (`lib/panel`),
       composants en `.js` comme le reste; plan en SVG
+    - **Pas de création depuis un BT** (décision Martin, 2026-11-26): une disposition part d'une soumission ou
+      de vide, jamais d'un BT. Les colonnes `work_order_id` / `work_order_number` de `panel_layouts` restent inutilisées
     - **Règle:** toute nouvelle table qui porte un code produit doit suivre le renommage/fusion/suppression
       (voir item 41)
 
