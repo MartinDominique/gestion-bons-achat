@@ -474,6 +474,8 @@ const total = subtotal + tps + tvq;
 /api/panel-specs                       → Panneau virtuel: fiche technique par code (GET ?code= / ?mode=status / ?mode=library / ?mode=products&filter=yes|missing, PUT upsert)
 /api/panel-layouts                     → Panneau virtuel: dispositions (GET liste / ?mode=submissions, POST vide | { from_submission } | { duplicate_from })
 /api/panel-layouts/[id]                → Panneau virtuel: une disposition (GET, PUT sauvegarde avec verrou de version → 409, DELETE)
+/api/panel-layouts/[id]/versions       → Panneau virtuel: historique de versions (GET liste / ?version_id=, POST version manuelle)
+/api/panel-layouts/[id]/send-enclosure → Panneau virtuel: ajoute le boîtier retenu à la soumission liée (GET aperçu / POST)
 /api/panel-specs/photo                 → Panneau virtuel: 2 photos par fiche (POST multipart / DELETE), bucket privé panel-photos
 /api/health                            → Ping base de données (ok/slow/down + latence) — voyant BD de la navigation
 /api/cron/backup                       → Backup quotidien
@@ -717,6 +719,13 @@ ni dans le calcul du boîtier. Aucune colonne: c'est déduit de la position.
 **`version`:** +1 à chaque sauvegarde; le PUT refuse (409) si la version envoyée n'est plus la bonne.
 **Calculs:** uniquement dans `lib/panel/layout.ts` (pur, testé). Ne jamais recalculer dans un composant.
 **Cascades:** `/api/products/rename` et `merge` (`items[].product_id` + `enclosure_code`).
+
+### panel_layout_versions (Panneau virtuel — historique)
+```sql
+id (UUID), layout_id (FK panel_layouts, ON DELETE CASCADE), layout_version,
+reason ('approved'|'manual'), label, snapshot (JSONB: réglages + pièces), user_id, created_at
+```
+Copie créée par le serveur quand une disposition passe à `approved`, ou à la demande. 20 gardées par disposition.
 
 ### products / non_inventory_items
 ```sql
@@ -1253,7 +1262,7 @@ CRON_SECRET                   # Auth pour cron jobs
       numérique (`isNaN → return`), donc ni « − » seul ni champ vide → impossible de commencer par le signe.
       Texte tapé conservé (`_qty_input`) + bouton « +/− » 44 px en mode Ajustement. Aucune migration
 
-44. **Panneau virtuel (disposition de panneaux + choix du boîtier)** - EN COURS, 4 PR. Plan détaillé: RECOMMANDATIONS.md
+44. ~~**Panneau virtuel (disposition de panneaux + choix du boîtier)**~~ - ✅ COMPLÉTÉ (2026-11-26), 4 PR. Détail: RECOMMANDATIONS.md
     - ~~**PR 1 — Fiches techniques dans l'Inventaire**~~ ✅ COMPLÉTÉ (2026-11-25): table `panel_specs` + bucket
       `panel-photos` (migration `20261125b`, **déjà appliquée**), `lib/panel/specs.ts`, `/api/panel-specs` (+ `/photo`),
       `components/panel/*`, `InventoryManager.js` v3.20.0 (case, onglet « Panneau », pastille, filtre), cascades
@@ -1274,7 +1283,13 @@ CRON_SECRET                   # Auth pour cron jobs
       `panel-layouts.js` v1.1.0, `components/panel/editor/*` v1.1.0
       **Pièces rondes (2026-11-26):** `panel_specs.shape` + `items[].shape` = 'round' (boutons, voyants, arrêts
       d'urgence): un seul champ Diamètre, dessin rond; conflits calculés sur le carré englobant (migration `20261126b`, appliquée)
-    - PR 4: PDF, versions, envoi du boîtier à la soumission
+    - ~~**PR 4 — PDF, versions, envoi du boîtier**~~ ✅ COMPLÉTÉ (2026-11-26): menu **« Document »** de l'éditeur
+      (`EditorDocumentMenu.js`): PDF (`components/panel/PanelLayoutPDF.js`: page 1 lettre + plans paysage lettre ou
+      11 × 17, échelle indiquée, repères numérotés), approuver / brouillon, versions (table `panel_layout_versions`,
+      migration `20261126c` **appliquée**, copie automatique à l'approbation, 20 gardées, restauration), envoi du
+      boîtier retenu à la soumission liée (`/api/panel-layouts/[id]/send-enclosure`, confirmation, recalcule
+      `amount` / `cost_total`). Une disposition approuvée qu'on modifie redevient brouillon. Backup v3.3.0
+    - **Module complet (4 PR).** Restes: photos hors du backup; test réel sur tablette
     - **Flux voulu par Martin (2026-11-25):** monter les pièces d'une soumission sur une page blanche, les
       disposer, PUIS choisir le boîtier. Un boîtier ne s'attribue jamais à une pièce: le type « boîtier » d'une
       fiche veut dire « ce produit EST un boîtier »
