@@ -2827,19 +2827,45 @@ base fait l'affaire. Découpé en 4 PR.
 **Non couvert:** les photos (bucket Storage) ne sont PAS dans le backup quotidien par courriel — comme les
 PDF de factures. À traiter avant de dépendre des photos.
 
-### PR 2 — Éditeur de disposition (à faire)
-- [ ] Tables `panel_layouts`, `panel_layout_items`, `panel_layout_versions` (+ backup)
-- [ ] Module de calculs pur (boîte englobante, conflits, suggestions de boîtiers, orientation) + tests
-      unitaires (cas PGF2701: fond requis ≈ 838 × 505 mm, profondeur ≈ 227 mm, chaleur ≥ 151 W, zéro conflit)
-- [ ] Page `/panneaux` + éditeur plein écran `/panneaux/[id]` (plan SVG, glisser-déposer, aimantation, rails
+### PR 2 — ~~Éditeur de disposition + import d'une soumission~~ ✅ COMPLETE (2026-11-25)
+Ordre revu à la demande de Martin (2026-11-25): l'import d'une soumission passe de la PR 3 à la PR 2, pour que
+le flux « soumission → page blanche → disposer → choisir le boîtier » soit utilisable tout de suite.
+- [x] Table `panel_layouts` (+ backup). Les pièces sont dans `items` (JSONB) comme `submissions.items`:
+      sauvegarde d'un seul coup, duplication = une ligne. Pas de table `panel_layout_items`
+- [x] Module de calculs pur + tests unitaires (cas PGF2701: fond requis 838 × 505 mm, profondeur 227 mm,
+      chaleur ≥ 151 W, zéro conflit, boîtier 24 × 36 × 10 po suggéré puis éliminé sous 36 po de large)
+- [x] Page `/panneaux` + éditeur plein écran `/panneaux/[id]` (plan SVG, glisser-déposer, aimantation, rails
       DIN, goulottes, dégagements, conflits, annuler/rétablir, sauvegarde automatique)
-- [ ] Survol d'une pièce: N° de pièce + description (demande de Martin), dimensions, source, photo
-- [ ] Desktop d'abord; la tablette doit rester utilisable; pas de version cellulaire
+- [x] Survol d'une pièce: N° de pièce + description, dimensions, source, note
+- [x] Création depuis une soumission (`submissions.items`), zone « à placer », rapport d'import
+- [x] Bibliothèque, dupliquer, boîtiers suggérés + « Choisir ce boîtier »
+- [x] Desktop d'abord; utilisable au doigt (glisser, pincer); pas de version cellulaire
 
-### PR 3 — Import et hors fond (à faire)
-- [ ] Création depuis une soumission (`submissions.items`) ou un BT (`work_order_materials`)
-- [ ] Onglets « À placer », « Hors fond » (porte / paroi / terrain / accessoire / ignoré) + mini-plan de porte
-- [ ] Orientations du boîtier (portrait, paysage, couché gauche / droite), bibliothèque, dupliquer
+**Implementation completee (2026-11-25):**
+- `supabase/migrations/20261125d_create_panel_layouts.sql` — table `panel_layouts` (**appliquée**)
+- `lib/panel/layout.ts` — calculs: conflits, fond requis, profondeur, chaleur, ventilation, boîtiers,
+  ajuster le fond, alignement sur le rail, aligner / répartir
+- `lib/panel/items.ts` — fabrique des pièces (depuis une fiche, rail, goulotte, pièce libre)
+- `lib/panel/pgf2701.fixture.ts` + `lib/panel/layout.test.ts` — 28 tests (`npm test`, Vitest)
+- `lib/services/panel-layouts.js` — validation, import (`buildItemsFromLines`), cascade de renommage
+- `app/api/panel-layouts/route.js` + `[id]/route.js` — liste, création (vide / soumission / copie), sauvegarde
+  avec verrou de version (409 si modifiée ailleurs), suppression
+- `app/api/panel-specs/route.js` v1.1.0 — `?mode=library`
+- `components/panel/PanelLayoutList.js`, `components/panel/editor/PanelEditor.js`, `PanelCanvas.js`,
+  `EditorSidePanel.js`; pages `app/(protected)/panneaux/page.js` et `[id]/page.js`
+- `components/panel/PanelSpecPanel.js` v1.1.0 — « Ce produit est… une pièce à placer / un boîtier » (l'ancien
+  bouton « Boîtier » était compris comme « attribuer un boîtier à la pièce »)
+- `components/Navigation.js` v2.5.0 — module « Panneaux »
+- `app/api/products/rename` v1.3.0, `merge` v1.2.0 — les dispositions suivent le code
+- `app/api/cron/backup/route.ts` v3.2.0 — `panel_layouts` ajoutée
+- `quotes` / `quote_items` supprimées de la base (migration `20261125c`, après le déploiement de la PR 1)
+- Disposition « PGF2701 — disposition de référence » créée dans la base (23 pièces)
+
+### PR 3 — Hors fond, BT et orientations (à faire)
+- [ ] Création depuis un BT (`work_order_materials`)
+- [ ] Onglet « Hors fond » complet + mini-plan de porte (alerte de profondeur HMI / pièce haute)
+- [ ] Orientations du boîtier (couché gauche / droite), pictogramme porte + charnière
+- [ ] Photo dans l'infobulle de survol
 
 ### PR 4 — Sorties (à faire)
 - [ ] PDF de la disposition (plan à l'échelle, tableau des pièces, alertes)

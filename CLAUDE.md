@@ -416,6 +416,8 @@ const total = subtotal + tps + tvq;
 /(protected)/soumissions         → Soumissions/devis
 /(protected)/statistiques        → Rapports & Statistiques de Ventes
 /(protected)/facturation         → Module Facturation (À facturer + Factures)
+/(protected)/panneaux            → Panneau virtuel: liste des dispositions
+/(protected)/panneaux/[id]       → Panneau virtuel: éditeur de disposition plein écran
 /(protected)/notes               → Tableau de bord Notes (PAGE D'OUVERTURE, racine → /notes)
 ```
 
@@ -469,7 +471,9 @@ const total = subtotal + tps + tvq;
 /api/reports/payments/send-email       → Envoi rapport de paiements PDF au comptable (CC bureau)
 /api/product-associations              → Items associés « As » (GET ?parent= / ?child= / ?codes=&mode=counts, POST création)
 /api/product-associations/[id]         → PUT (quantité par défaut, note) / DELETE lien associé
-/api/panel-specs                       → Panneau virtuel: fiche technique par code (GET ?code= / ?mode=status / ?mode=products&filter=yes|missing, PUT upsert)
+/api/panel-specs                       → Panneau virtuel: fiche technique par code (GET ?code= / ?mode=status / ?mode=library / ?mode=products&filter=yes|missing, PUT upsert)
+/api/panel-layouts                     → Panneau virtuel: dispositions (GET liste / ?mode=submissions, POST vide | { from_submission } | { duplicate_from })
+/api/panel-layouts/[id]                → Panneau virtuel: une disposition (GET, PUT sauvegarde avec verrou de version → 409, DELETE)
 /api/panel-specs/photo                 → Panneau virtuel: 2 photos par fiche (POST multipart / DELETE), bucket privé panel-photos
 /api/health                            → Ping base de données (ok/slow/down + latence) — voyant BD de la navigation
 /api/cron/backup                       → Backup quotidien
@@ -492,6 +496,9 @@ lib/utils/productSearch.js          → Recherche produits tolérante (tirets/ac
 lib/services/product-associations.js → Helpers serveur items associés (lookupProducts par code, normalizeCode)
 lib/utils/associationsCache.js      → Cache client des compteurs « As » (1 requête groupée par écran) + hook useAssociationCount
 lib/panel/specs.ts                  → Panneau virtuel: module pur (listes, mm ↔ po, dimensions manquantes, validation)
+lib/panel/layout.ts                 → Panneau virtuel: CALCULS purs et testés (conflits, fond requis, profondeur, chaleur, boîtiers) — tests: npm test
+lib/panel/items.ts                  → Panneau virtuel: fabrique des pièces d'une disposition (depuis une fiche, rail, goulotte, pièce libre)
+lib/services/panel-layouts.js       → Panneau virtuel: validation des dispositions, import d'une soumission, cascade de renommage
 lib/services/panel-specs.js         → Panneau virtuel: helpers serveur (URL signées des photos, cascades renommage/fusion/suppression)
 lib/supabase.js                     → Client Supabase (browser)
 lib/supabaseAdmin.js                → Client Supabase (server, bypass RLS)
@@ -684,6 +691,27 @@ vissé) sans L × H × P; boîtier sans fond de panneau L × H ou sans profondeu
 **Photos:** bucket Storage **privé** `panel-photos`, sans policy (serveur seulement, URL signées 1 h).
 **NON incluses dans le backup quotidien.**
 **Cascades:** `/api/products/rename`, `merge` et `delete` appellent `lib/services/panel-specs.js`.
+
+### panel_layouts (Panneau virtuel — dispositions)
+```sql
+id (UUID), name, project_code, client_name,
+submission_id, submission_number, work_order_id, work_order_number,   -- liens souples, sans FK
+enclosure_code, orientation ('portrait'|'landscape'|'side_left'|'side_right'),
+plate_width_mm, plate_height_mm,
+margin_mm, spare_percent, door_rear_depth_mm, avail_width_mm, avail_height_mm, avail_depth_mm, delta_t, snap_mm,
+items (JSONB), import_report (JSONB),
+status ('draft'|'approved'), version, notes, user_id, created_at, updated_at
+```
+**`items`:** tableau JSONB (comme `submissions.items`). Une pièce: `{ id, kind ('component'|'free'|'rail'|'duct'),
+product_id (code ou null), label, description, x, y, w, h, d, rot (0|90), c [haut, bas, gauche, droite], repeated,
+unit_w, qty, vertical, group, watts, cat, mounting, source, note }`. Les mesures de la fiche sont **copiées** dans la
+pièce à l'ajout: la disposition ne bouge pas si la fiche change (bouton « Reprendre les mesures de la fiche »).
+**Origine:** coin haut-gauche du fond, tel qu'installé; y vers le bas; tout en mm.
+**« À placer »:** une pièce qui ne touche pas le fond (zone à droite du plan). Elle ne compte ni dans les conflits
+ni dans le calcul du boîtier. Aucune colonne: c'est déduit de la position.
+**`version`:** +1 à chaque sauvegarde; le PUT refuse (409) si la version envoyée n'est plus la bonne.
+**Calculs:** uniquement dans `lib/panel/layout.ts` (pur, testé). Ne jamais recalculer dans un composant.
+**Cascades:** `/api/products/rename` et `merge` (`items[].product_id` + `enclosure_code`).
 
 ### products / non_inventory_items
 ```sql
@@ -1225,10 +1253,19 @@ CRON_SECRET                   # Auth pour cron jobs
       `panel-photos` (migration `20261125b`, **déjà appliquée**), `lib/panel/specs.ts`, `/api/panel-specs` (+ `/photo`),
       `components/panel/*`, `InventoryManager.js` v3.20.0 (case, onglet « Panneau », pastille, filtre), cascades
       rename/merge/delete, backup v3.1.0. 28 fiches de départ (projet PGF2701)
-    - **Reste (PR 1):** après le déploiement, exécuter `20261125c_drop_unused_quotes.sql` (retire `quotes` /
-      `quote_items`, vides et inutilisées — PAS avant, le backup en production les liste encore)
-    - PR 2: éditeur de disposition + module de calculs testé · PR 3: import soumission/BT, hors fond, orientations ·
+      `quotes` / `quote_items` supprimées de la base après le déploiement (migration `20261125c`, appliquée)
+    - ~~**PR 2 — Éditeur de disposition + import d'une soumission**~~ ✅ COMPLÉTÉ (2026-11-25): table `panel_layouts`
+      (migration `20261125d`, **déjà appliquée**), `lib/panel/layout.ts` + `items.ts` + 28 tests Vitest (`npm test`,
+      cas PGF2701), `/api/panel-layouts`, page `/panneaux` (liste, nouvelle depuis une soumission ou vide, dupliquer,
+      approuver, supprimer) et éditeur plein écran `/panneaux/[id]` (`components/panel/editor/*`: plan SVG,
+      glisser-déposer souris + doigt, aimantation, rails DIN, goulottes, dégagements, conflits #c8371e, annuler /
+      rétablir, sauvegarde automatique, bibliothèque, zone « à placer », boîtiers suggérés, « Choisir ce boîtier »,
+      ventilation estimée), `Navigation.js` v2.5.0, backup v3.2.0
+    - PR 3: création depuis un BT, onglet « Hors fond » + mini-plan de porte, boîtier couché gauche / droite ·
       PR 4: PDF, versions, envoi du boîtier à la soumission
+    - **Flux voulu par Martin (2026-11-25):** monter les pièces d'une soumission sur une page blanche, les
+      disposer, PUIS choisir le boîtier. Un boîtier ne s'attribue jamais à une pièce: le type « boîtier » d'une
+      fiche veut dire « ce produit EST un boîtier »
     - Décisions (Martin, 2026-11-25): 4 PR; 2 photos par produit (face + 3 faces); pas de version cellulaire,
       la tablette doit rester utilisable; survol d'une pièce = N° + description; calculs en TypeScript (`lib/panel`),
       composants en `.js` comme le reste; plan en SVG
