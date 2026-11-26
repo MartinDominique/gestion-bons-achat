@@ -7,15 +7,16 @@
  *                         porte `version` et qu'elle ne correspond plus à celle en base
  *                         (disposition modifiée sur un autre appareil) → 409, rien n'est écrit
  *              - DELETE → supprime la disposition (confirmation faite à l'écran)
- * @version 1.0.0
- * @date 2026-11-25
+ * @version 1.1.0
+ * @date 2026-11-26
  * @changelog
+ *   1.1.0 - Passage à « approuvé »: une copie est gardée dans panel_layout_versions (historique)
  *   1.0.0 - Version initiale (Panneau virtuel PR 2)
  */
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
-import { sanitizeLayoutFields } from '../../../../lib/services/panel-layouts';
+import { sanitizeLayoutFields, snapshotLayout } from '../../../../lib/services/panel-layouts';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -50,7 +51,7 @@ export async function PUT(request, { params }) {
     }
 
     const { data: current, error: readErr } = await supabaseAdmin
-      .from('panel_layouts').select('id, version').eq('id', params.id).maybeSingle();
+      .from('panel_layouts').select('id, version, status').eq('id', params.id).maybeSingle();
     if (readErr) throw readErr;
     if (!current) return fail('Disposition introuvable', 404);
 
@@ -73,7 +74,21 @@ export async function PUT(request, { params }) {
     if (!data || data.length === 0) {
       return fail('Cette disposition vient d\'être modifiée ailleurs. Rechargez la page avant de continuer.', 409);
     }
-    return NextResponse.json({ success: true, data: data[0] });
+
+    // Brouillon → approuvé: on garde une copie de la version approuvée
+    let warning;
+    if (fields.status === 'approved' && current.status !== 'approved') {
+      try {
+        const { data: full, error: fullErr } = await supabaseAdmin
+          .from('panel_layouts').select('*').eq('id', params.id).single();
+        if (fullErr) throw fullErr;
+        await snapshotLayout(full, { reason: 'approved' });
+      } catch (e) {
+        console.error('Copie de la version approuvée:', e?.message || e);
+        warning = 'Disposition approuvée, mais la copie dans l\'historique des versions a échoué.';
+      }
+    }
+    return NextResponse.json({ success: true, data: data[0], ...(warning ? { warning } : {}) });
   } catch (error) {
     console.error('Erreur PUT panel-layouts/[id]:', error);
     return fail('Erreur lors de l\'enregistrement de la disposition', 500, error?.message);

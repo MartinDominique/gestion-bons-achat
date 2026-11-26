@@ -13,9 +13,10 @@
  *              - Une table en erreur ou incomplète ⇒ courriel « INCOMPLET » + HTTP 500 (le workflow
  *                GitHub passe au rouge au lieu d'un faux « succès »)
  *              - Tri par created_at avec repli automatique pour les tables sans cette colonne (ex: settings)
- * @version 3.2.0
- * @date 2026-11-25
+ * @version 3.3.0
+ * @date 2026-11-26
  * @changelog
+ *   3.3.0 - Table `panel_layout_versions` ajoutée (Panneau virtuel: historique de versions)
  *   3.2.0 - Table `panel_layouts` ajoutée (Panneau virtuel: dispositions)
  *   3.1.0 - Table `panel_specs` ajoutée (Panneau virtuel); tables `quotes` et `quote_items` retirées
  *           (supprimées de la base: vides et jamais utilisées par le code)
@@ -221,6 +222,7 @@ export async function GET(request: Request) {
       'invoices',                  // Factures
       'non_inventory_items',
       'notes',                     // Système de notes (page d'ouverture)
+      'panel_layout_versions',     // Panneau virtuel: historique de versions des dispositions
       'panel_layouts',             // Panneau virtuel: dispositions (pièces en JSONB)
       'panel_specs',               // Panneau virtuel: fiches techniques (composants + boîtiers)
       'product_associations',      // Items associés (« As »), sens unique parent → enfant
@@ -241,7 +243,7 @@ export async function GET(request: Request) {
     const backup: any = {
       date: new Date().toISOString(),
       project: 'Services TMT',
-      version: '3.2.0',
+      version: '3.3.0',
       tables: {}
     };
 

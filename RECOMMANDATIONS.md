@@ -2797,7 +2797,7 @@ Supabase Dashboard. Les AF déjà envoyés n'ont pas de destinataires enregistr�
 
 ---
 
-## Panneau virtuel — disposition de panneaux de contrôle et choix du boîtier (EN COURS, 4 PR)
+## ~~Panneau virtuel — disposition de panneaux de contrôle et choix du boîtier~~ ✅ COMPLETE (2026-11-26, 4 PR)
 
 Module demandé par Martin (2026-11-25): à partir d'une liste de matériel (soumission, BT ou sélection
 manuelle), placer à l'échelle les pièces sur le fond de panneau (backplate) et trouver quel boîtier de la
@@ -2891,9 +2891,28 @@ Pas de création depuis un BT (décision Martin, 2026-11-26): une disposition pa
   la pièce est dessinée ronde. La forme de la fiche est copiée à l'ajout (`items.ts` v1.2.0)
 - Les conflits se calculent sur le carré qui entoure le rond
 
-### PR 4 — Sorties (à faire)
-- [ ] PDF de la disposition (plan à l'échelle, tableau des pièces, alertes)
-- [ ] Historique de versions, « Envoyer le boîtier à la soumission », mode sombre de l'éditeur
+### PR 4 — ~~Sorties: PDF, versions, envoi du boîtier~~ ✅ COMPLETE (2026-11-26)
+- [x] PDF de la disposition (résumé, alertes, tableau des pièces, plans à l'échelle du fond et de la porte)
+- [x] Historique de versions (copie automatique à l'approbation + versions manuelles, restauration)
+- [x] « Envoyer le boîtier à la soumission » (aperçu puis confirmation)
+- [x] Approuver / remettre en brouillon depuis l'éditeur; une disposition approuvée modifiée redevient brouillon
+
+**Implementation completee (2026-11-26):**
+- `supabase/migrations/20261126c_create_panel_layout_versions.sql` — table `panel_layout_versions` (**appliquée**)
+- `components/panel/PanelLayoutPDF.js` — PDF jsPDF (en-tête `pdf-common.js`): page 1 lettre portrait, puis plans en
+  paysage au format lettre ou 11 × 17, échelle « ronde » indiquée (ex. 1:4), cotes, repères numérotés renvoyant au
+  tableau. Texte en noir; « au moins 151 W » plutôt que « ≥ » (caractère absent de la police Helvetica du PDF)
+- `components/panel/editor/EditorDocumentMenu.js` — menu « Document »: PDF, approuver, versions, envoi du boîtier
+- `components/panel/editor/PanelEditor.js` v1.2.0 — `ensureSaved()`, `restoreVersion()`, `makePdf()`, bandeau d'avis
+- `app/api/panel-layouts/[id]/versions/route.js` — GET liste / une version, POST version manuelle
+- `app/api/panel-layouts/[id]/send-enclosure/route.js` — GET aperçu / POST ajout de la ligne + recalcul de
+  `submissions.amount` et `cost_total`; 409 si le boîtier y est déjà
+- `app/api/panel-layouts/[id]/route.js` v1.1.0 — copie dans l'historique au passage à « approuvé »
+- `lib/services/panel-layouts.js` v1.3.0 — `snapshotLayout()` (20 versions gardées par disposition)
+- `app/api/cron/backup/route.ts` v3.3.0 — `panel_layout_versions` ajoutée
+
+**Le module Panneau virtuel est complet (4 PR).** Restes connus: photos hors du backup quotidien; création
+depuis un BT écartée (décision Martin); test réel sur tablette à faire.
 
 ### À faire plus tard — uniformiser inventaire / non-inventaire
 La table `non_inventory_items` date de l'import Acomba (plus utilisé). Martin veut tout ramener dans une
@@ -2902,4 +2921,4 @@ référence les produits par code, donc il suivra sans changement.
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-25 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-26 par Claude AI*

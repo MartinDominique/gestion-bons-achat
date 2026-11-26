@@ -13,9 +13,11 @@
  *                dans les conflits ni dans le calcul du boîtier
  *              - Tous les calculs viennent de lib/panel/layout.ts (module pur, testé)
  *              Desktop d'abord; utilisable au doigt sur tablette (glisser, pincer).
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-11-26
  * @changelog
+ *   1.2.0 - Menu « Document »: PDF (plans lettre ou 11 × 17), approuver / brouillon, versions (restaurer),
+ *           envoyer le boîtier à la soumission; une disposition approuvée qu'on modifie redevient brouillon (PR 4)
  *   1.1.0 - Vue « Porte » (bascule Fond | Porte): pièces de porte placées à l'échelle devant le fond en
  *           filigrane, alerte de profondeur; orientation du boîtier (debout / couché gauche / couché droit)
  *           et côté de la charnière; la profondeur requise tient compte des pièces de porte (PR 3)
@@ -26,6 +28,7 @@ import Link from 'next/link';
 import { ArrowLeft, Undo2, Redo2, Maximize, Loader2, Check, AlertTriangle, PanelRightClose, PanelRightOpen, MousePointerClick } from 'lucide-react';
 import PanelCanvas from './PanelCanvas';
 import EditorSidePanel from './EditorSidePanel';
+import EditorDocumentMenu from './EditorDocumentMenu';
 import { supabase } from '../../../lib/supabase';
 import { usePanelUnit, UnitToggle } from '../usePanelUnit';
 import {
@@ -58,6 +61,8 @@ export default function PanelEditor({ layoutId }) {
   const [saveError, setSaveError] = useState('');
   const [userId, setUserId] = useState(null);
   const [, forceHistory] = useState(0);
+  const [notice, setNotice] = useState('');
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const canvasRef = useRef(null);
   const stateRef = useRef({ layout: null, items: [] });
@@ -67,6 +72,7 @@ export default function PanelEditor({ layoutId }) {
   const lastTag = useRef({ tag: null, at: 0 });
   const versionRef = useRef(1);
   const dirtyCount = useRef(0);
+  const savedCount = useRef(0);
   const saving = useRef(false);
   const timer = useRef(null);
   const blocked = useRef(false); // conflit de version: plus aucune écriture
@@ -105,9 +111,9 @@ export default function PanelEditor({ layoutId }) {
 
   // ----- Sauvegarde automatique -----
   const doSave = useCallback(async () => {
-    if (saving.current || blocked.current) return;
+    if (saving.current || blocked.current) return false;
     const { layout: l, items: its } = stateRef.current;
-    if (!l) return;
+    if (!l) return false;
     saving.current = true;
     const snapshot = dirtyCount.current;
     setSaveState('saving');
@@ -123,16 +129,21 @@ export default function PanelEditor({ layoutId }) {
         blocked.current = true;
         setSaveError(json.error);
         setSaveState('conflict');
-        return;
+        return false;
       }
       if (!res.ok || !json.success) throw new Error([json.error, json.details].filter(Boolean).join(' — ') || 'Erreur');
       versionRef.current = json.data.version;
+      savedCount.current = snapshot;
+      setLayout((cur) => (cur ? { ...cur, version: json.data.version } : cur));
       setSaveError('');
+      if (json.warning) setNotice(json.warning);
       if (dirtyCount.current === snapshot) setSaveState('saved');
       else { setSaveState('dirty'); timer.current = setTimeout(doSave, SAVE_DELAY); }
+      return true;
     } catch (e) {
       setSaveError(e.message);
       setSaveState('error');
+      return false;
     } finally {
       saving.current = false;
     }
@@ -147,6 +158,19 @@ export default function PanelEditor({ layoutId }) {
   }, [doSave]);
 
   useEffect(() => () => clearTimeout(timer.current), []);
+
+  /** Attend que tout soit enregistré (versions, envoi à la soumission). false = échec. */
+  const ensureSaved = useCallback(async () => {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      clearTimeout(timer.current);
+      for (let k = 0; k < 60 && saving.current; k++) await new Promise((r) => setTimeout(r, 150));
+      if (dirtyCount.current === savedCount.current) return true;
+      // Laisse React publier le dernier état avant de l'envoyer
+      await new Promise((r) => setTimeout(r, 30));
+      if (!(await doSave()) && !saving.current) return false;
+    }
+    return dirtyCount.current === savedCount.current;
+  }, [doSave]);
 
   useEffect(() => {
     if (saveState === 'saved') return undefined;
@@ -171,8 +195,11 @@ export default function PanelEditor({ layoutId }) {
     }
     redoStack.current = [];
     lastTag.current = { tag, at: now };
+    // Une disposition approuvée qu'on modifie redevient un brouillon (la version approuvée reste dans l'historique)
+    const reopened = cur.layout?.status === 'approved' && !(next.layout && next.layout.status);
+    if (reopened) setNotice('Disposition modifiée: elle repasse en brouillon. La version approuvée reste dans « Document → Versions ».');
     if (next.items) setItems(next.items);
-    if (next.layout) setLayout({ ...cur.layout, ...next.layout });
+    if (next.layout || reopened) setLayout({ ...cur.layout, ...(next.layout || {}), ...(reopened ? { status: 'draft' } : {}) });
     forceHistory((v) => v + 1);
     markDirty();
   }, [markDirty]);
@@ -433,6 +460,43 @@ export default function PanelEditor({ layoutId }) {
 
   const clearEnclosure = () => change({ layout: { enclosure_code: null } });
 
+  const toggleStatus = () => {
+    const approved = layout.status === 'approved';
+    if (!approved && (report.messages.length + doorReport.messages.length > 0)
+      && !window.confirm(`Il reste ${report.messages.length + doorReport.messages.length} conflit(s). Approuver quand même ?`)) return;
+    setNotice(approved ? '' : 'Disposition approuvée: une copie est gardée dans « Document → Versions ».');
+    setSetting({ status: approved ? 'draft' : 'approved' }, 'status');
+  };
+
+  /** Restaure une version (historique). Reste annulable pour le fond, les pièces, le boîtier et l'orientation. */
+  const restoreVersion = (snapshot) => {
+    const keep = ['plate_width_mm', 'plate_height_mm', 'enclosure_code', 'orientation', 'hinge_side', 'margin_mm', 'spare_percent',
+      'door_rear_depth_mm', 'avail_width_mm', 'avail_height_mm', 'avail_depth_mm', 'delta_t', 'snap_mm', 'notes'];
+    const patch = {};
+    keep.forEach((k) => { if (Object.prototype.hasOwnProperty.call(snapshot, k)) patch[k] = snapshot[k]; });
+    setSelectedIds([]);
+    change({ items: Array.isArray(snapshot.items) ? snapshot.items : [], layout: patch });
+    setNotice('Version restaurée. Ctrl+Z pour revenir en arrière.');
+    setTimeout(() => canvasRef.current?.fit(), 80);
+  };
+
+  const makePdf = async (planFormat) => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      const { generatePanelLayoutPDF } = await import('../PanelLayoutPDF');
+      await generatePanelLayoutPDF({
+        layout: { ...layout, version: versionRef.current }, plateItems: placed, doorItems: doorPlaced,
+        pendingCount: pendingIds.length, plate, door, result, report, doorReport, enclosure, installed, planFormat,
+      });
+    } catch (e) {
+      console.error('PDF disposition:', e);
+      window.alert(`Le PDF n'a pas pu être généré: ${e.message}`);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   const setSetting = (patch, tag) => {
     setLayout((l) => ({ ...l, ...patch }));
     lastTag.current = { tag: tag || null, at: Date.now() };
@@ -539,6 +603,11 @@ export default function PanelEditor({ layoutId }) {
           <MousePointerClick className="w-5 h-5" />
         </button>
         <UnitToggle unit={unit} onChange={setUnit} />
+        <EditorDocumentMenu
+          layout={layout} layoutId={layoutId} userId={userId} pdfBusy={pdfBusy}
+          canSendEnclosure={!!layout.submission_id && !!layout.enclosure_code}
+          onPdf={makePdf} onToggleStatus={toggleStatus} onRestore={restoreVersion} ensureSaved={ensureSaved}
+        />
         <div className="w-36 text-xs flex items-center gap-1.5" aria-live="polite">
           {saveState === 'saved' && <><Check className="w-4 h-4 text-green-600" /><span className="text-green-700 dark:text-green-400">Enregistré</span></>}
           {saveState === 'dirty' && <span className="text-gray-500 dark:text-gray-400">Modifié…</span>}
@@ -559,6 +628,13 @@ export default function PanelEditor({ layoutId }) {
         <div className="px-3 py-2 text-sm bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200 border-b border-red-200 dark:border-red-800 flex items-center gap-3 flex-shrink-0">
           <span className="flex-1">{saveError} Vos derniers changements ici ne sont pas enregistrés.</span>
           <button type="button" onClick={() => window.location.reload()} className="min-h-[44px] px-3 rounded-lg bg-red-700 text-white text-sm font-medium">Recharger</button>
+        </div>
+      )}
+
+      {notice && (
+        <div className="px-3 py-1.5 text-sm bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 border-b border-teal-200 dark:border-teal-900 flex items-center gap-3 flex-shrink-0">
+          <span className="flex-1">{notice}</span>
+          <button type="button" onClick={() => setNotice('')} className="min-h-[32px] px-2 underline text-sm">Fermer</button>
         </div>
       )}
 
