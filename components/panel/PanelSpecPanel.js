@@ -14,9 +14,12 @@
  *                à 1600 px avant l'envoi)
  *              - Mesures stockées en mm; saisie/affichage en mm ou en pouces
  *                (bascule mémorisée, voir usePanelUnit)
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-11-25
  * @changelog
+ *   1.1.0 - Choix du type reformulé (« Ce produit est… une pièce à placer / un boîtier ») + explication et
+ *           confirmation: « Boîtier » était compris comme « attribuer un boîtier à la pièce ».
+ *           LengthInput / NumberInput exportés (réutilisés par l'éditeur de disposition)
  *   1.0.0 - Version initiale (Panneau virtuel PR 1)
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -41,7 +44,7 @@ const display = (v) =>
   v == null ? '' : String(v).replace('.', ',');
 
 /** Champ de longueur: valeur en mm côté parent, texte dans l'unité affichée. */
-function LengthInput({ label, valueMm, unit, onChangeMm, hint }) {
+export function LengthInput({ label, valueMm, unit, onChangeMm, hint }) {
   const [text, setText] = useState(display(fromMm(valueMm, unit)));
   const focused = useRef(false);
 
@@ -68,7 +71,7 @@ function LengthInput({ label, valueMm, unit, onChangeMm, hint }) {
 }
 
 /** Champ numérique simple (W, quantité). */
-function NumberInput({ label, value, onChange, inputMode = 'decimal', suffix }) {
+export function NumberInput({ label, value, onChange, inputMode = 'decimal', suffix }) {
   const [text, setText] = useState(display(value));
   const focused = useRef(false);
   useEffect(() => { if (!focused.current) setText(display(value)); }, [value]);
@@ -314,6 +317,14 @@ export default function PanelSpecPanel({ productCode, productDescription = '', u
   }
 
   const isEnclosure = spec.kind === 'enclosure';
+  const isEnclosureKind = isEnclosure;
+  const looksLikeEnclosure = /bo[iî]tier|enclosure|cabinet|armoire/i.test(productDescription || '');
+  const changeKind = (kind) => {
+    if (kind === spec.kind) return;
+    if (kind === 'enclosure' && !looksLikeEnclosure
+      && !window.confirm('« Boîtier » veut dire que CE PRODUIT est un boîtier (une armoire), pas qu\'il va dans un boîtier.\n\nLa description ne ressemble pas à un boîtier. Continuer quand même ?')) return;
+    set({ kind, mounting: kind === 'component' ? (spec.mounting || 'din') : spec.mounting });
+  };
   const onBackplate = ON_BACKPLATE_MOUNTINGS.includes(spec.mounting);
   const missing = missingDimensions(spec);
   const parsed = isEnclosure ? parseDimensionsFromDescription(productDescription) : null;
@@ -322,21 +333,30 @@ export default function PanelSpecPanel({ productCode, productDescription = '', u
 
   return (
     <div>
-      {/* Type + unité */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-          {PANEL_KINDS.map((k) => (
-            <button
-              key={k.value} type="button" onClick={() => spec.kind !== k.value && set({ kind: k.value, mounting: k.value === 'component' ? (spec.mounting || 'din') : spec.mounting })}
-              className={`px-4 min-h-[44px] text-sm font-medium ${
-                spec.kind === k.value
-                  ? 'bg-teal-600 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              {k.label}
-            </button>
-          ))}
+      {/* Type de produit + unité */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className={LABEL}>Ce produit est…</div>
+          <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+            {PANEL_KINDS.map((k) => (
+              <button
+                key={k.value} type="button" aria-pressed={spec.kind === k.value}
+                onClick={() => changeKind(k.value)}
+                className={`px-4 min-h-[44px] text-sm font-medium ${
+                  spec.kind === k.value
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                {k.value === 'component' ? 'une pièce à placer' : 'un boîtier'}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
+            {isEnclosureKind
+              ? 'À utiliser seulement si ce produit EST un boîtier (Rittal, Hoffman, Hammond…). Il sera proposé dans les dispositions.'
+              : 'Le boîtier d\'un projet se choisit dans la disposition, une fois les pièces placées — jamais ici.'}
+          </p>
         </div>
         <UnitToggle unit={unit} onChange={setUnit} />
       </div>
