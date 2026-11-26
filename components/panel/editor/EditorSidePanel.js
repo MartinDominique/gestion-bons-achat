@@ -13,9 +13,10 @@
  *                (dimensions manquantes → compléter la fiche puis ajouter; hors fond; ignorées)
  *              - « Boîtier »: réglages, fond requis, profondeur, chaleur, ventilation
  *                (estimation, formule affichée), boîtiers suggérés et « Choisir ce boîtier »
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-11-26
  * @changelog
+ *   1.2.0 - Forme d'une pièce (rectangulaire / ronde) dans l'onglet « Pièce »; rond = un seul champ Diamètre
  *   1.1.0 - Onglet « Hors fond » (porte / paroi / terrain / accessoire / ignoré, « Mettre sur la porte »);
  *           pièces de porte dans l'onglet « Pièce » (profondeur arrière) et la bibliothèque; orientation du
  *           boîtier, côté de la charnière et pictogramme dans l'onglet « Boîtier » (PR 3)
@@ -132,6 +133,7 @@ function PieceTab(p) {
   const setC = (k, v) => { const next = [...c]; next[k] = v ?? 0; set({ c: next }, `c${k}`); };
   const linear = i.kind === 'rail' || i.kind === 'duct';
   const onDoor = i.zone === 'door';
+  const round = i.shape === 'round' && !i.repeated && !linear;
   const spec = i.product_id ? p.library.find((s) => s.product_code === i.product_id) : null;
 
   return (
@@ -170,6 +172,27 @@ function PieceTab(p) {
         className={INPUT} autoCorrect="on" autoCapitalize="sentences" spellCheck
       />
 
+      {piece && !i.repeated && (
+        <div className="mt-3">
+          <span className={LABEL}>Forme</span>
+          <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+            {[['rect', 'Rectangulaire'], ['round', 'Ronde']].map(([v, l]) => (
+              <button
+                key={v} type="button" aria-pressed={(i.shape === 'round' ? 'round' : 'rect') === v}
+                onClick={() => set(v === 'round' ? { shape: 'round', h: i.w, rot: 0 } : { shape: 'rect' }, 'shape')}
+                className={`px-4 min-h-[44px] text-sm font-medium ${
+                  (i.shape === 'round' ? 'round' : 'rect') === v
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-2 mt-3">
         {i.repeated ? (
           <>
@@ -177,9 +200,12 @@ function PieceTab(p) {
             <LengthInput label="Par unité" valueMm={i.unit_w} unit={unit} onChangeMm={(v) => v > 0 && set({ unit_w: v }, 'unit_w')} />
           </>
         ) : (
-          <LengthInput label={linear ? 'Longueur' : 'Largeur'} valueMm={i.w} unit={unit} onChangeMm={(v) => v > 0 && set({ w: v }, 'w')} />
+          <LengthInput
+            label={round ? 'Diamètre' : linear ? 'Longueur' : 'Largeur'} valueMm={i.w} unit={unit}
+            onChangeMm={(v) => v > 0 && set(round ? { w: v, h: v } : { w: v }, 'w')}
+          />
         )}
-        <LengthInput label={linear ? 'Largeur' : 'Hauteur'} valueMm={i.h} unit={unit} onChangeMm={(v) => v > 0 && set({ h: v }, 'h')} />
+        {!round && <LengthInput label={linear ? 'Largeur' : 'Hauteur'} valueMm={i.h} unit={unit} onChangeMm={(v) => v > 0 && set({ h: v }, 'h')} />}
         {piece && !onDoor && <LengthInput label="Profondeur" valueMm={i.d} unit={unit} onChangeMm={(v) => set({ d: v }, 'd')} />}
         {onDoor && <LengthInput label="Prof. arrière" valueMm={i.rear} unit={unit} onChangeMm={(v) => set({ rear: v }, 'rear')} />}
       </div>

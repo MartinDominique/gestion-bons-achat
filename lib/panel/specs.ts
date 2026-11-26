@@ -8,9 +8,10 @@
  *              - missingDimensions(): ce qui manque pour placer la pièce / choisir le boîtier
  *              - parseDimensionsFromDescription(): « 300X400X210mm », « 36 X 24 X 10'' »
  *              - sanitizeSpecPayload(): ne garde que les champs connus, nombres validés
- * @version 1.0.0
- * @date 2026-11-25
+ * @version 1.1.0
+ * @date 2026-11-26
  * @changelog
+ *   1.1.0 - Champ `shape` ('rect' | 'round'): pièces rondes (boutons, voyants, arrêts d'urgence)
  *   1.0.0 - Version initiale (Panneau virtuel PR 1)
  */
 
@@ -41,6 +42,8 @@ export interface PanelSpec {
   heat_loss_w: number | null;
   visual_category: PanelCategory;
   rear_depth_mm: number | null;
+  /** Forme vue de face; ronde = la largeur sert de diamètre */
+  shape?: 'rect' | 'round';
   source: PanelSource;
   backplate_width_mm: number | null;
   backplate_height_mm: number | null;
@@ -114,6 +117,7 @@ export function emptySpec(productCode: string, kind: PanelKind = 'component'): P
     heat_loss_w: null,
     visual_category: 'control',
     rear_depth_mm: null,
+    shape: 'rect',
     source: 'approx',
     backplate_width_mm: null,
     backplate_height_mm: null,
@@ -295,6 +299,10 @@ export function sanitizeSpecPayload(input: Record<string, unknown>): Record<stri
   if (has('source')) {
     if (!PANEL_SOURCES.some((o) => o.value === input.source)) throw new Error('Source invalide');
     out.source = input.source;
+  }
+  if (has('shape')) {
+    if (input.shape !== 'rect' && input.shape !== 'round') throw new Error('Forme invalide');
+    out.shape = input.shape;
   }
   if (has('visual_category')) {
     if (!PANEL_CATEGORIES.some((o) => o.value === input.visual_category)) throw new Error('Catégorie invalide');

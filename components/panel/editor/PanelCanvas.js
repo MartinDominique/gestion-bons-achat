@@ -14,9 +14,10 @@
  *              - Survol: N° de pièce, description, dimensions, source, note
  *              - Les pièces hors du fond (zone « à placer ») sont affichées en plus pâle
  *              Le composant ne modifie rien lui-même: il appelle onMove / onSelect / onDropSpec.
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-11-26
  * @changelog
+ *   1.2.0 - Pièces rondes (shape = 'round': boutons, voyants, arrêts d'urgence)
  *   1.1.0 - Vue « Porte »: cadre nommé (frameName), fond de panneau et ses pièces en filigrane derrière
  *           la porte (ghost); photo du produit dans l'infobulle de survol (chargée après 0,4 s, mise en cache)
  *   1.0.0 - Version initiale (Panneau virtuel PR 2)
@@ -420,10 +421,13 @@ const PanelCanvas = forwardRef(function PanelCanvas({
                 onPointerLeave={() => setHover((h) => (h && h.id === i.id ? null : h))}
               >
                 <rect
-                  x={b.x + o.x} y={b.y + o.y} width={b.w} height={b.h} rx={i.kind === 'rail' ? 0 : px(2)}
+                  x={b.x + o.x} y={b.y + o.y} width={b.w} height={b.h} rx={i.shape === 'round' ? Math.min(b.w, b.h) / 2 : i.kind === 'rail' ? 0 : px(2)}
                   fill={fill} stroke={stroke} strokeWidth={px(bad ? 2.2 : 1.2)}
                 />
-                {bad && <rect x={b.x + o.x} y={b.y + o.y} width={b.w} height={b.h} fill={CONFLICT} fillOpacity="0.28" pointerEvents="none" />}
+                {i.shape === 'round' && Math.min(b.w, b.h) * scale >= 18 && (
+                  <circle cx={b.x + o.x + b.w / 2} cy={b.y + o.y + b.h / 2} r={Math.min(b.w, b.h) * 0.32} fill="none" stroke={power ? '#d1d5db' : '#9ca3af'} strokeWidth={px(1)} pointerEvents="none" />
+                )}
+                {bad && <rect x={b.x + o.x} y={b.y + o.y} width={b.w} height={b.h} rx={i.shape === 'round' ? Math.min(b.w, b.h) / 2 : 0} fill={CONFLICT} fillOpacity="0.28" pointerEvents="none" />}
                 {i.repeated && i.unit_w > 0 && i.unit_w * scale >= 3 && Array.from({ length: Math.max(0, (i.qty || 1) - 1) }, (_, k) => {
                   const pos = (k + 1) * i.unit_w;
                   return i.rot === 90
