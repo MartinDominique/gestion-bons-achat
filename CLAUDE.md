@@ -674,7 +674,7 @@ width_mm, height_mm, depth_mm,            -- composant: corps; boîtier: EXTÉRI
 mounting ('din'|'backplate'|'door'|'wall'|'field'|'accessory'),
 clearance_top_mm, clearance_bottom_mm, clearance_left_mm, clearance_right_mm,
 must_stay_vertical, stack_group, is_repeated, unit_width_mm, default_quantity,
-heat_loss_w, visual_category ('power'|'control'), rear_depth_mm,
+heat_loss_w, visual_category ('power'|'control'), rear_depth_mm, shape ('rect'|'round'),
 source ('datasheet'|'approx'|'template'),
 backplate_width_mm, backplate_height_mm, usable_depth_mm, unusable_margin_mm,   -- boîtier
 rating, material, allow_portrait, allow_landscape,
@@ -1272,6 +1272,8 @@ CRON_SECRET                   # Auth pour cron jobs
       « Hors fond », orientation debout / couché gauche / couché droit + `hinge_side` (migration `20261126`,
       **appliquée**) + pictogramme, photo au survol. `layout.ts` v1.1.0 (35 tests), `items.ts` v1.1.0,
       `panel-layouts.js` v1.1.0, `components/panel/editor/*` v1.1.0
+      **Pièces rondes (2026-11-26):** `panel_specs.shape` + `items[].shape` = 'round' (boutons, voyants, arrêts
+      d'urgence): un seul champ Diamètre, dessin rond; conflits calculés sur le carré englobant (migration `20261126b`, appliquée)
     - PR 4: PDF, versions, envoi du boîtier à la soumission
     - **Flux voulu par Martin (2026-11-25):** monter les pièces d'une soumission sur une page blanche, les
       disposer, PUIS choisir le boîtier. Un boîtier ne s'attribue jamais à une pièce: le type « boîtier » d'une

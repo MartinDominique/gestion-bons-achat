@@ -14,9 +14,10 @@
  *                à 1600 px avant l'envoi)
  *              - Mesures stockées en mm; saisie/affichage en mm ou en pouces
  *                (bascule mémorisée, voir usePanelUnit)
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-11-25
  * @changelog
+ *   1.2.0 - Forme « Ronde » (boutons, voyants, arrêts d'urgence): un seul champ Diamètre, aperçu rond
  *   1.1.0 - Choix du type reformulé (« Ce produit est… une pièce à placer / un boîtier ») + explication et
  *           confirmation: « Boîtier » était compris comme « attribuer un boîtier à la pièce ».
  *           LengthInput / NumberInput exportés (réutilisés par l'éditeur de disposition)
@@ -238,6 +239,7 @@ export default function PanelSpecPanel({ productCode, productDescription = '', u
         body: JSON.stringify({
           ...fields,
           mounting: fields.kind === 'enclosure' ? null : fields.mounting,
+          shape: fields.shape === 'round' && !fields.is_repeated ? 'round' : 'rect',
           product_code: productCode,
           active: true,
           updated_by: userId,
@@ -318,6 +320,7 @@ export default function PanelSpecPanel({ productCode, productDescription = '', u
 
   const isEnclosure = spec.kind === 'enclosure';
   const isEnclosureKind = isEnclosure;
+  const isRound = spec.shape === 'round' && !spec.is_repeated;
   const looksLikeEnclosure = /bo[iî]tier|enclosure|cabinet|armoire/i.test(productDescription || '');
   const changeKind = (kind) => {
     if (kind === spec.kind) return;
@@ -471,13 +474,35 @@ export default function PanelSpecPanel({ productCode, productDescription = '', u
             onChange={(v) => set({ is_repeated: v })}
             hint="Largeur = quantité × largeur par unité"
           />
+          {!spec.is_repeated && (
+            <div className="mb-3">
+              <span className={LABEL}>Forme vue de face</span>
+              <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+                {[['rect', 'Rectangulaire'], ['round', 'Ronde (bouton, voyant)']].map(([v, l]) => (
+                  <button
+                    key={v} type="button" aria-pressed={(spec.shape === 'round' ? 'round' : 'rect') === v}
+                    onClick={() => set(v === 'round' ? { shape: 'round', height_mm: spec.width_mm ?? spec.height_mm } : { shape: 'rect' })}
+                    className={`px-4 min-h-[44px] text-sm font-medium ${
+                      (spec.shape === 'round' ? 'round' : 'rect') === v
+                        ? 'bg-teal-600 text-white'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-3">
             {spec.is_repeated ? (
               <LengthInput label="Largeur par unité" valueMm={spec.unit_width_mm} unit={unit} onChangeMm={(v) => set({ unit_width_mm: v })} />
+            ) : isRound ? (
+              <LengthInput label="Diamètre" valueMm={spec.width_mm} unit={unit} onChangeMm={(v) => set({ width_mm: v, height_mm: v })} />
             ) : (
               <LengthInput label="Largeur" valueMm={spec.width_mm} unit={unit} onChangeMm={(v) => set({ width_mm: v })} />
             )}
-            <LengthInput label="Hauteur" valueMm={spec.height_mm} unit={unit} onChangeMm={(v) => set({ height_mm: v })} />
+            {!isRound && <LengthInput label="Hauteur" valueMm={spec.height_mm} unit={unit} onChangeMm={(v) => set({ height_mm: v })} />}
             <LengthInput
               label="Profondeur" valueMm={spec.depth_mm} unit={unit}
               onChangeMm={(v) => set({ depth_mm: v })} hint="Ce qui dépasse du fond"

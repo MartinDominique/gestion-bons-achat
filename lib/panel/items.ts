@@ -8,9 +8,10 @@
  *                si la fiche change, et chaque pièce peut être ajustée pour ce projet)
  *              - newRail() / newDuct() / newFreePiece()
  *              - isSpecPlaceable(): la fiche a tout ce qu'il faut pour aller sur le fond
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-11-26
  * @changelog
+ *   1.2.0 - La forme de la fiche (ronde / rectangulaire) est copiée dans la pièce
  *   1.1.0 - doorItemFromSpec() / newDoorPiece(): pièces de porte (zone = 'door', profondeur arrière)
  *   1.0.0 - Version initiale (Panneau virtuel PR 2)
  */
@@ -67,6 +68,7 @@ export function itemFromSpec(
     cat: spec.visual_category === 'power' ? 'power' : 'control',
     mounting: spec.mounting || null,
     source: spec.source || null,
+    shape: spec.shape === 'round' ? 'round' : 'rect',
     note: null,
   };
 }
@@ -87,8 +89,10 @@ export function doorItemFromSpec(
   spec: Partial<PanelSpec> & { product_code: string },
   opts: { id?: string; description?: string | null; x?: number; y?: number } = {}
 ): LayoutItem {
+  const round = spec.shape === 'round';
   const w = f(spec.width_mm);
-  const h = f(spec.height_mm);
+  // Pièce ronde: la largeur est le diamètre (la hauteur n'a pas à être saisie)
+  const h = round ? (w || f(spec.height_mm)) : f(spec.height_mm);
   const known = !!w && !!h;
   return {
     id: opts.id || newId('o'),
@@ -103,6 +107,7 @@ export function doorItemFromSpec(
     h: h || DOOR_PLACEHOLDER,
     d: f(spec.depth_mm),
     rear: f(spec.rear_depth_mm),
+    shape: round ? 'round' : 'rect',
     rot: 0,
     c: [0, 0, 0, 0],
     repeated: false, unit_w: null, qty: null,

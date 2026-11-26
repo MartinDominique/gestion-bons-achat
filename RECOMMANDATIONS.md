@@ -2883,6 +2883,14 @@ Pas de création depuis un BT (décision Martin, 2026-11-26): une disposition pa
 - `components/panel/editor/EditorSidePanel.js` v1.1.0 — onglet « Hors fond », pièces de porte, pictogramme
 - Une pièce de porte sans dimensions dans sa fiche arrive en carré de 40 mm (« gabarit »), à corriger
 
+**Amélioration (2026-11-26) — pièces rondes** (demande de Martin: « comment je fais pour qu'ils soient ronds ? »):
+- `supabase/migrations/20261126b_add_panel_specs_shape.sql` — `panel_specs.shape` ('rect' | 'round'), **appliquée**
+- Fiche produit (`PanelSpecPanel.js` v1.2.0, `PanelSpecPreview.js` v1.1.0): « Forme vue de face: Rectangulaire /
+  Ronde », un seul champ **Diamètre** quand c'est rond
+- Éditeur (`EditorSidePanel.js` v1.2.0, `PanelCanvas.js` v1.2.0): même choix par pièce dans l'onglet « Pièce »;
+  la pièce est dessinée ronde. La forme de la fiche est copiée à l'ajout (`items.ts` v1.2.0)
+- Les conflits se calculent sur le carré qui entoure le rond
+
 ### PR 4 — Sorties (à faire)
 - [ ] PDF de la disposition (plan à l'échelle, tableau des pièces, alertes)
 - [ ] Historique de versions, « Envoyer le boîtier à la soumission », mode sombre de l'éditeur

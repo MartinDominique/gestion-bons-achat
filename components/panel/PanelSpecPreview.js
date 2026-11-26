@@ -6,9 +6,10 @@
  *              - Boîtier: extérieur, fond de panneau (backplate) centré, marge non
  *                utilisable en pointillé
  *              Reçoit la fiche en mm; l'unité ne sert qu'aux étiquettes.
- * @version 1.0.0
- * @date 2026-11-25
+ * @version 1.1.0
+ * @date 2026-11-26
  * @changelog
+ *   1.1.0 - Aperçu rond pour les pièces de forme « Ronde »
  *   1.0.0 - Version initiale (Panneau virtuel PR 1)
  */
 import React from 'react';
@@ -109,7 +110,7 @@ export default function PanelSpecPreview({ spec, unit = 'mm' }) {
             />
           )}
           <rect
-            x={X(cL)} y={Y(cT)} width={w * scale} height={h * scale} rx="1.5"
+            x={X(cL)} y={Y(cT)} width={w * scale} height={h * scale} rx={spec.shape === 'round' && !spec.is_repeated ? (Math.min(w, h) * scale) / 2 : 1.5}
             className={power
               ? 'fill-gray-700 dark:fill-gray-300 stroke-gray-900 dark:stroke-gray-100'
               : 'fill-white dark:fill-gray-100 stroke-gray-700 dark:stroke-gray-300'}

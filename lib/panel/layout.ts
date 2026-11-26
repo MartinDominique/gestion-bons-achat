@@ -15,9 +15,10 @@
  *              - Orientation: boîtier debout ou couché sur le côté, bord de la charnière
  *              Toutes les mesures sont en millimètres. L'origine (0, 0) est le coin
  *              HAUT-GAUCHE du fond de panneau, tel qu'installé; y augmente vers le bas.
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-11-26
  * @changelog
+ *   1.2.0 - LayoutItem.shape ('round': bouton, voyant, arrêt d'urgence)
  *   1.1.0 - Porte (doorGeometry, findDoorConflicts avec contrôle de profondeur, doorRearDepth) et
  *           orientation du boîtier (isLaidDown, enclosureAsInstalled, hingeEdge) — Panneau virtuel PR 3
  *   1.0.0 - Version initiale (Panneau virtuel PR 2)
@@ -55,6 +56,8 @@ export interface LayoutItem {
   zone?: 'door' | null;
   /** Pièce de porte: profondeur qui rentre dans le boîtier */
   rear?: number | null;
+  /** 'round' = dessinée ronde (bouton, voyant); les conflits utilisent le carré qui l'entoure */
+  shape?: 'rect' | 'round' | null;
 }
 
 export interface Box { x: number; y: number; w: number; h: number }
