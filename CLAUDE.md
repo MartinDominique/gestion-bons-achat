@@ -696,7 +696,7 @@ vissé) sans L × H × P; boîtier sans fond de panneau L × H ou sans profondeu
 ```sql
 id (UUID), name, project_code, client_name,
 submission_id, submission_number, work_order_id, work_order_number,   -- liens souples, sans FK
-enclosure_code, orientation ('portrait'|'landscape'|'side_left'|'side_right'),
+enclosure_code, orientation ('portrait'|'landscape'|'side_left'|'side_right'), hinge_side ('left'|'right'),
 plate_width_mm, plate_height_mm,
 margin_mm, spare_percent, door_rear_depth_mm, avail_width_mm, avail_height_mm, avail_depth_mm, delta_t, snap_mm,
 items (JSONB), import_report (JSONB),
@@ -707,6 +707,11 @@ product_id (code ou null), label, description, x, y, w, h, d, rot (0|90), c [hau
 unit_w, qty, vertical, group, watts, cat, mounting, source, note }`. Les mesures de la fiche sont **copiées** dans la
 pièce à l'ajout: la disposition ne bouge pas si la fiche change (bouton « Reprendre les mesures de la fiche »).
 **Origine:** coin haut-gauche du fond, tel qu'installé; y vers le bas; tout en mm.
+**Porte:** une pièce avec `zone: 'door'` est sur la porte; ses x / y sont dans le repère de la PORTE (extérieur du
+boîtier retenu tel qu'installé, sinon fond + 40 mm de chaque côté), `rear` = profondeur qui rentre dans le boîtier.
+Fond et porte sont vus de face: pas d'effet miroir. Le fond est centré derrière la porte (`doorGeometry()`).
+**Orientation:** `portrait` = debout; `side_left` / `side_right` = couché (L et H du boîtier permutées);
+`landscape` = ancienne valeur, lue comme `side_left`. `hinge_side` = charnière quand le boîtier est debout.
 **« À placer »:** une pièce qui ne touche pas le fond (zone à droite du plan). Elle ne compte ni dans les conflits
 ni dans le calcul du boîtier. Aucune colonne: c'est déduit de la position.
 **`version`:** +1 à chaque sauvegarde; le PUT refuse (409) si la version envoyée n'est plus la bonne.
@@ -1261,8 +1266,13 @@ CRON_SECRET                   # Auth pour cron jobs
       glisser-déposer souris + doigt, aimantation, rails DIN, goulottes, dégagements, conflits #c8371e, annuler /
       rétablir, sauvegarde automatique, bibliothèque, zone « à placer », boîtiers suggérés, « Choisir ce boîtier »,
       ventilation estimée), `Navigation.js` v2.5.0, backup v3.2.0
-    - PR 3: onglet « Hors fond » + mini-plan de porte, boîtier couché gauche / droite, photo au survol ·
-      PR 4: PDF, versions, envoi du boîtier à la soumission
+    - ~~**PR 3 — Porte, hors fond et boîtier couché**~~ ✅ COMPLÉTÉ (2026-11-26): bascule **Fond | Porte** dans
+      l'éditeur (pièces de porte = `items` avec `zone: 'door'` et `rear` = profondeur arrière, placées devant le fond
+      en filigrane), alerte de profondeur (arrière + pièce du fond > profondeur utile du boîtier retenu), onglet
+      « Hors fond », orientation debout / couché gauche / couché droit + `hinge_side` (migration `20261126`,
+      **appliquée**) + pictogramme, photo au survol. `layout.ts` v1.1.0 (35 tests), `items.ts` v1.1.0,
+      `panel-layouts.js` v1.1.0, `components/panel/editor/*` v1.1.0
+    - PR 4: PDF, versions, envoi du boîtier à la soumission
     - **Flux voulu par Martin (2026-11-25):** monter les pièces d'une soumission sur une page blanche, les
       disposer, PUIS choisir le boîtier. Un boîtier ne s'attribue jamais à une pièce: le type « boîtier » d'une
       fiche veut dire « ce produit EST un boîtier »
