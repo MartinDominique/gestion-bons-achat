@@ -8,9 +8,10 @@
  *                si la fiche change, et chaque pièce peut être ajustée pour ce projet)
  *              - newRail() / newDuct() / newFreePiece()
  *              - isSpecPlaceable(): la fiche a tout ce qu'il faut pour aller sur le fond
- * @version 1.0.0
- * @date 2026-11-25
+ * @version 1.1.0
+ * @date 2026-11-26
  * @changelog
+ *   1.1.0 - doorItemFromSpec() / newDoorPiece(): pièces de porte (zone = 'door', profondeur arrière)
  *   1.0.0 - Version initiale (Panneau virtuel PR 2)
  */
 import type { LayoutItem } from './layout';
@@ -69,6 +70,56 @@ export function itemFromSpec(
     note: null,
   };
 }
+
+/** Taille d'une pièce de porte dont la fiche n'a pas de dimensions (bouton 22 mm et sa collerette). */
+export const DOOR_PLACEHOLDER = 40;
+
+/** Fiche active d'une pièce montée sur la porte. */
+export const isDoorSpec = (spec: Partial<PanelSpec> | null | undefined) =>
+  !!spec && spec.active !== false && spec.kind === 'component' && spec.mounting === 'door';
+
+/**
+ * Pièce de porte (HMI, bouton, arrêt d'urgence…) créée depuis une fiche.
+ * Les dimensions sont optionnelles sur une fiche « porte »: sans elles, la pièce
+ * est un carré de 40 mm marqué « gabarit » (à corriger dans l'onglet Pièce).
+ */
+export function doorItemFromSpec(
+  spec: Partial<PanelSpec> & { product_code: string },
+  opts: { id?: string; description?: string | null; x?: number; y?: number } = {}
+): LayoutItem {
+  const w = f(spec.width_mm);
+  const h = f(spec.height_mm);
+  const known = !!w && !!h;
+  return {
+    id: opts.id || newId('o'),
+    kind: 'component',
+    zone: 'door',
+    product_id: spec.product_code,
+    label: spec.product_code,
+    description: opts.description || null,
+    x: opts.x ?? 0,
+    y: opts.y ?? 0,
+    w: w || DOOR_PLACEHOLDER,
+    h: h || DOOR_PLACEHOLDER,
+    d: f(spec.depth_mm),
+    rear: f(spec.rear_depth_mm),
+    rot: 0,
+    c: [0, 0, 0, 0],
+    repeated: false, unit_w: null, qty: null,
+    vertical: false, group: null,
+    watts: f(spec.heat_loss_w),
+    cat: 'control',
+    mounting: 'door',
+    source: known ? spec.source || null : 'template',
+    note: null,
+  };
+}
+
+export const newDoorPiece = (x: number, y: number): LayoutItem => ({
+  id: newId('o'), kind: 'free', zone: 'door', product_id: null, label: 'Pièce de porte', description: null, x, y,
+  w: DOOR_PLACEHOLDER, h: DOOR_PLACEHOLDER, d: null, rear: null, rot: 0, c: [0, 0, 0, 0], repeated: false, unit_w: null, qty: null,
+  vertical: false, group: null, watts: null, cat: 'control', mounting: 'door', source: 'template', note: null,
+});
 
 export const newRail = (x: number, y: number, length = 300): LayoutItem =>
   ({ id: newId('r'), kind: 'rail', label: 'Rail DIN 35', x, y, w: length, h: DIN_RAIL_HEIGHT, d: 7.5, rot: 0 });

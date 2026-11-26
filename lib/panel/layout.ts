@@ -11,11 +11,15 @@
  *              - suggestEnclosures(): boîtiers qui conviennent (orientations permises,
  *                espace disponible) + ce qui bloque pour les autres
  *              - fitPlate(), snapToRail(), railUsage(), alignItems(), distributeItems()
+ *              - Porte: doorGeometry(), findDoorConflicts() (chevauchement + profondeur derrière la porte)
+ *              - Orientation: boîtier debout ou couché sur le côté, bord de la charnière
  *              Toutes les mesures sont en millimètres. L'origine (0, 0) est le coin
  *              HAUT-GAUCHE du fond de panneau, tel qu'installé; y augmente vers le bas.
- * @version 1.0.0
- * @date 2026-11-25
+ * @version 1.1.0
+ * @date 2026-11-26
  * @changelog
+ *   1.1.0 - Porte (doorGeometry, findDoorConflicts avec contrôle de profondeur, doorRearDepth) et
+ *           orientation du boîtier (isLaidDown, enclosureAsInstalled, hingeEdge) — Panneau virtuel PR 3
  *   1.0.0 - Version initiale (Panneau virtuel PR 2)
  */
 
@@ -47,6 +51,10 @@ export interface LayoutItem {
   mounting?: string | null;
   source?: string | null;
   note?: string | null;
+  /** 'door' = pièce posée sur la porte (repère de la porte). Absent = sur le fond */
+  zone?: 'door' | null;
+  /** Pièce de porte: profondeur qui rentre dans le boîtier */
+  rear?: number | null;
 }
 
 export interface Box { x: number; y: number; w: number; h: number }
@@ -98,7 +106,7 @@ export function overlaps(a: Box, b: Box): boolean {
 
 // ---------- Conflits ----------
 
-export type ConflictType = 'overlap' | 'clearance' | 'outside' | 'duct' | 'vertical';
+export type ConflictType = 'overlap' | 'clearance' | 'outside' | 'duct' | 'vertical' | 'depth';
 
 export interface Conflict {
   type: ConflictType;
@@ -450,4 +458,133 @@ export function distributeItems(items: LayoutItem[], ids: Set<string>, axis: 'x'
   let cursor = start;
   sel.forEach((i, k) => { pos.set(i.id, r1(cursor)); cursor += size(boxes[k]) + gap; });
   return items.map((i) => (pos.has(i.id) ? { ...i, [axis]: pos.get(i.id) as number } : i));
+}
+
+// ---------- Porte ----------
+
+/** Une pièce de porte (HMI, bouton, arrêt d'urgence…) a zone = 'door'; ses x / y sont dans le repère de la porte. */
+export const isDoorItem = (i: LayoutItem) => i.zone === 'door';
+
+export interface DoorGeometry {
+  /** Dimensions de la porte, vue de face, telle qu'installée */
+  w: number;
+  h: number;
+  /** Position du fond de panneau derrière la porte (fond centré dans le boîtier) */
+  plateX: number;
+  plateY: number;
+  /** true = aucun boîtier retenu: porte estimée (fond + 40 mm de chaque côté) */
+  estimated: boolean;
+}
+
+export const DOOR_ESTIMATE_MARGIN = 40;
+
+/**
+ * Géométrie de la porte: l'extérieur du boîtier retenu (dans son orientation
+ * d'installation), sinon une estimation autour du fond. La porte et le fond sont
+ * tous deux vus de face, porte fermée: pas d'effet miroir entre les deux plans.
+ */
+export function doorGeometry(plate: Plate, ext?: { w: number; h: number } | null): DoorGeometry {
+  if (ext && ext.w > 0 && ext.h > 0) {
+    return { w: ext.w, h: ext.h, plateX: r1((ext.w - plate.w) / 2), plateY: r1((ext.h - plate.h) / 2), estimated: false };
+  }
+  const m = DOOR_ESTIMATE_MARGIN;
+  return { w: plate.w + 2 * m, h: plate.h + 2 * m, plateX: m, plateY: m, estimated: true };
+}
+
+/** Profondeur arrière la plus grande parmi les pièces de porte (0 si aucune). */
+export function doorRearDepth(doorItems: LayoutItem[]): number {
+  return Math.max(0, ...doorItems.map((i) => i.rear || 0));
+}
+
+/**
+ * Conflits sur la porte:
+ *  - pièce qui dépasse de la porte;
+ *  - deux pièces de porte qui se chevauchent;
+ *  - PROFONDEUR: une pièce de porte placée devant une pièce du fond, quand
+ *    profondeur arrière + profondeur de la pièce du fond > profondeur utile du boîtier.
+ * usableDepth = null tant qu'aucun boîtier n'est retenu (pas de contrôle de profondeur).
+ */
+export function findDoorConflicts(
+  doorItems: LayoutItem[], plateItems: LayoutItem[], door: DoorGeometry, usableDepth: number | null
+): ConflictReport {
+  const conflicts: Conflict[] = [];
+  const boxes = new Map(doorItems.map((i) => [i.id, itemBox(i)]));
+  const behind = plateItems.filter(isPiece).map((p) => {
+    const b = itemBox(p);
+    return { piece: p, box: { x: b.x + door.plateX, y: b.y + door.plateY, w: b.w, h: b.h } };
+  });
+
+  doorItems.forEach((a, index) => {
+    const ba = boxes.get(a.id)!;
+    if (ba.x < -EPS || ba.y < -EPS || ba.x + ba.w > door.w + EPS || ba.y + ba.h > door.h + EPS) {
+      conflicts.push({ type: 'outside', ids: [a.id], message: `${a.label} dépasse de la porte` });
+    }
+    for (let j = index + 1; j < doorItems.length; j++) {
+      const b = doorItems[j];
+      if (overlaps(ba, boxes.get(b.id)!)) {
+        conflicts.push({ type: 'overlap', ids: [a.id, b.id], message: `${a.label} chevauche ${b.label}` });
+      }
+    }
+    const rear = a.rear || 0;
+    if (usableDepth != null && usableDepth > 0 && rear > 0) {
+      for (const { piece, box } of behind) {
+        const total = r1(rear + (piece.d || 0));
+        if (overlaps(ba, box) && total > usableDepth + EPS) {
+          conflicts.push({
+            type: 'depth', ids: [a.id],
+            message: `${a.label} touche ${piece.label} en profondeur (${rear} + ${piece.d || 0} = ${total} mm, profondeur utile ${usableDepth} mm)`,
+          });
+        }
+      }
+    }
+  });
+
+  const bad = new Set<string>();
+  conflicts.forEach((c) => c.ids.forEach((id) => bad.add(id)));
+  return { conflicts, bad, badClearance: new Set<string>(), messages: Array.from(new Set(conflicts.map((c) => c.message))) };
+}
+
+// ---------- Orientation du boîtier ----------
+
+export type Orientation = 'portrait' | 'landscape' | 'side_left' | 'side_right';
+export type HingeSide = 'left' | 'right';
+export type Edge = 'left' | 'right' | 'top' | 'bottom';
+
+/** Boîtier couché sur le côté (rotation de 90°). « landscape » (ancienne valeur) = couché côté gauche. */
+export const isLaidDown = (o: Orientation | string | null | undefined) => !!o && o !== 'portrait';
+
+/** Extérieur et fond de panneau du boîtier tel qu'installé (L et H permutées s'il est couché). */
+export function enclosureAsInstalled(e: EnclosureSpec, orientation: Orientation | string | null | undefined) {
+  const flip = isLaidDown(orientation);
+  const margin = 2 * n0(e.unusable_margin_mm);
+  return {
+    ext: { w: n0(flip ? e.height_mm : e.width_mm), h: n0(flip ? e.width_mm : e.height_mm), d: n0(e.depth_mm) },
+    plate: {
+      w: r1(n0(flip ? e.backplate_height_mm : e.backplate_width_mm) - margin),
+      h: r1(n0(flip ? e.backplate_width_mm : e.backplate_height_mm) - margin),
+    },
+  };
+}
+
+/**
+ * Bord où se trouve la charnière une fois le boîtier installé.
+ * hinge = côté de la charnière quand le boîtier est DEBOUT.
+ *  - couché côté gauche (le côté gauche repose en bas): gauche → bas, droite → haut;
+ *  - couché côté droit (le côté droit repose en bas): gauche → haut, droite → bas.
+ */
+export function hingeEdge(orientation: Orientation | string | null | undefined, hinge: HingeSide): Edge {
+  if (!isLaidDown(orientation)) return hinge;
+  const leftDown = orientation !== 'side_right';
+  if (hinge === 'left') return leftDown ? 'bottom' : 'top';
+  return leftDown ? 'top' : 'bottom';
+}
+
+/** Phrase « la porte s'ouvre… » pour le pictogramme. */
+export function doorOpeningText(edge: Edge): string {
+  switch (edge) {
+    case 'left': return 'Charnière à gauche: la porte s\'ouvre vers la gauche';
+    case 'right': return 'Charnière à droite: la porte s\'ouvre vers la droite';
+    case 'top': return 'Charnière en haut: la porte s\'ouvre vers le haut';
+    default: return 'Charnière en bas: la porte s\'ouvre vers le bas';
+  }
 }
