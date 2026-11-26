@@ -2861,11 +2861,27 @@ le flux « soumission → page blanche → disposer → choisir le boîtier » s
 - `quotes` / `quote_items` supprimées de la base (migration `20261125c`, après le déploiement de la PR 1)
 - Disposition « PGF2701 — disposition de référence » créée dans la base (23 pièces)
 
-### PR 3 — Hors fond, BT et orientations (à faire)
-- [ ] Création depuis un BT (`work_order_materials`)
-- [ ] Onglet « Hors fond » complet + mini-plan de porte (alerte de profondeur HMI / pièce haute)
-- [ ] Orientations du boîtier (couché gauche / droite), pictogramme porte + charnière
-- [ ] Photo dans l'infobulle de survol
+### PR 3 — ~~Porte, hors fond et boîtier couché~~ ✅ COMPLETE (2026-11-26)
+Pas de création depuis un BT (décision Martin, 2026-11-26): une disposition part d'une soumission ou de vide.
+- [x] Plan de la porte (bascule « Fond | Porte » dans l'éditeur, plein écran plutôt qu'un mini-plan dans le
+      panneau): HMI, boutons, arrêt d'urgence placés à l'échelle devant le fond en filigrane
+- [x] Alerte de profondeur: pièce de porte devant une pièce du fond quand profondeur arrière + profondeur de
+      la pièce > profondeur utile du boîtier retenu
+- [x] Onglet « Hors fond »: porte, paroi, terrain, accessoire, boîtier de la soumission, lignes ignorées
+- [x] Boîtier debout / couché côté gauche / couché côté droit, côté de la charnière, pictogramme
+- [x] Photo du produit dans l'infobulle de survol
+
+**Implementation completee (2026-11-26):**
+- `supabase/migrations/20261126_add_panel_layouts_hinge_side.sql` — colonne `hinge_side` (**appliquée**)
+- `lib/panel/layout.ts` v1.1.0 — `doorGeometry()`, `findDoorConflicts()`, `doorRearDepth()`,
+  `enclosureAsInstalled()`, `hingeEdge()`, `isLaidDown()`; `lib/panel/layout.test.ts` — 35 tests
+- `lib/panel/items.ts` v1.1.0 — `doorItemFromSpec()`, `newDoorPiece()`
+- `lib/services/panel-layouts.js` v1.1.0 — pièces de porte (`zone: 'door'`, `rear`) validées et créées à l'import
+- `components/panel/editor/PanelEditor.js` v1.1.0 — vues Fond / Porte, orientation, profondeur requise avec la porte,
+  bandeau « Boîtier retenu » (rouge s'il ne convient plus)
+- `components/panel/editor/PanelCanvas.js` v1.1.0 — fond en filigrane derrière la porte, photo au survol
+- `components/panel/editor/EditorSidePanel.js` v1.1.0 — onglet « Hors fond », pièces de porte, pictogramme
+- Une pièce de porte sans dimensions dans sa fiche arrive en carré de 40 mm (« gabarit »), à corriger
 
 ### PR 4 — Sorties (à faire)
 - [ ] PDF de la disposition (plan à l'échelle, tableau des pièces, alertes)

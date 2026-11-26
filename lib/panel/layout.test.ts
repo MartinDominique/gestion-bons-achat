@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 import {
   findConflicts, requiredPlate, requiredDepth, heatLoad, ventilation, suggestEnclosures, describeDeficits,
   fitPlate, snapToRail, railUsage, alignItems, distributeItems, itemBox, clearanceBox, bodyWidthOf,
+  doorGeometry, findDoorConflicts, doorRearDepth, enclosureAsInstalled, hingeEdge, isLaidDown,
   type LayoutItem, type EnclosureSpec,
 } from './layout';
 import { PGF2701_ITEMS, PGF2701_PLATE } from './pgf2701.fixture';
@@ -222,5 +223,65 @@ describe('fiches (specs)', () => {
     expect(missingDimensions({ kind: 'component', mounting: 'door' })).toEqual([]);
     expect(missingDimensions({ kind: 'component', mounting: 'din', is_repeated: true, unit_width_mm: 5.2, height_mm: 48, depth_mm: 35 })).toEqual([]);
     expect(missingDimensions({ kind: 'enclosure', backplate_width_mm: 500 })).toHaveLength(2);
+  });
+});
+
+describe('porte', () => {
+  const plate = { w: 838, h: 533 };
+  const D = (o: Partial<LayoutItem> & { id: string }): LayoutItem => P({ zone: 'door', w: 200, h: 150, d: 0, ...o });
+
+  it('porte = extérieur du boîtier, fond centré derrière', () => {
+    expect(doorGeometry(plate, { w: 914.4, h: 609.6 })).toEqual({ w: 914.4, h: 609.6, plateX: 38.2, plateY: 38.3, estimated: false });
+  });
+
+  it('sans boîtier: porte estimée autour du fond', () => {
+    expect(doorGeometry(plate, null)).toEqual({ w: 918, h: 613, plateX: 40, plateY: 40, estimated: true });
+  });
+
+  it('HMI devant le GS20 5 HP: alerte si 50 + 152 dépasse la profondeur utile', () => {
+    const door = doorGeometry(PGF2701_PLATE, { w: 914.4, h: 609.6 });
+    const v5 = PGF2701_ITEMS.find((i) => i.id === 'v5')!; // x 590..677, y 75..232 sur le fond
+    const hmi = D({ id: 'hmi', label: 'HMI 7 po', x: 560 + door.plateX, y: 60 + door.plateY, rear: 50 });
+    const tooShallow = findDoorConflicts([hmi], PGF2701_ITEMS, door, 190);
+    expect(tooShallow.conflicts.map((c) => c.type)).toContain('depth');
+    expect(tooShallow.messages.join(' ')).toMatch(/GS20 5 HP.*202 mm.*190 mm/);
+    expect(findDoorConflicts([hmi], PGF2701_ITEMS, door, 241.3).conflicts).toHaveLength(0);
+    expect(findDoorConflicts([hmi], PGF2701_ITEMS, door, null).conflicts).toHaveLength(0);
+    // déplacé au-dessus des borniers (35,3 mm de profond): 50 + 35,3 < 190
+    const moved = { ...hmi, x: 520 + door.plateX, y: 300 + door.plateY, w: 150, h: 60 };
+    expect(findDoorConflicts([moved], [PGF2701_ITEMS.find((i) => i.id === 'tb')!, v5], door, 190).conflicts).toHaveLength(0);
+  });
+
+  it('chevauchement et dépassement sur la porte', () => {
+    const door = doorGeometry(plate, null);
+    const r = findDoorConflicts([D({ id: 'a', x: 10, y: 10 }), D({ id: 'b', x: 100, y: 50 }), D({ id: 'c', x: 800, y: 300 })], [], door, null);
+    expect(r.conflicts.map((c) => c.type).sort()).toEqual(['outside', 'overlap']);
+  });
+
+  it('profondeur arrière la plus grande', () => {
+    expect(doorRearDepth([D({ id: 'a', rear: 50 }), D({ id: 'b', rear: 22 }), D({ id: 'c' })])).toBe(50);
+    expect(doorRearDepth([])).toBe(0);
+  });
+});
+
+describe('orientation du boîtier', () => {
+  const box: EnclosureSpec = {
+    product_code: 'B', width_mm: 600, height_mm: 900, depth_mm: 250,
+    backplate_width_mm: 540, backplate_height_mm: 840, usable_depth_mm: 230,
+  };
+
+  it('couché: largeur et hauteur permutées', () => {
+    expect(isLaidDown('portrait')).toBe(false);
+    expect(isLaidDown('side_right')).toBe(true);
+    expect(enclosureAsInstalled(box, 'portrait')).toEqual({ ext: { w: 600, h: 900, d: 250 }, plate: { w: 540, h: 840 } });
+    expect(enclosureAsInstalled(box, 'side_left')).toEqual({ ext: { w: 900, h: 600, d: 250 }, plate: { w: 840, h: 540 } });
+  });
+
+  it('la charnière change de bord quand le boîtier est couché', () => {
+    expect(hingeEdge('portrait', 'left')).toBe('left');
+    expect(hingeEdge('side_left', 'left')).toBe('bottom');
+    expect(hingeEdge('side_left', 'right')).toBe('top');
+    expect(hingeEdge('side_right', 'left')).toBe('top');
+    expect(hingeEdge('side_right', 'right')).toBe('bottom');
   });
 });
