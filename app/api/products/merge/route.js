@@ -17,9 +17,10 @@
  *              Historique de prix: FUSIONNÉ — le prix actuel de la fiche conservée reste le prix
  *              actuel; les prix précédents des 2 fiches + le prix actuel de la fiche retirée sont
  *              classés du plus récent au plus ancien et les 3 plus récents sont gardés (n-1/n-2/n-3).
- * @version 1.1.0
+ * @version 1.2.0
  * @date 2026-11-25
  * @changelog
+ *   1.2.0 - Dispositions du Panneau virtuel (panel_layouts: pièces + boîtier retenu) transférées au code gardé
  *   1.1.0 - Fiche « Panneau virtuel » (panel_specs) transférée au code gardé (celle du code gardé
  *           prime si les deux en ont une); table quote_items retirée (supprimée de la base, jamais utilisée)
  *   1.0.0 - Version initiale
@@ -42,6 +43,7 @@ const CODE_COLUMNS = [
   { table: 'client_po_items', column: 'product_id', key: 'purchase_order_lines' },
   { table: 'items_to_order', column: 'product_id', key: 'items_to_order' },
   { table: 'items_to_order', column: 'product_code', key: 'items_to_order' },
+  { table: 'panel_layouts', column: 'enclosure_code', key: 'panel_layouts', optional: true },
 ];
 
 // Colonnes JSONB (tableau d'articles) dont chaque article porte product_id
@@ -49,6 +51,7 @@ const JSON_COLUMNS = [
   { table: 'supplier_purchases', column: 'items', key: 'supplier_purchases' },
   { table: 'submissions', column: 'items', key: 'submissions' },
   { table: 'invoices', column: 'jobe_detail_items', key: 'invoice_jobe_details', optional: true },
+  { table: 'panel_layouts', column: 'items', key: 'panel_layouts', optional: true },
 ];
 
 const fail = (message, status = 400, details) =>

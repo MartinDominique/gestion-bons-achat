@@ -8,9 +8,10 @@
  *                partir de 1700 px (avec « Se déconnecter » en texte), courriel dans l'infobulle
  *                du bouton; retour à la ligne en dernier recours. Mobile (< 640 px): logo et
  *                boutons compactés, « Se déconnecter » déplacé dans le menu « Plus ».
- * @version 2.4.0
- * @date 2026-09-17
+ * @version 2.5.0
+ * @date 2026-11-25
  * @changelog
+ *   2.5.0 - Module « Panneaux » (Panneau virtuel: dispositions de panneaux de contrôle) + route protégée /panneaux
  *   2.4.0 - Fin du défilement horizontal causé par la barre desktop (10 modules + courriel +
  *           « Se déconnecter » ≈ 2000 px): libellés courts (1024-1699 px), complets (≥ 1700 px),
  *           texte plus petit, conteneur pleine largeur (plus de plafond 1280 px), flex-wrap de secours, courriel
@@ -26,7 +27,7 @@
 
 'use client';
 
-import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse, Settings, BarChart3, Receipt, MoreHorizontal, StickyNote } from 'lucide-react';
+import { Package, FileText, LogOut, Users, Menu, X, ShoppingCart, Truck, Warehouse, Settings, BarChart3, Receipt, MoreHorizontal, StickyNote, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -43,6 +44,7 @@ const pages = [
   { id: 'soumissions', name: 'Soumissions', shortName: "Soum.", icon: FileText },
   { id: 'inventaire', name: 'Inventaire', shortName: "Inv.", icon: Warehouse },
   { id: 'achat-materiels', name: 'Achat', shortName: "Achat", icon: ShoppingCart },
+  { id: 'panneaux', name: 'Panneaux', shortName: "Pann.", icon: LayoutGrid },
   { id: 'bons-travail', name: 'Bons Travail', shortName: "BT", icon: FileText },
   { id: 'statistiques', name: 'Statistiques', shortName: "Stats", icon: BarChart3 },
   { id: 'facturation', name: 'Facturation', shortName: "Fact.", icon: Receipt },
@@ -127,7 +129,7 @@ const shouldHideNav = pathname.includes('/bons-travail/') &&
           setUser(user);
         }
 
-        const protectedRoutes = ['/notes', '/bons-', '/soumissions', '/bons-travail', '/inventaire', '/achat-materiels', '/statistiques', '/facturation'];
+        const protectedRoutes = ['/notes', '/bons-', '/soumissions', '/bons-travail', '/inventaire', '/achat-materiels', '/statistiques', '/facturation', '/panneaux'];
         const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
         
         if (isProtectedRoute && !user) {
