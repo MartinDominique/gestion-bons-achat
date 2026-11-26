@@ -13,9 +13,11 @@
  *                                            Seuls les champs envoyés sont modifiés; décocher
  *                                            la case = { active: false }, rien n'est effacé.
  *              Passe par supabaseAdmin (même modèle que product_associations).
- * @version 1.0.0
+ * @version 1.1.0
  * @date 2026-11-25
  * @changelog
+ *   1.1.0 - GET ?mode=library: fiches actives enrichies de la fiche produit (description, coûtant,
+ *           vendant, stock) pour la bibliothèque et les suggestions de boîtiers de l'éditeur
  *   1.0.0 - Version initiale (Panneau virtuel PR 1)
  */
 
@@ -70,6 +72,27 @@ export async function GET(request) {
       );
       const data = await productsByCodes(codes);
       return NextResponse.json({ success: true, data, total: data.length, statuses });
+    }
+
+    if (mode === 'library') {
+      const specs = (await fetchAllSpecs()).filter((s) => s.active);
+      const products = await productsByCodes(specs.map((s) => s.product_code));
+      const byCode = {};
+      products.forEach((p) => { if (!byCode[p.product_id]) byCode[p.product_id] = p; });
+      const data = specs.map((s) => {
+        const p = byCode[s.product_code];
+        return {
+          ...s,
+          status: panelStatus(s),
+          description: p?.description || '',
+          cost_price: p?.cost_price != null ? parseFloat(p.cost_price) : null,
+          selling_price: p?.selling_price != null ? parseFloat(p.selling_price) : null,
+          stock_qty: p?.stock_qty != null ? parseFloat(p.stock_qty) : null,
+          product_found: !!p,
+          _source: p?._source || null,
+        };
+      });
+      return NextResponse.json({ success: true, data });
     }
 
     const code = cleanCode(searchParams.get('code'));

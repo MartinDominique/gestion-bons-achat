@@ -45,6 +45,7 @@ const COUNT_LABELS = [
   ['invoice_jobe_details', 'détail(s) de forfait (factures)'],
   ['associations', 'lien(s) « As »'],
   ['panel_specs', 'fiche Panneau virtuel'],
+  ['panel_layouts', 'disposition(s) de panneau'],
 ];
 
 function ChoiceCard({ selected, onSelect, title, subtitle, disabled }) {

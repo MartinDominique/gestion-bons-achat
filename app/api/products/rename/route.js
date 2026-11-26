@@ -7,9 +7,10 @@
  *              orphelinerait l'historique. Cet endpoint met donc à jour en cascade
  *              toutes les références connues, via supabaseAdmin (bypass RLS —
  *              notamment work_order_materials qui bloque les lectures/écritures client).
- * @version 1.2.0
+ * @version 1.3.0
  * @date 2026-11-25
  * @changelog
+ *   1.3.0 - Cascade aussi sur panel_layouts (pièces des dispositions + boîtier retenu)
  *   1.2.0 - Cascade aussi sur panel_specs.product_code (fiche « Panneau virtuel »)
  *   1.1.0 - Cascade aussi sur product_associations (parent_code + child_code) — items associés
  *   1.0.0 - Version initiale
@@ -21,6 +22,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { renameSpecCode } from '../../../../lib/services/panel-specs';
+import { renameLayoutCode } from '../../../../lib/services/panel-layouts';
 
 export async function POST(request) {
   try {
@@ -123,6 +125,8 @@ export async function POST(request) {
 
     // panel_specs: la fiche « Panneau virtuel » suit le code
     await renameSpecCode(oldCode, newCode);
+    // panel_layouts: pièces des dispositions + boîtier retenu
+    await renameLayoutCode(oldCode, newCode);
 
     return NextResponse.json({ success: true, oldCode, newCode, source });
   } catch (error) {
