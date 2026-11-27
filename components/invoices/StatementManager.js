@@ -9,9 +9,11 @@
  *              - Tri: Nom (A-Z) / Montant dû / En retard — boutons dans la barre (tous appareils)
  *                + en-têtes cliquables du tableau desktop, choix mémorisé (localStorage)
  *              - Mobile-first (cartes) + tableau desktop
- * @version 1.2.0
- * @date 2026-11-08
+ * @version 1.3.0
+ * @date 2026-11-27
  * @changelog
+ *   1.3.0 - Compte payeur commun: une seule ligne pour les fiches client regroupées
+ *           (ex. usines U1 + U2), avec le rappel des fiches couvertes sous le nom
  *   1.2.0 - Outil de tri: Nom (ordre alphabétique, fr-CA), Montant dû (décroissant), En retard
  *           (montant en retard décroissant, puis ancienneté du retard, puis solde). Boutons dans
  *           la barre de recherche + en-têtes Client / En retard / Solde dû cliquables (desktop).
@@ -276,6 +278,11 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
                   <span className="font-medium text-gray-900 dark:text-gray-100">{c.client_name}</span>
                   <span className={`font-bold ${balanceClass(c.balance)}`}>{fmtCurrency(c.balance)}</span>
                 </div>
+                {c.members?.length > 1 && (
+                  <div className="text-xs text-sky-700 dark:text-sky-300 mt-0.5">
+                    Regroupe: {c.members.join(' + ')}
+                  </div>
+                )}
                 <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
                   <span>{c.open_count} facture(s)</span>
                   {c.credit_balance > 0 && (
@@ -324,6 +331,11 @@ export default function StatementManager({ autoOpenClientId, onAutoOpenConsumed 
                   >
                     <td className="px-6 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                       {c.client_name}
+                      {c.members?.length > 1 && (
+                        <span className="ml-2 inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 text-xs px-2 py-0.5">
+                          {c.members.join(' + ')}
+                        </span>
+                      )}
                       {c.credit_balance > 0 && (
                         <span className="ml-2 inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs px-2 py-0.5">
                           {fmtCurrency(c.credit_balance)} en crédit

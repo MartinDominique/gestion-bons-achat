@@ -2928,6 +2928,25 @@ depuis un BT écartée (décision Martin); test réel sur tablette à faire.
 - Vérifié en navigateur (Playwright, base simulée): prix + stock, historique décalé, document seulement, alignement de ligne, non-inventaire en USD, 820 px et 390 px
 - Aucune migration SQL requise
 
+### 2026-11-27 - ~~Compte payeur commun: état de compte regroupé pour plusieurs fiches client~~ ✅ COMPLETE (2026-11-27)
+**Besoin (Martin):** « Tapis Venture U1 » et « Tapis Venture U2 » sont deux fiches (deux usines, contacts
+différents) mais un seul payeur: un paiement devait être saisi dans deux états de compte.
+**Décision:** ni fusion des clients, ni fusion des factures. Un lien « compte payeur » entre les fiches;
+un seul relevé combiné, sous un seul nom.
+
+**Implementation completee (2026-11-27):**
+- `supabase/migrations/20261127_add_client_billing_group.sql` (nouveau) — `clients.billing_parent_id` (fiche rattachée → fiche payeur, référence souple) + `clients.statement_name` (nom du relevé)
+- `lib/services/billing-group.js` (nouveau) — `loadBillingMap()`: fiche payeur d'un client, fiches du groupe, nom du relevé; aucun regroupement si la migration n'est pas passée
+- `lib/services/statement-data.js` v1.4.0 — relevé combiné des fiches du groupe, un seul nom, coordonnées/conditions de la fiche payeur, `client_label` par facture, `group` (fiches + courriels)
+- `app/api/statements/route.js` v1.2.0 — une seule ligne par compte payeur; recherche aussi par nom de fiche
+- `app/api/statements/[clientId]/route.js` v1.4.0, `send-email/route.js` v1.8.0 — PDF/courriel au nom du relevé; adresse saisie à la volée enregistrée sur la fiche payeur
+- `app/api/invoices/[id]/payments/route.js` v1.2.0 — « factures réglées par le même paiement » cherchées dans tout le groupe
+- `components/ClientModal.js` v2.5.0 — « Compte payeur (état de compte regroupé) » + « Nom sur l'état de compte » (section Tarification)
+- `components/invoices/ClientStatementView.js` v1.12.0, `StatementManager.js` v1.3.0 — pastille de la fiche d'origine par facture, rappel « Regroupe: … », courriels des autres fiches proposés
+- Inchangé: factures, paiements (`invoice_payments.client_id` = fiche de la facture), BT/BL, BA, statistiques et rapports compta restent par fiche. Le PDF du relevé ne montre que le nom du relevé
+- Vérifié sur base simulée (relevé ouvert par U1 ou U2 = même relevé, client autonome intact, migration absente = aucun regroupement)
+- **Reste:** exécuter la migration `20261127_add_client_billing_group.sql`, puis dans la fiche U2 choisir U1 comme compte payeur et, dans la fiche U1, saisir « Tapis Venture » comme nom du relevé
+
 ### À faire plus tard — uniformiser inventaire / non-inventaire
 La table `non_inventory_items` date de l'import Acomba (plus utilisé). Martin veut tout ramener dans une
 seule table (ou renommer). Chantier à part: voir `MIGRATION_FUSION_INVENTAIRE.md`. Le Panneau virtuel

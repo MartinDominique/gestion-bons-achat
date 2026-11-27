@@ -13,9 +13,12 @@
  *              - Body save_to_client (défaut true): une adresse saisie à la volée est
  *                enregistrée au dossier client (email_admin s'il est vide, sinon
  *                additional_emails) pour être proposée aux prochains envois
- * @version 1.7.0
- * @date 2026-11-04
+ * @version 1.8.0
+ * @date 2026-11-27
  * @changelog
+ *   1.8.0 - Compte payeur commun: relevé combiné des fiches regroupées (un seul nom);
+ *           une adresse saisie à la volée est enregistrée sur la fiche PAYEUR, et les
+ *           courriels des autres fiches du groupe ne sont pas ré-enregistrés en double
  *   1.7.0 - Colonne « INTÉRÊTS » par facture dans le tableau du PDF (visible seulement si des
  *           intérêts sont facturés): le client voit l'intérêt de chaque facture en retard;
  *           le total des intérêts reste au sommaire sous le solde. « - » sur un crédit
@@ -87,12 +90,13 @@ function formatDateFr(dateStr) {
  *
  * @returns {Promise<string[]>} adresses effectivement ajoutées au dossier
  */
-async function saveNewEmailsToClient(clientId, client, usedEmails) {
+async function saveNewEmailsToClient(clientId, client, usedEmails, groupEmails = []) {
   const norm = (e) => String(e || '').trim().toLowerCase();
 
   const existing = new Set(
     [client.email, client.email_2, client.email_3, client.email_admin, client.email_billing]
       .concat((client.additional_emails || []).map(a => a?.email))
+      .concat((groupEmails || []).map(a => a?.email))
       .filter(Boolean)
       .map(norm)
   );
@@ -516,7 +520,10 @@ export async function POST(request, { params }) {
       // Mémoriser au dossier client les adresses saisies à la volée (après envoi réussi)
       if (save_to_client !== false) {
         try {
-          savedEmails = await saveNewEmailsToClient(clientId, statement.client, emailAddresses);
+          // Fiche payeur (peut différer de clientId si on a ouvert une fiche rattachée)
+          savedEmails = await saveNewEmailsToClient(
+            statement.client.id, statement.client, emailAddresses, statement.group?.emails
+          );
         } catch (saveErr) {
           console.error('Enregistrement des courriels (non bloquant):', saveErr.message);
         }
