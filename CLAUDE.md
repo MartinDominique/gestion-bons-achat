@@ -1301,6 +1301,16 @@ CRON_SECRET                   # Auth pour cron jobs
     - **Règle:** toute nouvelle table qui porte un code produit doit suivre le renommage/fusion/suppression
       (voir item 41)
 
+45. ~~**BT/BL: ajuster coûtant et vendant sur place (« Stock / prix »)**~~ - ✅ COMPLÉTÉ (2026-11-27)
+    - `components/inventory/QuickStockAdjustModal.js` v2.0.0 — la fenêtre orange d'ajustement rapide a une section
+      **Prix**: coûtant (CAD/USD), vendant, marge, 27 / 30 / 35 %. Fiche écrite via `buildPriceShiftUpdates`
+      (« Hist. Prix »); case « Mettre à jour la fiche inventaire » (décochée = vendant pour ce document seulement)
+    - Le vendant est reporté sur les lignes du produit dans le BT/BL ouvert (`unit_price`), sinon la facture
+      reprendrait l'ancien prix. Avis « aussi dans d'autres brouillons » (jamais modifiés)
+    - **Règle:** un changement de prix seul ne crée pas de mouvement d'inventaire (mouvement = quantité)
+    - `components/work-orders/MaterialSelector.js` v1.12.0 — bouton « Stock / prix » (« Ajuster prix » pour un
+      non-inventaire). Tableau B/O du BL non couvert (décision Martin). Aucune migration
+
 ### À faire (priorité utilisateur)
 10. **Uniformiser inventaire / non-inventaire** - `non_inventory_items` date de l'import Acomba (plus utilisé);
     tout ramener dans une seule table ou renommer. Voir `MIGRATION_FUSION_INVENTAIRE.md`

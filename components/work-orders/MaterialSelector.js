@@ -8,9 +8,14 @@
  *              - Affichage stock en main + quantité en commande (AF) dans la recherche
  *              - Affichage "En main" (stock) dans le modal d'ajout, le modal d'édition
  *                et la liste des matériaux ajoutés (BT + BL)
- * @version 1.11.0
- * @date 2026-11-19
+ * @version 1.12.0
+ * @date 2026-11-27
  * @changelog
+ *   1.12.0 - Le bouton orange devient « Stock / prix » (« Ajuster prix » pour un non-inventaire):
+ *            la fenêtre d'ajustement rapide permet aussi de corriger le coûtant et le vendant
+ *            de la fiche (historique des prix alimenté). Le nouveau vendant est reporté sur
+ *            toutes les lignes de ce produit dans le BT/BL ouvert (unit_price + snapshot), pour
+ *            que la facture parte du bon prix. Option « ce document seulement ».
  *   1.11.0 - Bouton « Ajuster stock » en haut à droite des fenêtres « Quantité » (ajout) et
  *            « Modifier matériau »: ouvre un ajustement d'inventaire rapide pour ce produit
  *            (QuickStockAdjustModal) sans quitter le BT/BL. Le « En main » affiché est mis à
@@ -191,7 +196,7 @@ export default function MaterialSelector({
 
   // Modal d'édition complet
   const [editingMaterial, setEditingMaterial] = useState(null);
-  // Produit en cours d'ajustement d'inventaire rapide ({ product_id, description, unit })
+  // Produit en cours d'ajustement rapide stock/prix ({ product_id, description, unit, linePrice })
   const [stockAdjustTarget, setStockAdjustTarget] = useState(null);
   const [editForm, setEditForm] = useState({
     quantity: '',
@@ -532,32 +537,59 @@ const deleteMaterialFromModal = () => {
     return found.stock_qty ?? 0;
   };
 
-  // ===== Ajustement d'inventaire rapide =====
-  // Reporte le nouveau stock partout où il est affiché: liste de recherche (et son cache),
-  // fenêtre « Quantité » et snapshot produit des matériaux déjà dans le document.
-  const applyStockAdjustment = ({ code, newStock }) => {
+  // ===== Ajustement rapide (stock + prix) =====
+  // Reporte le résultat partout où il est affiché: liste de recherche (et son cache),
+  // fenêtre « Quantité » et lignes de ce produit déjà dans le document.
+  //  - stock: « En main »
+  //  - prix (fiche mise à jour): coûtant + vendant du snapshot produit
+  //  - prix (applyToDocument): unit_price de la ligne = ce que la facture reprendra
+  const applyQuickAdjustment = ({ code, stockChanged, newStock, prices }) => {
     const key = String(code || '').trim().toUpperCase();
     const same = (p) => String(p?.product_id || '').trim().toUpperCase() === key;
-    const patch = (list) => (list || []).map((p) => (same(p) ? { ...p, stock_qty: newStock } : p));
 
-    setProducts(patch);
-    setCachedProducts(patch);
-    setFilteredCache({});
-    setPendingProduct((prev) => (prev && same(prev) ? { ...prev, stock_qty: newStock } : prev));
+    // Changements valables pour la FICHE (liste de recherche)
+    const sheetPatch = {};
+    if (stockChanged) sheetPatch.stock_qty = newStock;
+    if (prices?.sheetUpdated) {
+      sheetPatch.cost_price = prices.cost_price;
+      sheetPatch.selling_price = prices.selling_price;
+      sheetPatch.price = prices.selling_price;
+    }
+    // Changements valables pour CE DOCUMENT (inclut un vendant spécial hors fiche)
+    const docPatch = { ...sheetPatch };
+    if (prices?.applyToDocument) {
+      docPatch.selling_price = prices.selling_price;
+      docPatch.price = prices.selling_price;
+    }
+
+    if (Object.keys(sheetPatch).length > 0) {
+      const patch = (list) => (list || []).map((p) => (same(p) ? { ...p, ...sheetPatch } : p));
+      setProducts(patch);
+      setCachedProducts(patch);
+      setFilteredCache({});
+    }
+    if (Object.keys(docPatch).length === 0) return;
+
+    setPendingProduct((prev) => (prev && same(prev) ? { ...prev, ...docPatch } : prev));
 
     const safeMaterials = materials || [];
     if (safeMaterials.some((m) => m.product && same(m.product))) {
       onMaterialsChange(
-        safeMaterials.map((m) =>
-          m.product && same(m.product) ? { ...m, product: { ...m.product, stock_qty: newStock } } : m
-        )
+        safeMaterials.map((m) => {
+          if (!(m.product && same(m.product))) return m;
+          const next = { ...m, product: { ...m.product, ...docPatch } };
+          if (prices?.applyToDocument) next.unit_price = prices.selling_price;
+          return next;
+        })
       );
     }
   };
 
-  // Bouton d'en-tête des fenêtres « Quantité » / « Modifier matériau »
-  const renderStockAdjustButton = (prod) => {
-    if (!prod?.product_id || prod.product_group === 'Non-Inventaire') return null;
+  // Bouton d'en-tête des fenêtres « Quantité » / « Modifier matériau ».
+  // `linePrice`: vendant actuellement sur la ligne (fenêtre « Modifier matériau » seulement).
+  const renderStockAdjustButton = (prod, linePrice = null) => {
+    if (!prod?.product_id) return null;
+    const nonInventory = prod.product_group === 'Non-Inventaire';
     return (
       <button
         type="button"
@@ -566,13 +598,16 @@ const deleteMaterialFromModal = () => {
             product_id: prod.product_id,
             description: prod.description || '',
             unit: prod.unit || '',
+            linePrice,
           })
         }
         className="min-h-[44px] px-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold flex items-center gap-1 flex-shrink-0"
-        title="Corriger la quantité en main de ce produit"
+        title={nonInventory
+          ? 'Corriger le coûtant et le vendant de ce produit'
+          : 'Corriger la quantité en main, le coûtant et le vendant de ce produit'}
       >
         <Package size={16} />
-        Ajuster stock
+        {nonInventory ? 'Ajuster prix' : 'Stock / prix'}
       </button>
     );
   };
@@ -1048,9 +1083,11 @@ const deleteMaterialFromModal = () => {
             {/* Header - Fixe */}
             <div className="bg-blue-600 text-white p-4 rounded-t-lg flex-shrink-0 flex items-center justify-between gap-2">
               <h3 className="text-lg font-semibold dark:text-gray-100">Modifier matériau</h3>
-              {renderStockAdjustButton(
-                (materials || []).find(m => m.id === editingMaterial)?.product
-              )}
+              {(() => {
+                const m = (materials || []).find(mat => mat.id === editingMaterial);
+                const price = parseFloat(m?.unit_price) || parseFloat(m?.product?.selling_price) || 0;
+                return renderStockAdjustButton(m?.product, price);
+              })()}
             </div>
             
             {/* Contenu - Scrollable */}
@@ -1217,9 +1254,11 @@ const deleteMaterialFromModal = () => {
       {stockAdjustTarget && (
         <QuickStockAdjustModal
           product={stockAdjustTarget}
-          sourceLabel={sourceNumber || (sourceType === 'delivery_note' ? 'un BL' : 'un BT')}
+          sourceLabel={sourceNumber || (sourceType === 'delivery_note' ? 'ce BL' : 'ce BT')}
+          currentDocument={{ type: sourceType === 'delivery_note' ? 'BL' : 'BT', id: sourceId ?? null }}
+          linePrice={stockAdjustTarget.linePrice}
           onClose={() => setStockAdjustTarget(null)}
-          onAdjusted={applyStockAdjustment}
+          onAdjusted={applyQuickAdjustment}
         />
       )}
 

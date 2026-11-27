@@ -2914,6 +2914,20 @@ Pas de création depuis un BT (décision Martin, 2026-11-26): une disposition pa
 **Le module Panneau virtuel est complet (4 PR).** Restes connus: photos hors du backup quotidien; création
 depuis un BT écartée (décision Martin); test réel sur tablette à faire.
 
+### 2026-11-27 - ~~BT/BL: ajuster le coûtant et le vendant sur place (fenêtre « Ajuster stock / prix »)~~ ✅ COMPLETE (2026-11-27)
+**Besoin (Martin):** corriger les prix au moment de faire le BT/BL, pour ne pas l'oublier à la facture.
+
+**Implementation completee (2026-11-27):**
+- `components/inventory/QuickStockAdjustModal.js` v2.0.0 - section **Prix** sous la section Stock: coûtant (champ partagé CAD/USD), vendant, marge ($ et %), boutons 27 / 30 / 35 % + « Autre % », alerte rouge (marge sous le seuil des Paramètres ou vendant à 0 $). Écrit la fiche via `buildPriceShiftUpdates` (« Hist. Prix » + dates) et `safeCurrencyUpdates` (origine USD conservée). Stock et prix indépendants: seul ce qui a changé est écrit, en une seule mise à jour confirmée (`.select()`)
+- Case **« Mettre à jour la fiche inventaire »** (cochée par défaut): décochée = vendant spécial pour ce document seulement, la fiche ne bouge pas (coûtant verrouillé)
+- **Report sur le document:** le nouveau vendant est écrit sur toutes les lignes de ce produit du BT/BL ouvert (`unit_price` + snapshot produit) — sans ça, la facture reprendrait l'ancien prix copié sur la ligne. Si la ligne n'est pas au prix de la fiche: case « Mettre la ligne à x $ »
+- **Avis** « Ce produit est aussi dans n autres brouillons: BT-…, BL-… » (via `/api/inventory/reservations`, document courant exclu). Leur prix n'est jamais modifié
+- **Mouvement d'inventaire:** seulement si une quantité bouge (au nouveau coûtant). Un changement de prix seul n'en crée pas — la trace est dans « Hist. Prix », comme partout ailleurs
+- `components/work-orders/MaterialSelector.js` v1.12.0 - bouton orange « Stock / prix »; affiché aussi pour les non-inventaire (« Ajuster prix », section Prix seulement); `applyQuickAdjustment()`
+- Non couvert (décision Martin): tableau B/O du BL (items importés d'un BA) sans bouton orange. Limite connue: un vendant « ce document seulement » sur une ligne importée d'un AF n'est pas repris à la facture (elle préfère le vendant de la fiche pour ces lignes)
+- Vérifié en navigateur (Playwright, base simulée): prix + stock, historique décalé, document seulement, alignement de ligne, non-inventaire en USD, 820 px et 390 px
+- Aucune migration SQL requise
+
 ### À faire plus tard — uniformiser inventaire / non-inventaire
 La table `non_inventory_items` date de l'import Acomba (plus utilisé). Martin veut tout ramener dans une
 seule table (ou renommer). Chantier à part: voir `MIGRATION_FUSION_INVENTAIRE.md`. Le Panneau virtuel
@@ -2921,4 +2935,4 @@ référence les produits par code, donc il suivra sans changement.
 
 ---
 
-*Document genere le 2026-02-05, mis a jour le 2026-11-26 par Claude AI*
+*Document genere le 2026-02-05, mis a jour le 2026-11-27 par Claude AI*
