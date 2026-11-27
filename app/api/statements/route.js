@@ -7,9 +7,13 @@
  *                Param ?search= pour filtrer par nom de client.
  *              - Les notes de crédit (factures à total négatif) réduisent le solde du
  *                client; un client dont le compte est créditeur reste listé.
- * @version 1.1.0
- * @date 2026-09-02
+ *              - Compte payeur commun: les fiches regroupées (clients.billing_parent_id)
+ *                forment UNE seule ligne, sous un seul nom.
+ * @version 1.2.0
+ * @date 2026-11-27
  * @changelog
+ *   1.2.0 - Compte payeur commun: agrégation par fiche payeur, nom du relevé
+ *           (statement_name), champ members; la recherche couvre aussi les fiches regroupées
  *   1.1.0 - Notes de crédit prises en compte: solde net (charges - crédits), champ
  *           credit_balance par client, clients au solde créditeur listés
  *   1.0.0 - Version initiale (module État de compte client)
@@ -18,6 +22,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { computeInterest, daysOverdue } from '../../../lib/services/invoice-payments';
+import { loadBillingMap } from '../../../lib/services/billing-group';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -50,6 +55,9 @@ export async function GET(request) {
 
     if (error) throw error;
 
+    // Compte payeur commun (U1 + U2 = une seule ligne)
+    const billing = await loadBillingMap(supabaseAdmin);
+
     const now = new Date();
     const byClient = new Map();
 
@@ -61,11 +69,18 @@ export async function GET(request) {
       const isCredit = total < -EPSILON;
       const isOpen = Math.abs(balance) > EPSILON;
 
-      const key = inv.client_id ?? `name:${inv.client_name}`;
+      const headId = inv.client_id ? billing.headOf(inv.client_id) : null;
+      const key = headId ?? `name:${inv.client_name}`;
       if (!byClient.has(key)) {
+        const grouped = headId ? billing.isGroup(headId) : false;
+        const customName = headId && (grouped || billing.hasCustomName(headId))
+          ? billing.displayName(headId)
+          : null;
         byClient.set(key, {
-          client_id: inv.client_id || null,
-          client_name: inv.client_name || 'Client inconnu',
+          client_id: headId || null,
+          client_name: customName || inv.client_name || 'Client inconnu',
+          // Fiches regroupées sous ce compte payeur (vide si client autonome)
+          members: grouped ? billing.membersOf(headId).map(m => m.name) : [],
           open_count: 0,
           credit_count: 0,
           total_invoices: 0,
@@ -120,7 +135,9 @@ export async function GET(request) {
     }
 
     if (search) {
-      list = list.filter(c => (c.client_name || '').toLowerCase().includes(search));
+      list = list.filter(c =>
+        [c.client_name, ...(c.members || [])].some(n => (n || '').toLowerCase().includes(search))
+      );
     }
 
     // Tri: solde dû décroissant (les plus gros débiteurs d'abord)

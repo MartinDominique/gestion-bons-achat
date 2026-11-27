@@ -487,6 +487,7 @@ lib/services/email-service.js       → Génération PDF + envoi email (BT + BL 
 lib/services/pdf-common.js          → En-tête/footer PDF standardisé
 lib/services/client-signature.js    → Gestion signatures (BT + BL)
 lib/services/statement-data.js      → État de compte à une date donnée (as_of), partagé écran/PDF/courriel
+lib/services/billing-group.js       → Compte payeur commun: fiches client regroupées pour l'état de compte (loadBillingMap)
 lib/services/statistics-data.js     → Statistiques opérationnelles: revenu/coût par BT/BL (facture liée si elle existe, sinon estimation M.O. + déplacements + matériaux), coûtant par code, soumissions à part
 lib/services/invoice-inventory.js   → Sync inventaire ↔ facture (delta = facturé − BT/BL − déjà appliqué, mouvements 'invoice', idempotent) + déduction « Varia » (mouvements 'deduction', réf. N° BT/BL)
 lib/constants/deduction.js          → Déduction « Varia »: libellé, sentinelles invoice_id (-1 Acomba, -2 Varia), helpers isDeduction()/invoiceIndicator()
@@ -571,6 +572,8 @@ contact_name_admin, email_admin, contact_admin,
 hourly_rate_regular, transport_fee, email_billing, payment_terms,
 preferred_payment_method,   -- mode habituel: cheque | virement | interac | comptant (NULL = non spécifié)
 additional_emails,          -- JSONB [{email, label}]: adresses supplémentaires (ex. 2e admin)
+billing_parent_id,          -- compte payeur: id de la fiche qui regroupe l'état de compte (NULL = autonome)
+statement_name,             -- nom affiché sur l'état de compte (NULL = nom de la fiche)
 signatory_1..signatory_5
 ```
 
@@ -1310,6 +1313,19 @@ CRON_SECRET                   # Auth pour cron jobs
     - **Règle:** un changement de prix seul ne crée pas de mouvement d'inventaire (mouvement = quantité)
     - `components/work-orders/MaterialSelector.js` v1.12.0 — bouton « Stock / prix » (« Ajuster prix » pour un
       non-inventaire). Tableau B/O du BL non couvert (décision Martin). Aucune migration
+
+46. ~~**Compte payeur commun (état de compte regroupé)**~~ - ✅ COMPLÉTÉ (2026-11-27)
+    - Cas: « Tapis Venture U1 » / « U2 » = deux fiches (usines, contacts différents), un seul payeur. Ni fusion
+      des clients ni des factures: `clients.billing_parent_id` (fiche rattachée → fiche payeur) +
+      `clients.statement_name` (nom du relevé). Migration `20261127_add_client_billing_group.sql`
+    - `lib/services/billing-group.js` (nouveau, `loadBillingMap()`), `statement-data.js` v1.4.0, API statements
+      (liste v1.2.0, détail v1.4.0, send-email v1.8.0), `invoices/[id]/payments` v1.2.0, `ClientModal.js` v2.5.0
+      (section Tarification), `ClientStatementView.js` v1.12.0, `StatementManager.js` v1.3.0
+    - Un seul relevé (écran, PDF, courriel) sous un seul nom; un paiement se répartit sur les factures des deux
+      fiches. Factures, paiements, BT/BL, BA, statistiques et rapports compta restent **par fiche**
+    - **Règle:** tout écran qui regroupe des factures « par client pour le paiement » passe par
+      `loadBillingMap()`; ne jamais réécrire `client_id` sur les documents existants
+    - **Reste:** exécuter la migration, puis lier U2 → U1 dans la fiche client (sans migration: rien ne change)
 
 ### À faire (priorité utilisateur)
 10. **Uniformiser inventaire / non-inventaire** - `non_inventory_items` date de l'import Acomba (plus utilisé);

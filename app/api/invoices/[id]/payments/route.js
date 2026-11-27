@@ -9,9 +9,11 @@
  *                référence, créées à quelques secondes d'intervalle). Les « sœurs » d'un
  *                paiement sont donc retrouvées par cette signature + created_at ± 2 min.
  *                Aucune colonne ni migration requise.
- * @version 1.1.0
- * @date 2026-11-10
+ * @version 1.2.0
+ * @date 2026-11-27
  * @changelog
+ *   1.2.0 - Compte payeur commun: les factures sœurs sont cherchées dans toutes les fiches
+ *           client regroupées (un paiement peut régler des factures de U1 et de U2)
  *   1.1.0 - Factures sœurs: ajout invoice_date, amount_paid, balance (solde restant) et status pour
  *           l'affichage en tableau (N° · date · payé · solde) dans la fenêtre « Paiements »
  *   1.0.0 - Version initiale (détail des paiements par facture)
@@ -19,6 +21,7 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin';
+import { loadBillingMap } from '../../../../../lib/services/billing-group';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -68,10 +71,14 @@ export async function GET(request, { params }) {
     let candidates = [];
     if (list.length > 0 && invoice.client_id) {
       const dates = [...new Set(list.map(p => p.payment_date).filter(Boolean))];
+      // Compte payeur commun: un même paiement peut régler des factures de plusieurs
+      // fiches regroupées (ex. usines U1 + U2)
+      const billing = await loadBillingMap(supabaseAdmin);
+      const siblingClientIds = billing.membersOf(billing.headOf(invoice.client_id)).map(m => m.id);
       const { data: cand, error: candErr } = await supabaseAdmin
         .from('invoice_payments')
         .select('id, invoice_id, payment_date, amount, discount_applied, method, reference, notes, created_at')
-        .eq('client_id', invoice.client_id)
+        .in('client_id', siblingClientIds)
         .in('payment_date', dates.length ? dates : ['1900-01-01'])
         .neq('invoice_id', invoiceId);
       if (candErr) throw candErr;

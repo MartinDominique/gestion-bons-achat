@@ -7,9 +7,14 @@
  *              - Formatage automatique des numéros de téléphone
  *              - email_admin optionnel
  *              - Courriels supplémentaires illimités (additional_emails, JSONB)
- * @version 2.4.0
- * @date 2026-11-04
+ *              - Compte payeur commun (billing_parent_id) + nom sur l'état de compte
+ * @version 2.5.0
+ * @date 2026-11-27
  * @changelog
+ *   2.5.0 - Section Tarification: « Compte payeur (état de compte regroupé) » — rattache
+ *           cette fiche à une autre (ex. usine U2 → U1) pour un seul relevé et une seule
+ *           saisie de paiement — et « Nom sur l'état de compte ». Champs masqués tant que
+ *           la migration 20261127 n'est pas passée (la sauvegarde reste intacte)
  *   2.4.0 - Sélecteur « Conditions de paiement » alimenté par la liste canonique
  *           lib/constants/paymentTerms (source unique avec Paramètres et Facturation)
  *   2.3.0 - Section « Courriels supplémentaires »: plus d'une adresse d'administration par
@@ -67,6 +72,9 @@ const EMPTY_FORM = {
   email_billing: '',
   payment_terms: '',
   preferred_payment_method: '',
+  // Compte payeur commun (état de compte regroupé)
+  billing_parent_id: '',
+  statement_name: '',
   // Signataires
   signatory_1: '',
   signatory_2: '',
@@ -98,6 +106,8 @@ function clientToForm(client) {
     email_billing: client.email_billing || '',
     payment_terms: client.payment_terms || '',
     preferred_payment_method: client.preferred_payment_method || '',
+    billing_parent_id: client.billing_parent_id ?? '',
+    statement_name: client.statement_name || '',
     signatory_1: client.signatory_1 || '',
     signatory_2: client.signatory_2 || '',
     signatory_3: client.signatory_3 || '',
@@ -111,6 +121,21 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
   const [form, setForm] = useState(client ? clientToForm(client) : { ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [defaultRate, setDefaultRate] = useState(null);
+  // Compte payeur commun: liste des fiches + présence des colonnes (migration 20261127)
+  const [allClients, setAllClients] = useState([]);
+  const [billingSupported, setBillingSupported] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch('/api/clients')
+      .then(r => r.json())
+      .then(list => {
+        if (!Array.isArray(list)) return;
+        setAllClients(list);
+        setBillingSupported(list.length > 0 && 'billing_parent_id' in list[0]);
+      })
+      .catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     if (client) {
@@ -194,6 +219,11 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
         email_billing: form.email_billing?.trim() || null,
         payment_terms: form.payment_terms || null,
         preferred_payment_method: form.preferred_payment_method || null,
+        // Compte payeur commun
+        billing_parent_id: form.billing_parent_id !== '' && form.billing_parent_id != null
+          ? parseInt(form.billing_parent_id)
+          : null,
+        statement_name: form.statement_name?.trim() || null,
         // Signataires
         signatory_1: form.signatory_1?.trim() || '',
         signatory_2: form.signatory_2?.trim() || '',
@@ -201,6 +231,13 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
         signatory_4: form.signatory_4?.trim() || '',
         signatory_5: form.signatory_5?.trim() || '',
       };
+
+      // Colonnes absentes (migration non passée): ne pas les envoyer, sinon la
+      // sauvegarde du client échouerait
+      if (!billingSupported) {
+        delete payload.billing_parent_id;
+        delete payload.statement_name;
+      }
 
       const res = await fetch('/api/save-client', {
         method: 'POST',
@@ -225,6 +262,15 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
   }
 
   /* ---------- render helpers ---------- */
+  // Compte payeur commun: fiches rattachées à celle-ci + fiches pouvant servir de payeur
+  // (autonomes seulement: pas de chaîne U3 → U2 → U1)
+  const billingChildren = client?.id
+    ? allClients.filter(c => String(c.billing_parent_id ?? '') === String(client.id))
+    : [];
+  const billingParentOptions = allClients.filter(c =>
+    c.id !== client?.id && (c.billing_parent_id == null || c.billing_parent_id === '')
+  );
+
   const inputBase = "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100";
 
   const colorStyles = {
@@ -628,6 +674,58 @@ export default function ClientModal({ open, onClose, onSaved, client }) {
                     </p>
                   </div>
                 </div>
+
+                {/* Compte payeur commun (état de compte regroupé) */}
+                {billingSupported && (
+                  <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-800 dark:text-emerald-300 mb-1">
+                        Compte payeur (état de compte regroupé)
+                      </label>
+                      {billingChildren.length > 0 ? (
+                        <p className="text-sm text-emerald-800 dark:text-emerald-200 bg-white dark:bg-gray-800 border border-emerald-300 dark:border-emerald-600 rounded-md px-3 py-2">
+                          Cette fiche est le compte payeur de: {billingChildren.map(c => c.name).join(', ')}
+                        </p>
+                      ) : (
+                        <select
+                          className={`${inputBase} min-h-[44px] border-emerald-300 dark:border-emerald-600 focus:border-emerald-500 focus:ring-emerald-200 dark:focus:ring-emerald-800`}
+                          value={form.billing_parent_id ?? ''}
+                          onChange={onChange('billing_parent_id')}
+                        >
+                          <option value="">Aucun (client autonome)</option>
+                          {billingParentOptions.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      )}
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                        Même payeur qu&apos;une autre fiche (ex. 2 usines): un seul état de compte et une seule
+                        saisie de paiement. Les BT, BL, factures et contacts restent séparés.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-emerald-800 dark:text-emerald-300 mb-1">
+                        Nom sur l&apos;état de compte
+                      </label>
+                      <input
+                        type="text"
+                        className={`${inputBase} min-h-[44px] border-emerald-300 dark:border-emerald-600 focus:border-emerald-500 focus:ring-emerald-200 dark:focus:ring-emerald-800 disabled:opacity-60`}
+                        value={form.statement_name}
+                        onChange={onChange('statement_name')}
+                        placeholder={form.name || 'Nom de la fiche'}
+                        disabled={form.billing_parent_id !== '' && form.billing_parent_id != null}
+                        autoCorrect="on"
+                        autoCapitalize="words"
+                        spellCheck={true}
+                      />
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                        {form.billing_parent_id !== '' && form.billing_parent_id != null
+                          ? 'Le nom du relevé se règle sur la fiche du compte payeur.'
+                          : 'Vide = nom de la fiche. Ex. « Tapis Venture » pour un relevé regroupé.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* SECTION - Signataires */}

@@ -17,9 +17,14 @@
  *                badge « Crédit », déduites du solde, réglables par un remboursement ou
  *                l'application du crédit (montant négatif)
  *              - Mobile-first: champs numériques auto-select, touch targets 44px
- * @version 1.11.0
- * @date 2026-11-04
+ * @version 1.12.0
+ * @date 2026-11-27
  * @changelog
+ *   1.12.0 - Compte payeur commun: relevé combiné de plusieurs fiches client (ex. usines
+ *            U1 + U2) sous un seul nom; pastille de la fiche d'origine sur chaque facture,
+ *            rappel « Regroupe: … » en en-tête, courriels des autres fiches proposés
+ *            comme destinataires (non cochés). Un paiement se répartit sur les factures
+ *            cochées, peu importe la fiche
  *   1.11.0 - En-tête: pastille « Conditions: Net 30 jours » toujours affichée (condition de
  *            la fiche client, sinon défaut des Paramètres — même source que le PDF)
  *   1.10.0 - Après un paiement enregistré: écran de confirmation (montant, factures, mode)
@@ -428,6 +433,8 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
         label: a?.label || 'Administration',
         role: 'Supplémentaire',
       })),
+      // Compte payeur commun: courriels des autres fiches du groupe
+      ...(Array.isArray(data?.group?.emails) ? data.group.emails : []),
     ].filter(x => x.email);
     // Dédoublonner par adresse (insensible à la casse)
     const seen = new Set();
@@ -563,6 +570,11 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-white truncate">État de compte</h2>
               <p className="text-emerald-50 text-sm truncate">{data?.client?.name || '...'}</p>
+              {data?.group?.is_group && (
+                <p className="text-emerald-100 text-xs truncate" title={data.group.members.map(m => m.name).join(' + ')}>
+                  Regroupe: {data.group.members.map(m => m.name).join(' + ')}
+                </p>
+              )}
               {/* Description du client: mode de paiement habituel + conditions */}
               <div className="flex flex-wrap items-center gap-1.5 mt-1">
                 <span className="inline-flex items-center gap-1 bg-white/20 text-white text-[11px] sm:text-xs px-2 py-0.5 rounded-full">
@@ -844,6 +856,11 @@ export default function ClientStatementView({ clientId, onClose, onChanged }) {
                             </span>
                             {inv.source_number && (
                               <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{inv.source_number}</span>
+                            )}
+                            {inv.client_label && (
+                              <span className="inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 text-xs font-medium px-2 py-0.5">
+                                {inv.client_label}
+                              </span>
                             )}
                             {isCredit ? (
                               <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-medium px-2 py-0.5">

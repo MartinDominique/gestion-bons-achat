@@ -6,9 +6,10 @@
  *              - Paramètre ?as_of=YYYY-MM-DD: relevé à une date passée (ex. fin juillet).
  *                Les factures émises après cette date et les paiements reçus après
  *                cette date sont exclus.
- * @version 1.3.0
- * @date 2026-11-04
+ * @version 1.4.0
+ * @date 2026-11-27
  * @changelog
+ *   1.4.0 - Retourne group (compte payeur commun: fiches regroupées + leurs courriels)
  *   1.3.0 - Retourne payment_terms (condition du client, sinon défaut des Paramètres) pour
  *           la pastille « Conditions: » de l'en-tête de l'écran
  *   1.2.0 - Date du relevé (?as_of) + calcul déplacé dans lib/services/statement-data.js
@@ -45,6 +46,7 @@ export async function GET(request, { params }) {
       success: true,
       data: {
         client: statement.client,
+        group: statement.group,
         invoices: statement.invoices,
         aging: statement.aging,
         totals: statement.totals,
